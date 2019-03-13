@@ -2,3 +2,4 @@
 img/
 mem/
 tmp/
+__pycache__/
