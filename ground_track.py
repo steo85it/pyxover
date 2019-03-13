@@ -1,0 +1,548 @@
+#!/usr/bin/env python3
+# ----------------------------------
+# ground_track.py
+#
+# Description: 
+# 
+# ----------------------------------------------------
+# Author: Stefano Bertone
+# Created: 08-Feb-2019
+
+import pickle
+import time
+
+import numpy as np
+import pandas as pd
+import spiceypy as spice
+import subprocess
+import glob
+
+import astro_trans as astr
+import pickleIO
+from geolocate_altimetry import geoloc
+from interp_obj import interp_obj
+from prOpt import debug, partials, parallel, SpInterp, auxdir
+# from mapcount import mapcount
+from project_coord import project_stereographic
+from tidal_deform import tidepart_h2
+from prOpt import sim
+
+
+class gtrack:
+    interp_obj.interp = interp_obj.interpSpl  # Cby  # Spl #
+    interp_obj.eval = interp_obj.evalSpl  # Cby  # Spl #
+
+    def __init__(self, vecopts):
+
+        self.vecopts = vecopts
+        self.dr_simit = None
+        self.ladata_df = None
+        self.name = None
+        self.MERv = None
+        self.MERx = None
+        self.MGRa = None
+        self.MGRv = None
+        self.MGRx = None
+        self.param = None
+        # Set-up empty offset arrays at init
+        self.pertPar = {'dA': 0.,
+                        'dC': 0.,
+                        'dR': 0.,
+                        'dRl': 0.,
+                        'dPt': 0.,
+                        'dRA': [0., 0., 0.],
+                        'dDEC': [0., 0., 0.],
+                        'dPM': [0., 0., 0.],
+                        'dL': 0.}  # ,
+        # 'dh2': 0. }
+
+    # create groundtrack from data and save to file
+    def setup(self, filnam):
+
+        if not hasattr(self, 'SpObj'):
+            # print(filnam)
+            # read data and fill ladata_df
+            self.read_fill(filnam)
+            # print(self.ladata_df)
+            # create interp for track
+            self.interpolate()
+        else:
+            self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
+
+        # print(self.MGRx.tck)
+        # geolocate observations in orbit
+        self.geoloc()
+        # project observations
+        self.project()
+        # update df
+
+        # print(self.ladata_df)
+
+    # create groundtrack from data and save to file
+    def prepro(self, filnam):
+
+        # read data and fill ladata_df
+        self.read_fill(filnam)
+        # print(self.ladata_df)
+
+        # testInterp(self.ladata_df,self.vecopts)
+        # exit()
+
+        # create interp for track (if data are present)
+        if (len(self.ladata_df) > 0):
+            self.interpolate()
+        else:
+            print('No data selected for orbit ' + str(self.name))
+        # print(self.MGRx.tck)
+
+    # create groundtrack from list of epochs
+    def simulate(self, filnam):
+
+        # read data and fill ladata_df
+        self.read_fill(filnam)
+        # print(self.ladata_df)
+
+        # testInterp(self.ladata_df,self.vecopts)
+        # exit()
+
+        # create interp for track (if data are present)
+        if (len(self.ladata_df) > 0):
+            self.interpolate()
+        else:
+            print('No data selected for orbit ' + str(self.name))
+        # print(self.MGRx.tck)
+
+    def save(self, filnam):
+        pklfile = open(filnam, "wb")
+        pickle.dump(self, pklfile)
+        pklfile.close()
+
+    # load groundtrack from file
+    def load(self, filnam):
+
+        pklfile = open(filnam, 'rb')
+        self = pickle.load(pklfile)
+        pklfile.close()
+
+        # print('Groundtrack loaded from '+filnam)
+        # print(self.ladata_df)
+        # print(self.MGRx.tck)
+
+        return self
+
+    def read_fill(self, infil):
+
+        df = pd.read_csv(infil, sep=',', header=0)
+        df['orbID'] = infil.split('.')[0][-10:]
+        self.name = df['orbID'].unique().squeeze()
+
+        # strip and lower case all column names
+        df.columns = df.columns.str.strip()
+        df.columns = df.columns.str.lower()
+
+        # only select the required data (column)
+        if (debug):
+            df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
+        else:
+            df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'chn', 'orbid', 'seqid']]
+
+        pd.set_option('display.max_columns', 500)
+        pd.set_option('display.max_rows', 500)
+        df.chn = pd.to_numeric(df.chn, errors='coerce').fillna(8).astype(np.int64)
+
+        # remove bad data (chn > 4)
+        df = df[df['chn'] < 5]
+        # to compare to Mike's selection (chn >= 5 only ... )
+        # df = df[df['EphemerisTime']>415023259.3]
+
+        df = df.drop(['chn'], axis=1)  # .set_index('seqid')
+
+        # Reorder columns and reindex
+        if (debug):
+            df.columns = ['ET_TX', 'TOF', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']
+        else:
+            df.columns = ['ET_TX', 'TOF', 'orbID', 'seqid']
+
+        df = df.reset_index(drop=True)
+        # print(df.index.is_unique)
+
+        # Convert TOF to seconds
+        df.TOF *= 1.e-9
+
+        # copy cleaned data to attribute df
+        self.ladata_df = df
+
+    def interpolate(self):
+
+        # Read required trajectories from spice and interpolate
+        startSpInterp = time.time()
+
+        self.MGRx = interp_obj('MGRx')
+        self.MGRv = interp_obj('MGRv')
+        self.MGRa = interp_obj('MGRa')
+        self.MERx = interp_obj('MERx')
+        self.MERv = interp_obj('MERv')
+        self.SUNx = interp_obj('SUNx')
+
+        tstep = 1
+
+        # Define call times for the SPICE
+        try:
+            t_spc = np.array(
+                [x for x in np.arange(self.ladata_df['ET_TX'].min(), self.ladata_df['ET_TX'].max(), tstep)])
+        except:
+            print(self.ladata_df)
+            print(self.ladata_df['ET_TX'].min())
+            print(self.ladata_df['ET_TX'].min())
+            exit()
+
+        # print("Start spkezr MGR")
+        # trajectory
+        xv_spc = np.array([spice.spkezr(self.vecopts['SCNAME'],
+                                        t,
+                                        self.vecopts['INERTIALFRAME'],
+                                        'NONE',
+                                        self.vecopts['INERTIALCENTER']) for t in t_spc])[:, 0]
+
+        xv_spc = np.reshape(np.concatenate(xv_spc), (-1, 6))
+
+        # print("Start pxform MGR")
+        # attitude
+        pxform_array = np.frompyfunc(spice.pxform, 3, 1)
+        cmat = pxform_array('MSGR_SPACECRAFT', self.vecopts['INERTIALFRAME'], t_spc)
+        m2q_array = np.frompyfunc(spice.m2q, 1, 1)
+        quat = m2q_array(cmat)
+        quat = np.reshape(np.concatenate(quat), (-1, 4))
+
+        # print("Start MGR interpolation")
+
+        self.MGRx.interp([xv_spc[:, i] for i in range(0, 3)], t_spc)
+        self.MGRv.interp([xv_spc[:, i] for i in range(3, 6)], t_spc)
+        self.MGRa.interp([quat[:, i] for i in range(0, 4)], t_spc)
+
+        # print("Start spkezr MER")
+
+        xv_pla = np.array([spice.spkezr(self.vecopts['PLANETNAME'],
+                                        t,
+                                        self.vecopts['INERTIALFRAME'],
+                                        'NONE',
+                                        self.vecopts['INERTIALCENTER']) for t in t_spc])[:, 0]
+        xv_pla = np.reshape(np.concatenate(xv_pla), (-1, 6))
+
+        # print("Start MER interpolation")
+
+        self.MERx.interp([xv_pla[:, i] for i in range(0, 3)], t_spc)
+        self.MERv.interp([xv_pla[:, i] for i in range(3, 6)], t_spc)
+
+        # print("Start spkezr SUN")
+
+        xv_sun = np.array([spice.spkezr('SUN',
+                                        t,
+                                        self.vecopts['INERTIALFRAME'],
+                                        'NONE',
+                                        self.vecopts['INERTIALCENTER']) for t in t_spc])[:, 0]
+        xv_sun = np.reshape(np.concatenate(xv_sun), (-1, 6))
+
+        # print("Start SUN interpolation")
+
+        self.SUNx.interp([xv_sun[:, i] for i in range(0, 3)], t_spc)
+
+        # save to orbit-wise file
+        self.SpObj = {'MGRx': self.MGRx,
+                      'MGRv': self.MGRv,
+                      'MGRa': self.MGRa,
+                      'MERx': self.MERx,
+                      'MERv': self.MERv,
+                      'SUNx': self.SUNx}
+
+        pickleIO.save(self.SpObj, auxdir + 'spaux_' + self.name + '.pkl')
+
+        endSpInterp = time.time()
+        if (debug):
+            print('----- Runtime SpInterp = ' + str(endSpInterp - startSpInterp) + ' sec -----' + str(
+                (endSpInterp - startSpInterp) / 60.) + ' min -----')
+
+    def geoloc(self):
+
+        ladata_df = self.ladata_df.copy()
+        vecopts = self.vecopts.copy()
+
+        #################### end -------
+
+        # ------------------------------
+        # Processing
+        # ------------------------------
+
+        # Compute geolocalisation and dxyz/dP, where P = (A,C,R,Rl,Pt)
+        startGeoloc = time.time()
+
+        # Prepare
+        if (partials):
+            parOrb = {'dA': 100.}
+            #           'dA':100., 'dC':100., 'dR':20., 'dRl':20e-6, 'dPt':20e-6, \
+            parGlo = {}
+            #           'dRA':[0.001, 0.000, 0.000], 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dL':0.01} #, \
+            param = {'': 1.}
+            param.update(parOrb)
+            param.update(parGlo)
+        # \
+        # 'dh2':0.1}
+        else:
+            param = {'': 1.}
+
+        self.param = param
+
+        if hasattr(self, 'SpObj'):
+            SpObj = self.SpObj
+        else:
+            SpObj = {'MGRx': self.MGRx,
+                     'MGRv': self.MGRv,
+                     'MGRa': self.MGRa,
+                     'MERx': self.MERx,
+                     'MERv': self.MERv,
+                     'SUNx': self.SUNx}
+        #########################
+
+        if (
+                parallel and SpInterp > 0 and 1 == 2):  # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
+            # the orbit (single initial call) with an appropriate accuracy.
+            # print((mp.cpu_count() - 1))
+            pool = mp.Pool(processes=mp.cpu_count() - 1)
+            results = pool.map(self.get_geoloc_part, param.items())  # parallel
+            pool.close()
+            pool.join()
+        else:
+            results = [self.get_geoloc_part(i) for i in param.items()]  # seq
+
+        # print(ladata_df.loc[:,['ET_TX','orbID','LAT','dLAT/dA','dLAT/dC','dLAT/dR']])
+        # print(results[0][0,:],list(param)[0],len(param))
+
+        if (self.vecopts['OUTPUTTYPE'] == 0):
+            ladata_df['X'] = results[0][:, 0]
+            ladata_df['Y'] = results[0][:, 1]
+            ladata_df['Z'] = results[0][:, 2]
+            if sim:
+              _, _, Rbase = subprocess.check_call([PGM_HOME+'diff_res_format', d+'/resid.asc', d_part+'/resid.asc', dif_dir+'/diff.resid_'+d],
+                      universal_newlines=True)
+            else:
+              Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
+	    
+            ladata_df['R'] = np.linalg.norm(results[0], axis=1) - Rbase
+        elif (self.vecopts['OUTPUTTYPE'] == 1):
+            ladata_df['LON'] = results[0][:, 0]
+            ladata_df['LAT'] = results[0][:, 1]
+            np.savetxt('gmt.in', list(zip(results[0][:, 0],results[0][:, 1])))
+            if sim:
+               Rbase = subprocess.check_output(['grdtrack', 'gmt.in', '-G../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                   universal_newlines=True)
+               Rbase = np.fromstring(Rbase,sep=' ').reshape(-1,3)[:,2]
+               #np.savetxt('gmt_'+self.name+'.out', Rbase)
+               Rbase = (Rbase + self.vecopts['PLANETRADIUS'])* 1.e3
+            else:
+               Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
+	      
+            ladata_df['R'] = results[0][:, 2] - Rbase
+
+        if (len(param) > 1 and list(param)[0] == ''):
+            if (self.vecopts['OUTPUTTYPE'] == 0):
+                for i in range(1, len(param)):
+                    ladata_df['dX/' + list(param)[i]] = results[i][:, 0]
+                    ladata_df['dY/' + list(param)[i]] = results[i][:, 1]
+                    ladata_df['dZ/' + list(param)[i]] = results[i][:, 2]
+                    ladata_df['dR/' + list(param)[i]] = np.linalg.norm(results[i], axis=1)
+
+                # Add partials w.r.t. tidal h2
+                ladata_df['dLON/dh2'] = 0
+                ladata_df['dLAT/dh2'] = 0
+                ladata_df['dR/dh2'] = \
+                tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]), \
+                            ladata_df['ET_TX'] + 0.5 * ladata_df['TOF'], SpObj)[0]
+
+            elif (self.vecopts['OUTPUTTYPE'] == 1):
+                for i in range(1, len(param)):
+                    ladata_df['dLON/' + list(param)[i]] = results[i][:, 0]
+                    ladata_df['dLAT/' + list(param)[i]] = results[i][:, 1]
+                    ladata_df['dR/' + list(param)[i]] = results[i][:, 2]
+
+                # Add partials w.r.t. tidal h2
+                parGlo['dh2'] = 1
+                param['dh2'] = 1
+                self.vecopts['PARTDER'] = ''
+                ladata_df['dLON/dh2'] = 0
+                ladata_df['dLAT/dh2'] = 0
+                ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, \
+                                                  np.transpose(astr.sph2cart(
+                                                      ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                                                      ladata_df['LAT'].values, ladata_df['LON'].values)), \
+                                                  ladata_df['ET_TX'].values + 0.5 * ladata_df['TOF'].values, SpObj)[0]
+
+        # update object attribute df
+        self.ladata_df = ladata_df.copy()
+
+        if (debug):
+            print(ladata_df)
+            # exit()
+
+        endGeoloc = time.time()
+        if (debug):
+            print('----- Runtime Geoloc = ' + str(endGeoloc - startGeoloc) + ' sec -----' + str(
+                (endGeoloc - startGeoloc) / 60.) + ' min -----')
+
+    # @profile
+    def get_geoloc_part(self, par):
+
+        ladata_df = self.ladata_df
+        vecopts = self.vecopts
+        if hasattr(self, 'SpObj'):
+            SpObj = self.SpObj
+        else:
+            SpObj = {'MGRx': self.MGRx,
+                     'MGRv': self.MGRv,
+                     'MGRa': self.MGRa,
+                     'MERx': self.MERx,
+                     'MERv': self.MERv,
+                     'SUNx': self.SUNx}
+
+        print('geoloc: ' + str(par))
+
+        # get dictionary values
+        self.vecopts['PARTDER'] = list(par)[0]
+        diff_step = list(par)[1]
+
+        if (debug):
+            print('self.vecopts[PARTDER]', self.vecopts['PARTDER'])
+            print(diff_step)
+
+        tmp_df = ladata_df.copy()
+        tmp_pertPar = self.pertPar.copy()
+
+        # Read self.vecopts[partder] and apply perturbation
+        # if needed
+        tmp_pertPar[self.vecopts['PARTDER']] = diff_step
+
+        # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
+        geoloc_out, dr_simit = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
+
+        if par[0]== '':
+            self.dr_simit = dr_simit
+
+        # Compute partial derivatives if required
+        if (self.vecopts['PARTDER'] is not ''):
+
+            try:
+                tmp_pertPar[self.vecopts['PARTDER']] *= -1.
+            except:  # if perturbation is a vector
+                tmp_pertPar[self.vecopts['PARTDER']] = [-1. * x for x in tmp_pertPar[self.vecopts['PARTDER']]]
+
+            geoloc_min, dr_simit = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
+            partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
+
+            # print("partder check", geoloc_out[:,0:3], geoloc_min[:,0:3],diff_step)
+
+            if (self.vecopts['PARTDER'] in ('dA', 'dC', 'dR', 'dRl', 'dPt')):
+                partder /= (2. * diff_step)  # [0]
+                # print('partder', partder)
+            else:
+                # print('norm_pert', np.linalg.norm(diff_step))
+                partder /= 2. * np.linalg.norm(diff_step)  # [1]
+                # print('partder', partder)
+
+            return partder
+
+        else:
+            return geoloc_out
+
+    # Compute stereographic projection of measurements location
+    # and feed it to ladata_df
+    def project(self):
+
+        ladata_df = self.ladata_df
+        param = self.param
+
+        startProj = time.time()
+
+        if (parallel and 1 == 2):  # not convenient for small datasets (<5 orbits)
+            # print((mp.cpu_count() - 1))
+            pool = mp.Pool(processes=mp.cpu_count() - 1)
+            results = pool.map(self.launch_stereoproj, param.items())  # parallel
+            # ladata_df = ladata_df.join(pd.DataFrame(results, index=ladata_df.index))
+            # print(ladata_df)
+            # exit()
+            pool.close()
+            pool.join()
+        else:
+            results = [self.launch_stereoproj(i) for i in param.items()]  # seq
+
+        # print(results)
+
+        # prepare column names
+        col_sim = np.array(['X_stgprj', 'Y_stgprj'])
+        if (partials):
+            col_der = np.hstack([['X_stgprj_' + par + '_m', 'Y_stgprj_' + par + '_m', 'X_stgprj_' + par + '_p',
+                                  'Y_stgprj_' + par + '_p'] for par in list(param.keys())[1:]])
+            # concatenate stgprj to ladata_df
+            ladata_df[np.hstack((col_sim, col_der))] = pd.DataFrame(np.hstack(results), index=ladata_df.index)
+        else:
+            ladata_df[np.hstack((col_sim))] = pd.DataFrame(np.hstack(results), index=ladata_df.index)
+
+        endProj = time.time()
+        if (debug):
+            print('----- Runtime Proj = ' + str(endProj - startProj) + ' sec -----' + str(
+                (endProj - startProj) / 60.) + ' min -----')
+
+    # @profile
+    #################
+    # Correct for perturbations by using partials (if needed) and launch projection
+    def launch_stereoproj(self, par_d):
+
+        ladata_df = self.ladata_df
+        vecopts = self.vecopts
+
+        print('proj: ' + str(par_d))
+
+        # get dict values
+        par = list(par_d)[0]
+        diff_step = np.linalg.norm(list(par_d)[1])
+
+        # setting up as 2D arrays to be able to access np.shape(lon_tmp)[0]
+        # in the case par='' (no partial derivative)
+        lon_tmp = [ladata_df['LON'].values]
+        lat_tmp = [ladata_df['LAT'].values]
+
+        # Apply position correction
+        if (par is not ''):
+            lon_tmp = [lon_tmp[:][0] + ladata_df['dLON/' + par].values * k * diff_step for k in [-1, 1]]
+            lat_tmp = [lat_tmp[:][0] + ladata_df['dLAT/' + par].values * k * diff_step for k in [-1, 1]]
+
+            if (debug):
+                print('corr', lon_tmp[:][0], lat_tmp[:][0])
+                print('corr', ladata_df['dLAT/' + par].values * diff_step, ladata_df['dLON/' + par].values * diff_step)
+
+        proj = np.vstack([project_stereographic(lon_tmp[:][k], lat_tmp[:][k], 0, 90, vecopts['PLANETRADIUS']) for k in
+                          range(0, np.shape(lon_tmp)[0])]).T
+
+        # stg_proj_cols = {}
+
+        if (par is ''):
+            # proj=project_stereographic(lon_tmp,lat_tmp,0,90,2440)
+            # ladata_df['X_stgprj']=proj[:,0]
+            # ladata_df['Y_stgprj']=proj[:,1]
+            # stg_proj_cols=proj[:,0:2]
+
+            # print(np.array(proj).reshape(-1,2))
+            return np.array(proj).reshape(-1, 2)  # stg_proj_cols
+
+
+        else:
+            # setup column names
+            # stg_proj_cols.update({'X_stgprj_'+par+'_p':None,'Y_stgprj_'+par+'_p':None,'X_stgprj_'+par+'_m':None,'Y_stgprj_'+par+'_m':None})
+            # store proj XY with pos/neg pert
+            # for idx in range(4):
+            # stg_proj_cols=proj[:,0:4]
+            # ladata_df[name]=proj[:,idx]
+
+            # print(np.array(proj).reshape(-1,4))
+
+            return np.array(proj).reshape(-1, 4)  # stg_proj_cols
+
+#################
