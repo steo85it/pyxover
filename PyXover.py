@@ -28,14 +28,18 @@ import time
 
 # mylib
 # from mapcount import mapcount
-from prOpt import debug, parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local
+from prOpt import parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local
 from ground_track import gtrack
 from xov_setup import xov
-from Amat import Amat
 
+# from util import lflatten
 ########################################
 # # test space
 #
+# tst = [np.array([ 89.72151033, 103.94256763]), np.array([139.94256763])]
+# tst = lflatten(tst)
+# print(tst)
+# exit()
 # vecopts = {'SCID':'-236'}
 #
 # tmp_ser = Amat(vecopts)
@@ -65,14 +69,14 @@ print('Argument List:', str(sys.argv))
 # locate data
 if local == 0:
     data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    dataset = ''  # 'small_test/' #'test1/' #'1301/' #
+    dataset = ''  # 'test/' #'small_test/' #'1301/' #
     data_pth += dataset
     # load kernels
     spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')  # 'aux/mymeta')
 else:
-    data_pth = outdir  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    #data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    dataset = ''#"test/"  # ''  # 'small_test/' #'1301/' #
+    data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'
+    # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+    dataset = '1301/'  # 'small_dataset/' #''# "test1/"  #''  #
     data_pth += dataset
     # load kernels
     spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
@@ -129,8 +133,8 @@ startInit = time.time()
 # for orbitA and orbitB.
 # Geoloc, if active, will process all files in A+B. Xov will only process combinations
 # of orbits from A and B
-allFilesA = glob.glob(os.path.join(data_pth, 'MLASIMRDR' + misycmb[par][0] + '*.TAB'))
-allFilesB = glob.glob(os.path.join(data_pth, 'MLASIMRDR' + misycmb[par][1] + '*.TAB'))
+allFilesA = glob.glob(os.path.join(data_pth, 'MLASCIRDR' + misycmb[par][0] + '*.TAB'))
+allFilesB = glob.glob(os.path.join(data_pth, 'MLASCIRDR' + misycmb[par][1] + '*.TAB'))
 
 if misycmb[par][0] == misycmb[par][1]:
     allFiles = allFilesA
@@ -174,11 +178,10 @@ startGeoloc = time.time()
 def launch_gtrack(args):
     track_id, infil = args
 
-    track = track_id
     track = gtrack(vecopts)
 
     if new_gtrack:
-        if os.path.isfile(outdir + track_id + '.pkl') == False:
+        if os.path.isfile(outdir + track_id + '.pkl') == False or new_gtrack == 2:
             try:
                 track.setup(infil)
                 track.save(outdir + track_id + '.pkl')
@@ -187,7 +190,7 @@ def launch_gtrack(args):
                 print('failed to process ' + track_id)
         else:
             # track = track.load('out/'+track_id+'.pkl')
-            print('Orbit file ' + 'out/' + track_id + '.pkl already existed!')
+            print('Gtrack file ' + 'out/' + track_id + '.pkl already existed!')
 
 
 # loop over all gtracks
@@ -216,8 +219,9 @@ trackxov_list = []
 
 # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
 # comb=np.array(list(itert.combinations([fil.split('.')[0][-10:] for fil in allFiles], 2))) # this computes comb btw ALL files
-comb = list(itert.product([fil.split('.')[0][-10:] for fil in allFilesA], [fil.split('.')[0][-10:] for fil in allFilesB]))
-comb = np.array([c for c in comb if c[0]!=c[1]])
+comb = list(
+    itert.product([fil.split('.')[0][-10:] for fil in allFilesA], [fil.split('.')[0][-10:] for fil in allFilesB]))
+comb = np.array([c for c in comb if c[0] != c[1]])
 
 # load all tracks
 tmp = [gtrack(vecopts) for i in range(len(allFiles))]
@@ -236,17 +240,17 @@ def launch_xov(track_id):
     # track_id = tracklist[seqId].name
     # print(track_id)
 
-    if new_xov:
-        if 1 == 1:  # os.path.isfile(outdir+'xov_'+track_id+'_'+misycmb[par][1]+'.pkl')==False):
+    if new_xov:  # and track_id=='1301232350':
+        if not os.path.isfile(outdir + 'xov_' + track_id + '_' + misycmb[par][1] + '.pkl') or new_xov == 2:
 
-            print("Processing " + track_id + " ...")
+            # print("Processing " + track_id + " ...")
 
-            try:
-
-                #    trackA = track_id
-                #    trackA = tracklist[str(track_id)]
-                trackA = gtrack(vecopts)
-                trackA = trackA.load(outdir + 'gtrack_' + track_id + '.pkl')
+            # try:
+            #    trackA = track_id
+            #    trackA = tracklist[str(track_id)]
+            trackA = gtrack(vecopts)
+            trackA = trackA.load(outdir + 'gtrack_' + track_id + '.pkl')
+            if not trackA == None:
 
                 xov_tmp = track_id
                 xov_tmp = xov(vecopts)
@@ -256,19 +260,20 @@ def launch_xov(track_id):
                 # loop over all combinations containing track_id
                 for gtrackA, gtrackB in [s for s in comb if track_id in s[0]]:
 
-                    if debug:
-                        print("Processing " + gtrackA + " vs " + gtrackB)
+                    # if debug:
+                    #    print("Processing " + gtrackA + " vs " + gtrackB)
 
-                    try:
+                    if gtrackB > gtrackA:
+                        # try:
                         #        trackB = track_id
                         #        trackB = tracklist[str(gtrackB)]
                         trackB = gtrack(vecopts)
                         trackB = trackB.load(outdir + 'gtrack_' + gtrackB + '.pkl')
-
-                        xov_tmp.setup(pd.concat([trackA.ladata_df, trackB.ladata_df]))
-                    except:
-                        print(
-                            'failed to load trackB ' + outdir + 'gtrack_' + gtrackB + '.pkl' + ' to process ' + outdir + 'gtrack_' + track_id + '.pkl')
+                        if not trackB == None:
+                            xov_tmp.setup(pd.concat([trackA.ladata_df, trackB.ladata_df]).reset_index(drop=True))
+                    # except:
+                    #     print(
+                    #         'failed to load trackB ' + outdir + 'gtrack_' + gtrackB + '.pkl' + ' to process ' + outdir + 'gtrack_' + track_id + '.pkl')
 
                 # for each gtrackA, write
                 # print([s for s in comb if track_id in s[0]])
@@ -280,9 +285,9 @@ def launch_xov(track_id):
                           misycmb[par][1] + '.pkl !')
                     return gtrackA
 
-            except:
-                print(
-                    'failed to load trackA ' + outdir + 'gtrack_' + track_id + '.pkl' + ' to process xov from ' + outdir + 'gtrack_' + track_id + '.pkl')
+        # except:
+        #     print(
+        #         'failed to load trackA ' + outdir + 'gtrack_' + track_id + '.pkl' + ' to process xov from ' + outdir + 'gtrack_' + track_id + '.pkl')
 
         else:
 
@@ -308,49 +313,51 @@ endXov2 = time.time()
 print(
     '----- Runtime Xov2 = ' + str(endXov2 - startXov2) + ' sec -----' + str((endXov2 - startXov2) / 60.) + ' min -----')
 
-
-
-# -------------------------------
-# Amat setup
-# -------------------------------
-startXovPart = time.time()
-
-# Combine all xovers and setup Amat
-xov_ = xov(vecopts)
-
-if parallel and new_xov:
-    trackxov_list = acttracks
-elif ~new_xov:
-    trackxov_list = [fil.split('.')[0][-10:] for fil in allFiles]
-
-print([xov_.load(outdir + 'xov_' + x + '_' + y + '.pkl') for x in trackxov_list for y in misy])
-print([outdir + 'xov_' + x + '_' + y + '.pkl' for x in trackxov_list for y in misy])
-exit()
-
-xov_list = [xov_.load(outdir + 'xov_' + x + '.pkl') for x in trackxov_list]
-xov_cmb = xov(vecopts)
-xov_cmb.combine(xov_list)
-
-if debug:
-    pd.set_option('display.max_columns', 500)
-    print(xov_cmb.xovers)
-
-xovi_amat = Amat(vecopts)
-xovi_amat.setup(xov_cmb)
-xovi_amat.save(outdir + 'Amat_' + dataset.split('/')[0] + '_' + arg + '.pkl')
-
-print('sparse density = ' + str(xovi_amat.spA.density))
-
-if debug:  # check if correctly saved
-    tmp = Amat(vecopts)
-    tmp = tmp.load(outdir + 'Amat_' + dataset.split('/')[0] + '_' + arg + '.pkl')
-    print(tmp.A)
-
-endXovPart = time.time()
-print('----- Runtime Amat = ' + str(endXovPart - startXovPart) + ' sec -----' + str(
-    (endXovPart - startXovPart) / 60.) + ' min -----')
-
+# # -------------------------------
+# # Amat setup
+# # -------------------------------
+# startXovPart = time.time()
+#
+# # Combine all xovers and setup Amat
+# xov_ = xov(vecopts)
+#
+# if parallel and new_xov:
+#     trackxov_list = acttracks
+# elif ~new_xov:
+#     trackxov_list = [fil.split('.')[0][-10:] for fil in allFiles]
+#
+# print('blablabla')
+# print([xov_.load(outdir + 'xov_' + x + '_' + y + '.pkl') for x in trackxov_list for y in misy])
+# print([outdir + 'xov_' + x + '_' + y + '.pkl' for x in trackxov_list for y in misy])
 # exit()
+#
+# xov_list = [xov_.load(outdir + 'xov_' + x + '.pkl') for x in trackxov_list]
+# xov_cmb = xov(vecopts)
+# xov_cmb.combine(xov_list)
+# print("blabla")
+#
+# exit()
+#
+# if debug:
+#     pd.set_option('display.max_columns', 500)
+#     print(xov_cmb.xovers)
+#
+# xovi_amat = Amat(vecopts)
+# xovi_amat.setup(xov_cmb)
+# xovi_amat.save(outdir + 'Amat_' + dataset.split('/')[0] + '_' + arg + '.pkl')
+#
+# print('sparse density = ' + str(xovi_amat.spA.density))
+#
+# if debug:  # check if correctly saved
+#     tmp = Amat(vecopts)
+#     tmp = tmp.load(outdir + 'Amat_' + dataset.split('/')[0] + '_' + arg + '.pkl')
+#     print(tmp.A)
+#
+# endXovPart = time.time()
+# print('----- Runtime Amat = ' + str(endXovPart - startXovPart) + ' sec -----' + str(
+#     (endXovPart - startXovPart) / 60.) + ' min -----')
+#
+# # exit()
 
 ##############################################
 # stop clock and print runtime

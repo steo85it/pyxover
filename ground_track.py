@@ -7,7 +7,7 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 08-Feb-2019
-
+import os
 import pickle
 import time
 
@@ -21,12 +21,10 @@ import astro_trans as astr
 import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
-from prOpt import debug, partials, parallel, SpInterp, auxdir
+from prOpt import debug, partials, parallel, SpInterp, auxdir, sim, local,parOrb, parGlo
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
-from prOpt import sim
-
 
 class gtrack:
     interp_obj.interp = interp_obj.interpSpl  # Cby  # Spl #
@@ -44,7 +42,7 @@ class gtrack:
         self.MGRv = None
         self.MGRx = None
         self.param = None
-        # Set-up empty offset arrays at init
+        # Set-up empty offset arrays at init (sim only)
         self.pertPar = {'dA': 0.,
                         'dC': 0.,
                         'dR': 0.,
@@ -120,10 +118,13 @@ class gtrack:
     # load groundtrack from file
     def load(self, filnam):
 
-        pklfile = open(filnam, 'rb')
-        self = pickle.load(pklfile)
-        pklfile.close()
-
+        if os.path.isfile(filnam):
+            pklfile = open(filnam, 'rb')
+            self = pickle.load(pklfile)
+            pklfile.close()
+        else:
+            print("No "+filnam+" found")
+            self = None
         # print('Groundtrack loaded from '+filnam)
         # print(self.ladata_df)
         # print(self.MGRx.tck)
@@ -146,8 +147,8 @@ class gtrack:
         else:
             df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'chn', 'orbid', 'seqid']]
 
-        pd.set_option('display.max_columns', 500)
-        pd.set_option('display.max_rows', 500)
+        #pd.set_option('display.max_columns', 500)
+        #pd.set_option('display.max_rows', 500)
         df.chn = pd.to_numeric(df.chn, errors='coerce').fillna(8).astype(np.int64)
 
         # remove bad data (chn > 4)
@@ -278,10 +279,6 @@ class gtrack:
 
         # Prepare
         if (partials):
-            parOrb = {'dA': 100.}
-            #           'dA':100., 'dC':100., 'dR':20., 'dRl':20e-6, 'dPt':20e-6, \
-            parGlo = {}
-            #           'dRA':[0.001, 0.000, 0.000], 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dL':0.01} #, \
             param = {'': 1.}
             param.update(parOrb)
             param.update(parGlo)
@@ -333,14 +330,18 @@ class gtrack:
             ladata_df['LAT'] = results[0][:, 1]
             np.savetxt('gmt.in', list(zip(results[0][:, 0],results[0][:, 1])))
             if sim:
-               Rbase = subprocess.check_output(['grdtrack', 'gmt.in', '-G../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
-                   universal_newlines=True)
-               Rbase = np.fromstring(Rbase,sep=' ').reshape(-1,3)[:,2]
-               #np.savetxt('gmt_'+self.name+'.out', Rbase)
-               Rbase = (Rbase + self.vecopts['PLANETRADIUS'])* 1.e3
+                if local==0:
+                    Rbase = subprocess.check_output(['grdtrack', 'gmt.in', '-G../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                                                    universal_newlines=True)
+                    Rbase = np.fromstring(Rbase,sep=' ').reshape(-1,3)[:,2]
+                    #np.savetxt('gmt_'+self.name+'.out', Rbase)
+                else:
+                    Rbase = np.loadtxt('tmp/gmt_'+self.name+'.out')
+
+                Rbase = (Rbase + self.vecopts['PLANETRADIUS'])* 1.e3
             else:
-               Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
-	      
+                Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
+
             ladata_df['R'] = results[0][:, 2] - Rbase
 
         if (len(param) > 1 and list(param)[0] == ''):

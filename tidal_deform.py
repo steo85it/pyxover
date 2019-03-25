@@ -61,17 +61,17 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj):
 
     # print(gSurf)
 
-    dpr = 180 / pi;
+    dpr = 180 / pi
 
-    [LO, TH, R] = astr.cart2sph(xyz_bf);
+    [LO, TH, R] = astr.cart2sph(xyz_bf)
 
-    LO0 = LO;
-    TH0 = TH;
+    LO0 = LO
+    TH0 = TH
     CO = 90. - TH
-    CO0 = CO;
-    nmax = 3;
+    CO0 = CO
+    nmax = 3
 
-    obs = vecopts['PLANETNAME'];
+    obs = vecopts['PLANETNAME']
     frame = vecopts['PLANETFRAME']
 
     # get Sun position and distance from body
@@ -91,48 +91,48 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj):
     Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
     terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
 
-    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0);
-    Vtot0 = Vsun;
+    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
+    Vtot0 = Vsun
 
     # explicit equation for degree 2 term
     # Vsun = (GMsun/(dSUN)) * np.square(plarad/dSUN) * 0.5*(3*np.square(coszSUN)-1);
     # apply to get vertical displacement of surface due to tides
-    urtot = h2 * (Vsun) / gSurf;
+    urtot = h2 * (Vsun) / gSurf
 
     # lon displacement
-    dLO = 1. / 100;
-    LO_ = LO0 + dLO;
+    dLO = 1. / 100
+    LO_ = LO0 + dLO
 
     coszSUN = cosz(TH, LO_, latSUN, lonSUN)
 
     Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
     terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
 
-    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0);
+    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
     Vtot = Vsun
 
     # compute derivative of V w.r.t. a lon displacement
-    dV = (Vtot - Vtot0) / (dLO / dpr);
+    dV = (Vtot - Vtot0) / (dLO / dpr)
     # apply to get longitude displacement
-    lotot = l2 * dV / (gSurf * sind(CO));
+    lotot = l2 * dV / (gSurf * sind(CO))
 
     # lat displacement - do in terms of CO = colatitude
-    dCO = 1. / 100;
-    CO_ = CO0 + dCO;
+    dCO = 1. / 100
+    CO_ = CO0 + dCO
     CO_[CO_ > 180] = -1 * CO_[CO_ > 180]
 
-    coszSUN = cosd(CO_) * sind(latSUN * dpr) + sind(CO_) * cosd(latSUN * dpr) * cosd(lonSUN * dpr - LO);
+    coszSUN = cosd(CO_) * sind(latSUN * dpr) + sind(CO_) * cosd(latSUN * dpr) * cosd(lonSUN * dpr - LO)
 
     Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
     terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
 
-    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0);
+    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
     Vtot = Vsun
 
     # compute derivative of V w.r.t. a lat displacement
-    dV = (Vtot - Vtot0) / (dCO / dpr);
+    dV = (Vtot - Vtot0) / (dCO / dpr)
     # apply to get latitude displacement at surface
-    thtot = l2 * dV / gSurf;
+    thtot = l2 * dV / gSurf
 
     # print(urtot,lotot,thtot)
     # exit()

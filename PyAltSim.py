@@ -66,6 +66,9 @@ class sim_gtrack(gtrack):
         olddr = 1000
         for it in range(itmax):
 
+            if debug:
+                print("it = "+str(it))
+
             self.geoloc()
 
             df['TOF'] += 2.*self.dr_simit/clight

@@ -231,37 +231,37 @@ print('----- Runtime Amat = ' + str(endXovPart - startXovPart) + ' sec -----' + 
 end = time.time()
 print('----- Runtime = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
 
-exit()
-
-x = 0
-# Set up Amat
-for i in misycmb:
-    x = len(xov_.load(outdir + 'xov_' + i + '.pkl').xovers)
-    print(x)
-    if (x > 0):
-        xov_ = xov_.load(outdir + 'xov_' + i + '.pkl')
-        break
-
-print(xov_.xovers.columns)
-parOrb_xy = xov_.parOrb_xy
-OrbParFull = [x + '_' + y for x in tracknames for y in parOrb_xy]
-Amat_col = OrbParFull + xov_.parGlo_xy
-Amat_df = pd.DataFrame(columns=Amat_col)
-
-print(Amat_df)
-
-xov_list = [xov_.load(outdir + 'xov_' + x + '.pkl') for x in misycmb[0]]
-print(xov_list[0].xovers)
-# xov_cmb = xov(vecopts)
-# xov_cmb.combine(xov_list)
-# print(xov_cmb.xovers)
-
-xovi_amat = Amat(vecopts)
-xovi_amat.setup(xov_list[0], Amat_col)
-
-exit()
-
-xov_list = [xov_.load(outdir + 'xov_' + x + '.pkl') for x in misycmb]
-
-end = time.time()
-print("done in " + str(end - startXovPart) + "!")  # [len(x.xovers) for x in xov_list])
+# exit()
+#
+# x = 0
+# # Set up Amat
+# for i in misycmb:
+#     x = len(xov_.load(outdir + 'xov_' + i + '.pkl').xovers)
+#     print(x)
+#     if (x > 0):
+#         xov_ = xov_.load(outdir + 'xov_' + i + '.pkl')
+#         break
+#
+# print(xov_.xovers.columns)
+# parOrb_xy = xov_.parOrb_xy
+# OrbParFull = [x + '_' + y for x in tracknames for y in parOrb_xy]
+# Amat_col = OrbParFull + xov_.parGlo_xy
+# Amat_df = pd.DataFrame(columns=Amat_col)
+#
+# print(Amat_df)
+#
+# xov_list = [xov_.load(outdir + 'xov_' + x + '.pkl') for x in misycmb[0]]
+# print(xov_list[0].xovers)
+# # xov_cmb = xov(vecopts)
+# # xov_cmb.combine(xov_list)
+# # print(xov_cmb.xovers)
+#
+# xovi_amat = Amat(vecopts)
+# xovi_amat.setup(xov_list[0], Amat_col)
+#
+# exit()
+#
+# xov_list = [xov_.load(outdir + 'xov_' + x + '.pkl') for x in misycmb]
+#
+# end = time.time()
+# print("done in " + str(end - startXovPart) + "!")  # [len(x.xovers) for x in xov_list])
