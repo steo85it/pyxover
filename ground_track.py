@@ -16,6 +16,7 @@ import pandas as pd
 import spiceypy as spice
 import subprocess
 import glob
+import matplotlib.pyplot as plt
 
 import astro_trans as astr
 import pickleIO
@@ -156,16 +157,21 @@ class gtrack:
         # to compare to Mike's selection (chn >= 5 only ... )
         # df = df[df['EphemerisTime']>415023259.3]
 
-        df = df.drop(['chn'], axis=1)  # .set_index('seqid')
+        #df = df.drop(['chn'], axis=1)  # .set_index('seqid')
 
         # Reorder columns and reindex
-        if (debug):
-            df.columns = ['ET_TX', 'TOF', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']
+        if debug:
+            df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']
         else:
-            df.columns = ['ET_TX', 'TOF', 'orbID', 'seqid']
+            df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']
 
-        df = df.reset_index(drop=True)
+        #df = df.reset_index(drop=True)
         # print(df.index.is_unique)
+
+        # Drop doublons from df, keeping the best chn for each observation
+        doublons = df.sort_values(['ET_TX','chn']).loc[df.round(3).duplicated(['ET_TX'],keep='first')].index
+        df.drop(doublons, inplace=True)
+        df = df.reset_index(drop=True)
 
         # Convert TOF to seconds
         df.TOF *= 1.e-9
@@ -328,7 +334,7 @@ class gtrack:
         elif (self.vecopts['OUTPUTTYPE'] == 1):
             ladata_df['LON'] = results[0][:, 0]
             ladata_df['LAT'] = results[0][:, 1]
-            np.savetxt('gmt.in', list(zip(results[0][:, 0],results[0][:, 1])))
+            np.savetxt('tmp/gmt.in', list(zip(results[0][:, 0],results[0][:, 1])))
             if sim:
                 if local==0:
                     Rbase = subprocess.check_output(['grdtrack', 'gmt.in', '-G../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
@@ -404,17 +410,17 @@ class gtrack:
                      'MERv': self.MERv,
                      'SUNx': self.SUNx}
 
-        print('geoloc: ' + str(par))
-
         # get dictionary values
         self.vecopts['PARTDER'] = list(par)[0]
         diff_step = list(par)[1]
 
         if (debug):
+            print('geoloc: ' + str(par))
             print('self.vecopts[PARTDER]', self.vecopts['PARTDER'])
             print(diff_step)
 
         tmp_df = ladata_df.copy()
+
         tmp_pertPar = self.pertPar.copy()
 
         # Read self.vecopts[partder] and apply perturbation
@@ -519,6 +525,7 @@ class gtrack:
                 print('corr', lon_tmp[:][0], lat_tmp[:][0])
                 print('corr', ladata_df['dLAT/' + par].values * diff_step, ladata_df['dLON/' + par].values * diff_step)
 
+        # project latlon to xy from North Pole in stereo projection
         proj = np.vstack([project_stereographic(lon_tmp[:][k], lat_tmp[:][k], 0, 90, vecopts['PLANETRADIUS']) for k in
                           range(0, np.shape(lon_tmp)[0])]).T
 

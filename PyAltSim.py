@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 from scipy.constants import c as clight
 import multiprocessing as mp
+import subprocess
 
 import spiceypy as spice
 
@@ -143,10 +144,9 @@ else:
     # load kernels
     spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
 
-# set ncores
-ncores = mp.cpu_count() - 1  # 8
-
 if parallel:
+    # set ncores
+    ncores = mp.cpu_count() - 1  # 8
     print('Process launched on ' + str(ncores) + ' CPUs')
 
 # Setup some useful options
@@ -172,14 +172,18 @@ vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
 
 # generate list of epochs
 epo0 = 410270400
-epo_tx = np.array([epo0+i for i in range(86400)])
-np.savetxt("epo.in", epo_tx, fmt="%4d")
+epo_tx = np.array([epo0+i for i in range(86400*10)])
+#epo_tx = np.array([epo0+i/step for i in range(86400*step)])
+np.savetxt("tmp/epo.in", epo_tx, fmt="%4d")
 
 # read illumNG output and generate df
 if local:
     path = '../aux/illumNG/sph/' #grd/' # use your path
     illumNGf = glob.glob(path + "bore*")
 else:
+    illumNG_call = subprocess.check_output(
+        ['../_MLA_Stefano/doslurmEM', 'MLA_raytraces.cfg'],
+        universal_newlines=True)
     path = auxdir+'/illumNG/grd/' #sph/' # use your path
     illumNGf = glob.glob(path + "bore*")
 
@@ -195,12 +199,14 @@ df = prepro_ilmNG(df)
 
 tracks = []
 for i in list(df.groupby('orbID').groups.keys()):
-    print(i)
+    if debug:
+        print("Processing",i)
     track = sim_gtrack(vecopts, i)
     #track.pertPar['dR'] = 100
     track.setup(df[df['orbID']==i])
     #tracks.append(track)
-    track.rdr_df.to_csv(outdir+'/MLASIMRDR'+track.name+'.TAB', index=False, sep=',',na_rep='NaN')
+    track.rdr_df.to_csv(outdir+'MLASIMRDR'+track.name+'.TAB', index=False, sep=',',na_rep='NaN')
+    print('Simulated observations written to',outdir+'MLASIMRDR'+track.name+'.TAB')
 
 # stop clock and print runtime
 # -----------------------------

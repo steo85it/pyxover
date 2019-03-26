@@ -36,7 +36,7 @@ class xov:
 
     def setup(self, df):
 
-        self.ladata_df = df
+        self.ladata_df = df.drop('chn',axis=1)
         self.msrm_sampl = 100
 
         self.tracks = df.orbID.unique()
@@ -314,6 +314,12 @@ class xov:
             ld_ind_B = np.where(tmp[:,1]-len(ldA_)>0,(tmp+intersec_ind)[:,1],len(ldA_)+intersec_ind[:,1])
 
             #print(intersec_x)
+
+            # plot and check intersections (rough, fine, ...)
+            if (debug):
+                self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB)
+                #exit()
+
             if not all(intersec_x):
                 ld_ind_A = [np.squeeze(x) for x in ld_ind_A[intersec_x > 0]][0]
                 ld_ind_B = [np.squeeze(x) for x in ld_ind_B[intersec_x > 0]][0]
@@ -324,101 +330,51 @@ class xov:
         else:
             return [],[],[],[],[],[]
 
-        # #exit()
-        #
-        # # If single "rough guess" hides several xovers in fine search,
-        # # the result has the wrong shape for processing
-        # # Temp. sol.: just keeping one of the xovers, TBU
-        # try:
-        #     x, y, fine_indA, fine_indB = intersec_ind
-        # except:
-        #     if (len(intersec_ind) > 0):
-        #         x, y, fine_indA, fine_indB = intersec_ind[0]
-        #     else:
-        #         #	  outf.write("xOver fine failed: "+str(arg)+str(param)+'\n')
-        #         print("xOver fine failed: " + str(orb_lst) + str(param) + '\n')
-        #
-        # # plot and check differences
-        # if (debug and 1 == 2):
-        #
-        #     print('XYproj', x, y)
-        #     print('lonlat', unproject_stereographic(x, y, 0, 90, 2440))
-        #
-        #     plt.plot(ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA]].values,
-        #              ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[Y_stgA]].values, c='b')
-        #     plt.plot(ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB]].values,
-        #              ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[Y_stgB]].values, c='C9')
-        #
-        #     plt.plot(ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA]].values[
-        #              max(0, int(rough_indA[0]) - msrm_sampl2):min(int(rough_indA[0]) + msrm_sampl2, len(
-        #                  ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA]].values))],
-        #              ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[Y_stgA]].values[
-        #              max(0, int(rough_indA[0]) - msrm_sampl2):min(int(rough_indA[0]) + msrm_sampl2, len(
-        #                  ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[Y_stgA]].values))], c='r')
-        #     plt.plot(ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB]].values[
-        #              max(0, int(rough_indB[0]) - msrm_sampl2):min(int(rough_indB[0]) + msrm_sampl2, len(
-        #                  ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB]].values))],
-        #              ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[Y_stgB]].values[
-        #              max(0, int(rough_indB[0]) - msrm_sampl2):min(int(rough_indB[0]) + msrm_sampl2, len(
-        #                  ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[Y_stgB]].values))], c='g')
-        #     plt.plot(x, y, '*k')
-        #     # plt.plot(x_raw,y_raw,'kv')
-        #
-        #     # print(np.hstack(x),np.hstack(y))
-        #
-        #     delta = 100.
-        #     if (abs(np.amin(np.absolute(x))) > 100.):
-        #         xmin = np.amin(np.hstack(x)) - delta
-        #         xmax = np.amax(np.hstack(x)) + delta
-        #     else:
-        #         xmax = 200
-        #         xmin = -200
-        #     plt.xlim(xmin, xmax)
-        #
-        #     if (abs(np.amin(np.absolute(y))) > 100.):
-        #         ymin = np.amin(np.array(y)) - delta
-        #         ymax = np.amax(np.array(y)) + delta
-        #     else:
-        #         ymax = 200
-        #         ymin = -200
-        #     plt.ylim(ymin, ymax)
-        #
-        #     plt.savefig('img/intersect_' + orb_lst[0] + '_' + orb_lst[1] + '.png')
-        #     plt.clf()
-        #     plt.close()
-        #
-        #
-        # if False:
-        #     if (np.array(fine_indA).size > 1):
-        #         ind_A = []
-        #         ind_B = []
-        #         for l, k, m, n in zip(rough_indA, rough_indB, np.array(fine_indA), np.array(fine_indB)):
-        #             ind_A.append(ladata_df.loc[ladata_df['orbID'] == orb_lst[0]].iloc[
-        #                          max(0, l - msrm_sampl):min(l + msrm_sampl, ladata_df.shape[0])].iloc[
-        #                              np.array(m).astype(int)][['genID']].values)
-        #             ind_B.append(ladata_df.loc[ladata_df['orbID'] == orb_lst[1]].iloc[
-        #                          max(0, k - msrm_sampl):min(k + msrm_sampl, ladata_df.shape[0])].iloc[
-        #                              np.array(n).astype(int)][['genID']].values)
-        #
-        #         ind_A = np.squeeze(np.vstack(ind_A).T)
-        #         ind_B = np.squeeze(np.vstack(ind_B).T)
-        #         fine_indA = np.hstack(fine_indA)
-        #         fine_indB = np.hstack(fine_indB)
-        #     else:
-        #
-        #         print(rough_indA, rough_indB, np.array(fine_indA), np.array(fine_indB))
-        #         exit()
-        #
-        #         ind_A = np.squeeze([ladata_df.loc[ladata_df['orbID'] == orb_lst[0]].iloc[
-        #                             max(0, rough_indA.item() - msrm_sampl):min(rough_indA.item() + msrm_sampl, ladata_df.shape[0])].iloc[
-        #                                 fine_indA.astype(int)][['genID']].values])
-        #         ind_B = np.squeeze([ladata_df.loc[ladata_df['orbID'] == orb_lst[1]].iloc[
-        #                             max(0, rough_indB.item() - msrm_sampl):min(rough_indB.item() + msrm_sampl, ladata_df.shape[0])].iloc[
-        #                                 fine_indB.astype(int)][['genID']].values])
-        #
-        #         # print(ii, jj, ind_A, ind_B)
-        #
-        # return fine_indA, fine_indB, ind_A, ind_B
+    def plot_xov_curves(self, curve_A, curve_B, intersec_x, intersec_y, rough_A=0, rough_B=0):
+
+        if debug:
+            print('ladata_ind', curve_A, curve_B)
+            print('XYproj', intersec_x, intersec_y)
+            print('lonlat', unproject_stereographic(intersec_x, intersec_y, 0, 90, 2440))
+
+        fig, ax = plt.subplots()
+        ax.plot(curve_A[:,0],curve_A[:,1],c='b')
+        ax.plot(curve_B[:,0],curve_B[:,1],c='C9')
+
+        if all(rough_A!=0):
+            xr = curve_A[rough_A,0]
+            yr = curve_A[rough_A,1]
+            ax.plot(xr, yr, '*r',label='rough xov A')
+            xr = curve_B[rough_B-len(curve_A),0]
+            yr = curve_B[rough_B-len(curve_A),1]
+            ax.plot(xr, yr, '*g',label='rough xov B')
+
+        ax.plot(intersec_x, intersec_y, '*k',label='fine xov')
+
+        ax.set_title('Xover detected for tracks' + self.tracks[0] + '-' + self.tracks[1])
+        ax.set_xlabel('x (distance from NP, km)')
+        ax.set_ylabel('y (distance from NP, km)')
+        ax.legend()
+
+        delta = 100.
+        if abs(np.amin(np.absolute(intersec_x))) > 100.:
+            xmin = np.amin(np.hstack(intersec_x)) - delta
+            xmax = np.amax(np.hstack(intersec_x)) + delta
+        else:
+            xmax = 200
+            xmin = -200
+        plt.xlim(xmin, xmax)
+        if abs(np.amin(np.absolute(intersec_y))) > 100.:
+            ymin = np.amin(np.array(intersec_y)) - delta
+            ymax = np.amax(np.array(intersec_y)) + delta
+        else:
+            ymax = 200
+            ymin = -200
+        plt.ylim(ymin, ymax)
+
+        plt.savefig('tmp/img/intersect_' + self.tracks[0] + '_' + self.tracks[1] + '.png')
+        plt.clf()
+        plt.close()
 
     # For each combination of 2 orbits, detect crossovers in 2 steps (rough, fine),
     # then get elevation for each point in the crossovers (by interpolating)

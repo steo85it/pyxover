@@ -152,14 +152,14 @@ startPrepro = time.time()
 # Prepare list of tracks to geolocalise
 tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles]
 
-if new_gtrack and parallel and SpInterp > 1:
+if new_gtrack:
     for track_id, infil in zip(tracknames, allFiles):
         track = track_id
         track = gtrack(vecopts)
-        #    try:
+        #try:
         track.prepro(infil)
-    #    except:
-    #      print('Issue in preprocessing for '+track_id)
+        #except:
+        #    print('Issue in preprocessing for '+track_id)
 
     if SpInterp == 3:
         print('Orbit and attitude data loaded for years 20' + str(misycmb[par][0]) + ' and 20' + str(misycmb[par][1]))
@@ -177,7 +177,6 @@ startGeoloc = time.time()
 
 def launch_gtrack(args):
     track_id, infil = args
-
     track = gtrack(vecopts)
 
     if new_gtrack:
