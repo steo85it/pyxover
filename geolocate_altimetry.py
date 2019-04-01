@@ -243,7 +243,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj):
         # avgerr=shap_dl+shap_ul
 
         oneway = oneway + 0.5 * avgerr
-        print(it, max(abs(avgerr)))
+        #print(it, max(abs(avgerr)))
 
         if (max(abs(avgerr)) < tlcbnc):
             # if (max(abs(avgerr-avgerr_old))<tlcbnc):

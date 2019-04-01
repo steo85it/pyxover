@@ -198,6 +198,7 @@ class gtrack:
             t_spc = np.array(
                 [x for x in np.arange(self.ladata_df['ET_TX'].min(), self.ladata_df['ET_TX'].max(), tstep)])
         except:
+            print("Issue interpolating ..." + self.name)
             print(self.ladata_df)
             print(self.ladata_df['ET_TX'].min())
             print(self.ladata_df['ET_TX'].min())
@@ -334,6 +335,7 @@ class gtrack:
         elif (self.vecopts['OUTPUTTYPE'] == 1):
             ladata_df['LON'] = results[0][:, 0]
             ladata_df['LAT'] = results[0][:, 1]
+            #print(len(results[0]))
             np.savetxt('tmp/gmt.in', list(zip(results[0][:, 0],results[0][:, 1])))
             if sim:
                 if local==0:
@@ -344,7 +346,10 @@ class gtrack:
                 else:
                     Rbase = np.loadtxt('tmp/gmt_'+self.name+'.out')
 
-                Rbase = (Rbase + self.vecopts['PLANETRADIUS'])* 1.e3
+                texture_noise = self.apply_texture(np.mod(results[0][:, 1],0.25),np.mod(results[0][:, 0],0.25),grid=False)
+                #print("texture noise check",texture_noise,Rbase*1.e3, self.vecopts['PLANETRADIUS']* 1.e3)
+                #print("test texture", len(Rbase), len(texture_noise),len(results[0][:, 1]))
+                Rbase = (Rbase + self.vecopts['PLANETRADIUS'])* 1.e3 + texture_noise
             else:
                 Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
 

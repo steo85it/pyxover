@@ -18,13 +18,15 @@ import datetime
 import numpy as np
 import pandas as pd
 from scipy.constants import c as clight
+from scipy.interpolate import RectBivariateSpline
 import multiprocessing as mp
 import subprocess
 
 import spiceypy as spice
+import perlin2d
 
 # mylib
-from prOpt import debug, parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local
+from prOpt import debug, parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local, sim
 import astro_trans as astr
 from ground_track import gtrack
 
@@ -73,7 +75,8 @@ class sim_gtrack(gtrack):
             self.geoloc()
 
             df['TOF'] += 2.*self.dr_simit/clight
-            if (max(abs(olddr - self.dr_simit)) < 1.e-4):
+            #print(abs(olddr - self.dr_simit),olddr, self.dr_simit)
+            if (max(np.atleast_1d(abs(olddr - self.dr_simit))) < 1.e-4):
                 #print("Convergence reached")
                 break
             if (it == itmax - 1):
@@ -116,11 +119,11 @@ def prepro_ilmNG(df_):
     print(df_.dtypes)
 
     df_['diff'] = df_.epo_tx.diff().fillna(0)
-    print(df_[df_['diff'] > 1].index.values)
+    #print(df_[df_['diff'] > 1].index.values)
     arcbnd = [0]
     arcbnd.extend(df_[df_['diff'] > 1].index.values)
     arcbnd.extend([df_.index.max() + 1])
-    print(arcbnd)
+    #print(arcbnd)
     df_['orbID'] = 0
     for i,j in zip(arcbnd,arcbnd[1:]):
         orbid = (datetime.datetime(2000, 1, 1, 12, 0) + datetime.timedelta(seconds=df_.loc[i, 'epo_tx'])).strftime("%y%m%d%H%M")
@@ -130,6 +133,9 @@ def prepro_ilmNG(df_):
 
 ##############################################
 # locate data
+if sim != 1:
+    print("*** sim not equal to 1")
+    exit(2)
 
 if local == 0:
     #data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
@@ -197,11 +203,26 @@ for f in illumNGf:
 
 df = prepro_ilmNG(df)
 
+#prepare surface texture "stamp" and assign the interpolated function as class attribute
+np.random.seed(0)
+shape_text = 256
+res_text = 16
+depth_text = 1
+size_stamp = 0.25
+noise = perlin2d.generate_periodic_fractal_noise_2d(5, (shape_text, shape_text), (res_text, res_text), depth_text)
+interp_spline = RectBivariateSpline(np.array(range(shape_text*2)) / shape_text*2. * size_stamp,
+                                    np.array(range(shape_text*2)) / shape_text*2. * size_stamp,
+                                    noise)
+sim_gtrack.apply_texture = interp_spline
+
+# Process tracks
 tracks = []
 for i in list(df.groupby('orbID').groups.keys()):
     if debug:
         print("Processing",i)
     track = sim_gtrack(vecopts, i)
+    #print("track",i,track.terrain_texture(0.125, 0.125))
+    #exit()
     #track.pertPar['dR'] = 100
     track.setup(df[df['orbID']==i])
     #tracks.append(track)

@@ -76,7 +76,7 @@ if local == 0:
 else:
     data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'
     # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    dataset = '1301/'  # 'small_dataset/' #''# "test1/"  #''  #
+    dataset = 'SIM_1301/'  # 'small_dataset/' #''# "test1/"  #''  #
     data_pth += dataset
     # load kernels
     spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
@@ -133,8 +133,8 @@ startInit = time.time()
 # for orbitA and orbitB.
 # Geoloc, if active, will process all files in A+B. Xov will only process combinations
 # of orbits from A and B
-allFilesA = glob.glob(os.path.join(data_pth, 'MLASCIRDR' + misycmb[par][0] + '*.TAB'))
-allFilesB = glob.glob(os.path.join(data_pth, 'MLASCIRDR' + misycmb[par][1] + '*.TAB'))
+allFilesA = glob.glob(os.path.join(data_pth, 'MLASIMRDR' + misycmb[par][0] + '*.TAB'))
+allFilesB = glob.glob(os.path.join(data_pth, 'MLASIMRDR' + misycmb[par][1] + '*.TAB'))
 
 if misycmb[par][0] == misycmb[par][1]:
     allFiles = allFilesA

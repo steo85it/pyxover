@@ -134,8 +134,8 @@ if local == 0:
     data_pth += dataset
     # load kernels
 else:
-    data_pth = outdir #'/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    dataset = ''  # "test/"  # 'small_test/' #'1301/' #
+    data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+    dataset = 'SIM_1301'  # "test/"  # 'small_test/' #'1301/' #
     data_pth += dataset
 ##############################################
 
@@ -185,7 +185,7 @@ df_float = xov_cmb.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ig
 xov_cmb.xovers = pd.concat([df_orig, df_float], axis=1)
 xov_cmb.xovers.info(memory_usage='deep')
 
-if (False):
+if (True):
     pd.set_option('display.max_columns', 500)
     print(xov_cmb.xovers)
 
