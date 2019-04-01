@@ -9,6 +9,7 @@ import warnings
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
+import shutil
 import sys
 import glob
 import time
@@ -24,7 +25,7 @@ import subprocess
 import spiceypy as spice
 
 # mylib
-from prOpt import debug, parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local
+from prOpt import debug, parallel, new_gtrack, outdir, auxdir, local, new_illumNG
 import astro_trans as astr
 from ground_track import gtrack
 
@@ -59,7 +60,7 @@ class sim_gtrack(gtrack):
             self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
 
         # actual processing
-        self.lt_iter(itmax=15,df=df_)
+        self.lt_iter(itmax=100,df=df_)
         self.setup_rdr()
 
     def lt_iter(self,itmax,df):
@@ -67,17 +68,20 @@ class sim_gtrack(gtrack):
         olddr = 1000
         for it in range(itmax):
 
-            if debug:
-                print("it = "+str(it))
-
             self.geoloc()
+
+            if debug:
+        	print("it = "+str(it))
+        	print(max(abs(olddr - self.dr_simit)))
+        	print(len(self.dr_simit) - np.sum([abs(olddr - self.dr_simit) < 1.e-4]))
 
             df['TOF'] += 2.*self.dr_simit/clight
             if (max(abs(olddr - self.dr_simit)) < 1.e-4):
-                #print("Convergence reached")
+                #print("Convergence reached",df.columns)
                 break
             if (it == itmax - 1):
                 print('### altsim: Max number of iterations reached!')
+                break
 
             olddr = self.dr_simit
             # update TOF
@@ -102,7 +106,7 @@ class sim_gtrack(gtrack):
                                   })
         df_ = df_.reset_index(drop=True)
         self.rdr_df = self.rdr_df.append(df_[['EphemerisTime','geoc_long','geoc_lat','altitude',
-                                         'UTC', 'TOF_ns_ET','chn','seqid']])[mlardr_cols]
+                                         'UTC', 'TOF_ns_ET','chn','seqid']], sort=True)[mlardr_cols]
 
 ##############################################
 
@@ -110,17 +114,17 @@ def prepro_ilmNG(df_):
     #df_ = dfin.copy()
     df_ = pd.concat(li, axis=1)
     df_=df_.apply(pd.to_numeric, errors='coerce')
-    print(df_.rng.min())
+    #print(df_.rng.min())
     df_ = df_[df_.rng < 1200]
     df_=df_.rename(columns={"xyzd": "epo_tx"})
-    print(df_.dtypes)
+    #print(df_.dtypes)
 
     df_['diff'] = df_.epo_tx.diff().fillna(0)
-    print(df_[df_['diff'] > 1].index.values)
+    #print(df_[df_['diff'] > 1].index.values)
     arcbnd = [0]
     arcbnd.extend(df_[df_['diff'] > 1].index.values)
     arcbnd.extend([df_.index.max() + 1])
-    print(arcbnd)
+    #print(arcbnd)
     df_['orbID'] = 0
     for i,j in zip(arcbnd,arcbnd[1:]):
         orbid = (datetime.datetime(2000, 1, 1, 12, 0) + datetime.timedelta(seconds=df_.loc[i, 'epo_tx'])).strftime("%y%m%d%H%M")
@@ -171,24 +175,37 @@ vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
 ###########################
 
 # generate list of epochs
-epo0 = 410270400
-epo_tx = np.array([epo0+i for i in range(86400*10)])
+epo0 = 410270400 # get as input parameter
+epo_tx = np.array([epo0+i for i in range(86400*7)])
 #epo_tx = np.array([epo0+i/step for i in range(86400*step)])
-np.savetxt("tmp/epo.in", epo_tx, fmt="%4d")
 
 # read illumNG output and generate df
+#    os.makedirs('', exist_ok=True)
+#    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
 if local:
-    path = '../aux/illumNG/sph/' #grd/' # use your path
-    illumNGf = glob.glob(path + "bore*")
+   if new_illumNG:
+        np.savetxt("tmp/epo.in", epo_tx, fmt="%4d")
+        print("Do you have all of illumNG predictions?")
+   path = '../aux/illumNG/sph/' #grd/' # use your path
+        #illumNGf = glob.glob(path + "bore*")
 else:
-    illumNG_call = subprocess.check_output(
-        ['../_MLA_Stefano/doslurmEM', 'MLA_raytraces.cfg'],
-        universal_newlines=True)
-    path = auxdir+'/illumNG/grd/' #sph/' # use your path
-    illumNGf = glob.glob(path + "bore*")
+   if new_illumNG:
+        np.savetxt("illumNG/epo.in", epo_tx, fmt="%4d")
+        print("illumNG call")
+        illumNG_call = subprocess.call(
+            ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
+            universal_newlines=True, cwd="illumNG/")
+        for f in glob.glob("illumNG/bore*"):
+            shutil.move(f, auxdir+'/illumNG/grd/'+str(epo0)+"_"+f.split('/')[1])
+    
+   path = auxdir+'illumNG/grd/' #sph/' # use your path
+
+illumNGf = glob.glob(path+str(epo0)+"_"+"bore*")
 
 li = []
 for f in illumNGf:
+    print("Processing", f)
     df = pd.read_csv(f, index_col=None, header=0, names=[f.split('.')[-1]])
     li.append(df)
 

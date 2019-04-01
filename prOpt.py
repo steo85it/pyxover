@@ -4,11 +4,9 @@
 ##############################################
 # @profile
 # local or PGDA
-local = 1
+local = 0
 # debug mode
 debug = 0
-# simulation mode
-sim = 1
 # parallel processing?
 parallel = 0
 
@@ -26,6 +24,13 @@ SpInterp = 1
 new_gtrack = 0
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 new_xov = 0
+
+# PyAltSim stuff
+# simulation mode
+sim = 1
+# recompute a priori
+new_illumNG = 0
+
 
 # out and aux
 if (local == 0):

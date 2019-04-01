@@ -68,7 +68,9 @@ class gtrack:
         else:
             self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
 
-        # print(self.MGRx.tck)
+        if debug:
+          pd.set_option('display.max_columns', 500)
+
         # geolocate observations in orbit
         self.geoloc()
         # project observations
@@ -317,9 +319,6 @@ class gtrack:
         else:
             results = [self.get_geoloc_part(i) for i in param.items()]  # seq
 
-        # print(ladata_df.loc[:,['ET_TX','orbID','LAT','dLAT/dA','dLAT/dC','dLAT/dR']])
-        # print(results[0][0,:],list(param)[0],len(param))
-
         if (self.vecopts['OUTPUTTYPE'] == 0):
             ladata_df['X'] = results[0][:, 0]
             ladata_df['Y'] = results[0][:, 1]
@@ -337,8 +336,8 @@ class gtrack:
             np.savetxt('tmp/gmt.in', list(zip(results[0][:, 0],results[0][:, 1])))
             if sim:
                 if local==0:
-                    Rbase = subprocess.check_output(['grdtrack', 'gmt.in', '-G../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
-                                                    universal_newlines=True)
+                    Rbase = subprocess.check_output(['grdtrack', 'gmt.in', '-G../../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                                                    universal_newlines=True, cwd='tmp')
                     Rbase = np.fromstring(Rbase,sep=' ').reshape(-1,3)[:,2]
                     #np.savetxt('gmt_'+self.name+'.out', Rbase)
                 else:
@@ -349,6 +348,10 @@ class gtrack:
                 Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
 
             ladata_df['R'] = results[0][:, 2] - Rbase
+
+        if debug:
+          print(ladata_df)
+          print(results[0][0,:],list(param)[0],len(param))
 
         if (len(param) > 1 and list(param)[0] == ''):
             if (self.vecopts['OUTPUTTYPE'] == 0):
