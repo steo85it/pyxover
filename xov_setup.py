@@ -9,6 +9,10 @@
 # Created: 18-Feb-2019
 import warnings
 
+from scipy.interpolate import RectBivariateSpline
+
+import perlin2d
+
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import numpy as np
 import pandas as pd
@@ -17,6 +21,8 @@ from scipy import interpolate
 import pickle
 import re
 import matplotlib.pyplot as plt
+import timeit
+import subprocess
 
 # from mapcount import mapcount
 from unproject_coord import unproject_stereographic
@@ -41,9 +47,24 @@ class xov:
 
         self.tracks = df.orbID.unique()
 
+        if debug:
+            # prepare surface texture "stamp" and assign the interpolated function as class attribute
+            np.random.seed(62)
+            shape_text = 1024
+            res_text = 1
+            depth_text = 8
+            size_stamp = 0.25
+            noise = perlin2d.generate_periodic_fractal_noise_2d(35, (shape_text, shape_text), (res_text, res_text),
+                                                                depth_text)
+            interp_spline = RectBivariateSpline(np.array(range(shape_text)) / shape_text * size_stamp,
+                                                np.array(range(shape_text)) / shape_text * size_stamp,
+                                                noise)
+            self.apply_texture = interp_spline
+
         nxov = self.get_xov()
 
         if nxov > 0:
+
             # Compute and store distances between obs and xov coord
             self.set_xov_obs_dist()
 
@@ -63,21 +84,22 @@ class xov:
         xov_list = [x for x in xov_list if len(x.xovers) > 0]
 
         # concatenate df and reindex
-        print([x.xovers for x in xov_list])
-        self.xovers = pd.concat([x.xovers for x in xov_list])  # , sort=True)
-        self.xovers = self.xovers.reset_index(drop=True)
-        self.xovers['xOvID'] = self.xovers.index
-        # print(self.xovers)
+        #print([x.xovers for x in xov_list])
+        if len(xov_list)>0:
+            self.xovers = pd.concat([x.xovers for x in xov_list])  # , sort=True)
+            self.xovers = self.xovers.reset_index(drop=True)
+            self.xovers['xOvID'] = self.xovers.index
+            # print(self.xovers)
 
-        # Retrieve all orbits involved in xovers
-        orb_unique = self.xovers['orbA'].tolist()
-        orb_unique.extend(self.xovers['orbB'].tolist())
-        self.tracks = list(set(orb_unique))
-        # print(self.tracks)
+            # Retrieve all orbits involved in xovers
+            orb_unique = self.xovers['orbA'].tolist()
+            orb_unique.extend(self.xovers['orbB'].tolist())
+            self.tracks = list(set(orb_unique))
+            # print(self.tracks)
 
-        self.parOrb_xy = xov_list[0].parOrb_xy
-        self.parGlo_xy = xov_list[0].parGlo_xy
-        # print(self.parOrb_xy, self.parGlo_xy)
+            self.parOrb_xy = xov_list[0].parOrb_xy
+            self.parGlo_xy = xov_list[0].parGlo_xy
+            # print(self.parOrb_xy, self.parGlo_xy)
 
     def save(self, filnam):
         pklfile = open(filnam, "wb")
@@ -107,7 +129,7 @@ class xov:
     # Compute elevation R at crossover points by interpolation
     # (should be put in a function and looped over -
     # also, check the higher order interp)
-    def get_elev(self, arg, ii, jj, ind_A, ind_B, par=''):
+    def get_elev(self, arg, ii, jj, ind_A, ind_B, par='', x=0,y=0):
 
         ladata_df = self.ladata_df
         msrm_sampl = self.msrm_sampl
@@ -136,60 +158,179 @@ class xov:
 
         # Apply elevation correction (if computing partial derivative)
         if (bool(re.search('_?A$', par)) or bool(re.search('_[p,m]$', par))):  # is not ''):
-            ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][np.hstack(['genID', 'R', ladata_df.filter(
+            ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][np.hstack(['ET_BC', 'R', 'genID', ladata_df.filter(
                     regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
-            xyint = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ladata_df.shape[0])].T for k in ind_A_int]
+            xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
+            #print(xyintA[0][1])
+            #exit()
+            t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k],0] for k in range(0, len(ind_A_int))]
 
-            #print(xyint[0][1], xyint[0][2])
+            #print(xyintA[0][1], xyintA[0][2])
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
 
+            # TODO extend beyond first xov in list
             if (bool(re.search('_pA?$', par))):
-                xyint[0][1] += xyint[0][2] * diff_step
+                xyintA[0][1] += xyintA[0][3] * diff_step
             elif (bool(re.search('_mA?$', par))):
-                xyint[0][1] -= xyint[0][2] * diff_step
-            # print(xyint[0][1])
+                xyintA[0][1] -= xyintA[0][3] * diff_step
+            # print(xyintA[0][1])
         else:
 
-            ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['genID', 'R']].values
-            xyint = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ladata_df.shape[0])].T for k in ind_A_int]
+            ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['ET_BC', 'R', 'genID']].values
+            xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
+            t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k],0] for k in range(0, len(ind_A_int))]
 
+        fA_interp = [interpolate.interp1d(t_ldA[k], xyintA[k][1], kind='cubic') for k in range(0, len(ind_A_int))]
 
-        f_interp = [interpolate.interp1d(xyint[k][0], xyint[k][1], kind='linear') for k in range(0, len(ind_A_int))]
+        tA_interp = [interpolate.interp1d(xyintA[k][2],t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
+        R_A = [fA_interp[k](tA_interp[k](ind_A.item(k))) for k in range(0, ind_A.size)]
 
-        #ind_A = ind_A + np.modf(ii)[0]
-        # print(ind_A)
-        # print(ind_B)
-        R_A = [f_interp[k](ind_A.item(k)) for k in range(0, ind_A.size)]
+        if debug:
+            ldA2_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj', 'Y_stgprj', 'R']].values
+            xyintA = [ldA2_[max(0, k - msrm_sampl):min(k + msrm_sampl, ladata_df.shape[0])].T for k in ind_A_int]
+            zfun_smooth_rbf = interpolate.Rbf(xyintA[0][0], xyintA[0][1], xyintA[0][2], function='cubic',
+                                              smooth=0)  # default smooth=0 for interpolation
+            z_dense_smooth_rbf = zfun_smooth_rbf(x,
+                                                 y)  # not really a function, but a callable class instance
+            print('R_A_Rbf (supp more accurate)', z_dense_smooth_rbf)
+            print('R_A_1d',R_A)
+
+        # old way TODO
+            #ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['genID','R']].values
+            #xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ladata_df.shape[0])].T for k in ind_A_int]
+        #f_interp = [interpolate.interp1d(xyintA[k][0], xyintA[k][1], kind='linear') for k in range(0, len(ind_A_int))]
+        #R_A = [f_interp[k](ind_A.item(k)) for k in range(0, ind_A.size)]
+
+        #alternative method TODO
+        # ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj', 'Y_stgprj','R']].values
+        # #print(x,y,ldA_[ind_A_int,:2])
+        # tck = interpolate.bisplrep(ldA_[:,0], ldA_[:,1], ldA_[:,2], s=0)
+        # R_A = interpolate.bisplev(x, y, tck)
+        # print("zA",R_A)
 
         # Apply elevation correction
         if (bool(re.search('_?B$', par)) or bool(re.search('_[p,m]$', par))):  # is not ''):
-            ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][np.hstack(['genID', 'R', ladata_df.filter(
+            ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][np.hstack(['ET_BC', 'R', 'genID', ladata_df.filter(
                     regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
-            xyint = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ladata_df.shape[0])].T for k in ind_B_int]
+            xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
+                     k in ind_B_int]
+            t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_),0] for k in range(0, len(ind_B_int))]
 
-            # print(xyint[0][1], xyint[0][2])
+            # TODO extend beyond first xov in list
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
             if (bool(re.search('_pB?$', par))):
-                xyint[0][1] += xyint[0][2] * diff_step
+                xyintB[0][1] += xyintB[0][3] * diff_step
             elif (bool(re.search('_mB?$', par))):
-                xyint[0][1] -= xyint[0][2] * diff_step
-            # print(xyint[0][1])
+                xyintB[0][1] -= xyintB[0][3] * diff_step
+            # print(xyintA[0][1])
         else:
-            ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['genID', 'R']].values
-            xyint = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ladata_df.shape[0])].T for k in ind_B_int]
+            ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['ET_BC', 'R', 'genID']].values
+            xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
+                     k in ind_B_int]
+            t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_),0] for k in range(0, len(ind_B_int))]
 
-        f_interp = [interpolate.interp1d(xyint[k][0], xyint[k][1], kind='linear') for k in range(0, len(ind_B_int))]
+        fB_interp = [interpolate.interp1d(t_ldB[k], xyintB[k][1], kind='cubic') for k in range(0, len(ind_B_int))]
+        tB_interp = [interpolate.interp1d(xyintB[k][2], t_ldB[k], kind='linear') for k in range(0, len(ind_B_int))]
+        R_B = [fB_interp[k](tB_interp[k](ind_B.item(k))) for k in range(0, ind_B.size)]
 
-        #ind_B = ind_B + np.modf(jj)[0]
-        R_B = [f_interp[k](ind_B.item(k)) for k in range(0, ind_B.size)]
+        if debug:
+            ldB2_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj', 'Y_stgprj', 'R']].values
+            zfun_smooth_rbf = interpolate.Rbf(ldB2_[:,0], ldB2_[:,1], ldB2_[:,2], function='cubic',
+                                              smooth=0)  # default smooth=0 for interpolation
+            z_dense_smooth_rbf = zfun_smooth_rbf(x,
+                                                 y)  # not really a function, but a callable class instance
+            print('R_B_Rbf (supp more accurate)',z_dense_smooth_rbf)
+            print('R_B_1d',R_B)
+
+        if debug and len(ind_B_int)==1:
+            self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0], ladata_df, ldA_, ldB_,
+                           tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0])
+
+        # xyintA = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ladata_df.shape[0])].T for k in ind_B_int]
+        # f_interp = [interpolate.interp1d(xyintA[k][0], xyintA[k][1], kind='linear') for k in range(0, len(ind_B_int))]
+        #
+        # #ind_B = ind_B + np.modf(jj)[0]
+        # R_B = [f_interp[k](ind_B.item(k)) for k in range(0, ind_B.size)]
+        # print('R_B', R_B)
+        #
+        # #alternative method TODO
+        # ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj', 'Y_stgprj','R']].values
+        # #print(x,y,ldB_[ind_B_int-len(ldA_),:2])
+        # tck = interpolate.bisplrep(ldB_[:,0], ldB_[:,1], ldB_[:,2],s=0,kx=1,ky=1)
+        # R_B = interpolate.bisplev(x, y, tck)
+        # print("zB", R_B)
+
+        #exit()
+
+        # #print(ldB_.shape)
+        # dist = np.linalg.norm(ldB_[:,:2]-np.hstack([x,y]),axis=1)
+        # sign = np.dot(ldB_[:,:2],np.hstack([x,y]))/(np.linalg.norm(ldB_[:,:2],axis=1)*np.linalg.norm(np.hstack([x,y])))
+        # print(sign)
+        # exit()
+        # #print(len(dist))
+        # plt.plot(dist, ldB_[:,2])
+        # plt.savefig('tmp/test_elev_prof.png')
+        # plt.clf()
+        # plt.close()
+        # #print(ldB_[0,1]-y)
+        # #exit()
+        # f_interp = interpolate.interp2d(ldB_[:,0],ldB_[:,1],ldB_[:,2],kind='linear')
+        # print(x,y)
+        # print('R_B_2d',f_interp(x,y))
+        # #exit()
+        # #interpolate.RectBivariateSpline
 
         if (debug):
-            plt.plot(xyint[0][0], xyint[0][1], 'o', xyint[0][0], f_interp[0](xyint[0][0]), '-')
-            plt.savefig('test_cub.png')
+            print(xyintA[0][0], np.array(xyintA[0][0]))
+            print(ldA_)
+            plt.plot(xyintA[0][0], xyintA[0][1], 'o', xyintA[0][0], fA_interp[0](xyintA[0][0]), '-')
+            plt.savefig('tmp/test_cub.png')
             plt.clf()
             plt.close()
+        #exit()
 
         return ind_A, ind_B, R_A, R_B
+
+    def plot_xov_elev(self, arg, fA_interp, fB_interp, ind_A, ind_A_int, ind_B, ind_B_int, ladata_df, ldA_, ldB_,
+                      tA_interp, tB_interp, t_ldA, t_ldB):
+
+        print(t_ldA[0], t_ldA[len(t_ldA) - 1])
+
+        tf_ldA = np.arange(t_ldA[0], t_ldA[len(t_ldA) - 1], 0.01)
+        ldA_interp = fA_interp(tf_ldA)
+        _ = np.squeeze(ind_A_int)
+        plt.plot(t_ldA, ldA_[:, 1], 'o', tf_ldA, ldA_interp, '-')
+        plt.plot(tA_interp(ind_A), fA_interp(tA_interp(ind_A)), '*k')
+        tf_ldB = np.arange(t_ldB[0], t_ldB[len(t_ldB) - 1], 0.01)
+        ldB_interp = fB_interp(tf_ldB)
+        _ = np.squeeze(ind_B_int - len(ldA_))
+        plt.plot(t_ldB, ldB_[:, 1], 'o', tf_ldB, ldB_interp, '-')
+        plt.plot(tB_interp(ind_B), fB_interp(tB_interp(ind_B)), '*k')
+        xyproj = ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj', 'Y_stgprj']].values
+        tck, u = interpolate.splprep([xyproj[:, 0],
+                                      xyproj[:, 1]]
+                                     , s=0.0)
+        x_i, y_i = interpolate.splev(np.linspace(0, 1, (len(t_ldB) - 1) * 10), tck)
+        lontmp, lattmp = unproject_stereographic(x_i, y_i, 0, 90, 2440)
+        ttmp = np.linspace(t_ldB[0], t_ldB[len(t_ldB) - 1], (len(t_ldB) - 1) * 10)
+        np.savetxt('tmp/gmt.in', list(zip(lontmp, lattmp)))
+        # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
+        r_dem = subprocess.check_output(
+            ['grdtrack', 'gmt.in', '-GMSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+            universal_newlines=True, cwd='tmp')
+        r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+        # texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
+        # update Rmerc with r_dem/text
+        radius = r_dem  # + texture_noise
+        # print(list(zip(t_ldB, radius)))
+        plt.plot(ttmp, radius, 'x-')
+        # exit()
+        plt.xlim([t_ldB[_ - 3], t_ldB[_ + 3]])
+        plt.savefig('tmp/test_elev_prof.png')
+        plt.clf()
+        plt.close()
+        print(self.tracks)
+        exit()
 
     def get_xOver_fine(self, rough_indA, rough_indB, param):
         """
@@ -316,7 +457,8 @@ class xov:
             #print(intersec_x)
 
             # plot and check intersections (rough, fine, ...)
-            if (debug):
+            # if (debug):
+            if debug and len(intersec_x)>0:
                 self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB)
                 #exit()
 
@@ -338,8 +480,8 @@ class xov:
             print('lonlat', unproject_stereographic(intersec_x, intersec_y, 0, 90, 2440))
 
         fig, ax = plt.subplots()
-        ax.plot(curve_A[:,0],curve_A[:,1],c='b')
-        ax.plot(curve_B[:,0],curve_B[:,1],c='C9')
+        ax.plot(curve_A[:,0],curve_A[:,1],'x-')
+        ax.plot(curve_B[:,0],curve_B[:,1],'x-')
 
         if all(rough_A!=0):
             xr = curve_A[rough_A,0]
@@ -356,15 +498,15 @@ class xov:
         ax.set_ylabel('y (distance from NP, km)')
         ax.legend()
 
-        delta = 100.
-        if abs(np.amin(np.absolute(intersec_x))) > 100.:
+        delta = 5.
+        if abs(np.amin(np.absolute(intersec_x))) > delta:
             xmin = np.amin(np.hstack(intersec_x)) - delta
             xmax = np.amax(np.hstack(intersec_x)) + delta
         else:
             xmax = 200
             xmin = -200
         plt.xlim(xmin, xmax)
-        if abs(np.amin(np.absolute(intersec_y))) > 100.:
+        if abs(np.amin(np.absolute(intersec_y))) > delta:
             ymin = np.amin(np.array(intersec_y)) - delta
             ymax = np.amax(np.array(intersec_y)) + delta
         else:
@@ -375,6 +517,7 @@ class xov:
         plt.savefig('tmp/img/intersect_' + self.tracks[0] + '_' + self.tracks[1] + '.png')
         plt.clf()
         plt.close()
+        #exit()
 
     # For each combination of 2 orbits, detect crossovers in 2 steps (rough, fine),
     # then get elevation for each point in the crossovers (by interpolating)
@@ -421,7 +564,7 @@ class xov:
             if len(x) > 0:
                 #print("pre-elev")
                 #print(subldA, subldB, ldA, ldB)
-                ldA, ldB, R_A, R_B = self.get_elev(arg, subldA, subldB, ldA, ldB)
+                ldA, ldB, R_A, R_B = self.get_elev(arg, subldA, subldB, ldA, ldB, x=x, y=y)
 
                 #print(arg, x, y, ldA, ldB, R_A, R_B)
                 return np.vstack((x, y, ldA, ldB, R_A, R_B)).T
@@ -516,11 +659,13 @@ class xov:
                 self.ladata_df.loc[[l+1 for l in obslist]][['X_stgprj', 'Y_stgprj']].values)
 
         msrmnt_crd = np.reshape(msrmnt_crd, (-1, 2))
+        #print(msrmnt_crd)
 
         # get compatible array with xov coordinates
         xov_crd = xovtmp[['x0', 'y0']].values
         xov_crd = np.reshape(np.tile(xov_crd.ravel(),4),(-1,2))
 
+        #print(xov_crd)
         # print(msrmnt_crd)
         # print(xov_crd)
         # print(np.linalg.norm(msrmnt_crd - xov_crd, axis=1))
@@ -530,6 +675,9 @@ class xov:
 
         # compute distance and add to input df
         dist = np.reshape(np.linalg.norm(msrmnt_crd - xov_crd, axis=1),(-1,len(xovtmp))).T
+
+        #print(dist)
+
         df_ = pd.DataFrame(dist,
                            columns=['dist_Am', 'dist_Ap', 'dist_Bm', 'dist_Bp'])
         # print(df_)

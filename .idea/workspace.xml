@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="46db7143-e90e-4fab-b566-9ddb7356eccf" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/epo.in" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gmt.in" beforeDir="false" />
+    <list default="true" id="46db7143-e90e-4fab-b566-9ddb7356eccf" name="Default Changelist" comment="12.04.2019 SB: updates for closed loop simulation, corrections to iterations for topography and DEM, reformatting to call PyAltSim, PyXover and AccumXov from script with input options">
+      <change afterPath="$PROJECT_DIR$/launch_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/PyXover.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/PyXover.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AccumXov.py" beforeDir="false" afterPath="$PROJECT_DIR$/AccumXov.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Amat.py" beforeDir="false" afterPath="$PROJECT_DIR$/Amat.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PyAltSim.py" beforeDir="false" afterPath="$PROJECT_DIR$/PyAltSim.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PyXover.py" beforeDir="false" afterPath="$PROJECT_DIR$/PyXover.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/geolocate_altimetry.py" beforeDir="false" afterPath="$PROJECT_DIR$/geolocate_altimetry.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ground_track.py" beforeDir="false" afterPath="$PROJECT_DIR$/ground_track.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icrf2pbf.py" beforeDir="false" afterPath="$PROJECT_DIR$/icrf2pbf.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/perlin2d.py" beforeDir="false" afterPath="$PROJECT_DIR$/perlin2d.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/prOpt.py" beforeDir="false" afterPath="$PROJECT_DIR$/prOpt.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/xov_setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/xov_setup.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -19,39 +30,46 @@
           <entry key="project.open.time.0" value="3" />
           <entry key="project.open.time.1" value="2" />
           <entry key="project.open.time.3" value="4" />
-          <entry key="project.open.time.4" value="3" />
-          <entry key="project.opened" value="12" />
+          <entry key="project.open.time.4" value="4" />
+          <entry key="project.open.time.5" value="1" />
+          <entry key="project.opened" value="14" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
-          <entry key="in" value="1" />
+          <entry key="gitignore" value="1" />
+          <entry key="in" value="4" />
           <entry key="pdf" value="2" />
-          <entry key="png" value="9" />
-          <entry key="py" value="36" />
+          <entry key="png" value="41" />
+          <entry key="py" value="76" />
           <entry key="sh" value="1" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
-          <entry key="Image" value="8" />
-          <entry key="PLAIN_TEXT" value="2" />
-          <entry key="Python" value="34" />
-          <entry key="Scratch" value="5" />
+          <entry key="Image" value="40" />
+          <entry key="PLAIN_TEXT" value="6" />
+          <entry key="Python" value="73" />
+          <entry key="Scratch" value="6" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="Python Console" value="19" />
-          <entry key="py" value="23181" />
-          <entry key="txt" value="279" />
+          <entry key="py" value="38478" />
+          <entry key="txt" value="524" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="PLAIN_TEXT" value="279" />
-          <entry key="Python" value="22400" />
+          <entry key="PLAIN_TEXT" value="524" />
+          <entry key="Python" value="37697" />
           <entry key="Scratch" value="800" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.vcs.git.usages">
+        <counts>
+          <entry key="git.branch.create.new" value="1" />
         </counts>
       </usages-collector>
     </session>
@@ -59,10 +77,22 @@
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/PyXover.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="161">
+              <caret line="58" column="8" selection-start-line="58" selection-start-column="8" selection-end-line="58" selection-end-column="8" />
+              <folding>
+                <marker date="1555050200445" expanded="true" signature="4186:4299" ph="..." />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/geolocate_altimetry.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1212">
-              <caret line="245" column="9" selection-start-line="245" selection-start-column="9" selection-end-line="245" selection-end-column="9" />
+            <state relative-caret-position="3300">
+              <caret line="226" column="38" selection-start-line="226" selection-start-column="38" selection-end-line="226" selection-end-column="38" />
               <folding>
                 <element signature="e#565#583#0" expanded="true" />
               </folding>
@@ -71,37 +101,57 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/prOpt.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="150">
-              <caret line="10" column="7" selection-start-line="10" selection-start-column="7" selection-end-line="10" selection-end-column="7" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AccumXov.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2805">
-              <caret line="187" column="8" selection-start-line="187" selection-start-column="8" selection-end-line="187" selection-end-column="8" />
+            <state relative-caret-position="311">
+              <caret line="169" column="34" selection-start-line="169" selection-start-column="34" selection-end-line="169" selection-end-column="34" />
+              <folding>
+                <element signature="e#159#168#0" expanded="true" />
+                <marker date="1555092694390" expanded="true" signature="1836:1841" ph="..." />
+              </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/launch_test.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="480">
+              <caret line="32" column="63" lean-forward="true" selection-start-line="32" selection-start-column="63" selection-end-line="32" selection-end-column="63" />
+              <folding>
+                <element signature="e#0#15#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes.png">
+          <provider selected="true" editor-type-id="images" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/xov_setup.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1635">
-              <caret line="109" column="8" selection-start-line="109" selection-start-column="8" selection-end-line="109" selection-end-column="8" />
+            <state relative-caret-position="171">
+              <caret line="255" column="30" selection-start-line="255" selection-start-column="30" selection-end-line="255" selection-end-column="30" />
+              <folding>
+                <element signature="e#200#215#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/project_coord.py">
+        <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_1s.png">
+          <provider selected="true" editor-type-id="images" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/prOpt.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="315">
-              <caret line="21" column="16" selection-start-line="21" selection-start-column="16" selection-end-line="21" selection-end-column="16" />
+            <state relative-caret-position="375">
+              <caret line="25" column="11" selection-start-line="25" selection-start-column="11" selection-end-line="25" selection-end-column="11" />
             </state>
           </provider>
         </entry>
@@ -109,38 +159,21 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/ground_track.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="3078">
-              <caret line="323" column="11" selection-start-line="323" selection-start-column="11" selection-end-line="323" selection-end-column="11" />
-              <folding>
-                <element signature="e#203#212#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="176">
+              <caret line="16" column="13" selection-start-line="16" selection-start-column="7" selection-end-line="16" selection-end-column="13" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/scratch.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1020">
-              <caret line="68" selection-start-line="68" selection-end-line="70" selection-end-column="27" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/PyAltSim.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-735">
-              <caret line="125" column="5" selection-start-line="125" selection-start-column="5" selection-end-line="125" selection-end-column="5" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/perlin2d.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1170">
-              <caret line="78" column="39" selection-start-line="78" selection-start-column="39" selection-end-line="78" selection-end-column="39" />
+            <state relative-caret-position="41">
+              <caret line="151" column="8" selection-start-line="151" selection-start-column="8" selection-end-line="151" selection-end-column="8" />
+              <folding>
+                <element signature="e#158#173#0" expanded="true" />
+                <marker date="1555049898303" expanded="true" signature="10091:13746" ph="..." />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -156,36 +189,36 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>parGlo</find>
-      <find>comb1</find>
-      <find>param</find>
-      <find>DelR</find>
-      <find>error: NaN or unexpected value in</find>
-      <find>print(&quot;</find>
-      <find>fine+elev obs</find>
-      <find>11796.47559605</find>
-      <find>pertPar</find>
-      <find>print(</find>
-      <find>len(xovers_df.index)</find>
-      <find>Duplicate obs eliminated for</find>
-      <find>unexpe</find>
-      <find>266.847926</find>
-      <find>It will crash</find>
-      <find>will cra</find>
-      <find>inconsistent number of</find>
-      <find>len&gt;1</find>
-      <find>PARTDER</find>
-      <find>inconsi</find>
-      <find>duplica</find>
-      <find>xyi</find>
-      <find>tmp_df</find>
-      <find>df.chn==0</find>
-      <find>prepro</find>
-      <find>geoloc:</find>
-      <find>inp_df</find>
-      <find>interp</find>
       <find>sim</find>
       <find>print</find>
+      <find>geoloc</find>
+      <find>pxform_array</find>
+      <find>Max num</find>
+      <find>save</find>
+      <find>spinter</find>
+      <find>get_sc_pos_bf</find>
+      <find>tab</find>
+      <find>interp</find>
+      <find>plt</find>
+      <find>geolo</find>
+      <find>interse</find>
+      <find>plot</find>
+      <find>dist_</find>
+      <find>apply_texture</find>
+      <find>distance</find>
+      <find>df_input</find>
+      <find>intersect_</find>
+      <find>ncores</find>
+      <find>sys.argv</find>
+      <find>spice</find>
+      <find>outdir</find>
+      <find>intersection</find>
+      <find>trackxov_list</find>
+      <find>subpro</find>
+      <find>grdtra</find>
+      <find>grd</find>
+      <find>curve</find>
+      <find>tst.</find>
     </findStrings>
     <replaceStrings>
       <replace>dr_simit</replace>
@@ -199,6 +232,11 @@
       </list>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
   </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
@@ -206,24 +244,31 @@
         <option value="$PROJECT_DIR$/intersection.py" />
         <option value="$PROJECT_DIR$/util.py" />
         <option value="$PROJECT_DIR$/unproject_coord.py" />
-        <option value="$PROJECT_DIR$/xov_setup.py" />
-        <option value="$PROJECT_DIR$/PyXover.py" />
-        <option value="$PROJECT_DIR$/AccumXov.py" />
         <option value="$APPLICATION_CONFIG_DIR$/scratches/scratch.py" />
         <option value="$APPLICATION_CONFIG_DIR$/scratches/perlin2d.py" />
+        <option value="$PROJECT_DIR$/astro_trans.py" />
+        <option value="$PROJECT_DIR$/icrf2pbf.py" />
+        <option value="$APPLICATION_CONFIG_DIR$/scratches/scratch_1.py" />
+        <option value="$PROJECT_DIR$/hillshade.py" />
+        <option value="$PROJECT_DIR$/Amat.py" />
+        <option value="$PROJECT_DIR$/tidal_deform.py" />
         <option value="$PROJECT_DIR$/perlin2d.py" />
-        <option value="$PROJECT_DIR$/prOpt.py" />
         <option value="$PROJECT_DIR$/ground_track.py" />
         <option value="$PROJECT_DIR$/geolocate_altimetry.py" />
         <option value="$PROJECT_DIR$/PyAltSim.py" />
+        <option value="$PROJECT_DIR$/PyXover.py" />
+        <option value="$PROJECT_DIR$/prOpt.py" />
+        <option value="$PROJECT_DIR$/AccumXov.py" />
+        <option value="$PROJECT_DIR$/xov_setup.py" />
+        <option value="$PROJECT_DIR$/launch_test.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds">
-    <option name="x" value="89" />
-    <option name="y" value="90" />
-    <option name="width" value="1326" />
-    <option name="height" value="917" />
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="x" value="1" />
+    <option name="y" value="66" />
+    <option name="width" value="1340" />
+    <option name="height" value="941" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -245,6 +290,10 @@
             </path>
             <path>
               <item name="PyXover" type="b2602c69:ProjectViewProjectNode" />
+              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
+            </path>
+            <path>
+              <item name="PyXover" type="b2602c69:ProjectViewProjectNode" />
               <item name="Scratches and Consoles" type="1a2a3e82:ScratchProjectViewPane$MyProjectNode" />
             </path>
             <path>
@@ -262,9 +311,9 @@
   <component name="PropertiesComponent">
     <property name="SearchEverywhereHistoryKey" value="&#9;FILE&#9;file:///home/sberton2/Works/NASA/Mercury_tides/PyXover/PyXover.py" />
     <property name="com.intellij.ide.scratch.LRUPopupBuilder$1/New Scratch File" value="Python" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../Trilogy" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../Trilogy/pycode/trilogy.py" />
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
-    <property name="settings.editor.selected.configurable" value="reference.idesettings.debugger.python" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -278,7 +327,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.PyAltSim">
+  <component name="RunManager" selected="Python.launch_test">
     <configuration name="AccumXov" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="PyXover" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -342,7 +391,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="scratch" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="launch_test" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="PyXover" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -350,11 +399,32 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$APPLICATION_CONFIG_DIR$/scratches" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$APPLICATION_CONFIG_DIR$/scratches/scratch.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/launch_test.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="perlin2d" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="PyXover" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/perlin2d.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -367,14 +437,16 @@
       <item itemvalue="Python.AccumXov" />
       <item itemvalue="Python.PyXover" />
       <item itemvalue="Python.PyAltSim" />
-      <item itemvalue="Python.scratch" />
+      <item itemvalue="Python.perlin2d" />
+      <item itemvalue="Python.launch_test" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.launch_test" />
         <item itemvalue="Python.PyAltSim" />
-        <item itemvalue="Python.scratch" />
         <item itemvalue="Python.AccumXov" />
         <item itemvalue="Python.PyXover" />
+        <item itemvalue="Python.perlin2d" />
       </list>
     </recent_temporary>
   </component>
@@ -417,26 +489,41 @@
       <option name="project" value="LOCAL" />
       <updated>1554141162430</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="01.04.2019 SB: minor">
+      <created>1554141560437</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1554141560437</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Merge branch 'master' of pgda101:/home/sberton2/git/PyXover&#10;&#10;Conflicts:&#10;&#9;PyAltSim.py">
+      <created>1554144069845</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1554144069845</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="89" y="90" width="1326" height="917" extended-state="0" />
+    <frame x="0" y="28" width="1920" height="1018" extended-state="6" />
+    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.25942686" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.25" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.3288889" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.49775448" visible="true" weight="0.5193992" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.32777777" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.49775448" weight="0.31555554" />
       <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.49934298" weight="0.39777777" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
-      <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info active="true" anchor="bottom" id="TODO" order="6" sideWeight="0.4984375" visible="true" />
       <window_info anchor="bottom" id="Version Control" order="7" show_stripe_button="false" />
       <window_info anchor="bottom" id="Inspection Results" order="8" weight="0.32777777" />
       <window_info anchor="bottom" id="Terminal" order="9" sideWeight="0.49947917" weight="0.32964602" />
-      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.5022455" side_tool="true" weight="0.4611111" />
+      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.5015625" side_tool="true" visible="true" />
       <window_info anchor="bottom" id="Python Console" order="11" weight="0.32946634" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
@@ -451,7 +538,9 @@
     <MESSAGE value="26.03.2019 SB: cancel doublon from data df" />
     <MESSAGE value="01.04.2019 SB: add surface texture" />
     <MESSAGE value="01.04.2019 SB: minor" />
-    <option name="LAST_COMMIT_MESSAGE" value="01.04.2019 SB: minor" />
+    <MESSAGE value="Merge branch 'master' of pgda101:/home/sberton2/git/PyXover&#10;&#10;Conflicts:&#10;&#9;PyAltSim.py" />
+    <MESSAGE value="12.04.2019 SB: updates for closed loop simulation, corrections to iterations for topography and DEM, reformatting to call PyAltSim, PyXover and AccumXov from script with input options" />
+    <option name="LAST_COMMIT_MESSAGE" value="12.04.2019 SB: updates for closed loop simulation, corrections to iterations for topography and DEM, reformatting to call PyAltSim, PyXover and AccumXov from script with input options" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -465,101 +554,9 @@
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/PyXover.sh">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$USER_HOME$/spack/opt/spack/linux-centos7-x86_64/gcc-4.8.5/python-3.6.5-4ejtspau4yh6eu7joyuv65bk2nylw4qk/lib/python3.6/multiprocessing/pool.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="156">
-          <caret line="643" selection-start-line="643" selection-end-line="643" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/pydevd.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="156">
-          <caret line="1067" selection-start-line="1067" selection-end-line="1067" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tidal_deform.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1104" />
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/spack/opt/spack/linux-centos7-x86_64/gcc-4.8.5/py-pandas-0.21.1-6btydxp7uvd5neq7lewso4wauh4ppwed/lib/python3.6/site-packages/pandas/core/indexing.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="196">
-          <caret line="1268" selection-start-line="1268" selection-end-line="1268" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/astro_trans.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="346">
-          <caret line="40" column="49" lean-forward="true" selection-start-line="40" selection-start-column="10" selection-end-line="40" selection-end-column="49" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Amat.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-526">
-          <caret line="16" column="14" lean-forward="true" selection-start-line="16" selection-end-line="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/spack/opt/spack/linux-centos7-x86_64/gcc-4.8.5/py-numpy-1.15.1-4db5cydb4pp2jwfwv6qyep7ete2ejizx/lib/python3.6/site-packages/numpy/lib/npyio.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="246">
-          <caret line="930" column="28" lean-forward="true" selection-start-line="930" selection-start-column="28" selection-end-line="930" selection-end-column="28" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/spack/opt/spack/linux-centos7-x86_64/gcc-4.8.5/py-numpy-1.15.1-4db5cydb4pp2jwfwv6qyep7ete2ejizx/lib/python3.6/site-packages/numpy/lib/shape_base.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="408">
-          <caret line="1154" selection-start-line="1154" selection-end-line="1154" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/spack/opt/spack/linux-centos7-x86_64/gcc-4.8.5/py-pandas-0.21.1-6btydxp7uvd5neq7lewso4wauh4ppwed/lib/python3.6/site-packages/pandas/core/internals.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="170">
-          <caret line="4607" selection-start-line="4607" selection-end-line="4607" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharmCE2018.2/system/python_stubs/1424069135/builtins.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="151">
-          <caret line="2842" column="8" selection-start-line="2842" selection-start-column="8" selection-end-line="2842" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/spack/opt/spack/linux-centos7-x86_64/gcc-4.8.5/py-numpy-1.15.1-4db5cydb4pp2jwfwv6qyep7ete2ejizx/lib/python3.6/site-packages/numpy/core/shape_base.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="423">
-          <caret line="233" selection-start-line="233" selection-end-line="233" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/intersection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2040">
-          <caret line="137" column="9" selection-start-line="137" selection-start-column="9" selection-end-line="137" selection-end-column="9" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/interp_obj.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-129" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/unproject_coord.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="330">
-          <caret line="22" column="51" lean-forward="true" selection-start-line="22" selection-start-column="51" selection-end-line="22" selection-end-column="51" />
-        </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/intersect_1301022341_1301030741.png" />
@@ -581,55 +578,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/PyXover.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2040">
-          <caret line="136" column="52" selection-start-line="136" selection-start-column="52" selection-end-line="136" selection-end-column="52" />
-          <folding>
-            <marker date="1553637320600" expanded="true" signature="7367:7372" ph="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/prOpt.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="150">
-          <caret line="10" column="7" selection-start-line="10" selection-start-column="7" selection-end-line="10" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AccumXov.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2805">
-          <caret line="187" column="8" selection-start-line="187" selection-start-column="8" selection-end-line="187" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/xov_setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1635">
-          <caret line="109" column="8" selection-start-line="109" selection-start-column="8" selection-end-line="109" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/project_coord.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="315">
-          <caret line="21" column="16" selection-start-line="21" selection-start-column="16" selection-end-line="21" selection-end-column="16" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/scratch.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1020">
           <caret line="68" selection-start-line="68" selection-end-line="70" selection-end-column="27" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/perlin2d.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1170">
-          <caret line="78" column="39" selection-start-line="78" selection-start-column="39" selection-end-line="78" selection-end-column="39" />
         </state>
       </provider>
     </entry>
@@ -639,30 +591,228 @@
     <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/test_fract_noise.pdf">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
+    <entry file="file://$PROJECT_DIR$/.gitignore">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/icrf2pbf.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="105">
+          <caret line="19" selection-start-line="19" selection-end-line="19" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/astro_trans.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="216">
+          <caret line="57" column="4" selection-start-line="57" selection-start-column="4" selection-end-line="57" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/scratch_1.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="915">
+          <caret line="61" column="34" selection-start-line="61" selection-start-column="34" selection-end-line="61" selection-end-column="34" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/hill_shading/__init__.py" />
+    <entry file="file://$PROJECT_DIR$/hillshade.py" />
+    <entry file="file://$PROJECT_DIR$/project_coord.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="315">
+          <caret line="21" column="16" selection-start-line="21" selection-start-column="16" selection-end-line="21" selection-end-column="16" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/spack/opt/spack/linux-centos7-x86_64/gcc-4.8.5/py-pandas-0.21.1-6btydxp7uvd5neq7lewso4wauh4ppwed/lib/python3.6/site-packages/pandas/core/indexing.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="196">
+          <caret line="1268" selection-start-line="1268" selection-end-line="1268" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../Trilogy/pycode/trilogy.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="253">
+          <caret line="325" selection-start-line="325" selection-end-line="328" selection-end-column="18" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Amat.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-60">
+          <caret line="75" column="21" selection-start-line="75" selection-start-column="13" selection-end-line="75" selection-end-column="21" />
+          <folding>
+            <element signature="e#201#214#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tidal_deform.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1599">
+          <caret line="136" column="4" lean-forward="true" selection-start-line="136" selection-start-column="4" selection-end-line="136" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/setupROT.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-96">
+          <caret line="14" column="4" selection-start-line="14" selection-start-column="4" selection-end-line="14" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/get_xOver_elev.py">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301010741_1301011541.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/1301022341_tdiff.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/img/elev_profile_1301010000_1301042350.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301062348_1301252350.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301062348_1301270751.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301062348_1301281551.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301062348_1301262351.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301062348_1301250750.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/unproject_coord.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="330">
+          <caret line="22" column="4" selection-start-line="22" selection-start-column="4" selection-end-line="22" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/test_elev_prof.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301010000_1301042350.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/epo_mla_1301.in">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/perlin2d.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="99">
+          <caret line="80" column="19" selection-start-line="80" selection-end-line="81" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharmCE2018.2/system/python_stubs/1424069135/sys.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="167">
+          <caret line="541" selection-start-line="541" selection-end-line="541" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/dR_vs_dist_32_4.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/dR_vs_dist.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/PyXover.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="161">
+          <caret line="58" column="8" selection-start-line="58" selection-start-column="8" selection-end-line="58" selection-end-column="8" />
+          <folding>
+            <marker date="1555050200445" expanded="true" signature="4186:4299" ph="..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/test_cub.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/dist.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prOpt.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="375">
+          <caret line="25" column="11" selection-start-line="25" selection-start-column="11" selection-end-line="25" selection-end-column="11" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ground_track.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="176">
+          <caret line="16" column="13" selection-start-line="16" selection-start-column="7" selection-end-line="16" selection-end-column="13" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/PyAltSim.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="41">
+          <caret line="151" column="8" selection-start-line="151" selection-start-column="8" selection-end-line="151" selection-end-column="8" />
+          <folding>
+            <element signature="e#158#173#0" expanded="true" />
+            <marker date="1555049898303" expanded="true" signature="10091:13746" ph="..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/tst.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
     <entry file="file://$PROJECT_DIR$/geolocate_altimetry.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1212">
-          <caret line="245" column="9" selection-start-line="245" selection-start-column="9" selection-end-line="245" selection-end-column="9" />
+        <state relative-caret-position="3300">
+          <caret line="226" column="38" selection-start-line="226" selection-start-column="38" selection-end-line="226" selection-end-column="38" />
           <folding>
             <element signature="e#565#583#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/ground_track.py">
+    <entry file="file://$PROJECT_DIR$/AccumXov.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3078">
-          <caret line="323" column="11" selection-start-line="323" selection-start-column="11" selection-end-line="323" selection-end-column="11" />
+        <state relative-caret-position="311">
+          <caret line="169" column="34" selection-start-line="169" selection-start-column="34" selection-end-line="169" selection-end-column="34" />
           <folding>
-            <element signature="e#203#212#0" expanded="true" />
+            <element signature="e#159#168#0" expanded="true" />
+            <marker date="1555092694390" expanded="true" signature="1836:1841" ph="..." />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/PyAltSim.py">
+    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_1s.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/launch_test.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-735">
-          <caret line="125" column="5" selection-start-line="125" selection-start-column="5" selection-end-line="125" selection-end-column="5" />
+        <state relative-caret-position="480">
+          <caret line="32" column="63" lean-forward="true" selection-start-line="32" selection-start-column="63" selection-end-line="32" selection-end-column="63" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/xov_setup.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="171">
+          <caret line="255" column="30" selection-start-line="255" selection-start-column="30" selection-end-line="255" selection-end-column="30" />
+          <folding>
+            <element signature="e#200#215#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

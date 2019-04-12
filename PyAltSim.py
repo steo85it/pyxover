@@ -7,6 +7,11 @@
 #
 import warnings
 
+import mp as mp
+
+from icrf2pbf import icrf2pbf
+from setupROT import setupROT
+
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
 import shutil
@@ -27,9 +32,10 @@ import spiceypy as spice
 import perlin2d
 
 # mylib
-from prOpt import debug, parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local, sim, new_illumNG
+from prOpt import debug, parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local, sim, new_illumNG, apply_topo, vecopts
 import astro_trans as astr
 from ground_track import gtrack
+from geolocate_altimetry import get_sc_ssb, get_sc_pla
 
 ########################################
 # start clock
@@ -41,6 +47,7 @@ class sim_gtrack(gtrack):
         gtrack.__init__(self,vecopts)
         self.orbID = orbID
         self.name = str(orbID)
+        self.outdir = None
 
     def setup(self, df):
         df_ = df.copy()
@@ -62,42 +69,136 @@ class sim_gtrack(gtrack):
             self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
 
         # actual processing
-        self.lt_iter(itmax=100,df=df_)
+        self.lt_topo_corr(df=df_)
         self.setup_rdr()
 
-    def lt_iter(self,itmax,df):
+    def lt_topo_corr(self, df, itmax=100, tol=1.e-2):
+        """
+        iterate from a priori rough TOF @ ET_TX to account for light-time and
+        terrain roughness and topography
+        et, rng0 -> lon0, lat0, z0 (using geoloc)
+        lon0, lat0 -> DEM elevation (using GMT), texture from stamp
+        dz -> difference btw z0 from geoloc and "real" elevation z at lat0/lon0
+        update range and tof -> new_rng = old_rng + dz
 
-        olddr = 1000
+        :param df: table with tof, et (+all apriori data)
+        :param itmax: max iters allowed
+        :param tol: tolerance for convergence
+        """
+        #self.ladata_df[["TOF"]] = self.ladata_df.loc[:,"TOF"] + 200./clight
+
+        # get S/C body fixed position (useful to update ranges)
+        scxyz_tx_pbf = self.get_sc_pos_bf(df)
+
         for it in range(itmax):
 
+            # tof and rng from previous iter as input for new geoloc
+            old_tof = df.loc[:, 'TOF'].values
+            rng_apr = old_tof*clight/2.
+
+            # read just lat, lon, elev from geoloc (reads ET and TOF and updates LON, LAT, R in df)
             self.geoloc()
+            lontmp, lattmp, rtmp = np.transpose(self.ladata_df[['LON','LAT','R']].values)
+            r_bc = rtmp + vecopts['PLANETRADIUS']*1.e3
+
+            # use lon and lat to get "real" elevation from map
+            radius = self.get_topoelev(lattmp, lontmp)
+
+            # use "real" elevation to get bounce point coordinates
+            bcxyz_pbf = astr.sph2cart(radius,lattmp,lontmp)
+            bcxyz_pbf = np.transpose(np.vstack(bcxyz_pbf))
+
+            # compute range btw probe@TX and bounce point@BC (no BC epoch needed, all coord planet fixed)
+            rngvec = (bcxyz_pbf - scxyz_tx_pbf)
+            # compute correction for off-nadir observation
+            offndr = np.arccos(np.einsum('ij,ij->i', rngvec, -scxyz_tx_pbf) /
+                               np.linalg.norm(rngvec, axis=1) /
+                               np.linalg.norm(scxyz_tx_pbf, axis=1))
+
+            # compute residual between "real" elevation and geoloc (based on a priori TOF)
+            dr = (r_bc - radius) * np.cos(offndr)
+
+            # update range
+            rng_new = rng_apr + dr
+
+            # update tof
+            tof = 2.*rng_new/clight
+            df.loc[:, 'TOF'] = tof
 
             if debug:
                 print("it = "+str(it))
-                print(max(abs(olddr - self.dr_simit)))
-                print(len(self.dr_simit) - np.sum([abs(olddr - self.dr_simit) < 1.e-4]))
+                print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol))
 
-            df['TOF'] += 2.*self.dr_simit/clight
-            if (max(abs(olddr - self.dr_simit)) < 1.e-4):
+            if (max(abs(dr)) < tol):
                 #print("Convergence reached")
                 break
-            if (it == itmax - 1):
+            elif (it == itmax - 1):
                 print('### altsim: Max number of iterations reached!')
+                print("it = "+str(it))
+                print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol))
+                print('offnadir max',max(np.rad2deg(offndr)))
                 break
+            else:
+                # update global df used in geoloc at next iteration (TOF)
+                df['offnadir'] = np.rad2deg(offndr)
+                #df = df[df.loc[:, 'offnadir'] < 5]
+                self.ladata_df = df.copy()
 
-            olddr = self.dr_simit
+        #exit()
+            #olddr = self.dr_simit
             # update TOF
-            self.ladata_df = df.copy()
+            #self.ladata_df = df.copy()
+
+    def get_topoelev(self, lattmp, lontmp):
+
+        if apply_topo:
+            np.savetxt('tmp/gmt.in', list(zip(lontmp, lattmp)))
+            if local == 0:
+                r_dem = subprocess.check_output(
+                    ['grdtrack', 'gmt.in', '-G../../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                    universal_newlines=True, cwd='tmp')
+                r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+                # np.savetxt('gmt_'+self.name+'.out', r_dem)
+            else:
+                #r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
+                r_dem = subprocess.check_output(
+                    ['grdtrack', 'gmt.in', '-GMSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                    universal_newlines=True, cwd='tmp')
+                r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+
+            texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
+            # print("texture noise check",texture_noise,r_dem,rtmp)
+
+            # update Rmerc with r_dem/text
+            radius = vecopts['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
+        else:
+            radius = vecopts['PLANETRADIUS'] * 1.e3
+
+        return radius
+
+    def get_sc_pos_bf(self, df):
+        et_tx = df.loc[:, 'ET_TX'].values
+        sc_pos, sc_vel = get_sc_ssb(et_tx, self.SpObj, self.pertPar, self.vecopts)
+        scpos_tx_p, _ = get_sc_pla(et_tx, sc_pos, sc_vel, self.SpObj, self.vecopts)
+        rotpar, upd_rotpar = setupROT(self.pertPar['dRA'], self.pertPar['dDEC'], self.pertPar['dPM'],
+                                      self.pertPar['dL'])
+        tsipm = icrf2pbf(et_tx, upd_rotpar)
+        scxyz_tx_pbf = np.vstack([np.dot(tsipm[i], scpos_tx_p[i]) for i in range(0, np.size(scpos_tx_p, 0))])
+        return scxyz_tx_pbf
 
     def setup_rdr(self):
         df_ = self.ladata_df.copy()
+
+        # only select nadir data
+        #df_ = df_[df_.loc[:,'offnadir']<5]
+
         mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime', 'MET', 'frm',
                        'chn', 'Pulswd', 'thrsh', 'gain', '1way_range', 'Emiss', 'TXmJ',
                        'UTC', 'TOF_ns_ET', 'Sat_long', 'Sat_lat', 'Sat_alt', 'Offnad', 'Phase',
                        'Sol_inc', 'SCRNGE', 'seqid']
         self.rdr_df = pd.DataFrame(columns=mlardr_cols)
 
-        df_['TOF_ns_ET']= np.round(df_['TOF'].values*1.e9,1)
+        df_['TOF_ns_ET']= np.round(df_['TOF'].values*1.e9,10)
         df_['chn']= 0
 
         df_['UTC']= pd.to_datetime(df_['ET_TX'], unit='s',
@@ -116,7 +217,14 @@ class sim_gtrack(gtrack):
 
 ##############################################
 
-def prepro_ilmNG(df_):
+def prepro_ilmNG(illumNGf):
+
+    li = []
+    for f in illumNGf:
+        print("Processing", f)
+        df = pd.read_csv(f, index_col=None, header=0, names=[f.split('.')[-1]])
+        li.append(df)
+
     #df_ = dfin.copy()
     df_ = pd.concat(li, axis=1)
     df_=df_.apply(pd.to_numeric, errors='coerce')
@@ -128,7 +236,8 @@ def prepro_ilmNG(df_):
     df_['diff'] = df_.epo_tx.diff().fillna(0)
     #print(df_[df_['diff'] > 1].index.values)
     arcbnd = [0]
-    arcbnd.extend(df_[df_['diff'] > 1].index.values)
+    # new arc if observations separated by more than 1h
+    arcbnd.extend(df_[df_['diff'] > 3600].index.values)
     arcbnd.extend([df_.index.max() + 1])
     #print(arcbnd)
     df_['orbID'] = 0
@@ -138,113 +247,135 @@ def prepro_ilmNG(df_):
 
     return df_
 
+def sim_track(args):
+    track, df, i, outdir_ = args
+    #print(track.name)
+    if os.path.isfile(outdir_+'MLASIMRDR'+track.name+'.TAB') == False and int(track.name)<1301310758:
+        track.setup(df[df['orbID']==i])
+        track.rdr_df.to_csv(outdir_+'MLASIMRDR'+track.name+'.TAB', index=False, sep=',',na_rep='NaN')
+        print('Simulated observations written to',outdir_+'MLASIMRDR'+track.name+'.TAB')
+    else:
+        print('Simulated observations ',outdir_+'MLASIMRDR'+track.name+'.TAB already exists. Skip.')
+
+def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
+
+    ampl_in = list(arg)[0]
+    res_in = list(arg)[1]
+    dirnam_in = list(arg)[2]
+
+    if local == 0:
+        #data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+        #dataset = ''  # 'small_test/' #'test1/' #'1301/' #
+        #data_pth += dataset
+        # load kernels
+        spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')  # 'aux/mymeta')
+    else:
+        #data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+        #dataset = "test/"  # ''  # 'small_test/' #'1301/' #
+        #data_pth += dataset
+        # load kernels
+        spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
+
+    if parallel:
+        # set ncores
+        ncores = mp.cpu_count() - 1  # 8
+        print('Process launched on ' + str(ncores) + ' CPUs')
+
+    #out = spice.getfov(vecopts['INSTID'][0], 1)
+    # updated w.r.t. SPICE from Mike's scicdr2mat.m
+    vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    ###########################
+
+    # generate list of epochs
+    epo0 = 410270400 # get as input parameter
+    #epo_tx = np.array([epo0+i for i in range(86400*7)])
+    subpnts = 10
+    epo_tx = np.array([epo0+i/subpnts for i in range(86400*subpnts)])
+
+    if local:
+        if new_illumNG:
+            np.savetxt("tmp/epo.in", epo_tx, fmt="%4d")
+            print("Do you have all of illumNG predictions?")
+            exit()
+        path = '../aux/illumNG/sph_7d_mla/' #1s/' #sph/' #grd/' # use your path
+        illumNGf = glob.glob(path + "bore*")
+    else:
+        if new_illumNG:
+            np.savetxt("illumNG/epo.in", epo_tx, fmt="%4d")
+            print("illumNG call")
+            illumNG_call = subprocess.call(
+                ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
+                universal_newlines=True, cwd="illumNG/")
+            for f in glob.glob("illumNG/bore*"):
+                shutil.move(f, auxdir+'/illumNG/grd/'+str(epo0)+"_"+f.split('/')[1])
+        path = auxdir+'illumNG/grd/' #sph/' # use your path
+        illumNGf = glob.glob(path+str(epo0)+"_"+"bore*")
+
+    #else:
+    # launch illumNG directly
+    df = prepro_ilmNG(illumNGf)
+
+    if apply_topo:
+        #prepare surface texture "stamp" and assign the interpolated function as class attribute
+        np.random.seed(62)
+        shape_text = 1024
+        res_text = 2**res_in
+        depth_text = 5
+        size_stamp = 0.25
+        amplitude = ampl_in
+        noise = perlin2d.generate_periodic_fractal_noise_2d(amplitude, (shape_text, shape_text), (res_text, res_text), depth_text)
+        interp_spline = RectBivariateSpline(np.array(range(shape_text)) / shape_text * size_stamp,
+                                            np.array(range(shape_text)) / shape_text * size_stamp,
+                                            noise)
+        sim_gtrack.apply_texture = interp_spline
+
+    # Process tracks
+    # tracks = []
+    # for i in list(df.groupby('orbID').groups.keys()):
+    #     if debug:
+    #         print("Processing",i)
+    #     tracks.append(sim_gtrack(vecopts, i))
+    #
+    # print(tracks)
+    # print([tr.name for tr in tracks])
+
+    outdir_ = outdir + dirnam_in
+    if not os.path.exists(outdir_):
+        os.mkdir(outdir_)
+
+    # loop over all gtracks
+    args = ((sim_gtrack(vecopts, i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
+
+    if parallel and False: # incompatible with grdtrack call ...
+        # print((mp.cpu_count() - 1))
+        pool = mp.Pool(processes=ncores)  # mp.cpu_count())
+        _ = pool.map(sim_track, args)  # parallel
+        pool.close()
+        pool.join()
+    else:
+        _ = [sim_track(arg) for arg in args]  # seq
+
+
 ##############################################
-# locate data
+if __name__ == '__main__':
 
-if local == 0:
-    #data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    #dataset = ''  # 'small_test/' #'test1/' #'1301/' #
-    #data_pth += dataset
-    # load kernels
-    spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')  # 'aux/mymeta')
-else:
-    #data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    #dataset = "test/"  # ''  # 'small_test/' #'1301/' #
-    #data_pth += dataset
-    # load kernels
-    spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
+    import sys
 
-if parallel:
-    # set ncores
-    ncores = mp.cpu_count() - 1  # 8
-    print('Process launched on ' + str(ncores) + ' CPUs')
+    ##############################################
+    # launch program and clock
+    # -----------------------------
+    start = time.time()
 
-# Setup some useful options
-vecopts = {'SCID': '-236',
-           'SCNAME': 'MESSENGER',
-           'SCFRAME': -236000,
-           'INSTID': (-236500, -236501),
-           'INSTNAME': ('MSGR_MLA', 'MSGR_MLA_RECEIVER'),
-           'PLANETID': '199',
-           'PLANETNAME': 'MERCURY',
-           'PLANETRADIUS': 2440.,
-           'PLANETFRAME': 'IAU_MERCURY',
-           'OUTPUTTYPE': 1,
-           'ALTIM_BORESIGHT': '',
-           'INERTIALFRAME': 'J2000',
-           'INERTIALCENTER': 'SSB',
-           'PARTDER': ''}
+    if len(sys.argv)==1:
 
-#out = spice.getfov(vecopts['INSTID'][0], 1)
-# updated w.r.t. SPICE from Mike's scicdr2mat.m
-vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
-###########################
+        args = sys.argv[0]
 
-# generate list of epochs
-epo0 = 410270400 # get as input parameter
-epo_tx = np.array([epo0+i for i in range(86400*7)])
-#epo_tx = np.array([epo0+i/step for i in range(86400*step)])
+        main(args)
+    else:
+        print("PyAltSim running with standard args...")
+        main()
 
-# read illumNG output and generate df
-#    os.makedirs('', exist_ok=True)
-#    os.makedirs(os.path.dirname(filename), exist_ok=True)
-
-if local:
-   if new_illumNG:
-        np.savetxt("tmp/epo.in", epo_tx, fmt="%4d")
-        print("Do you have all of illumNG predictions?")
-   path = '../aux/illumNG/sph/' #grd/' # use your path
-        #illumNGf = glob.glob(path + "bore*")
-else:
-   if new_illumNG:
-        np.savetxt("illumNG/epo.in", epo_tx, fmt="%4d")
-        print("illumNG call")
-        illumNG_call = subprocess.call(
-            ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
-            universal_newlines=True, cwd="illumNG/")
-        for f in glob.glob("illumNG/bore*"):
-            shutil.move(f, auxdir+'/illumNG/grd/'+str(epo0)+"_"+f.split('/')[1])
-
-   path = auxdir+'illumNG/grd/' #sph/' # use your path
-
-illumNGf = glob.glob(path+str(epo0)+"_"+"bore*")
-
-li = []
-for f in illumNGf:
-    print("Processing", f)
-    df = pd.read_csv(f, index_col=None, header=0, names=[f.split('.')[-1]])
-    li.append(df)
-
-#else:
-# launch illumNG directly
-
-df = prepro_ilmNG(df)
-
-#prepare surface texture "stamp" and assign the interpolated function as class attribute
-np.random.seed(0)
-shape_text = 256
-res_text = 16
-depth_text = 1
-size_stamp = 0.25
-noise = perlin2d.generate_periodic_fractal_noise_2d(5, (shape_text, shape_text), (res_text, res_text), depth_text)
-interp_spline = RectBivariateSpline(np.array(range(shape_text*2)) / shape_text*2. * size_stamp,
-                                    np.array(range(shape_text*2)) / shape_text*2. * size_stamp,
-                                    noise)
-sim_gtrack.apply_texture = interp_spline
-
-# Process tracks
-tracks = []
-for i in list(df.groupby('orbID').groups.keys()):
-    if debug:
-        print("Processing",i)
-    track = sim_gtrack(vecopts, i)
-    #track.pertPar['dR'] = 100
-    track.setup(df[df['orbID']==i])
-    #tracks.append(track)
-    track.rdr_df.to_csv(outdir+'MLASIMRDR'+track.name+'.TAB', index=False, sep=',',na_rep='NaN')
-    print('Simulated observations written to',outdir+'MLASIMRDR'+track.name+'.TAB')
-
-# stop clock and print runtime
-# -----------------------------
-end = time.time()
-print('----- Runtime = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
+    # stop clock and print runtime
+    # -----------------------------
+    end = time.time()
+    print('----- Runtime = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')

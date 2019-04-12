@@ -17,6 +17,7 @@ import numpy as np
 
 
 def icrf2pbf(ET, rotpar):
+
     p = rotpar['ORIENT']
     w = rotpar['NUT_PREC_PM']
     a = rotpar['NUT_PREC_ANGLES']
@@ -71,7 +72,7 @@ def icrf2pbf(ET, rotpar):
     M3 = np.reshape(np.hstack([np.column_stack((np.cos(alpha), -np.sin(alpha), np.zeros(W.shape))),
                                np.column_stack((np.sin(alpha), np.cos(alpha), np.zeros(W.shape))),
                                np.column_stack((np.zeros(W.shape), np.zeros(W.shape), np.ones(W.shape)))]), (-1, 3, 3))
-    tsipm = 0  # mtimesx(M1,mtimesx(M2,M3));
+    #tsipm = 0  # mtimesx(M1,mtimesx(M2,M3));
 
     # Combine rotations
     tmp = np.einsum('ijk,ikl->ijl', M2, M3)

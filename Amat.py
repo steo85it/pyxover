@@ -64,9 +64,7 @@ class Amat:
         xovers_df = self.xov.xovers
         parOrb_xy = sorted(self.xov.parOrb_xy)
         parGlo_xy = sorted(self.xov.parGlo_xy)
-        # self.par_xy
-
-        # print(parOrb_xy,parGlo_xy)
+        xovers_df.fillna(0,inplace=True)
 
         # Retrieve all orbits involved in xovers
         orb_unique = self.xov.tracks
@@ -74,10 +72,8 @@ class Amat:
         OrbParFull = [x + '_' + y for x in orb_unique for y in parOrb_xy]
         Amat_col = OrbParFull + parGlo_xy
 
-        # print(len(Amat_col))
         dict_ = dict(zip(Amat_col, range(len(Amat_col))))
         self.parNames = dict_
-        # print(dict_)
 
         # Retrieve and re-organize partials w.r.t. observations, parameters and orbits
 
@@ -86,6 +82,7 @@ class Amat:
         # parameters/observations for each orbit (dR/dp_1,...,dR/dp_n,orb,xovID)
 
         regex = [re.compile(r'^dR/.*_A$'), re.compile(r'^dR/.*_B$'), re.compile(r'^dR/.*[^_^A][^_^B]$')]
+#        regex = [re.compile(r'^dR/.*[^_^A][^_^B]$')]
         orbit = ['orbA', 'orbB', '']
         csr = []
         for rex, orb in zip(regex, orbit):
@@ -94,6 +91,7 @@ class Amat:
                 par_xy_loc = list(filter(rex.search, parOrb_xy))
                 partder = xovers_df[par_xy_loc].values
                 orb_loc = xovers_df[orb].values
+                #
                 col = np.array(list(map(dict_.get, [str(x) + '_' + str(y) for x in orb_loc for y in par_xy_loc])))
             else:
                 par_xy_loc = list(filter(rex.search, parGlo_xy))
@@ -105,8 +103,10 @@ class Amat:
             val = partder.flatten()
 
             if (debug):
+                print("analyze df")
+                print(par_xy_loc)
                 print(xovers_df[par_xy_loc])
-                # print(partder)
+
                 if (orb != ''):
                     print(orb_loc)
                     print(np.array([str(x) + '_' + str(y) for x in orb_loc for y in par_xy_loc]))
@@ -116,9 +116,7 @@ class Amat:
 
             csr.append(csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(orb_loc), len(Amat_col))))
 
-        print(csr)
         csr = sum(csr)
-        print(csr.count_nonzero())
 
         if (debug):
             print(csr)
@@ -128,7 +126,6 @@ class Amat:
         # Save A and b matrix/array for least square (Ax = b)
         self.spA = csr
         self.b = xovers_df.dR.values
-        print(xovers_df.dR.values.shape)
 
         if (debug):
             print(csr)

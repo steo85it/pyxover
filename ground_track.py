@@ -36,6 +36,7 @@ class gtrack:
         self.vecopts = vecopts
         self.dr_simit = None
         self.ladata_df = None
+        self.df_input = None
         self.name = None
         self.MERv = None
         self.MERx = None
@@ -58,10 +59,11 @@ class gtrack:
     # create groundtrack from data and save to file
     def setup(self, filnam):
 
+        # read data and fill ladata_df
+        self.read_fill(filnam)
+
         if not hasattr(self, 'SpObj'):
             # print(filnam)
-            # read data and fill ladata_df
-            self.read_fill(filnam)
             # print(self.ladata_df)
             # create interp for track
             self.interpolate()
@@ -145,6 +147,7 @@ class gtrack:
         df.columns = df.columns.str.lower()
 
         # only select the required data (column)
+        self.df_input = df.copy()
         if (debug):
             df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
         else:
@@ -274,8 +277,7 @@ class gtrack:
 
     def geoloc(self):
 
-        ladata_df = self.ladata_df.copy()
-        vecopts = self.vecopts.copy()
+        #vecopts = self.vecopts.copy()
 
         #################### end -------
 
@@ -320,38 +322,25 @@ class gtrack:
         else:
             results = [self.get_geoloc_part(i) for i in param.items()]  # seq
 
+        # store ladata_df for update
+        ladata_df = self.ladata_df.copy()
+
         if (self.vecopts['OUTPUTTYPE'] == 0):
             ladata_df['X'] = results[0][:, 0]
             ladata_df['Y'] = results[0][:, 1]
             ladata_df['Z'] = results[0][:, 2]
-            if sim:
-              _, _, Rbase = subprocess.check_call([PGM_HOME+'diff_res_format', d+'/resid.asc', d_part+'/resid.asc', dif_dir+'/diff.resid_'+d],
-                      universal_newlines=True)
-            else:
-              Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
-	    
+            # if sim:
+            #   _, _, Rbase = subprocess.check_call([PGM_HOME+'diff_res_format', d+'/resid.asc', d_part+'/resid.asc', dif_dir+'/diff.resid_'+d],
+            #           universal_newlines=True)
+            # else:
+            Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
             ladata_df['R'] = np.linalg.norm(results[0], axis=1) - Rbase
+
         elif (self.vecopts['OUTPUTTYPE'] == 1):
             ladata_df['LON'] = results[0][:, 0]
             ladata_df['LAT'] = results[0][:, 1]
             #print(len(results[0]))
-            np.savetxt('tmp/gmt.in', list(zip(results[0][:, 0],results[0][:, 1])))
-            if sim:
-                if local==0:
-                    Rbase = subprocess.check_output(['grdtrack', 'gmt.in', '-G../../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
-                                                    universal_newlines=True, cwd='tmp')
-                    Rbase = np.fromstring(Rbase,sep=' ').reshape(-1,3)[:,2]
-                    #np.savetxt('gmt_'+self.name+'.out', Rbase)
-                else:
-                    Rbase = np.loadtxt('tmp/gmt_'+self.name+'.out')
-
-                texture_noise = self.apply_texture(np.mod(results[0][:, 1],0.25),np.mod(results[0][:, 0],0.25),grid=False)
-                #print("texture noise check",texture_noise,Rbase*1.e3, self.vecopts['PLANETRADIUS']* 1.e3)
-                #print("test texture", len(Rbase), len(texture_noise),len(results[0][:, 1]))
-                Rbase = (Rbase + self.vecopts['PLANETRADIUS'])* 1.e3 + texture_noise
-            else:
-                Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
-
+            Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
             ladata_df['R'] = results[0][:, 2] - Rbase
 
         if debug:
@@ -406,8 +395,8 @@ class gtrack:
     # @profile
     def get_geoloc_part(self, par):
 
-        ladata_df = self.ladata_df
-        vecopts = self.vecopts
+        tmp_df = self.ladata_df.copy()
+        #vecopts = self.vecopts
         if hasattr(self, 'SpObj'):
             SpObj = self.SpObj
         else:
@@ -427,8 +416,6 @@ class gtrack:
             print('self.vecopts[PARTDER]', self.vecopts['PARTDER'])
             print(diff_step)
 
-        tmp_df = ladata_df.copy()
-
         tmp_pertPar = self.pertPar.copy()
 
         # Read self.vecopts[partder] and apply perturbation
@@ -436,10 +423,10 @@ class gtrack:
         tmp_pertPar[self.vecopts['PARTDER']] = diff_step
 
         # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
-        geoloc_out, dr_simit = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
+        geoloc_out, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
 
-        if par[0]== '':
-            self.dr_simit = dr_simit
+        #print(self.ladata_df)
+        tmp_df.loc[:,'ET_BC'] = et_bc
 
         # Compute partial derivatives if required
         if (self.vecopts['PARTDER'] is not ''):
@@ -449,8 +436,12 @@ class gtrack:
             except:  # if perturbation is a vector
                 tmp_pertPar[self.vecopts['PARTDER']] = [-1. * x for x in tmp_pertPar[self.vecopts['PARTDER']]]
 
-            geoloc_min, dr_simit = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
+            geoloc_min, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
             partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
+
+            tmp_df.loc[:,'ET_BC_'+self.vecopts['PARTDER']] = et_bc
+            #print(self.ladata_df)
+            #exit()
 
             # print("partder check", geoloc_out[:,0:3], geoloc_min[:,0:3],diff_step)
 
@@ -462,9 +453,13 @@ class gtrack:
                 partder /= 2. * np.linalg.norm(diff_step)  # [1]
                 # print('partder', partder)
 
+            self.ladata_df = tmp_df
+
             return partder
 
         else:
+            self.ladata_df = tmp_df
+
             return geoloc_out
 
     # Compute stereographic projection of measurements location
@@ -513,7 +508,7 @@ class gtrack:
         ladata_df = self.ladata_df
         vecopts = self.vecopts
 
-        print('proj: ' + str(par_d))
+        #print('proj: ' + str(par_d))
 
         # get dict values
         par = list(par_d)[0]
