@@ -14,18 +14,16 @@ import time
 import numpy as np
 import pandas as pd
 import spiceypy as spice
-import subprocess
-import glob
-import matplotlib.pyplot as plt
 
 import astro_trans as astr
 import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
-from prOpt import debug, partials, parallel, SpInterp, auxdir, sim, local,parOrb, parGlo
+from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
+
 
 class gtrack:
     interp_obj.interp = interp_obj.interpSpl  # Cby  # Spl #
@@ -62,24 +60,25 @@ class gtrack:
         # read data and fill ladata_df
         self.read_fill(filnam)
 
-        if not hasattr(self, 'SpObj'):
-            # print(filnam)
+        if len(self.ladata_df) > 0:
+            if not hasattr(self, 'SpObj'):
+                # print(filnam)
+                # print(self.ladata_df)
+                # create interp for track
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
+
+            if debug:
+                pd.set_option('display.max_columns', 500)
+
+            # geolocate observations in orbit
+            self.geoloc()
+            # project observations
+            self.project()
+            # update df
+
             # print(self.ladata_df)
-            # create interp for track
-            self.interpolate()
-        else:
-            self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
-
-        if debug:
-          pd.set_option('display.max_columns', 500)
-
-        # geolocate observations in orbit
-        self.geoloc()
-        # project observations
-        self.project()
-        # update df
-
-        # print(self.ladata_df)
 
     # create groundtrack from data and save to file
     def prepro(self, filnam):
@@ -203,11 +202,11 @@ class gtrack:
             t_spc = np.array(
                 [x for x in np.arange(self.ladata_df['ET_TX'].min(), self.ladata_df['ET_TX'].max(), tstep)])
         except:
-            print("Issue interpolating ..." + self.name)
+            print("*** ground_track.py: Issue interpolating ..." + self.name)
             print(self.ladata_df)
             print(self.ladata_df['ET_TX'].min())
-            print(self.ladata_df['ET_TX'].min())
-            exit()
+            print(self.ladata_df['ET_TX'].max())
+            exit(2)
 
         # print("Start spkezr MGR")
         # trajectory

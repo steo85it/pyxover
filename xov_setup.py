@@ -21,14 +21,12 @@ from scipy import interpolate
 import pickle
 import re
 import matplotlib.pyplot as plt
-import timeit
 import subprocess
 
 # from mapcount import mapcount
 from unproject_coord import unproject_stereographic
 from intersection import intersection
-from prOpt import debug, partials, parallel, OrbRep, parGlo, parOrb
-import astro_trans as astr
+from prOpt import debug, partials, OrbRep, parGlo, parOrb
 from util import lflatten
 
 class xov:
@@ -46,6 +44,8 @@ class xov:
         self.msrm_sampl = 100
 
         self.tracks = df.orbID.unique()
+        # print(df.orbID)
+        # print(df.orbID.unique())
 
         if debug:
             # prepare surface texture "stamp" and assign the interpolated function as class attribute
@@ -84,7 +84,7 @@ class xov:
         xov_list = [x for x in xov_list if len(x.xovers) > 0]
 
         # concatenate df and reindex
-        #print([x.xovers for x in xov_list])
+        # print([x.xovers for x in xov_list])
         if len(xov_list)>0:
             self.xovers = pd.concat([x.xovers for x in xov_list])  # , sort=True)
             self.xovers = self.xovers.reset_index(drop=True)
@@ -95,7 +95,8 @@ class xov:
             orb_unique = self.xovers['orbA'].tolist()
             orb_unique.extend(self.xovers['orbB'].tolist())
             self.tracks = list(set(orb_unique))
-            # print(self.tracks)
+            print(self.tracks)
+            print(orb_unique)
 
             self.parOrb_xy = xov_list[0].parOrb_xy
             self.parGlo_xy = xov_list[0].parGlo_xy
@@ -125,6 +126,27 @@ class xov:
         # print(self.MGRx.tck)
 
         return self
+
+    # remove outliers using the median method
+    def remove_outliers(self, data_col):
+        orig_len = len(self.xovers)
+        # print(self.xovers.loc[:,data_col].median(axis=0))
+        sorted = np.sort(abs(self.xovers.loc[:, data_col].values - self.xovers.loc[:, data_col].median(axis=0)))
+        # print(len(sorted))
+        std_median = sorted[round(0.68 * len(sorted))]
+        # sorted = sorted[sorted<3*std_median]
+
+        print("Mean, std of data:", self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0))
+        print("Median, std_med of data:", self.xovers.loc[:, data_col].median(axis=0), std_median)
+        print(len(self.xovers[abs(
+            self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) >= 3 * std_median]),
+              "xovers removed out of", orig_len)
+
+        self.xovers = self.xovers[
+            abs(self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) < 3 * std_median]
+        # print(self.xovers)
+        return self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0)
+
 
     # Compute elevation R at crossover points by interpolation
     # (should be put in a function and looped over -

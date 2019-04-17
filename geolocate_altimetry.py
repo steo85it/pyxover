@@ -32,7 +32,6 @@ from icrf2pbf import icrf2pbf
 from prOpt import SpInterp
 from setupROT import setupROT
 from tidal_deform import tidal_deform
-from prOpt import sim
 
 
 # from collections import defaultdict
@@ -103,6 +102,12 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj):
         cmat = []
         for i in range(0, len(et_tx)):
             cmat.append(spice.q2m(quat[i, :]))
+        # print('interp cmat',cmat)
+
+        # pxform_array = np.frompyfunc(spice.pxform, 3, 1)
+        # cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)
+        # print('cmat spice',cmat)
+
     else:
         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
         cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)
@@ -119,7 +124,8 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj):
 
         zpt = astr.rp_2_xyz(zpt, ang_Rl, ang_Pt)
     #    print("test zpt post dRlPt", np.linalg.norm(zpt, axis=1))
-    #    print(zpt,np.size(scpos_tx,0))
+
+    # print(zpt,np.size(scpos_tx,0))
 
     # compute corrections to oneway tof - average of Shapiro delay on
     # each branch (!!! Ri, Rj, etc are w.r.t. SSB and not w.r.t. perturbing
@@ -238,9 +244,13 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts):
                                    vecopts['INERTIALFRAME'],
                                    'NONE',
                                    vecopts['INERTIALCENTER'])
+        scpv = np.squeeze(scpv)
 
-    scpos = 1.e3 * np.squeeze(scpv)[:, :3]
-    scvel = 1.e3 * np.squeeze(scpv)[:, 3:]
+    # print('check scpv', scpv)
+    scpos = 1.e3 * scpv[:, :3]
+    scvel = 1.e3 * scpv[:, 3:]
+    # scpos = 1.e3 * np.squeeze(scpv)[:, :3]
+    # scvel = 1.e3 * np.squeeze(scpv)[:, 3:]
 
     # Compute and add ACR offset (if corrections != 0)
     # print([tmp_pertPar[k] for k in ['dA','dC','dR']])
@@ -264,21 +274,18 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts):
 
 
 def get_sc_pla(et, x_sc, v_sc, SpObj, vecopts):
+
     if (SpInterp > 0):
         x_pla = np.transpose(SpObj['MERx'].eval(et))
         v_pla = np.transpose(SpObj['MERv'].eval(et))
-        # print(np.array(x_sc).shape)
-        # print(np.array(v_sc).shape)
-        scpv_p = np.concatenate((x_sc - x_pla, v_sc - v_pla), axis=1)
-        # print(scpv)
-        # print(scpv.shape)
-        # exit()
+        scpv_p = np.concatenate((x_sc * 1.e-3 - x_pla, v_sc * 1.e-3 - v_pla), axis=1)
     else:
         scpv_p, lt = spice.spkezr(vecopts['SCNAME'],
                                   et,
                                   vecopts['INERTIALFRAME'],
                                   'NONE',
                                   vecopts['PLANETNAME'])
+
     scpos_p = 1.e3 * np.array(scpv_p)[:, :3]
     scvel_p = 1.e3 * np.array(scpv_p)[:, 3:]
     return scpos_p, scvel_p

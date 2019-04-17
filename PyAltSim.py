@@ -15,7 +15,6 @@ from setupROT import setupROT
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
 import shutil
-import sys
 import glob
 import time
 import pickleIO
@@ -29,13 +28,13 @@ import multiprocessing as mp
 import subprocess
 
 import spiceypy as spice
-import perlin2d
 
 # mylib
-from prOpt import debug, parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local, sim, new_illumNG, apply_topo, vecopts
+from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts
 import astro_trans as astr
 from ground_track import gtrack
 from geolocate_altimetry import get_sc_ssb, get_sc_pla
+import perlin2d
 
 ########################################
 # start clock
@@ -87,13 +86,14 @@ class sim_gtrack(gtrack):
         """
         #self.ladata_df[["TOF"]] = self.ladata_df.loc[:,"TOF"] + 200./clight
 
-        # get S/C body fixed position (useful to update ranges)
-        scxyz_tx_pbf = self.get_sc_pos_bf(df)
+        # a priori values for internal FULL df
+        df.loc[:, 'converged'] = False
+        df.loc[:, 'offnadir'] = 0
 
         for it in range(itmax):
 
             # tof and rng from previous iter as input for new geoloc
-            old_tof = df.loc[:, 'TOF'].values
+            old_tof = self.ladata_df.loc[:, 'TOF'].values
             rng_apr = old_tof*clight/2.
 
             # read just lat, lon, elev from geoloc (reads ET and TOF and updates LON, LAT, R in df)
@@ -108,6 +108,8 @@ class sim_gtrack(gtrack):
             bcxyz_pbf = astr.sph2cart(radius,lattmp,lontmp)
             bcxyz_pbf = np.transpose(np.vstack(bcxyz_pbf))
 
+            # get S/C body fixed position (useful to update ranges, has to be computed on reduced df)
+            scxyz_tx_pbf = self.get_sc_pos_bf(self.ladata_df)
             # compute range btw probe@TX and bounce point@BC (no BC epoch needed, all coord planet fixed)
             rngvec = (bcxyz_pbf - scxyz_tx_pbf)
             # compute correction for off-nadir observation
@@ -123,7 +125,14 @@ class sim_gtrack(gtrack):
 
             # update tof
             tof = 2.*rng_new/clight
-            df.loc[:, 'TOF'] = tof
+            self.ladata_df.loc[:, 'TOF'] = tof  # convert to update
+            self.ladata_df.loc[:, 'converged'] = abs(dr) < tol
+            self.ladata_df.loc[:, 'offnadir'] = np.rad2deg(offndr)
+
+            if it == 0:
+                df = self.ladata_df.copy()
+            else:
+                df.update(self.ladata_df)
 
             if debug:
                 print("it = "+str(it))
@@ -131,46 +140,61 @@ class sim_gtrack(gtrack):
 
             if (max(abs(dr)) < tol):
                 #print("Convergence reached")
+                # pass all epochs to next step
+                self.ladata_df = df.copy()
                 break
             elif (it == itmax - 1):
                 print('### altsim: Max number of iterations reached!')
                 print("it = "+str(it))
                 print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol))
                 print('offnadir max',max(np.rad2deg(offndr)))
+                self.ladata_df = df.copy()  # keep non converged but set chn>5 (bad msrmts)
                 break
             else:
                 # update global df used in geoloc at next iteration (TOF)
-                df['offnadir'] = np.rad2deg(offndr)
                 #df = df[df.loc[:, 'offnadir'] < 5]
-                self.ladata_df = df.copy()
-
-        #exit()
-            #olddr = self.dr_simit
-            # update TOF
-            #self.ladata_df = df.copy()
+                # only operate on non-converged epochs for next iteration
+                self.ladata_df = df[df.loc[:, 'converged'] == False].copy()
+                # self.ladata_df = df.copy()
 
     def get_topoelev(self, lattmp, lontmp):
 
         if apply_topo:
-            np.savetxt('tmp/gmt.in', list(zip(lontmp, lattmp)))
-            if local == 0:
-                r_dem = subprocess.check_output(
-                    ['grdtrack', 'gmt.in', '-G../../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
-                    universal_newlines=True, cwd='tmp')
-                r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-                # np.savetxt('gmt_'+self.name+'.out', r_dem)
-            else:
-                #r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
-                r_dem = subprocess.check_output(
-                    ['grdtrack', 'gmt.in', '-GMSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
-                    universal_newlines=True, cwd='tmp')
-                r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+            # st = time.time()
+            gmt = 1
+            if gmt:
+                np.savetxt('tmp/gmt.in', list(zip(lontmp, lattmp)))
+
+                if local == 0:
+                    r_dem = subprocess.check_output(
+                        ['grdtrack', 'gmt.in',
+                         '-G../../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                        universal_newlines=True, cwd='tmp')
+                    r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+                    # np.savetxt('gmt_'+self.name+'.out', r_dem)
+                else:
+                    # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
+                    r_dem = subprocess.check_output(
+                        ['grdtrack', 'gmt.in', '-GMSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                        universal_newlines=True, cwd='tmp')
+                    r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+            # else:
+            #     print(lontmp)
+            #     print(lontmp+180.)
+            #     print(lattmp)
+            #     r_dem = self.dem_xr.interp(lon=lontmp+180.,lat=lattmp).to_dataframe().loc[:, 'z'].values
+
+            # print(r_dem)
+            # en = time.time()
+            # print(en-st)
+            # exit()
 
             texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
             # print("texture noise check",texture_noise,r_dem,rtmp)
 
             # update Rmerc with r_dem/text
             radius = vecopts['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
+            # print(radius,r_dem,texture_noise)
         else:
             radius = vecopts['PLANETRADIUS'] * 1.e3
 
@@ -198,9 +222,12 @@ class sim_gtrack(gtrack):
                        'Sol_inc', 'SCRNGE', 'seqid']
         self.rdr_df = pd.DataFrame(columns=mlardr_cols)
 
-        df_['TOF_ns_ET']= np.round(df_['TOF'].values*1.e9,10)
+        # assign "bad chn" to non converged observations
         df_['chn']= 0
+        df_.loc[df_['converged'] == False, 'chn'] = 10
 
+        # update other columns for compatibility with real data format
+        df_['TOF_ns_ET'] = np.round(df_['TOF'].values * 1.e9, 10)
         df_['UTC']= pd.to_datetime(df_['ET_TX'], unit='s',
                    origin=pd.Timestamp('2000-01-01T12:00:00'))
 
@@ -297,7 +324,7 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
             np.savetxt("tmp/epo.in", epo_tx, fmt="%4d")
             print("Do you have all of illumNG predictions?")
             exit()
-        path = '../aux/illumNG/sph_7d_mla/' #1s/' #sph/' #grd/' # use your path
+        path = '../aux/illumNG/sph_7d_1s/'  # _mla/' # sph/' #grd/' # use your path
         illumNGf = glob.glob(path + "bore*")
     else:
         if new_illumNG:
@@ -316,6 +343,11 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
     df = prepro_ilmNG(illumNGf)
 
     if apply_topo:
+        # read and interpolate DEM
+        # open netCDF file
+        # nc_file = "/home/sberton2/Works/NASA/Mercury_tides/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD"
+        # sim_gtrack.dem_xr = xr.open_dataset(nc_file)
+
         #prepare surface texture "stamp" and assign the interpolated function as class attribute
         np.random.seed(62)
         shape_text = 1024

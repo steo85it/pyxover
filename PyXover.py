@@ -9,7 +9,6 @@ import warnings
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
-import sys
 import glob
 
 import numpy as np
@@ -27,7 +26,7 @@ import spiceypy as spice
 import time
 
 # mylib
-from prOpt import parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local, vecopts
+from prOpt import new_xov, vecopts
 # from mapcount import mapcount
 from ground_track import gtrack
 from xov_setup import xov
@@ -76,7 +75,7 @@ def launch_xov(args): # pool.map functions have to stay on top level (not inside
             #    trackA = tracklist[str(track_id)]
             trackA = gtrack(vecopts)
             trackA = trackA.load(outdir + 'gtrack_' + track_id + '.pkl')
-            if not trackA == None:
+            if not trackA == None and len(trackA.ladata_df) > 0:
 
                 xov_tmp = track_id
                 xov_tmp = xov(vecopts)
@@ -95,7 +94,7 @@ def launch_xov(args): # pool.map functions have to stay on top level (not inside
                         #        trackB = tracklist[str(gtrackB)]
                         trackB = gtrack(vecopts)
                         trackB = trackB.load(outdir + 'gtrack_' + gtrackB + '.pkl')
-                        if not trackB == None:
+                        if not trackB == None and len(trackB.ladata_df) > 0:
                             xov_tmp.setup(pd.concat([trackA.ladata_df, trackB.ladata_df]).reset_index(drop=True))
                     # except:
                     #     print(
@@ -123,7 +122,7 @@ def launch_xov(args): # pool.map functions have to stay on top level (not inside
 
 ########################################
 def main(args):
-    from prOpt import parallel, SpInterp, new_gtrack, new_xov, outdir, auxdir, local, vecopts
+    from prOpt import parallel, SpInterp, new_gtrack, outdir, auxdir, local, vecopts
 
     print(args)
 
@@ -205,8 +204,8 @@ def main(args):
     # for orbitA and orbitB.
     # Geoloc, if active, will process all files in A+B. Xov will only process combinations
     # of orbits from A and B
-    allFilesA = glob.glob(os.path.join(data_pth, 'MLASIMRDR' + misycmb[par][0] + '*.TAB'))
-    allFilesB = glob.glob(os.path.join(data_pth, 'MLASIMRDR' + misycmb[par][1] + '*.TAB'))
+    allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
+    allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
 
     if misycmb[par][0] == misycmb[par][1]:
         allFiles = allFilesA
@@ -270,11 +269,12 @@ def main(args):
 
                 #try:
                 track.setup(infil)
-                print("track#:", track.name)
-                print("max diff R",abs(track.ladata_df.loc[:,'R']-track.df_input.loc[:,'altitude']).max())
-                print("max diff LON", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.df_input.loc[:, 'geoc_long']).max())))
-                print("max diff LAT", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
-                print("max elev sim", abs(track.df_input.loc[:,'altitude']).max())
+                #
+                # print("track#:", track.name)
+                # print("max diff R",abs(track.ladata_df.loc[:,'R']-track.df_input.loc[:,'altitude']).max())
+                # print("max diff LON", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.df_input.loc[:, 'geoc_long']).max())))
+                # print("max diff LAT", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
+                # print("max elev sim", abs(track.df_input.loc[:,'altitude']).max())
                 #exit()
                 track.save(outdir + track_id + '.pkl')
                 print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + outdir + track_id + '.pkl !')
