@@ -95,8 +95,8 @@ class xov:
             orb_unique = self.xovers['orbA'].tolist()
             orb_unique.extend(self.xovers['orbB'].tolist())
             self.tracks = list(set(orb_unique))
-            print(self.tracks)
-            print(orb_unique)
+            # print(self.tracks)
+            # print(orb_unique)
 
             self.parOrb_xy = xov_list[0].parOrb_xy
             self.parGlo_xy = xov_list[0].parGlo_xy
@@ -114,6 +114,7 @@ class xov:
     def load(self, filnam):
 
         try:
+            print(filnam)
             pklfile = open(filnam, 'rb')
             self = pickle.load(pklfile)
             pklfile.close()
