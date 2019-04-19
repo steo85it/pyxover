@@ -4,7 +4,7 @@
 ##############################################
 # @profile
 # local or PGDA
-local = 1
+local = 0
 # debug mode
 debug = 0
 # parallel processing?
@@ -29,7 +29,7 @@ new_xov = 1
 # simulation mode
 sim = 0
 # recompute a priori
-new_illumNG = 0
+new_illumNG = 1
 # use topo
 apply_topo = 1
 # vecopts

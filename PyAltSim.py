@@ -7,8 +7,6 @@
 #
 import warnings
 
-import mp as mp
-
 from icrf2pbf import icrf2pbf
 from setupROT import setupROT
 
@@ -289,11 +287,14 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
     ampl_in = list(arg)[0]
     res_in = list(arg)[1]
     dirnam_in = list(arg)[2]
+    epos_in = list(arg)[3]
+
+    print('dirnam_in',dirnam_in)
 
     if local == 0:
-        #data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-        #dataset = ''  # 'small_test/' #'test1/' #'1301/' #
-        #data_pth += dataset
+        data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+        dataset = ''  # 'small_test/' #'test1/' #'1301/' #
+        data_pth += dataset
         # load kernels
         spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')  # 'aux/mymeta')
     else:
@@ -314,29 +315,55 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
     ###########################
 
     # generate list of epochs
-    epo0 = 410270400 # get as input parameter
-    #epo_tx = np.array([epo0+i for i in range(86400*7)])
-    subpnts = 10
-    epo_tx = np.array([epo0+i/subpnts for i in range(86400*subpnts)])
+    if new_illumNG and True:
+        # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
+        allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
+        #print(allFiles)
 
+        # Prepare list of tracks
+        tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles]
+        epo_in=[]
+        for track_id, infil in zip(tracknames, allFiles):
+            track = track_id
+            track = gtrack(vecopts)
+            track.prepro(infil)
+            epo_in.extend(track.ladata_df.ET_TX.values)
+
+        epo_in = np.array(epo_in)
+        #print(epo_in)
+        #print(epo_in.shape)
+        #print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
+        #print(np.sort(epo_in)[-1])
+
+    else:
+        epo0 = 410270400 # get as input parameter
+        #epo_tx = np.array([epo0+i for i in range(86400*7)])
+        subpnts = 10
+        epo_tx = np.array([epo0+i/subpnts for i in range(86400*subpnts)])
+	
+    # pass to illumNG	
     if local:
         if new_illumNG:
-            np.savetxt("tmp/epo.in", epo_tx, fmt="%4d")
+            np.savetxt("tmp/epo_mla_"+epos_in+".in", epo_tx, fmt="%4d")
             print("Do you have all of illumNG predictions?")
             exit()
         path = '../aux/illumNG/sph_7d_1s/'  # _mla/' # sph/' #grd/' # use your path
         illumNGf = glob.glob(path + "bore*")
     else:
         if new_illumNG:
-            np.savetxt("illumNG/epo.in", epo_tx, fmt="%4d")
+            np.savetxt("tmp/epo_mla_"+epos_in+".in", epo_in, fmt="%10.5f")
             print("illumNG call")
+            if not os.path.exists("illumNG/"):
+                print('*** create and copy required files to ./illumNG')
+                exit()
+            shutil.copy("tmp/epo_mla_"+epos_in+".in",'illumNG/epo.in')
             illumNG_call = subprocess.call(
                 ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
                 universal_newlines=True, cwd="illumNG/")
             for f in glob.glob("illumNG/bore*"):
-                shutil.move(f, auxdir+'/illumNG/grd/'+str(epo0)+"_"+f.split('/')[1])
+                shutil.move(f, auxdir+'/illumNG/grd/'+epos_in+"_"+f.split('/')[1])
         path = auxdir+'illumNG/grd/' #sph/' # use your path
-        illumNGf = glob.glob(path+str(epo0)+"_"+"bore*")
+        illumNGf = glob.glob(path+epos_in+"_"+"bore*")
 
     #else:
     # launch illumNG directly
