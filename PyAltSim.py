@@ -329,9 +329,9 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
             track.prepro(infil)
             epo_in.extend(track.ladata_df.ET_TX.values)
 
-        epo_in = np.array(epo_in)
+        epo_in = np.sort(np.array(epo_in))
         #print(epo_in)
-        #print(epo_in.shape)
+        print(epo_in.shape)
         #print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
         #print(np.sort(epo_in)[-1])
 
@@ -356,11 +356,11 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
             if not os.path.exists("illumNG/"):
                 print('*** create and copy required files to ./illumNG')
                 exit()
-            shutil.copy("tmp/epo_mla_"+epos_in+".in",'illumNG/epo.in')
+            shutil.copy("tmp/epo_mla_"+epos_in+".in",'../_MLA_Stefano/epo.in')
             illumNG_call = subprocess.call(
                 ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
-                universal_newlines=True, cwd="illumNG/")
-            for f in glob.glob("illumNG/bore*"):
+                universal_newlines=True, cwd="../_MLA_Stefano/") #illumNG/")
+            for f in glob.glob("../_MLA_Stefano/bore*"):
                 shutil.move(f, auxdir+'/illumNG/grd/'+epos_in+"_"+f.split('/')[1])
         path = auxdir+'illumNG/grd/' #sph/' # use your path
         illumNGf = glob.glob(path+epos_in+"_"+"bore*")
@@ -398,7 +398,12 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print(tracks)
     # print([tr.name for tr in tracks])
 
-    outdir_ = outdir + dirnam_in
+    if local:
+      outdir_ = outdir + dirnam_in
+    else:
+      outdir_ = dirnam_in
+
+    print(outdir_)
     if not os.path.exists(outdir_):
         os.mkdir(outdir_)
 

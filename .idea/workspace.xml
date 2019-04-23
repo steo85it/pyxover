@@ -2,14 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="46db7143-e90e-4fab-b566-9ddb7356eccf" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/AccumXov.py" beforeDir="false" afterPath="$PROJECT_DIR$/AccumXov.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/PyAltSim.py" beforeDir="false" afterPath="$PROJECT_DIR$/PyAltSim.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PyXover.py" beforeDir="false" afterPath="$PROJECT_DIR$/PyXover.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/geolocate_altimetry.py" beforeDir="false" afterPath="$PROJECT_DIR$/geolocate_altimetry.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ground_track.py" beforeDir="false" afterPath="$PROJECT_DIR$/ground_track.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/launch_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/launch_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/xov_setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/xov_setup.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -17,171 +10,80 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="FUSProjectUsageTrigger">
-    <session id="-1631384998">
-      <usages-collector id="statistics.lifecycle.project">
-        <counts>
-          <entry key="project.closed" value="7" />
-          <entry key="project.open.time.0" value="3" />
-          <entry key="project.open.time.1" value="2" />
-          <entry key="project.open.time.3" value="5" />
-          <entry key="project.open.time.4" value="5" />
-          <entry key="project.open.time.5" value="1" />
-          <entry key="project.opened" value="16" />
-        </counts>
-      </usages-collector>
-      <usages-collector id="statistics.file.extensions.open">
-        <counts>
-          <entry key="gitignore" value="1" />
-          <entry key="in" value="4" />
-          <entry key="pdf" value="2" />
-          <entry key="png" value="97" />
-          <entry key="py" value="90" />
-          <entry key="sh" value="2" />
-        </counts>
-      </usages-collector>
-      <usages-collector id="statistics.file.types.open">
-        <counts>
-          <entry key="Image" value="96" />
-          <entry key="PLAIN_TEXT" value="7" />
-          <entry key="Python" value="85" />
-          <entry key="Scratch" value="8" />
-        </counts>
-      </usages-collector>
-      <usages-collector id="statistics.file.extensions.edit">
-        <counts>
-          <entry key="Python Console" value="19" />
-          <entry key="py" value="43214" />
-          <entry key="txt" value="602" />
-        </counts>
-      </usages-collector>
-      <usages-collector id="statistics.file.types.edit">
-        <counts>
-          <entry key="PLAIN_TEXT" value="602" />
-          <entry key="Python" value="41671" />
-          <entry key="Scratch" value="1562" />
-        </counts>
-      </usages-collector>
-      <usages-collector id="statistics.vcs.git.usages">
-        <counts>
-          <entry key="git.branch.create.new" value="1" />
-        </counts>
-      </usages-collector>
-    </session>
-  </component>
   <component name="FileEditorManager">
-    <splitter split-orientation="horizontal" split-proportion="0.5">
-      <split-first>
-        <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/geolocate_altimetry.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="-22">
-                  <caret line="191" column="4" selection-start-line="191" selection-start-column="4" selection-end-line="191" selection-end-column="4" />
-                  <folding>
-                    <element signature="e#565#583#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/AccumXov.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="319">
-                  <caret line="92" column="18" selection-start-line="92" selection-start-column="18" selection-end-line="92" selection-end-column="18" />
-                  <folding>
-                    <element signature="e#159#168#0" expanded="true" />
-                    <marker date="1555414365586" expanded="true" signature="1838:1843" ph="..." />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="true">
-            <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/scratch_3.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="60">
-                  <caret line="4" column="21" selection-start-line="4" selection-start-column="21" selection-end-line="4" selection-end-column="21" />
-                  <folding>
-                    <marker date="1555539723807" expanded="true" signature="42:70" ph="..." />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes.png">
-              <provider selected="true" editor-type-id="images" />
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_1s.png">
-              <provider selected="true" editor-type-id="images" />
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/launch_test.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="114">
-                  <caret line="13" column="23" selection-start-line="13" selection-start-column="23" selection-end-line="13" selection-end-column="23" />
-                  <folding>
-                    <element signature="e#0#25#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes_old.png">
-              <provider selected="true" editor-type-id="images" />
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/xov_setup.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="248">
-                  <caret line="553" column="41" selection-start-line="553" selection-start-column="41" selection-end-line="553" selection-end-column="41" />
-                  <folding>
-                    <element signature="e#200#215#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/prOpt.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="225">
-                  <caret line="21" column="12" selection-start-line="21" selection-start-column="12" selection-end-line="21" selection-end-column="12" />
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/ground_track.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="338">
-                  <caret line="139" column="8" selection-start-line="139" selection-start-column="8" selection-end-line="139" selection-end-column="8" />
-                  <folding>
-                    <element signature="e#203#212#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-        </leaf>
-      </split-first>
-      <split-second>
-        <leaf>
-          <file pinned="false" current-in-tab="true">
-            <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes_old.png">
-              <provider selected="true" editor-type-id="images" />
-            </entry>
-          </file>
-        </leaf>
-      </split-second>
-    </splitter>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/geolocate_altimetry.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="240">
+              <caret line="206" column="45" lean-forward="true" selection-start-line="206" selection-start-column="45" selection-end-line="206" selection-end-column="45" />
+              <folding>
+                <element signature="e#565#583#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/AccumXov.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="319">
+              <caret line="92" selection-start-line="92" selection-end-line="92" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/launch_test.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="684">
+              <caret line="51" column="4" lean-forward="true" selection-start-line="51" selection-start-column="4" selection-end-line="51" selection-end-column="4" />
+              <folding>
+                <element signature="e#0#25#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/xov_setup.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="248">
+              <caret line="553" column="41" selection-start-line="553" selection-start-column="41" selection-end-line="553" selection-end-column="41" />
+              <folding>
+                <element signature="e#200#215#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/.gitignore">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/prOpt.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="315">
+              <caret line="21" column="12" selection-start-line="21" selection-start-column="12" selection-end-line="21" selection-end-column="12" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ground_track.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1860">
+              <caret line="139" column="8" selection-start-line="139" selection-start-column="8" selection-end-line="139" selection-end-column="8" />
+              <folding>
+                <element signature="e#203#212#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+    </leaf>
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -262,11 +164,11 @@
         <option value="$APPLICATION_CONFIG_DIR$/scratches/scratch_2.py" />
         <option value="$PROJECT_DIR$/ground_track.py" />
         <option value="$PROJECT_DIR$/prOpt.py" />
-        <option value="$PROJECT_DIR$/geolocate_altimetry.py" />
         <option value="$PROJECT_DIR$/PyAltSim.py" />
         <option value="$PROJECT_DIR$/xov_setup.py" />
         <option value="$PROJECT_DIR$/launch_test.py" />
         <option value="$APPLICATION_CONFIG_DIR$/scratches/scratch_3.py" />
+        <option value="$PROJECT_DIR$/geolocate_altimetry.py" />
       </list>
     </option>
   </component>
@@ -282,37 +184,25 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
             <path>
-              <item name="PyXover" type="b2602c69:ProjectViewProjectNode" />
-              <item name="PyXover" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="PyXover" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-            </path>
-            <path>
-              <item name="PyXover" type="b2602c69:ProjectViewProjectNode" />
-              <item name="Scratches and Consoles" type="1a2a3e82:ScratchProjectViewPane$MyProjectNode" />
-            </path>
-            <path>
-              <item name="PyXover" type="b2602c69:ProjectViewProjectNode" />
-              <item name="Scratches and Consoles" type="1a2a3e82:ScratchProjectViewPane$MyProjectNode" />
-              <item name="Scratches" type="d62648e6:ScratchProjectViewPane$MyRootNode" />
+              <item name="PyXover_sim" type="b2602c69:ProjectViewProjectNode" />
+              <item name="PyXover_sim" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="SearchEverywhereHistoryKey" value="&#9;FILE&#9;file:///home/sberton2/Works/NASA/Mercury_tides/PyXover/PyXover.py" />
     <property name="com.intellij.ide.scratch.LRUPopupBuilder$1/New Scratch File" value="Python" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../Trilogy/pycode/trilogy.py" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
@@ -436,8 +326,8 @@
     </configuration>
     <list>
       <item itemvalue="Python.AccumXov" />
-      <item itemvalue="Python.PyXover" />
       <item itemvalue="Python.PyAltSim" />
+      <item itemvalue="Python.PyXover" />
       <item itemvalue="Python.launch_test" />
       <item itemvalue="Python.scratch_2" />
     </list>
@@ -532,9 +422,8 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="28" width="1920" height="1018" extended-state="6" />
-    <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.15208334" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.15189873" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -553,9 +442,6 @@
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
     </layout>
-  </component>
-  <component name="VcsContentAnnotationSettings">
-    <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="CHECK_CODE_CLEANUP_BEFORE_PROJECT_COMMIT" value="true" />
@@ -583,7 +469,6 @@
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301062348_1301250750.png" />
     <entry file="file://$PROJECT_DIR$/unproject_coord.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="330">
@@ -591,12 +476,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/test_elev_prof.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301010000_1301042350.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/test_elev_prof.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/img/intersect_1301010000_1301042350.png" />
     <entry file="file://$PROJECT_DIR$/tmp/epo_mla_1301.in">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
@@ -607,106 +488,38 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.PyCharmCE2018.2/system/python_stubs/1424069135/sys.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="167">
-          <caret line="541" selection-start-line="541" selection-end-line="541" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/dR_vs_dist.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
+    <entry file="file://$USER_HOME$/.PyCharmCE2018.2/system/python_stubs/1424069135/sys.py" />
+    <entry file="file://$PROJECT_DIR$/tmp/dR_vs_dist.png" />
     <entry file="file://$PROJECT_DIR$/tmp/test_cub.png" />
-    <entry file="file://$PROJECT_DIR$/tmp/dist.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/dist.png" />
     <entry file="file://$PROJECT_DIR$/tmp/tst.png" />
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/dR_vs_dist_32_4.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/dR_vs_dist_0.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/dist_0.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_3.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_4.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_5.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_6.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_7.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_8.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_10.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_11.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_12.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_13.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_15.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_16.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_17.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_18.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_19.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_20.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_21.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_14.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_1.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_2.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_0.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/scratch_2.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="300">
-          <caret line="20" column="4" selection-start-line="20" selection-start-column="4" selection-end-line="20" selection-end-column="4" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mladata.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/dR_vs_dist_32_4.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/dR_vs_dist_0.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/dist_0.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_3.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_4.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_5.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_6.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_7.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_8.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_10.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_11.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_12.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_13.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_15.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_16.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_17.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_18.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_19.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_20.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_21.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_14.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_1.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_2.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/histo_dR_0.png" />
+    <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/scratch_2.py" />
+    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mladata.png" />
     <entry file="file://$PROJECT_DIR$/PyAltSim.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="143">
@@ -730,9 +543,30 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes_old.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_1s.png" />
+    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes.png" />
+    <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/scratch_3.py" />
+    <entry file="file://$PROJECT_DIR$/geolocate_altimetry.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="240">
+          <caret line="206" column="45" lean-forward="true" selection-start-line="206" selection-start-column="45" selection-end-line="206" selection-end-column="45" />
+          <folding>
+            <element signature="e#565#583#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prOpt.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="315">
+          <caret line="21" column="12" selection-start-line="21" selection-start-column="12" selection-end-line="21" selection-end-column="12" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/ground_track.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="338">
+        <state relative-caret-position="1860">
           <caret line="139" column="8" selection-start-line="139" selection-start-column="8" selection-end-line="139" selection-end-column="8" />
           <folding>
             <element signature="e#203#212#0" expanded="true" />
@@ -740,12 +574,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/prOpt.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="21" column="12" selection-start-line="21" selection-start-column="12" selection-end-line="21" selection-end-column="12" />
-        </state>
-      </provider>
+    <entry file="file://$PROJECT_DIR$/.gitignore">
+      <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/xov_setup.py">
       <provider selected="true" editor-type-id="text-editor">
@@ -757,52 +587,19 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/geolocate_altimetry.py">
+    <entry file="file://$PROJECT_DIR$/AccumXov.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-22">
-          <caret line="191" column="4" selection-start-line="191" selection-start-column="4" selection-end-line="191" selection-end-column="4" />
-          <folding>
-            <element signature="e#565#583#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="319">
+          <caret line="92" selection-start-line="92" selection-end-line="92" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/launch_test.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="114">
-          <caret line="13" column="23" selection-start-line="13" selection-start-column="23" selection-end-line="13" selection-end-column="23" />
+        <state relative-caret-position="684">
+          <caret line="51" column="4" lean-forward="true" selection-start-line="51" selection-start-column="4" selection-end-line="51" selection-end-column="4" />
           <folding>
             <element signature="e#0#25#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes_old.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_1s.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tmp/rms_vs_exp_mlatimes.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AccumXov.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="319">
-          <caret line="92" column="18" selection-start-line="92" selection-start-column="18" selection-end-line="92" selection-end-column="18" />
-          <folding>
-            <element signature="e#159#168#0" expanded="true" />
-            <marker date="1555414365586" expanded="true" signature="1838:1843" ph="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$APPLICATION_CONFIG_DIR$/scratches/scratch_3.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
-          <caret line="4" column="21" selection-start-line="4" selection-start-column="21" selection-end-line="4" selection-end-column="21" />
-          <folding>
-            <marker date="1555539723807" expanded="true" signature="42:70" ph="..." />
           </folding>
         </state>
       </provider>
