@@ -92,15 +92,15 @@ def load_combine(xov_pth,vecopts):
         data_pth += dataset
 
     allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + '*.TAB'))
-    print(allFiles)
+    #print(allFiles)
     tracknames = [fil.split('.')[0][-10:] for fil in allFiles]
     misy = ['11', '12', '13', '14', '15']
     misycmb = [x + '_' + y for x in tracknames for y in misy]
-    print(misycmb)
+    #print(misycmb)
 
-    print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
+    #print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
     xov_list = [xov_.load(xov_pth + 'xov_' + x + '.pkl') for x in misycmb]
-    print(len(xov_list))
+    #print(len(xov_list))
 
 
     orb_unique = [x.xovers['orbA'].tolist() for x in xov_list if len(x.xovers) > 0]
@@ -109,7 +109,7 @@ def load_combine(xov_pth,vecopts):
 
     xov_cmb = xov(vecopts)
     xov_cmb.combine(xov_list)
-    print(len(xov_cmb.xovers))
+    #print(len(xov_cmb.xovers))
 
     return xov_cmb
 
