@@ -256,17 +256,19 @@ def prepare_Amat(xov, vecopts, par_list=''):
 def solve(xovi_amat,dataset):
     # Solve
     sol4_pars = []
-    sol4_pars = ['1301011544_dR/dA',
-                 '1301042351_dR/dA']  # 1301011544_dR/dRl','1301042351_dR/dRl','1301011544_dR/dPt','1301042351_dR/dPt'] #,'1301011544_dR/dC','1301042351_dR/dC','1301011544_dR/dR','1301042351_dR/dR'] #,'1301012343_dR/dA','1301011544_dR/dC','1301011544_dR/dR'] #,'dR/dh2']
+    # sol4_pars = ['1301011544_dR/dA',
+    #              '1301042351_dR/dA']  # 1301011544_dR/dRl','1301042351_dR/dRl','1301011544_dR/dPt','1301042351_dR/dPt'] #,'1301011544_dR/dC','1301042351_dR/dC','1301011544_dR/dR','1301042351_dR/dR'] #,'1301012343_dR/dA','1301011544_dR/dC','1301011544_dR/dR'] #,'dR/dh2']
     # print([xovi_amat.parNames[p] for p in sol4_pars])
     if sol4_pars != []:
         print('pars', [xovi_amat.parNames[p] for p in sol4_pars])
         spA_sol4 = xovi_amat.spA[:,[xovi_amat.parNames[p] for p in sol4_pars]]
+        # set b=0 for rows not involving chosen set of parameters
+        nnz_per_row = spA_sol4.getnnz(axis=1)
+        xovi_amat.b[np.where(nnz_per_row == 0)[0]] = 0
     else:
         spA_sol4 = xovi_amat.spA
 
     print('dense A', spA_sol4.todense())
-    # exit()
     #tst = np.array([1.e-3 for i in range(len(xovi_amat.b))])
     #xovi_amat.b = tst
     print('B', xovi_amat.b)

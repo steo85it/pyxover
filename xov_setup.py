@@ -174,8 +174,6 @@ class xov:
             param.update(parOrb)
             param.update(parGlo)
 
-        print(param)
-
         if (debug):
             print("get_elev", arg, ii, jj, ind_A, ind_B, par)
             #print(ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[np.round(ind_A)])
@@ -245,11 +243,13 @@ class xov:
 
             # TODO extend beyond first xov in list
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
+            # print('xyintB',self.tracks)
+            # print(len(xyintB))
+            # print(len(xyintB[0]))
             if (bool(re.search('_pB?$', par))):
                 xyintB[0][1] += xyintB[0][3] * diff_step
             elif (bool(re.search('_mB?$', par))):
                 xyintB[0][1] -= xyintB[0][3] * diff_step
-            # print(xyintA[0][1])
         else:
             ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['ET_BC', 'R', 'genID']].values
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
@@ -754,6 +754,7 @@ class xov:
         out_elev = []
 
         results = [self.get_partials(l) for l in par_suffix]  # seq
+        # out_elev.append([x for x in results if x is not None])
         out_elev.append(results)
 
         # Setup pandas containing all plus/minus dR_A/B and differentiate: dR/dp_A = ((R_B - R_A)_Aplus - (R_B - R_A)_Aminus)/2*diffstep
@@ -885,15 +886,17 @@ class xov:
         out_finloc = np.vstack(self.get_xOver_fine(xovers_df[['ladata_idA']].values.astype(int).flatten(),
                                                     xovers_df[['ladata_idB']].values.astype(int).flatten(), l))  # seq
 
-        if len(xovers_df) != len(out_finloc[0]) and debug:
-            print("*** It will crash!! Len xov=", len(xovers_df)," - len partials=", len(out_finloc[0]), "for part ", l)
+        if len(xovers_df) != len(out_finloc[0]):
+            if debug:
+                print("*** It will crash!! Len xov=", len(xovers_df),
+                      " - len partials=", len(out_finloc[0]), "for part ", l)
+            return np.empty([1, 2])
+        else:
+            elev_parder = self.get_elev(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
 
-        elev_parder = self.get_elev(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
+            if debug:
+                print("elev_parder")
+                print(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
+                print(elev_parder)
 
-        if debug:
-            print("elev_parder")
-            print(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
-            print(elev_parder)
-
-
-        return np.reshape(elev_parder[-2:], (-1, 2))
+            return np.reshape(elev_parder[-2:], (-1, 2))

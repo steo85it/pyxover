@@ -299,7 +299,7 @@ class gtrack:
 
         self.param = param
         # check if track has to be perturbed (else only apply global pars)
-        if self.name in pert_tracks:
+        if self.name in pert_tracks or pert_tracks == []:
             _ = {}
             # for k, v in pert_cloop.items():
             [_.update(v) for k, v in pert_cloop.items()]
