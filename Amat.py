@@ -61,18 +61,23 @@ class Amat:
     # reorder and fill to sparse A and prepare for lsqr solution
     def xovpart_reorder(self):
 
-        xovers_df = self.xov.xovers
-        parOrb_xy = sorted(self.xov.parOrb_xy)
+        xovers_df = self.xov.xovers.reset_index(drop=True)
+        parOrb_xy = list(set([part.split('_')[0] for part in sorted(self.xov.parOrb_xy)]))
+        parOrb_xy = list(set([part for part in sorted(self.xov.parOrb_xy)]))
+        print(parOrb_xy)
         parGlo_xy = sorted(self.xov.parGlo_xy)
         xovers_df.fillna(0,inplace=True)
 
         # Retrieve all orbits involved in xovers
         orb_unique = self.xov.tracks
 
-        OrbParFull = [x + '_' + y for x in orb_unique for y in parOrb_xy]
-        Amat_col = OrbParFull + parGlo_xy
+        # select cols
+        OrbParFull = [x + '_' + y.split('_')[0] for x in orb_unique for y in parOrb_xy]
+        Amat_col = list(set(OrbParFull)) + parGlo_xy
+        print(Amat_col)
 
         dict_ = dict(zip(Amat_col, range(len(Amat_col))))
+        print(dict_)
         self.parNames = dict_
 
         # Retrieve and re-organize partials w.r.t. observations, parameters and orbits
@@ -92,20 +97,28 @@ class Amat:
                 partder = xovers_df[par_xy_loc].values
                 orb_loc = xovers_df[orb].values
                 #
-                col = np.array(list(map(dict_.get, [str(x) + '_' + str(y) for x in orb_loc for y in par_xy_loc])))
+                col = np.array(
+                    list(map(dict_.get, [str(x) + '_' + str(y).split('_')[0] for x in orb_loc for y in par_xy_loc])))
             else:
                 par_xy_loc = list(filter(rex.search, parGlo_xy))
                 partder = xovers_df[par_xy_loc].values
                 #
                 col = np.tile(list(map(dict_.get, [str(y) for y in par_xy_loc])), len(xovers_df.xOvID.values))
 
-            row = np.repeat(xovers_df.xOvID.values, len(par_xy_loc))
+            # row = np.repeat(xovers_df.xOvID.values, len(par_xy_loc))
+            row = np.repeat(xovers_df.index.values, len(par_xy_loc))
             val = partder.flatten()
+            # negate value of orbit partial for orbB (dR = R_A - R_B) ... but works worse... never mind
+            # if rex == re.compile(r'^dR/.*_B$'):
+            #     print('val',val)
+            #     val *= 1.
+            #     print(val)
 
-            if (debug):
+            if True:
                 print("analyze df")
+                par_xy_loc = list(set([str(y).split('_')[0] for y in par_xy_loc]))
                 print(par_xy_loc)
-                print(xovers_df[par_xy_loc])
+                #  print(xovers_df[par_xy_loc])
 
                 if (orb != ''):
                     print(orb_loc)
@@ -113,6 +126,7 @@ class Amat:
                 else:
                     print([str(y) for y in par_xy_loc])
                 print(np.column_stack((row, col, val)))
+            # exit()
 
             csr.append(csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(orb_loc), len(Amat_col))))
 

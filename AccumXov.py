@@ -26,7 +26,7 @@ from scipy.sparse.linalg import lsqr
 
 # mylib
 # from mapcount import mapcount
-from prOpt import debug, outdir, local
+from prOpt import debug, outdir, local, sim
 from xov_setup import xov
 from Amat import Amat
 
@@ -92,13 +92,13 @@ def load_combine(xov_pth,vecopts):
         data_pth += dataset
 
     allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + '*.TAB'))
-    #print(allFiles)
+    # print(allFiles)
     tracknames = [fil.split('.')[0][-10:] for fil in allFiles]
     misy = ['11', '12', '13', '14', '15']
     misycmb = [x + '_' + y for x in tracknames for y in misy]
-    #print(misycmb)
+    # print(misycmb)
 
-    #print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
+    # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
     xov_list = [xov_.load(xov_pth + 'xov_' + x + '.pkl') for x in misycmb]
     #print(len(xov_list))
 
@@ -142,7 +142,8 @@ def get_stats(xov_lst,resval,amplval):
             xov.xovers = xov.xovers[xov.xovers.dist_max < 5]
             print(len(xov.xovers[xov.xovers.dist_max > 5]),
                   'xovers removed by dist from obs > 5km')
-            mean_dR, std_dR = xov.remove_outliers('dR')
+            if sim == 0:
+                mean_dR, std_dR = xov.remove_outliers('dR')
 
             #print(xov.xovers[['dist_max','dist_avg','dist_minA','dist_minB','dist_min_avg','dR']])
             # checks = ['dist_minA','dist_minB','dist_max','dist_min_avg','dist_avg','dR']
@@ -154,7 +155,7 @@ def get_stats(xov_lst,resval,amplval):
             # print('dR:',xov.xovers['dR'].mean(axis=0),xov.xovers['dR'].max(axis=0),xov.xovers['dR'].min(axis=0))
             # print(xov.xovers[['dist_max','dR']].abs())
 
-            if True:
+            if debug:
                 # the histogram of the data
                 num_bins = 1000
                 n, bins, patches = plt.hist(xov.xovers.dR, bins='auto', density=True, facecolor='blue', alpha=0.5)
@@ -188,6 +189,10 @@ def get_stats(xov_lst,resval,amplval):
             dR_RMS.append(np.sqrt(np.mean(_[~np.isnan(_)], axis=0)))
             # print(np.count_nonzero(np.isnan(xov.xovers.dR.values**2)))
 
+            print("xov_xovers_value_count:")
+            print(xov.xovers['orbA'].value_counts()[:5])
+            print(xov.xovers['orbB'].value_counts()[:5])
+
     #print(len(resval),len(amplval),len(dR_RMS))
     df_ = pd.DataFrame(list(zip(resval,amplval,dR_RMS)), columns=['res','ampl','RMS'])
     #print(df_)
@@ -205,43 +210,68 @@ def get_stats(xov_lst,resval,amplval):
     fig.savefig('tmp/tst.png')
     plt.clf()
     plt.close()
+
     #ax0.set_title('variable, symmetric error')
     #print(dR_avg,dR_std,dR_max,dR_min)
 
-def prepare_Amat(vecopts,par_list=''):
+
+def prepare_Amat(xov, vecopts, par_list=''):
+    xovtmp = xov.xovers.copy()
+
+    # xov.xovers = xov.xovers[xov.xovers.orbA=='1301042351']
+    # xov.xovers.append(xovtmp[xovtmp.orbA=='1301011544'])
+    # xov.xovers.append(xovtmp[xovtmp.orbB=='1301042351'])
+    # xov.xovers.append(xovtmp[xovtmp.orbB=='1301011544'])
+
+    # exit()
+
+    # remove data if xover distance from measurements larger than 5km (interpolation error)
+    # plus remove outliers with median method
+    xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+    xov.xovers = xov.xovers[xov.xovers.dist_max < 5]
+    if sim == 0:
+        mean_dR, std_dR = xov.remove_outliers('dR')
+
     # simplify and downsize
     if par_list=='':
-        par_list = xov_cmb.xovers.columns.filter(regex='^dR.*$')
+        par_list = xov.xovers.columns.filter(regex='^dR.*$')
 
-    df_orig = xov_cmb.xovers[par_list]
-    df_float = xov_cmb.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore', downcast='float')
+    df_orig = xov.xovers[par_list]
+    df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore', downcast='float')
 
-    xov_cmb.xovers = pd.concat([df_orig, df_float], axis=1)
-    xov_cmb.xovers.info(memory_usage='deep')
+    xov.xovers = pd.concat([df_orig, df_float], axis=1)
+    xov.xovers.info(memory_usage='deep')
 
-    if (True):
+    if debug:
         pd.set_option('display.max_columns', 500)
-        print(xov_cmb.xovers)
+        print(xov.xovers)
 
     xovi_amat = Amat(vecopts)
-    xovi_amat.setup(xov_cmb)
+    xovi_amat.setup(xov)
+
+    xov.xovers = xovtmp.copy()
 
     return xovi_amat
 
 def solve(xovi_amat,dataset):
     # Solve
-    print(len(xovi_amat.parNames))
     sol4_pars = []
-    sol4_pars = ['1301010742_dR/dA_A','1301011542_dR/dA_B','dR/dRA','dR/dh2']
-    #print([xovi_amat.parNames[p] for p in sol4_pars])
+    # sol4_pars = ['1301011544_dR/dA',
+    #              '1301042351_dR/dA']  # 1301011544_dR/dRl','1301042351_dR/dRl','1301011544_dR/dPt','1301042351_dR/dPt'] #,'1301011544_dR/dC','1301042351_dR/dC','1301011544_dR/dR','1301042351_dR/dR'] #,'1301012343_dR/dA','1301011544_dR/dC','1301011544_dR/dR'] #,'dR/dh2']
+    # print([xovi_amat.parNames[p] for p in sol4_pars])
     if sol4_pars != []:
+        print('pars', [xovi_amat.parNames[p] for p in sol4_pars])
         spA_sol4 = xovi_amat.spA[:,[xovi_amat.parNames[p] for p in sol4_pars]]
+        # set b=0 for rows not involving chosen set of parameters
+        nnz_per_row = spA_sol4.getnnz(axis=1)
+        xovi_amat.b[np.where(nnz_per_row == 0)[0]] = 0
     else:
         spA_sol4 = xovi_amat.spA
 
-    #print('dense A', spA_sol4.todense())
+    print('dense A', spA_sol4.todense())
     #tst = np.array([1.e-3 for i in range(len(xovi_amat.b))])
     #xovi_amat.b = tst
+    print('B', xovi_amat.b)
     print('max B', xovi_amat.b.max(),xovi_amat.b.mean())
 
     #print(np.linalg.inv((spA_sol4.transpose()*spA_sol4).todense()))
@@ -259,7 +289,7 @@ def solve(xovi_amat,dataset):
     # Save to pkl
     xovi_amat.save(outdir + 'Abmat_' + dataset.split('/')[0] + '.pkl')
 
-    print('sparse density = ' + str(xovi_amat.spA.density))
+    #print('sparse density = ' + str(xovi_amat.spA.density))
 
     if (debug):  # check if correctly saved
         tmp = Amat(vecopts)
@@ -284,19 +314,21 @@ def main(arg):
     for ds in datasets:
         data_pth, vecopts = prepro(ds)  # "test/"  # 'small_test/' #'1301/' #)
         print(data_pth)
-        #exit()
 
-        xov_cmb = load_combine(data_pth,vecopts)
+        xov_cmb = load_combine(data_pth, vecopts)
+
+        # solve dataset
+        par_list = ['orbA', 'orbB', 'xOvID']
+        xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
+        solve(xovi_amat, ds)
+
+        # append to list for stats
         xov_cmb_lst.append(xov_cmb)
 
     print(len(xov_cmb_lst[0].xovers))
 
     get_stats(xov_cmb_lst,resval,amplval)
 
-    #par_list = ['orbA', 'orbB', 'xOvID']
-    #xovi_amat = prepare_Amat(xov_cmb,vecopts,par_list)
-
-    #solve(xovi_amat, dataset)
 
 if __name__ == '__main__':
 

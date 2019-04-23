@@ -19,7 +19,7 @@ import astro_trans as astr
 import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
-from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo
+from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
@@ -298,6 +298,17 @@ class gtrack:
             param = {'': 1.}
 
         self.param = param
+        # check if track has to be perturbed (else only apply global pars)
+        if self.name in pert_tracks or pert_tracks == []:
+            _ = {}
+            # for k, v in pert_cloop.items():
+            [_.update(v) for k, v in pert_cloop.items()]
+            self.pert_cloop = _.copy()
+        else:
+            self.pert_cloop = pert_cloop['glo'].copy()
+        print('check pert', self.name, self.pert_cloop)
+
+        # exit()
 
         if hasattr(self, 'SpObj'):
             SpObj = self.SpObj
@@ -320,6 +331,8 @@ class gtrack:
             pool.join()
         else:
             results = [self.get_geoloc_part(i) for i in param.items()]  # seq
+
+        # exit()
 
         # store ladata_df for update
         ladata_df = self.ladata_df.copy()
@@ -382,9 +395,9 @@ class gtrack:
         # update object attribute df
         self.ladata_df = ladata_df.copy()
 
-        if (debug):
+        if debug:
             print(ladata_df)
-            # exit()
+            exit()
 
         endGeoloc = time.time()
         if (debug):
@@ -415,12 +428,12 @@ class gtrack:
             print('self.vecopts[PARTDER]', self.vecopts['PARTDER'])
             print(diff_step)
 
-        tmp_pertPar = self.pertPar.copy()
-
         # Read self.vecopts[partder] and apply perturbation
-        # if needed
-        tmp_pertPar[self.vecopts['PARTDER']] = diff_step
+        # if needed (for partials AND for closed loop sim)
+        tmp_pertPar = self.pertpar(diff_step)
 
+        # tmp_pertPar = {**tmp_pertPar, **self.pert_cloop}
+        # print('norm',tmp_pertPar, diff_step)
         # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
         geoloc_out, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
 
@@ -430,11 +443,11 @@ class gtrack:
         # Compute partial derivatives if required
         if (self.vecopts['PARTDER'] is not ''):
 
-            try:
-                tmp_pertPar[self.vecopts['PARTDER']] *= -1.
-            except:  # if perturbation is a vector
-                tmp_pertPar[self.vecopts['PARTDER']] = [-1. * x for x in tmp_pertPar[self.vecopts['PARTDER']]]
+            # Read self.vecopts[partder] and apply perturbation
+            # if needed (for partials AND for closed loop sim)
+            tmp_pertPar = self.pertpar(diff_step, -1.)
 
+            # print('part',tmp_pertPar, diff_step)
             geoloc_min, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
             partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
 
@@ -460,6 +473,27 @@ class gtrack:
             self.ladata_df = tmp_df
 
             return geoloc_out
+
+    def pertpar(self, diff_step, sign=1.):
+        tmp_pertPar = self.pertPar.copy()
+        tmp_pertPar[self.vecopts['PARTDER']] = diff_step
+        if sign != 1:
+            try:
+                tmp_pertPar[self.vecopts['PARTDER']] *= sign
+            except:  # if perturbation is a vector
+                tmp_pertPar[self.vecopts['PARTDER']] = [sign * x for x in tmp_pertPar[self.vecopts['PARTDER']]]
+
+        # add pert for closed loop sim
+        for key in self.pert_cloop:
+            if key in tmp_pertPar:
+                # print(tmp_pertPar[key], self.pert_cloop[key])
+                if hasattr(tmp_pertPar[key], "__len__"):
+                    tmp_pertPar[key] = [sum(pair) for pair in zip(tmp_pertPar[key], self.pert_cloop[key])]
+                else:
+                    tmp_pertPar[key] += self.pert_cloop[key]
+                # print(key, len(tmp_pertPar[key]),tmp_pertPar[key])
+        # exit()
+        return tmp_pertPar
 
     # Compute stereographic projection of measurements location
     # and feed it to ladata_df

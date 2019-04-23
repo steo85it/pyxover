@@ -95,8 +95,8 @@ class xov:
             orb_unique = self.xovers['orbA'].tolist()
             orb_unique.extend(self.xovers['orbB'].tolist())
             self.tracks = list(set(orb_unique))
-            print(self.tracks)
-            print(orb_unique)
+            # print(self.tracks)
+            # print(orb_unique)
 
             self.parOrb_xy = xov_list[0].parOrb_xy
             self.parGlo_xy = xov_list[0].parGlo_xy
@@ -114,6 +114,7 @@ class xov:
     def load(self, filnam):
 
         try:
+            print(filnam)
             pklfile = open(filnam, 'rb')
             self = pickle.load(pklfile)
             pklfile.close()
@@ -129,6 +130,7 @@ class xov:
 
     # remove outliers using the median method
     def remove_outliers(self, data_col):
+
         orig_len = len(self.xovers)
         # print(self.xovers.loc[:,data_col].median(axis=0))
         sorted = np.sort(abs(self.xovers.loc[:, data_col].values - self.xovers.loc[:, data_col].median(axis=0)))
@@ -168,7 +170,7 @@ class xov:
 
         # Prepare
         param = self.param
-        if (partials):
+        if partials:
             param.update(parOrb)
             param.update(parGlo)
 
@@ -191,6 +193,7 @@ class xov:
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
 
             # TODO extend beyond first xov in list
+            # print(param[par.partition('_')[0]], diff_step)
             if (bool(re.search('_pA?$', par))):
                 xyintA[0][1] += xyintA[0][3] * diff_step
             elif (bool(re.search('_mA?$', par))):
@@ -240,11 +243,13 @@ class xov:
 
             # TODO extend beyond first xov in list
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
+            # print('xyintB',self.tracks)
+            # print(len(xyintB))
+            # print(len(xyintB[0]))
             if (bool(re.search('_pB?$', par))):
                 xyintB[0][1] += xyintB[0][3] * diff_step
             elif (bool(re.search('_mB?$', par))):
                 xyintB[0][1] -= xyintB[0][3] * diff_step
-            # print(xyintA[0][1])
         else:
             ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['ET_BC', 'R', 'genID']].values
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
@@ -749,6 +754,7 @@ class xov:
         out_elev = []
 
         results = [self.get_partials(l) for l in par_suffix]  # seq
+        # out_elev.append([x for x in results if x is not None])
         out_elev.append(results)
 
         # Setup pandas containing all plus/minus dR_A/B and differentiate: dR/dp_A = ((R_B - R_A)_Aplus - (R_B - R_A)_Aminus)/2*diffstep
@@ -757,7 +763,7 @@ class xov:
         par_xy = parOrb_xy + parGlo_xy
 
         # parxy_df=pd.DataFrame(np.diff(np.diff(np.hstack(out_elev))[:,::2])[:,::2]/list(param.values())[1:],columns=par_xy)
-        if (debug):
+        if debug:
             print(par_xy)
             # print(ladata_df)
             # exit()
@@ -774,7 +780,7 @@ class xov:
                 DelR_orb = np.array(DelR)[:,:2*len(parOrb)]
                 DelR_orb /=(2. * np.tile(list(param.values())[1:len(parOrb) + 1], 2))
                 DelR_glo = np.array(DelR)[:,2*len(parOrb):]
-                DelR_glo/= (2.* np.array([np.linalg.norm(x) for x in list(param.values())][len(parGlo) + 1:]) )
+                DelR_glo /= (2. * np.array([np.linalg.norm(x) for x in list(param.values())][len(parOrb) + 1:]))
 
                 # Concatenate xOvers and partials w.r.t. each parameter
                 xovers_df = pd.concat(
@@ -824,6 +830,9 @@ class xov:
 
             # Update xovtmp as attribute for partials
             self.xovtmp = xovers_df
+
+            # print(xovers_df)
+            # exit()
 
         else:
             print("Observations in ", self.tracks," excluded for inconsistent number of partials")
@@ -877,15 +886,17 @@ class xov:
         out_finloc = np.vstack(self.get_xOver_fine(xovers_df[['ladata_idA']].values.astype(int).flatten(),
                                                     xovers_df[['ladata_idB']].values.astype(int).flatten(), l))  # seq
 
-        if len(xovers_df) != len(out_finloc[0]) and debug:
-            print("*** It will crash!! Len xov=", len(xovers_df)," - len partials=", len(out_finloc[0]), "for part ", l)
+        if len(xovers_df) != len(out_finloc[0]):
+            if debug:
+                print("*** It will crash!! Len xov=", len(xovers_df),
+                      " - len partials=", len(out_finloc[0]), "for part ", l)
+            return np.empty([1, 2])
+        else:
+            elev_parder = self.get_elev(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
 
-        elev_parder = self.get_elev(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
+            if debug:
+                print("elev_parder")
+                print(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
+                print(elev_parder)
 
-        if debug:
-            print("elev_parder")
-            print(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
-            print(elev_parder)
-
-
-        return np.reshape(elev_parder[-2:], (-1, 2))
+            return np.reshape(elev_parder[-2:], (-1, 2))

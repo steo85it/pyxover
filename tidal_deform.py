@@ -31,14 +31,24 @@ import astro_trans as astr
 # mylib
 from prOpt import SpInterp
 
+
 ##############################################
 
-h2 = 0.8  # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
-l2 = 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
-# https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
+def set_const():
+    from prOpt import pert_cloop
 
-GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
-Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
+    h2 = 0.8  # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
+    l2 = 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
+    # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
+
+    GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
+    Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
+
+    # # check if h2 is perturbed
+    if 'dh2' in pert_cloop['glo'].keys():
+        h2 += pert_cloop['glo']['dh2']
+
+    return h2, l2, GMsun, Gm
 
 
 def sind(x):
@@ -56,6 +66,8 @@ def cosz(TH, LO, latSUN, lonSUN):
 
 # @profile
 def tidal_deform(vecopts, xyz_bf, ET, SpObj):
+    h2, l2, GMsun, Gm = set_const()
+
     plarad = vecopts['PLANETRADIUS'] * 1.e3
     gSurf = Gm / np.square(plarad)  # surface g of body
 
@@ -142,5 +154,6 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj):
 
 def tidepart_h2(vecopts, xyz_bf, ET, SpObj):
     # print(  'vecopts check',  vecopts['PARTDER'])
+    h2, l2, GMsun, Gm = set_const()
 
     return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj)[0]) / h2, 0., 0.
