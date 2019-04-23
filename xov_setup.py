@@ -130,6 +130,7 @@ class xov:
 
     # remove outliers using the median method
     def remove_outliers(self, data_col):
+
         orig_len = len(self.xovers)
         # print(self.xovers.loc[:,data_col].median(axis=0))
         sorted = np.sort(abs(self.xovers.loc[:, data_col].values - self.xovers.loc[:, data_col].median(axis=0)))
@@ -169,9 +170,11 @@ class xov:
 
         # Prepare
         param = self.param
-        if (partials):
+        if partials:
             param.update(parOrb)
             param.update(parGlo)
+
+        print(param)
 
         if (debug):
             print("get_elev", arg, ii, jj, ind_A, ind_B, par)
@@ -192,6 +195,7 @@ class xov:
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
 
             # TODO extend beyond first xov in list
+            # print(param[par.partition('_')[0]], diff_step)
             if (bool(re.search('_pA?$', par))):
                 xyintA[0][1] += xyintA[0][3] * diff_step
             elif (bool(re.search('_mA?$', par))):
@@ -758,7 +762,7 @@ class xov:
         par_xy = parOrb_xy + parGlo_xy
 
         # parxy_df=pd.DataFrame(np.diff(np.diff(np.hstack(out_elev))[:,::2])[:,::2]/list(param.values())[1:],columns=par_xy)
-        if (debug):
+        if debug:
             print(par_xy)
             # print(ladata_df)
             # exit()
@@ -775,7 +779,7 @@ class xov:
                 DelR_orb = np.array(DelR)[:,:2*len(parOrb)]
                 DelR_orb /=(2. * np.tile(list(param.values())[1:len(parOrb) + 1], 2))
                 DelR_glo = np.array(DelR)[:,2*len(parOrb):]
-                DelR_glo/= (2.* np.array([np.linalg.norm(x) for x in list(param.values())][len(parGlo) + 1:]) )
+                DelR_glo /= (2. * np.array([np.linalg.norm(x) for x in list(param.values())][len(parOrb) + 1:]))
 
                 # Concatenate xOvers and partials w.r.t. each parameter
                 xovers_df = pd.concat(
@@ -825,6 +829,9 @@ class xov:
 
             # Update xovtmp as attribute for partials
             self.xovtmp = xovers_df
+
+            # print(xovers_df)
+            # exit()
 
         else:
             print("Observations in ", self.tracks," excluded for inconsistent number of partials")
