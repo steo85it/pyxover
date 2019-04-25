@@ -45,24 +45,24 @@ if __name__ == '__main__':
         args_pyxover = [(9, k, l, 'MLASCIRDR') for (k, l) in zip(indirnams, outdirnams)]
 
     # add option to spread over the cluster
-    idx_tst = [i for i in range(len(cmb))]
-    if len(sys.argv) > 1 and local == 0:
-
-        ie = sys.argv[1]
-        if data_sim == 'sim':
-            print("Running PyAltSim with ", args_pyaltsim[ie], "...")
-            PyAltSim.main(args_pyaltsim[ie])
-        print("Running PyXover with ", args_pyxover[ie], "...")
-        PyXover.main(args_pyxover[ie])
-        exit()
-
-    else:
-        for ie in range(len(args_pyxover)):
-            # if data_sim == 'sim':
-            #     print("Running PyAltSim with ", args_pyaltsim[ie], "...")
-            #     PyAltSim.main(args_pyaltsim[ie])
-            print("Running PyXover with ", args_pyxover[ie], "...")
-            PyXover.main(args_pyxover[ie])
+    # idx_tst = [i for i in range(len(cmb))]
+    # if len(sys.argv) > 1 and local == 0:
+    #
+    #     ie = sys.argv[1]
+    #     if data_sim == 'sim':
+    #         print("Running PyAltSim with ", args_pyaltsim[ie], "...")
+    #         PyAltSim.main(args_pyaltsim[ie])
+    #     print("Running PyXover with ", args_pyxover[ie], "...")
+    #     PyXover.main(args_pyxover[ie])
+    #     exit()
+    #
+    # else:
+    #     for ie in range(len(args_pyxover)):
+    #         # if data_sim == 'sim':
+    #         #     print("Running PyAltSim with ", args_pyaltsim[ie], "...")
+    #         #     PyAltSim.main(args_pyaltsim[ie])
+    #         print("Running PyXover with ", args_pyxover[ie], "...")
+    #         PyXover.main(args_pyxover[ie])
 
     # alternative ordering of operations
     # [PyAltSim.main(x) for x in args_pyaltsim]

@@ -26,7 +26,7 @@ from scipy.sparse.linalg import lsqr
 
 # mylib
 # from mapcount import mapcount
-from prOpt import debug, outdir, local, sim
+from prOpt import debug, outdir, local, sim, parOrb, parGlo
 from xov_setup import xov
 from Amat import Amat
 
@@ -70,7 +70,7 @@ def prepro(dataset):
                'PARTDER': ''}
     return data_pth, vecopts
 
-def load_combine(xov_pth,vecopts):
+def load_combine(xov_pth,vecopts,dataset='sim'):
     # -------------------------------
     # Amat setup
     # -------------------------------
@@ -87,8 +87,10 @@ def load_combine(xov_pth,vecopts):
     else:
         data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
         #### TODO needs to be updated automat if sim
-        # dataset = '1301' #'SIM_1301/mlatimes/0res_1amp_tst' #
-        dataset = 'SIM_1301/mlatimes/0res_1amp_tst' #
+        if dataset=='real':
+            dataset = '1301' #'SIM_1301/mlatimes/0res_1amp_tst' #
+        else:
+            dataset = 'SIM_1301/mlatimes/0res_1amp_tst' #
         data_pth += dataset
 
     allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + '*.TAB'))
@@ -255,7 +257,15 @@ def prepare_Amat(xov, vecopts, par_list=''):
 
 def solve(xovi_amat,dataset):
     # Solve
-    sol4_pars = []
+    # select subset of parameters
+    sol4_orb = [] #['1301011544','1301042351']
+    sol4_orbpar = ['dR/dA']
+    sol4_glo = []
+
+    sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
+
+    xovi_amat.sol4_pars = sol4_pars
+
     # sol4_pars = ['1301011544_dR/dA',
     #              '1301042351_dR/dA']  # 1301011544_dR/dRl','1301042351_dR/dRl','1301011544_dR/dPt','1301042351_dR/dPt'] #,'1301011544_dR/dC','1301042351_dR/dC','1301011544_dR/dR','1301042351_dR/dR'] #,'1301012343_dR/dA','1301011544_dR/dC','1301011544_dR/dR'] #,'dR/dh2']
     # print([xovi_amat.parNames[p] for p in sol4_pars])
@@ -268,23 +278,19 @@ def solve(xovi_amat,dataset):
     else:
         spA_sol4 = xovi_amat.spA
 
-    print('dense A', spA_sol4.todense())
-    #tst = np.array([1.e-3 for i in range(len(xovi_amat.b))])
-    #xovi_amat.b = tst
-    print('B', xovi_amat.b)
-    print('max B', xovi_amat.b.max(),xovi_amat.b.mean())
-
-    #print(np.linalg.inv((spA_sol4.transpose()*spA_sol4).todense()))
-    print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
-    # Compute the covariance matrix
-
-    print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
-    # print(xovi_amat.spA.shape)
-    # print(xovi_amat.b.shape)
-    xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=1000,atol=1.e-9,btol=1.e-9,calc_var=True)
-
     print("sol4pars:", sol4_pars)
-    print('xovi_amat.sol',xovi_amat.sol)
+
+    if debug and len(sol4_pars)<50:
+        print('dense A', spA_sol4.todense())
+        print('B', xovi_amat.b)
+        print('max B', xovi_amat.b.max(),xovi_amat.b.mean())
+        # Compute the covariance matrix
+        print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
+        # compute sol
+        print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
+
+    # Compute LSQR solution
+    xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=1000,atol=1.e-9,btol=1.e-9,calc_var=True)
 
     # Save to pkl
     xovi_amat.save(outdir + 'Abmat_' + dataset.split('/')[0] + '.pkl')
@@ -295,6 +301,73 @@ def solve(xovi_amat,dataset):
         tmp = Amat(vecopts)
         tmp = tmp.load(outdir + 'Amat_' + dataset.split('/')[0] + '.pkl')
         print(tmp.A)
+
+
+def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
+    if sol4_orb == []:
+        sol4_orb = set([i.split('_')[0] for i in track_names])
+        sol4_orb = [x for x in sol4_orb if x.isdigit()]
+
+    if sol4_orbpar == []:
+        sol4_orbpar = list(parOrb.keys())
+
+    sol4_orb = [x + '_' + y for x in sol4_orb for y in sol4_orbpar]
+
+    if sol4_glo == []:
+        sol4_glo = list(parGlo.keys())
+    sol4_pars = sol4_orb + sol4_glo
+
+    print('solving for:',sol4_pars)
+
+    return sol4_pars
+
+
+def analyze_sol(xovi_amat,xov):
+    # print('xovi_amat.sol',xovi_amat.sol)
+
+    _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)), np.reshape(xovi_amat.sol[-1], (-1, 1)) ))
+    df_ = pd.DataFrame(_, columns=['key', 'sol', 'std'])
+    df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
+    df_.drop('key', axis=1, inplace=True)
+    # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
+    df_ = df_.replace(to_replace='None', value=np.nan).dropna()
+    table = pd.pivot_table(df_, values=['sol','std'], index=['orb'], columns=['par'], aggfunc=np.sum)
+    print(table)
+
+    xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+    xov.xovers = xov.xovers[xov.xovers.dist_max < 5]
+    _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
+    table['num_obs'] = _
+
+    df1 = xov.xovers.groupby(['orbA'], sort=False)['dist_max'].max().reset_index()
+    df2 = xov.xovers.groupby(['orbB'], sort=False)['dist_max'].max().reset_index()
+    merged_Frame = pd.merge(df1, df2, left_on='orbA', right_on='orbB',how='outer')
+    merged_Frame['orbA'] = merged_Frame['orbA'].fillna(merged_Frame['orbB'])
+    merged_Frame['orbB'] = merged_Frame['orbB'].fillna(merged_Frame['orbA'])
+    merged_Frame['dist_max'] = merged_Frame[['dist_max_x','dist_max_y']].mean(axis=1)
+    merged_Frame = merged_Frame[['orbA','dist_max']]
+    merged_Frame.columns = ['orb','dist_max']
+
+    table.columns = ['_'.join(col).strip() for col in table.columns.values]
+    table = pd.merge(table.reset_index(),merged_Frame,on='orb')
+    # print([isinstance(i,tuple) for i in table.columns])
+    # print(['_'.join(i) for i in table.columns if isinstance(i,tuple)])
+    print(table)
+
+    table[['sol_dR/dA','std_dR/dA','num_obs']] = table[['sol_dR/dA','std_dR/dA','num_obs_']].apply(pd.to_numeric, errors='coerce')
+    table['sol_dR/dA'] = table['sol_dR/dA'] + 100
+    #df_ = pd.DataFrame(pivoted.to_records())
+    fig, ax = plt.subplots()
+    #table = pd.DataFrame(table.to_records())
+    table.plot(x='dist_max', y='sol_dR/dA', yerr='std_dR/dA', style='x')
+
+    # fig, ax = plt.subplots()
+    # print(df_.dtypes)
+    # df_[['orb','sol']] = df_[['orb','sol']].apply(pd.to_numeric, errors='coerce')
+    # print(df_.dtypes)
+    # df_.groupby('par').plot(x='orb', y='sol', legend=False)
+
+    plt.savefig('tmp/plotsol.png')
 
 def main(arg):
     print(arg)
@@ -321,6 +394,7 @@ def main(arg):
         par_list = ['orbA', 'orbB', 'xOvID']
         xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
         solve(xovi_amat, ds)
+        analyze_sol(xovi_amat,xov_cmb)
 
         # append to list for stats
         xov_cmb_lst.append(xov_cmb)
@@ -328,7 +402,6 @@ def main(arg):
     print(len(xov_cmb_lst[0].xovers))
 
     get_stats(xov_cmb_lst,resval,amplval)
-
 
 if __name__ == '__main__':
 

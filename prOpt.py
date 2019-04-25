@@ -13,12 +13,10 @@ parallel = 1
 # compute partials?
 partials = 1
 # std perturbations for finite differences
-parOrb = {'dA': 100., 'dC': 100.,
-          'dR': 20.}  # 'dRl':20e-6, 'dPt':20e-6} #, 'dA':100., 'dC':100., 'dR':20., } #, 'dRl':20e-6, 'dPt':20e-6}
+parOrb = {'dA': 100.}  # 'dRl':20e-6, 'dPt':20e-6} #, 'dA':100., 'dC':100., 'dR':20., } #, 'dRl':20e-6, 'dPt':20e-6}
 parGlo = {}  # 'dL':0.01,'dRA':[0.0001, 0.000, 0.000]} #,'dh2': 1.} #, 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dL':0.01,'dh2': 1.}
 # ... and closed loop sims
-pert_cloop_orb = {
-    'dA': 100.}  # 'dRl':20e-6, 'dPt':60e-6} #'dA':100., 'dC':100., 'dR':20.} #, 'dC':100., 'dR':2.} #, 'dRl':20e-6, 'dPt':20e-6}
+pert_cloop_orb = {'dA': 100.}  # 'dRl':20e-6, 'dPt':60e-6} #'dA':100., 'dC':100., 'dR':20.} #, 'dC':100., 'dR':2.} #, 'dRl':20e-6, 'dPt':20e-6}
 pert_cloop_glo = {}  # 'dL':0.01,'dh2': .2} #'dRA':[0.0005, 0.000, 0.000]}#, 'dC':100., 'dR':20., 'dRl':20e-6, 'dPt':20e-6}
 pert_cloop = {'orb': pert_cloop_orb, 'glo': pert_cloop_glo}
 
