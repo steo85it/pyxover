@@ -1,0 +1,76 @@
+Running PyAltSim with  (1, 0, '/att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/', '1201') ...
+dirnam_in /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/
+epos_in 1201
+Process launched on 7 CPUs
+illumng dir /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1201/
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1201/boresight_hitflag.hit
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1201/boresight_position.x
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1201/boresight_position.y
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1201/boresight_time.xyzd
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1201/boresight_range.rng
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1201/boresight_position.z
+/att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/
+Simulated observations  /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201011023.TAB already exists. Skip.
+Simulated observations  /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201012211.TAB already exists. Skip.
+Simulated observations  /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201020957.TAB already exists. Skip.
+Simulated observations  /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201022145.TAB already exists. Skip.
+Simulated observations  /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201030930.TAB already exists. Skip.
+Simulated observations  /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201032119.TAB already exists. Skip.
+Simulated observations  /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201040906.TAB already exists. Skip.
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201042053.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201050839.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201052027.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201060812.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201062003.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201070747.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201071935.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201080722.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201081909.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201090654.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201091844.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201100629.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201101818.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201110604.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201111750.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201120538.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201121725.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201130513.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201131659.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201140445.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201141632.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201150419.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201151607.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201160355.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201161542.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201170329.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201171515.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201180302.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201181449.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201190236.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201191424.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201200211.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201201358.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201210147.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201211335.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201220121.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201221307.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201230054.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201231241.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201240028.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201241215.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201250002.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201251150.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201252337.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201261124.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201262311.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201271058.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201272246.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201281033.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201282220.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201291007.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201292154.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201300942.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201302129.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201310916.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_12/mlatimes/0res_1amp_tst/MLASIMRDR1201312103.TAB
+Running PyXover with  ('-1', 'SIM_12/mlatimes/0res_1amp_tst/', 'sim_mlatimes/0res_1amp/', 'MLASIMRDR') ...

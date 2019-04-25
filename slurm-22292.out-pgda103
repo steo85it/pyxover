@@ -1,0 +1,529 @@
+Running PyAltSim with  (1, 0, '/att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/', '1304') ...
+dirnam_in /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/
+epos_in 1304
+Process launched on 7 CPUs
+illumng dir /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1304/
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1304/boresight_hitflag.hit
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1304/boresight_position.x
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1304/boresight_position.y
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1304/boresight_time.xyzd
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1304/boresight_range.rng
+Processing /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_1304/boresight_position.z
+/att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304010007.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304010807.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304011606.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304020016.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304020815.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304021606.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304030007.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304030816.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304031607.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304040007.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304040807.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304041607.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304050007.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304050807.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304051607.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304060007.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304060807.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304061607.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304070007.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304070807.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304071608.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304080008.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304080807.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304081608.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304090008.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304090808.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304091608.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304100008.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304100808.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304101608.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304110008.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304110809.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304111610.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304120009.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304120809.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304121610.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304130010.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304130811.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304131610.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304140010.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304140811.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304141612.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304150011.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304150811.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304151612.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304160012.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304160812.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304161612.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304170013.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304170813.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304171613.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304180013.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304180814.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304181614.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304190014.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304190814.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304191614.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304200015.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304200815.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304201615.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304210015.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304210815.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304211615.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304220016.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304220816.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304221616.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304230016.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304230816.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304231616.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304240016.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304240817.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304241617.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304250017.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304250817.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304251617.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304260017.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304260817.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304261618.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304270018.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304270818.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304271618.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304280018.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304280825.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304281624.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304290018.TAB
+### geoloc: Max number of iterations reached!
+max resid: 215199251942.64355 # > tol: 1
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### altsim: Max number of iterations reached!
+it = 99
+max resid: nan # > tol: 0
+offnadir max nan
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304290819.TAB
+### geoloc: Max number of iterations reached!
+max resid: 0.001220703125 # > tol: 1
+### geoloc: Max number of iterations reached!
+max resid: 19040487788968.375 # > tol: 1
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### altsim: Max number of iterations reached!
+it = 99
+max resid: nan # > tol: 0
+offnadir max nan
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304291619.TAB
+### geoloc: Max number of iterations reached!
+max resid: 850259554970.4673 # > tol: 1
+### geoloc: Max number of iterations reached!
+max resid: 8962302920318.94 # > tol: 1
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### geoloc: Max number of iterations reached!
+max resid: nan # > tol: 0
+### altsim: Max number of iterations reached!
+it = 99
+max resid: nan # > tol: 0
+offnadir max nan
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304300019.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304300819.TAB
+Simulated observations written to /att/nobackup/sberton2/MLA/data/SIM_13/mlatimes/0res_1amp_tst/MLASIMRDR1304301619.TAB
+Running PyXover with  ('-1', 'SIM_13/mlatimes/0res_1amp_tst/', 'sim_mlatimes/0res_1amp/', 'MLASIMRDR') ...
