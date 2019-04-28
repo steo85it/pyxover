@@ -31,6 +31,7 @@ from prOpt import new_xov, vecopts
 from ground_track import gtrack
 from xov_setup import xov
 
+
 # from util import lflatten
 ########################################
 # # test space
@@ -57,7 +58,8 @@ from xov_setup import xov
 #
 # exit()
 
-def launch_xov(args): # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
+def launch_xov(
+        args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
     track_id = args[0]
     # print(track_id)
     comb = args[1]
@@ -74,7 +76,7 @@ def launch_xov(args): # pool.map functions have to stay on top level (not inside
             #    trackA = track_id
             #    trackA = tracklist[str(track_id)]
             trackA = gtrack(vecopts)
-            trackA = trackA.load(outdir + 'gtrack_' + track_id + '.pkl')
+            trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
             if not trackA == None and len(trackA.ladata_df) > 0:
 
                 xov_tmp = track_id
@@ -93,7 +95,7 @@ def launch_xov(args): # pool.map functions have to stay on top level (not inside
                         #        trackB = track_id
                         #        trackB = tracklist[str(gtrackB)]
                         trackB = gtrack(vecopts)
-                        trackB = trackB.load(outdir + 'gtrack_' + gtrackB + '.pkl')
+                        trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
                         if not trackB == None and len(trackB.ladata_df) > 0:
                             xov_tmp.setup(pd.concat([trackA.ladata_df, trackB.ladata_df]).reset_index(drop=True))
                     # except:
@@ -105,7 +107,7 @@ def launch_xov(args): # pool.map functions have to stay on top level (not inside
                 if [s for s in comb if track_id in s[0]] and len(xov_tmp.xovers) > 0:
                     xov_tmp.save(outdir + 'xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
                     # print(xov_tmp.xovers)
-                    #trackxov_list.append(gtrackA)
+                    # trackxov_list.append(gtrackA)
                     print('Xov for ' + track_id + ' processed and written to ' + outdir + 'xov_' + gtrackA + '_' +
                           misycmb[par][1] + '.pkl !')
                     return gtrackA
@@ -117,12 +119,13 @@ def launch_xov(args): # pool.map functions have to stay on top level (not inside
         else:
 
             #      track = track.load('out/xov_'+gtrackA+'.pkl')
-            print('Xov for ' + track_id + ' already exists in ' + outdir + 'xov_' + track_id + '.pkl !')
+            print('Xov for ' + track_id + ' already exists in ' + outdir + 'xov_' + track_id + '_' +
+                          misycmb[par][1] + '.pkl !')
 
 
 ########################################
 def main(args):
-    from prOpt import parallel, SpInterp, new_gtrack, outdir, auxdir, local, vecopts
+    from prOpt import parallel, outdir, auxdir, local, vecopts
 
     print(args)
 
@@ -136,8 +139,8 @@ def main(args):
 
     # locate data
     if local == 0:
-        data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-        dataset = ''  # 'test/' #'small_test/' #'1301/' #
+        data_pth = '/att/nobackup/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+        dataset = indir_in  # 'test/' #'small_test/' #'1301/' #
         data_pth += dataset
 
         # load kernels
@@ -145,9 +148,9 @@ def main(args):
     else:
         data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'
         # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-        dataset = indir_in #'SIM_1301/mlatimes/0res_35amp_tst/' #'1301' #SIM_1301/sphere/' #35-1024-1-8-5/'  #35-1024-32-4-5/' #  'small_dataset/' #''# "test1/"  #''  #
+        dataset = indir_in  # 'SIM_1301/mlatimes/0res_35amp_tst/' #'1301' #SIM_1301/sphere/' #35-1024-1-8-5/'  #35-1024-32-4-5/' #  'small_dataset/' #''# "test1/"  #''  #
         data_pth += dataset
-        outdir += outdir_in #'sim_mlatimes/0res_35amp/'
+        # outdir += outdir_in #'sim_mlatimes/0res_35amp/'
 
         # load kernels
         spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
@@ -176,7 +179,7 @@ def main(args):
     #            'INERTIALCENTER': 'SSB',
     #            'PARTDER': ''}
 
-    #out = spice.getfov(vecopts['INSTID'][0], 1)
+    # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
     vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
@@ -190,9 +193,8 @@ def main(args):
     par = int(cmb_y_in)
     misy = ['11', '12', '13', '14', '15']
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
-    print(misycmb)
-    print(par, misycmb[par])
-    # exit()
+    # print(misycmb)
+    # print(par, misycmb[par])
 
     # -------------------------------
     # File reading and ground-tracks computation
@@ -204,101 +206,22 @@ def main(args):
     # for orbitA and orbitB.
     # Geoloc, if active, will process all files in A+B. Xov will only process combinations
     # of orbits from A and B
-    allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
-    allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
+    # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
+    # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
+    allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
+    allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
 
     if misycmb[par][0] == misycmb[par][1]:
         allFiles = allFilesA
     else:
         allFiles = allFilesA + allFilesB
 
-    print(allFiles)
+    # print(allFiles)
 
     endInit = time.time()
     print(
-        '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str((endInit - startInit) / 60.) + ' min -----')
-
-    startPrepro = time.time()
-
-    # Prepare list of tracks to geolocalise
-    tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles]
-
-    if new_gtrack:
-        # epo_in=[]
-        for track_id, infil in zip(tracknames, allFiles):
-            track = track_id
-            track = gtrack(vecopts)
-            #try:
-            track.prepro(infil)
-            #except:
-            #    print('Issue in preprocessing for '+track_id)
-            # epo_in.extend(track.ladata_df.ET_TX.values)
-
-        # epo_in = np.array(epo_in)
-        # print(epo_in)
-        # print(epo_in.shape)
-        # print(np.sort(epo_in)[0])
-        # print(np.sort(epo_in)[-1])
-        # np.savetxt("tmp/epo_mla_1301.in", epo_in, fmt="%10.5f")
-        # exit()
-
-
-        if SpInterp == 3:
-            print('Orbit and attitude data loaded for years 20' + str(misycmb[par][0]) + ' and 20' + str(misycmb[par][1]))
-            endPrepro = time.time()
-            print('----- Runtime Init= ' + str(endPrepro - startPrepro) + ' sec -----' + str(
-                (endPrepro - startPrepro) / 60.) + ' min -----')
-            exit()
-
-    endPrepro = time.time()
-    print('----- Runtime Prepro= ' + str(endPrepro - startPrepro) + ' sec -----' + str(
-        (endPrepro - startPrepro) / 60.) + ' min -----')
-
-    startGeoloc = time.time()
-
-
-    def launch_gtrack(args):
-        track_id, infil = args
-        track = gtrack(vecopts)
-
-        if new_gtrack:
-            if os.path.isfile(outdir + track_id + '.pkl') == False or new_gtrack == 2:
-
-                if not os.path.exists(outdir):
-                    os.mkdir(outdir)
-
-                #try:
-                track.setup(infil)
-                #
-                # print("track#:", track.name)
-                # print("max diff R",abs(track.ladata_df.loc[:,'R']-track.df_input.loc[:,'altitude']).max())
-                # print("max diff LON", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.df_input.loc[:, 'geoc_long']).max())))
-                # print("max diff LAT", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
-                # print("max elev sim", abs(track.df_input.loc[:,'altitude']).max())
-                #exit()
-                track.save(outdir + track_id + '.pkl')
-                print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + outdir + track_id + '.pkl !')
-            #except:
-                #    print('failed to process ' + track_id)
-            else:
-                # track = track.load('out/'+track_id+'.pkl')
-                print('Gtrack file ' + outdir + track_id + '.pkl already existed!')
-
-
-    # loop over all gtracks
-    if parallel and False:
-        # print((mp.cpu_count() - 1))
-        args = zip(tracknames, allFiles)
-        pool = mp.Pool(processes=ncores)  # mp.cpu_count())
-        _ = pool.map(launch_gtrack, args)  # parallel
-        pool.close()
-        pool.join()
-    else:
-        _ = [launch_gtrack(args) for args in zip(tracknames, allFiles)]  # seq
-
-    endGeoloc = time.time()
-    print('----- Runtime Geoloc= ' + str(endGeoloc - startGeoloc) + ' sec -----' + str(
-        (endGeoloc - startGeoloc) / 60.) + ' min -----')
+        '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
+            (endInit - startInit) / 60.) + ' min -----')
 
     # -------------------------------
     # Xovers setup
@@ -307,7 +230,7 @@ def main(args):
     startXov2 = time.time()
 
     xovnames = ['xov_' + fil.split('.')[0][-10:] for fil in allFiles]
-    #trackxov_list = []
+    # trackxov_list = []
 
     # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
     # comb=np.array(list(itert.combinations([fil.split('.')[0][-10:] for fil in allFiles], 2))) # this computes comb btw ALL files
@@ -328,10 +251,10 @@ def main(args):
     #         except:
     #             print('Failed to load' + outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
 
-    args = ((fil.split('.')[0][-10:], comb, misycmb, par, outdir) for fil in allFiles)
+    args = ((fil.split('.')[0][-10:], comb, misycmb, par, outdir + outdir_in) for fil in allFiles)
 
     # loop over all gtracks
-    #parallel = 1
+    # parallel = 1
     if parallel:
         # filnams_loop = [fil.split('.')[0][-10:] for fil in allFiles]
         # print(filnams_loop)
@@ -347,12 +270,13 @@ def main(args):
 
     endXov2 = time.time()
     print(
-        '----- Runtime Xov2 = ' + str(endXov2 - startXov2) + ' sec -----' + str((endXov2 - startXov2) / 60.) + ' min -----')
+        '----- Runtime Xov2 = ' + str(endXov2 - startXov2) + ' sec -----' + str(
+            (endXov2 - startXov2) / 60.) + ' min -----')
+
 
 ##############################################
 # locate data
 if __name__ == '__main__':
-
     import sys
 
     ##############################################
