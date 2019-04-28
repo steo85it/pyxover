@@ -19,7 +19,7 @@ import astro_trans as astr
 import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
-from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks
+from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
@@ -288,7 +288,7 @@ class gtrack:
         startGeoloc = time.time()
 
         # Prepare
-        if (partials):
+        if (partials and sim==0):
             param = {'': 1.}
             param.update(parOrb)
             param.update(parGlo)
@@ -306,7 +306,9 @@ class gtrack:
             self.pert_cloop = _.copy()
         else:
             self.pert_cloop = pert_cloop['glo'].copy()
-        print('check pert', self.name, self.pert_cloop)
+        
+        if debug:
+            print('check pert', self.name, self.pert_cloop)
 
         # exit()
 
@@ -520,7 +522,7 @@ class gtrack:
 
         # prepare column names
         col_sim = np.array(['X_stgprj', 'Y_stgprj'])
-        if (partials):
+        if (partials and sim==0):
             col_der = np.hstack([['X_stgprj_' + par + '_m', 'Y_stgprj_' + par + '_m', 'X_stgprj_' + par + '_p',
                                   'Y_stgprj_' + par + '_p'] for par in list(param.keys())[1:]])
             # concatenate stgprj to ladata_df

@@ -4,3 +4,4 @@ mem/
 tmp/
 illumNG/
 __pycache__/
+slurm*

@@ -161,21 +161,26 @@ class sim_gtrack(gtrack):
             # st = time.time()
             gmt = 1
             if gmt:
-                np.savetxt('tmp/gmt.in', list(zip(lontmp, lattmp)))
-
+                gmt_in = 'gmt_'+self.name+'.in'
+                if os.path.exists('tmp/'+gmt_in):
+                    os.remove('tmp/'+gmt_in)
+                np.savetxt('tmp/'+gmt_in, list(zip(lontmp, lattmp)))
+                dem = auxdir+'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+                #'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
                 if local == 0:
                     r_dem = subprocess.check_output(
-                        ['grdtrack', 'gmt.in',
-                         '-G../../MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                        ['grdtrack', gmt_in,
+                         '-G'+dem],
                         universal_newlines=True, cwd='tmp')
                     r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
                     # np.savetxt('gmt_'+self.name+'.out', r_dem)
                 else:
                     # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
                     r_dem = subprocess.check_output(
-                        ['grdtrack', 'gmt.in', '-GMSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+                        ['grdtrack', gmt_in, '-G'+dem],
                         universal_newlines=True, cwd='tmp')
                     r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+
             # else:
             #     print(lontmp)
             #     print(lontmp+180.)
@@ -275,7 +280,7 @@ def prepro_ilmNG(illumNGf):
 def sim_track(args):
     track, df, i, outdir_ = args
     #print(track.name)
-    if os.path.isfile(outdir_+'MLASIMRDR'+track.name+'.TAB') == False and int(track.name)<1301310758:
+    if os.path.isfile(outdir_+'MLASIMRDR'+track.name+'.TAB') == False:
         track.setup(df[df['orbID']==i])
         track.rdr_df.to_csv(outdir_+'MLASIMRDR'+track.name+'.TAB', index=False, sep=',',na_rep='NaN')
         print('Simulated observations written to',outdir_+'MLASIMRDR'+track.name+'.TAB')
@@ -290,6 +295,7 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
     epos_in = list(arg)[3]
 
     print('dirnam_in', dirnam_in)
+    print('epos_in', epos_in)
 
     if local == 0:
         data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
@@ -318,7 +324,7 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
     if new_illumNG and True:
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
-        # print(allFiles)
+        print(allFiles)
 
         # Prepare list of tracks
         tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles]
@@ -329,11 +335,11 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
             track.prepro(infil)
             epo_in.extend(track.ladata_df.ET_TX.values)
 
-        epo_in = np.array(epo_in)
-        # print(epo_in)
-        # print(epo_in.shape)
-        # print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
-        # print(np.sort(epo_in)[-1])
+        epo_in = np.sort(np.array(epo_in))
+        #print(epo_in)
+        #print(epo_in.shape)
+        #print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
+        #print(np.sort(epo_in)[-1])
 
     else:
         epo0 = 410270400  # get as input parameter
@@ -341,7 +347,7 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
         subpnts = 10
         epo_tx = np.array([epo0 + i / subpnts for i in range(86400 * subpnts)])
 
-    # pass to illumNG	
+    # pass to illumNG
     if local:
         if new_illumNG:
             np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_tx, fmt="%4d")
@@ -353,17 +359,21 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
         if new_illumNG:
             np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_in, fmt="%10.5f")
             print("illumNG call")
+            exit()
             if not os.path.exists("illumNG/"):
                 print('*** create and copy required files to ./illumNG')
                 exit()
-            shutil.copy("tmp/epo_mla_" + epos_in + ".in", 'illumNG/epo.in')
+
+            shutil.copy("tmp/epo_mla_"+epos_in+".in",'../_MLA_Stefano/epo.in')
             illumNG_call = subprocess.call(
                 ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
-                universal_newlines=True, cwd="illumNG/")
-            for f in glob.glob("illumNG/bore*"):
-                shutil.move(f, auxdir + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
-        path = auxdir+'illumNG/grd/' #sph/' # use your path
-        illumNGf = glob.glob(path + epos_in + "_" + "bore*")
+                universal_newlines=True, cwd="../_MLA_Stefano/") #illumNG/")
+            for f in glob.glob("../_MLA_Stefano/bore*"):
+                shutil.move(f, auxdir+'/illumNG/grd/'+epos_in+"_"+f.split('/')[1])
+
+        path = auxdir+'illumng/mlatimes_'+epos_in+'/' #sph/' # use your path
+        print('illumng dir', path)
+        illumNGf = glob.glob(path + "/bore*")
 
     #else:
     # launch illumNG directly
@@ -398,11 +408,17 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print(tracks)
     # print([tr.name for tr in tracks])
 
-    outdir_ = outdir + dirnam_in
+    if local:
+        outdir_ = outdir + dirnam_in
+    else:
+        outdir_ = dirnam_in
+
+    print(outdir_)
     if not os.path.exists(outdir_):
-        os.mkdir(outdir_)
+        os.makedirs(outdir_, exist_ok=True)
 
     # loop over all gtracks
+    print('orbs',list(df.groupby('orbID').groups.keys()))
     args = ((sim_gtrack(vecopts, i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
 
     if parallel and False: # incompatible with grdtrack call ...
