@@ -288,7 +288,7 @@ class gtrack:
         startGeoloc = time.time()
 
         # Prepare
-        if (partials and sim==0):
+        if partials:
             param = {'': 1.}
             param.update(parOrb)
             param.update(parGlo)
@@ -522,7 +522,7 @@ class gtrack:
 
         # prepare column names
         col_sim = np.array(['X_stgprj', 'Y_stgprj'])
-        if (partials and sim==0):
+        if partials:
             col_der = np.hstack([['X_stgprj_' + par + '_m', 'Y_stgprj_' + par + '_m', 'X_stgprj_' + par + '_p',
                                   'Y_stgprj_' + par + '_p'] for par in list(param.keys())[1:]])
             # concatenate stgprj to ladata_df

@@ -259,21 +259,22 @@ def prepro_ilmNG(illumNGf):
 	df_ = pd.concat(li, axis=1)
 	df_=df_.apply(pd.to_numeric, errors='coerce')
 	#print(df_.rng.min())
-	df_ = df_[df_.rng < 1200]
+	
+	df_ = df_[df_.rng < 1600]
 	df_=df_.rename(columns={"xyzd": "epo_tx"})
 	#print(df_.dtypes)
 
 	df_['diff'] = df_.epo_tx.diff().fillna(0)
 	#print(df_[df_['diff'] > 1].index.values)
-	arcbnd = [0]
+	arcbnd = [df_.index.min()]
 	# new arc if observations separated by more than 1h
 	arcbnd.extend(df_[df_['diff'] > 3600].index.values)
 	arcbnd.extend([df_.index.max() + 1])
 	#print(arcbnd)
 	df_['orbID'] = 0
 	for i,j in zip(arcbnd,arcbnd[1:]):
-		orbid = (datetime.datetime(2000, 1, 1, 12, 0) + datetime.timedelta(seconds=df_.loc[i, 'epo_tx'])).strftime("%y%m%d%H%M")
-		df_.loc[df_.index.isin(np.arange(i, j)), 'orbID'] = orbid
+	     orbid = (datetime.datetime(2000, 1, 1, 12, 0) + datetime.timedelta(seconds=df_.loc[i, 'epo_tx'])).strftime("%y%m%d%H%M")
+	     df_.loc[df_.index.isin(np.arange(i, j)), 'orbID'] = orbid
 
 	return df_
 
@@ -378,6 +379,7 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
 	#else:
 	# launch illumNG directly
 	df = prepro_ilmNG(illumNGf)
+	print('illumNGf',illumNGf)
 
 	if apply_topo:
 		# read and interpolate DEM
@@ -418,6 +420,7 @@ def main(arg): #dirnam_in = 'tst', ampl_in=35,res_in=0):
 		os.makedirs(outdir_, exist_ok=True)
 
 	# loop over all gtracks
+	print('orbs',list(df.groupby('orbID').groups.keys()))
 	args = ((sim_gtrack(vecopts, i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
 
 	if parallel and False: # incompatible with grdtrack call ...

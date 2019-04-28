@@ -9,9 +9,8 @@
 # Created: 18-Feb-2019
 import warnings
 
-from scipy.interpolate import RectBivariateSpline
-
 import perlin2d
+from scipy.interpolate import RectBivariateSpline
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import numpy as np
@@ -29,6 +28,7 @@ from intersection import intersection
 from prOpt import debug, partials, OrbRep, parGlo, parOrb
 from util import lflatten
 
+
 class xov:
 
     def __init__(self, vecopts):
@@ -40,7 +40,7 @@ class xov:
 
     def setup(self, df):
 
-        self.ladata_df = df.drop('chn',axis=1)
+        self.ladata_df = df.drop('chn', axis=1)
         self.msrm_sampl = 100
 
         self.tracks = df.orbID.unique()
@@ -73,10 +73,10 @@ class xov:
 
             # Update general df
             self.xovers = self.xovers.append(self.xovtmp)
-            self.xovers.reset_index(drop=True,inplace=True)
-            self.xovers['xOvID']=self.xovers.index
+            self.xovers.reset_index(drop=True, inplace=True)
+            self.xovers['xOvID'] = self.xovers.index
 
-        #print(self.xovers)
+        # print(self.xovers)
 
     def combine(self, xov_list):
 
@@ -85,7 +85,7 @@ class xov:
 
         # concatenate df and reindex
         # print([x.xovers for x in xov_list])
-        if len(xov_list)>0:
+        if len(xov_list) > 0:
             self.xovers = pd.concat([x.xovers for x in xov_list])  # , sort=True)
             self.xovers = self.xovers.reset_index(drop=True)
             self.xovers['xOvID'] = self.xovers.index
@@ -149,22 +149,22 @@ class xov:
         # print(self.xovers)
         return self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0)
 
-
     # Compute elevation R at crossover points by interpolation
     # (should be put in a function and looped over -
     # also, check the higher order interp)
-    def get_elev(self, arg, ii, jj, ind_A, ind_B, par='', x=0,y=0):
+    def get_elev(self, arg, ii, jj, ind_A, ind_B, par='', x=0, y=0):
 
         ladata_df = self.ladata_df
         msrm_sampl = self.msrm_sampl
 
-        #print(ii, jj, ind_A, ind_B)
+        # print(ii, jj, ind_A, ind_B)
         try:
             ind_A_int = np.atleast_1d(ind_A.astype(int))
             ind_B_int = np.atleast_1d(ind_B.astype(int))
         except:
-            #print("flattening lists")
-            ii, jj, ind_A, ind_B = np.array(lflatten(ii)), np.array(lflatten(jj)), np.array(lflatten(ind_A)), np.array(lflatten(ind_B))
+            # print("flattening lists")
+            ii, jj, ind_A, ind_B = np.array(lflatten(ii)), np.array(lflatten(jj)), np.array(lflatten(ind_A)), np.array(
+                lflatten(ind_B))
             ind_A_int = np.atleast_1d(ind_A.astype(int))
             ind_B_int = np.atleast_1d(ind_B.astype(int))
 
@@ -176,20 +176,20 @@ class xov:
 
         if (debug):
             print("get_elev", arg, ii, jj, ind_A, ind_B, par)
-            #print(ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[np.round(ind_A)])
-            #print(ladata_df.loc[ladata_df['orbID'] == arg[1]].iloc[np.round(ind_B)])
+            # print(ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[np.round(ind_A)])
+            # print(ladata_df.loc[ladata_df['orbID'] == arg[1]].iloc[np.round(ind_B)])
         # print(par, param[par.partition('_')[0]] )
 
         # Apply elevation correction (if computing partial derivative)
         if (bool(re.search('_?A$', par)) or bool(re.search('_[p,m]$', par))):  # is not ''):
             ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][np.hstack(['ET_BC', 'R', 'genID', ladata_df.filter(
-                    regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
+                regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
-            #print(xyintA[0][1])
-            #exit()
-            t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k],0] for k in range(0, len(ind_A_int))]
+            # print(xyintA[0][1])
+            # exit()
+            t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
 
-            #print(xyintA[0][1], xyintA[0][2])
+            # print(xyintA[0][1], xyintA[0][2])
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
 
             # TODO extend beyond first xov in list
@@ -203,11 +203,11 @@ class xov:
 
             ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['ET_BC', 'R', 'genID']].values
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
-            t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k],0] for k in range(0, len(ind_A_int))]
+            t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
 
         fA_interp = [interpolate.interp1d(t_ldA[k], xyintA[k][1], kind='cubic') for k in range(0, len(ind_A_int))]
 
-        tA_interp = [interpolate.interp1d(xyintA[k][2],t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
+        tA_interp = [interpolate.interp1d(xyintA[k][2], t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
         R_A = [fA_interp[k](tA_interp[k](ind_A.item(k))) for k in range(0, ind_A.size)]
 
         if debug:
@@ -218,15 +218,15 @@ class xov:
             z_dense_smooth_rbf = zfun_smooth_rbf(x,
                                                  y)  # not really a function, but a callable class instance
             print('R_A_Rbf (supp more accurate)', z_dense_smooth_rbf)
-            print('R_A_1d',R_A)
+            print('R_A_1d', R_A)
 
         # old way TODO
-            #ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['genID','R']].values
-            #xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ladata_df.shape[0])].T for k in ind_A_int]
-        #f_interp = [interpolate.interp1d(xyintA[k][0], xyintA[k][1], kind='linear') for k in range(0, len(ind_A_int))]
-        #R_A = [f_interp[k](ind_A.item(k)) for k in range(0, ind_A.size)]
+        # ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['genID','R']].values
+        # xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ladata_df.shape[0])].T for k in ind_A_int]
+        # f_interp = [interpolate.interp1d(xyintA[k][0], xyintA[k][1], kind='linear') for k in range(0, len(ind_A_int))]
+        # R_A = [f_interp[k](ind_A.item(k)) for k in range(0, ind_A.size)]
 
-        #alternative method TODO
+        # alternative method TODO
         # ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj', 'Y_stgprj','R']].values
         # #print(x,y,ldA_[ind_A_int,:2])
         # tck = interpolate.bisplrep(ldA_[:,0], ldA_[:,1], ldA_[:,2], s=0)
@@ -236,10 +236,10 @@ class xov:
         # Apply elevation correction
         if (bool(re.search('_?B$', par)) or bool(re.search('_[p,m]$', par))):  # is not ''):
             ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][np.hstack(['ET_BC', 'R', 'genID', ladata_df.filter(
-                    regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
+                regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
-                     k in ind_B_int]
-            t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_),0] for k in range(0, len(ind_B_int))]
+                      k in ind_B_int]
+            t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_), 0] for k in range(0, len(ind_B_int))]
 
             # TODO extend beyond first xov in list
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
@@ -253,8 +253,8 @@ class xov:
         else:
             ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['ET_BC', 'R', 'genID']].values
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
-                     k in ind_B_int]
-            t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_),0] for k in range(0, len(ind_B_int))]
+                      k in ind_B_int]
+            t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_), 0] for k in range(0, len(ind_B_int))]
 
         fB_interp = [interpolate.interp1d(t_ldB[k], xyintB[k][1], kind='cubic') for k in range(0, len(ind_B_int))]
         tB_interp = [interpolate.interp1d(xyintB[k][2], t_ldB[k], kind='linear') for k in range(0, len(ind_B_int))]
@@ -262,16 +262,17 @@ class xov:
 
         if debug:
             ldB2_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj', 'Y_stgprj', 'R']].values
-            zfun_smooth_rbf = interpolate.Rbf(ldB2_[:,0], ldB2_[:,1], ldB2_[:,2], function='cubic',
+            zfun_smooth_rbf = interpolate.Rbf(ldB2_[:, 0], ldB2_[:, 1], ldB2_[:, 2], function='cubic',
                                               smooth=0)  # default smooth=0 for interpolation
             z_dense_smooth_rbf = zfun_smooth_rbf(x,
                                                  y)  # not really a function, but a callable class instance
-            print('R_B_Rbf (supp more accurate)',z_dense_smooth_rbf)
-            print('R_B_1d',R_B)
+            print('R_B_Rbf (supp more accurate)', z_dense_smooth_rbf)
+            print('R_B_1d', R_B)
 
-        if debug and len(ind_B_int)==1:
-            self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0], ladata_df, ldA_, ldB_,
-                           tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0])
+        if debug and len(ind_B_int) == 1:
+            self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0],
+                               ladata_df, ldA_, ldB_,
+                               tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0])
 
         # xyintA = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ladata_df.shape[0])].T for k in ind_B_int]
         # f_interp = [interpolate.interp1d(xyintA[k][0], xyintA[k][1], kind='linear') for k in range(0, len(ind_B_int))]
@@ -287,7 +288,7 @@ class xov:
         # R_B = interpolate.bisplev(x, y, tck)
         # print("zB", R_B)
 
-        #exit()
+        # exit()
 
         # #print(ldB_.shape)
         # dist = np.linalg.norm(ldB_[:,:2]-np.hstack([x,y]),axis=1)
@@ -314,7 +315,7 @@ class xov:
             plt.savefig('tmp/test_cub.png')
             plt.clf()
             plt.close()
-        #exit()
+        # exit()
 
         return ind_A, ind_B, R_A, R_B
 
@@ -418,86 +419,94 @@ class xov:
         # ind0 and ind1 now are the indeces of the points just before the
         # intersection in ladata_df, so that (ind0,ind0+1) and (ind1,ind1+1) are the
         # bracketing points' indeces
+        if set([X_stgA, Y_stgA, X_stgB, Y_stgB]).issubset(ladata_df.columns):
+            ldA_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]].values
+            ldB_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB, Y_stgB]].values
+            # print("Fine")
+            # print(rough_indA, rough_indB)
 
-        ldA_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]].values
-        ldB_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB, Y_stgB]].values
-        #print("Fine")
-        #print(rough_indA, rough_indB)
+            intersec_out = [
+                intersection(ldA_[max(0, rough_indA[k] - msrm_sampl):min(rough_indA[k] + msrm_sampl, len(ldA_)), 0],
+                             ldA_[max(0, rough_indA[k] - msrm_sampl):min(rough_indA[k] + msrm_sampl, len(ldA_)), 1],
+                             ldB_[
+                             max(0, rough_indB[k] - len(ldA_) - msrm_sampl):min(rough_indB[k] - len(ldA_) + msrm_sampl,
+                                                                                len(ldB_)), 0],
+                             ldB_[
+                             max(0, rough_indB[k] - len(ldA_) - msrm_sampl):min(rough_indB[k] - len(ldA_) + msrm_sampl,
+                                                                                len(ldB_)), 1])
+                for k in range(len(rough_indA))]
 
-        intersec_out = [
-            intersection(ldA_[max(0, rough_indA[k] - msrm_sampl):min(rough_indA[k] + msrm_sampl, len(ldA_)), 0],
-                         ldA_[max(0, rough_indA[k] - msrm_sampl):min(rough_indA[k] + msrm_sampl, len(ldA_)), 1],
-                         ldB_[max(0, rough_indB[k] - len(ldA_) - msrm_sampl):min(rough_indB[k] - len(ldA_) + msrm_sampl,
-                                                                                 len(ldB_)), 0],
-                         ldB_[max(0, rough_indB[k] - len(ldA_) - msrm_sampl):min(rough_indB[k] - len(ldA_) + msrm_sampl,
-                                                                                 len(ldB_)), 1])
-            for k in range(len(rough_indA))]
+            # print(len(rough_indA), len(intersec_out[0][0]),intersec_out[0][0] )
+            # print(intersec_out)
 
-        #print(len(rough_indA), len(intersec_out[0][0]),intersec_out[0][0] )
-        #print(intersec_out)
+            if len(rough_indA) > 1:
+                # print("len>1", len(rough_indA))
+                # print(intersec_out)
+                x, y, a, b, rough_tmpA, rough_tmpB = [], [], [], [], [], []
+                for idx, r in enumerate(intersec_out):
+                    rough_tmpA.extend(np.repeat(rough_indA[idx], len(r[0])))
+                    rough_tmpB.extend(np.repeat(rough_indB[idx], len(r[0])))
+                    x.extend(r[0])
+                    y.extend(r[1])
+                    a.extend(r[2])
+                    b.extend(r[3])
 
-        if len(rough_indA)>1:
-            #print("len>1", len(rough_indA))
-            #print(intersec_out)
-            x,y,a,b,rough_tmpA, rough_tmpB = [], [], [], [], [], []
-            for idx,r in enumerate(intersec_out):
-                rough_tmpA.extend(np.repeat(rough_indA[idx],len(r[0])))
-                rough_tmpB.extend(np.repeat(rough_indB[idx],len(r[0])))
-                x.extend(r[0])
-                y.extend(r[1])
-                a.extend(r[2])
-                b.extend(r[3])
+                # print(x,y,a,b,rough_tmpA,rough_tmpB)
+                idx_dup = [idx for idx, item in enumerate(x) if item in x[:idx]]
+                # print(idx_dup)
+                if len(idx_dup) > 0 and debug:
+                    print("*** Duplicate obs eliminated for ", self.tracks, "on computing ", param)
 
-            #print(x,y,a,b,rough_tmpA,rough_tmpB)
-            idx_dup = [idx for idx, item in enumerate(x) if item in x[:idx]]
-            #print(idx_dup)
-            if len(idx_dup)>0 and debug:
-                print("*** Duplicate obs eliminated for ", self.tracks, "on computing ", param)
+                rough_indA = np.delete(rough_tmpA, idx_dup)
+                rough_indB = np.delete(rough_tmpB, idx_dup)
+                tmp = [np.delete(l, idx_dup) for l in [x, y, a, b]]
+                intersec_out = []
+                for i in range(len(tmp[0])):
+                    intersec_out.append([x[i] for x in tmp])
+            elif len(rough_indA) == 1 and len(intersec_out[0][0]) > 1:
+                intersec_out = np.transpose(intersec_out)
 
-            rough_indA = np.delete(rough_tmpA,idx_dup)
-            rough_indB = np.delete(rough_tmpB,idx_dup)
-            tmp = [np.delete(l,idx_dup) for l in [x,y,a,b]]
+        else:
             intersec_out = []
-            for i in range(len(tmp[0])):
-                intersec_out.append([x[i] for x in tmp])
-        elif len(rough_indA)==1 and len(intersec_out[0][0])>1:
-            intersec_out = np.transpose(intersec_out)
+            print("*** xov_setup.get_xOver_fine: No ", X_stgA, Y_stgA, X_stgB, Y_stgB, " in df for ", self.tracks)
 
-        intersec_out = np.reshape(intersec_out,(-1,4))
+        intersec_out = np.reshape(intersec_out, (-1, 4))
 
         if intersec_out.size != 0 and intersec_out != []:
 
-            intersec_x, intersec_y = intersec_out[:,0],intersec_out[:,1]
-            fine_indA, fine_indB = intersec_out[:,2],intersec_out[:,3]
+            intersec_x, intersec_y = intersec_out[:, 0], intersec_out[:, 1]
+            fine_indA, fine_indB = intersec_out[:, 2], intersec_out[:, 3]
 
-            #print(fine_indA, fine_indB)
+            # print(fine_indA, fine_indB)
 
-            intersec_ind = intersec_out[:,2:]
+            intersec_ind = intersec_out[:, 2:]
             rough_ind = np.array([rough_indA, rough_indB]).T
 
             # index in local ladata_df is given by the position in subsample
             # minus size of subsample plus the position of the rough guess (center of subsample)
             tmp = rough_ind - msrm_sampl
-            ld_ind_A = np.where(tmp[:,0]>0,(tmp+intersec_ind)[:,0],intersec_ind[:,0])
-            ld_ind_B = np.where(tmp[:,1]-len(ldA_)>0,(tmp+intersec_ind)[:,1],len(ldA_)+intersec_ind[:,1])
+            ld_ind_A = np.where(tmp[:, 0] > 0, (tmp + intersec_ind)[:, 0], intersec_ind[:, 0])
+            ld_ind_B = np.where(tmp[:, 1] - len(ldA_) > 0, (tmp + intersec_ind)[:, 1], len(ldA_) + intersec_ind[:, 1])
 
-            #print(intersec_x)
+            # print(intersec_x)
 
             # plot and check intersections (rough, fine, ...)
             # if (debug):
-            if debug and len(intersec_x)>0:
+            if debug and len(intersec_x) > 0:
                 self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB)
-                #exit()
+                # exit()
 
             if not all(intersec_x):
                 ld_ind_A = [np.squeeze(x) for x in ld_ind_A[intersec_x > 0]][0]
                 ld_ind_B = [np.squeeze(x) for x in ld_ind_B[intersec_x > 0]][0]
-                return lflatten(intersec_x[intersec_x > 0]), lflatten(intersec_y[intersec_x > 0]), lflatten(fine_indA[intersec_x > 0]), lflatten(fine_indB[
-                    intersec_x > 0]), ld_ind_A, ld_ind_B
+                return lflatten(intersec_x[intersec_x > 0]), lflatten(intersec_y[intersec_x > 0]), lflatten(
+                    fine_indA[intersec_x > 0]), lflatten(fine_indB[
+                                                             intersec_x > 0]), ld_ind_A, ld_ind_B
             else:
-                return intersec_x[intersec_x>0], intersec_y[intersec_x>0], fine_indA[intersec_x>0], fine_indB[intersec_x>0], ld_ind_A[intersec_x>0], ld_ind_B[intersec_x>0]
+                return intersec_x[intersec_x > 0], intersec_y[intersec_x > 0], fine_indA[intersec_x > 0], fine_indB[
+                    intersec_x > 0], ld_ind_A[intersec_x > 0], ld_ind_B[intersec_x > 0]
         else:
-            return [],[],[],[],[],[]
+            return [], [], [], [], [], []
 
     def plot_xov_curves(self, curve_A, curve_B, intersec_x, intersec_y, rough_A=0, rough_B=0):
 
@@ -507,18 +516,18 @@ class xov:
             print('lonlat', unproject_stereographic(intersec_x, intersec_y, 0, 90, 2440))
 
         fig, ax = plt.subplots()
-        ax.plot(curve_A[:,0],curve_A[:,1],'x-')
-        ax.plot(curve_B[:,0],curve_B[:,1],'x-')
+        ax.plot(curve_A[:, 0], curve_A[:, 1], 'x-')
+        ax.plot(curve_B[:, 0], curve_B[:, 1], 'x-')
 
-        if all(rough_A!=0):
-            xr = curve_A[rough_A,0]
-            yr = curve_A[rough_A,1]
-            ax.plot(xr, yr, '*r',label='rough xov A')
-            xr = curve_B[rough_B-len(curve_A),0]
-            yr = curve_B[rough_B-len(curve_A),1]
-            ax.plot(xr, yr, '*g',label='rough xov B')
+        if all(rough_A != 0):
+            xr = curve_A[rough_A, 0]
+            yr = curve_A[rough_A, 1]
+            ax.plot(xr, yr, '*r', label='rough xov A')
+            xr = curve_B[rough_B - len(curve_A), 0]
+            yr = curve_B[rough_B - len(curve_A), 1]
+            ax.plot(xr, yr, '*g', label='rough xov B')
 
-        ax.plot(intersec_x, intersec_y, '*k',label='fine xov')
+        ax.plot(intersec_x, intersec_y, '*k', label='fine xov')
 
         ax.set_title('Xover detected for tracks' + self.tracks[0] + '-' + self.tracks[1])
         ax.set_xlabel('x (distance from NP, km)')
@@ -544,7 +553,7 @@ class xov:
         plt.savefig('tmp/img/intersect_' + self.tracks[0] + '_' + self.tracks[1] + '.png')
         plt.clf()
         plt.close()
-        #exit()
+        # exit()
 
     # For each combination of 2 orbits, detect crossovers in 2 steps (rough, fine),
     # then get elevation for each point in the crossovers (by interpolating)
@@ -554,10 +563,11 @@ class xov:
         msrm_sampl = self.msrm_sampl
 
         # Decimate data
-        x, y, ind_A, ind_B = intersection(ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj']].values[::msrm_sampl],
-                                  ladata_df.loc[ladata_df['orbID'] == arg[0]][['Y_stgprj']].values[::msrm_sampl],
-                                  ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj']].values[::msrm_sampl],
-                                  ladata_df.loc[ladata_df['orbID'] == arg[1]][['Y_stgprj']].values[::msrm_sampl])
+        x, y, ind_A, ind_B = intersection(
+            ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj']].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[0]][['Y_stgprj']].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj']].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[1]][['Y_stgprj']].values[::msrm_sampl])
 
         if debug:
             print("rough intersection")
@@ -581,19 +591,19 @@ class xov:
             # Check if any 2 xovers closer than msrm_sampl, if yes, remove one of them
             # (not doing this would result in a doubling of the xovers)
             f = np.insert((np.diff(rough_indA) > msrm_sampl) & (np.diff(rough_indB) > msrm_sampl), 0, 'True')
-            x=x[f]
-            y=y[f]
+            x = x[f]
+            y = y[f]
             rough_indA = rough_indA[f]
             rough_indB = rough_indB[f]
 
             # try:
             x, y, subldA, subldB, ldA, ldB = self.get_xOver_fine(rough_indA, rough_indB, '')
             if len(x) > 0:
-                #print("pre-elev")
-                #print(subldA, subldB, ldA, ldB)
+                # print("pre-elev")
+                # print(subldA, subldB, ldA, ldB)
                 ldA, ldB, R_A, R_B = self.get_elev(arg, subldA, subldB, ldA, ldB, x=x, y=y)
 
-                #print(arg, x, y, ldA, ldB, R_A, R_B)
+                # print(arg, x, y, ldA, ldB, R_A, R_B)
                 return np.vstack((x, y, ldA, ldB, R_A, R_B)).T
             # except:
 
@@ -676,23 +686,23 @@ class xov:
         # get coordinates of neighbouring measurements
         msrmnt_crd = []
 
-        for trk in ['A','B']:
-            obslist = xovtmp[['ladata_id'+trk]].values.astype(int).tolist()
+        for trk in ['A', 'B']:
+            obslist = xovtmp[['ladata_id' + trk]].values.astype(int).tolist()
             obslist = lflatten(obslist)
 
             msrmnt_crd.extend(
                 self.ladata_df.loc[obslist][['X_stgprj', 'Y_stgprj']].values)
             msrmnt_crd.extend(
-                self.ladata_df.loc[[l+1 for l in obslist]][['X_stgprj', 'Y_stgprj']].values)
+                self.ladata_df.loc[[l + 1 for l in obslist]][['X_stgprj', 'Y_stgprj']].values)
 
         msrmnt_crd = np.reshape(msrmnt_crd, (-1, 2))
-        #print(msrmnt_crd)
+        # print(msrmnt_crd)
 
         # get compatible array with xov coordinates
         xov_crd = xovtmp[['x0', 'y0']].values
-        xov_crd = np.reshape(np.tile(xov_crd.ravel(),4),(-1,2))
+        xov_crd = np.reshape(np.tile(xov_crd.ravel(), 4), (-1, 2))
 
-        #print(xov_crd)
+        # print(xov_crd)
         # print(msrmnt_crd)
         # print(xov_crd)
         # print(np.linalg.norm(msrmnt_crd - xov_crd, axis=1))
@@ -701,9 +711,9 @@ class xov:
         # exit()
 
         # compute distance and add to input df
-        dist = np.reshape(np.linalg.norm(msrmnt_crd - xov_crd, axis=1),(-1,len(xovtmp))).T
+        dist = np.reshape(np.linalg.norm(msrmnt_crd - xov_crd, axis=1), (-1, len(xovtmp))).T
 
-        #print(dist)
+        # print(dist)
 
         df_ = pd.DataFrame(dist,
                            columns=['dist_Am', 'dist_Ap', 'dist_Bm', 'dist_Bp'])
@@ -712,12 +722,13 @@ class xov:
         # print(pd.concat([xovtmp, df_], axis=1))
         # exit()
 
-        if all(~df_[c].hasnans for c in df_) and (df_[['dist_Am', 'dist_Ap', 'dist_Bm', 'dist_Bp']].max() < 10000).all():
+        if all(~df_[c].hasnans for c in df_) and (
+                df_[['dist_Am', 'dist_Ap', 'dist_Bm', 'dist_Bp']].max() < 10000).all():
             self.xovtmp = pd.concat([xovtmp, df_], axis=1)
         else:
             print("*** error: NaN or unexpected value in set_xov_obs_dist")
             print(pd.concat([xovtmp, df_], axis=1))
-            #exit(2)
+            # exit(2)
 
     def set_partials(self):
         # Compute crossover position for partials at + and -
@@ -769,17 +780,17 @@ class xov:
             # exit()
 
         max_xov_part = np.max([len(i) for i in out_elev[0]])
-        nxov_part_all_equal = len(set([len(i) for i in out_elev[0]]))==1
+        nxov_part_all_equal = len(set([len(i) for i in out_elev[0]])) == 1
         if len(xovers_df.index) == max_xov_part and nxov_part_all_equal:
 
             if (len(xovers_df.index) > 1):
-                #print("len(xovers_df.index) > 1 ")
-                #print(out_elev)
+                # print("len(xovers_df.index) > 1 ")
+                # print(out_elev)
                 DelR = (np.diff(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[:, ::2])[:, ::2])[:len(xovers_df)]
 
-                DelR_orb = np.array(DelR)[:,:2*len(parOrb)]
-                DelR_orb /=(2. * np.tile(list(param.values())[1:len(parOrb) + 1], 2))
-                DelR_glo = np.array(DelR)[:,2*len(parOrb):]
+                DelR_orb = np.array(DelR)[:, :2 * len(parOrb)]
+                DelR_orb /= (2. * np.tile(list(param.values())[1:len(parOrb) + 1], 2))
+                DelR_glo = np.array(DelR)[:, 2 * len(parOrb):]
                 DelR_glo /= (2. * np.array([np.linalg.norm(x) for x in list(param.values())][len(parOrb) + 1:]))
 
                 # Concatenate xOvers and partials w.r.t. each parameter
@@ -794,7 +805,8 @@ class xov:
 
                 if (debug):
                     print('check ders')
-                    print(np.hstack(np.squeeze(out_elev, axis=1)), [np.linalg.norm(x) for x in list(param.values())[1:]])
+                    print(np.hstack(np.squeeze(out_elev, axis=1)),
+                          [np.linalg.norm(x) for x in list(param.values())[1:]])
                     print(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[::2])
                     print((np.diff(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[::2])[::2])[:len(parOrb) * 2],
                           (2. * np.repeat([np.linalg.norm(x) for x in list(param.values())[1:len(parOrb) + 1]], 2)))
@@ -807,17 +819,19 @@ class xov:
 
                 diff_step = [np.linalg.norm(x) for x in list(param.values())[1:]]
 
-                #print("len(xovers_df.index) = 1 ", len(xovers_df.index))
-                #print(out_elev)
+                # print("len(xovers_df.index) = 1 ", len(xovers_df.index))
+                # print(out_elev)
 
                 xovers_df = pd.concat(
                     [xovers_df,
-                     pd.DataFrame((np.diff(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[::2])[::2])[:len(parOrb) * 2] / \
-                                  (2. * np.repeat([np.linalg.norm(x) for x in list(param.values())[1:len(parOrb) + 1]], 2)),
-                                  index=parOrb_xy, columns=xovers_df.index).T,
-                     pd.DataFrame((np.diff(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[::2])[::2])[len(parOrb) * 2:] / \
-                                  (2. * np.array([np.linalg.norm(x) for x in list(param.values())[len(parOrb) + 1:]])),
-                                  index=parGlo_xy, columns=xovers_df.index).T
+                     pd.DataFrame(
+                         (np.diff(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[::2])[::2])[:len(parOrb) * 2] / \
+                         (2. * np.repeat([np.linalg.norm(x) for x in list(param.values())[1:len(parOrb) + 1]], 2)),
+                         index=parOrb_xy, columns=xovers_df.index).T,
+                     pd.DataFrame(
+                         (np.diff(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[::2])[::2])[len(parOrb) * 2:] / \
+                         (2. * np.array([np.linalg.norm(x) for x in list(param.values())[len(parOrb) + 1:]])),
+                         index=parGlo_xy, columns=xovers_df.index).T
                      ], axis=1
                 )
 
@@ -835,12 +849,12 @@ class xov:
             # exit()
 
         else:
-            print("Observations in ", self.tracks," excluded for inconsistent number of partials")
+            print("Observations in ", self.tracks, " excluded for inconsistent number of partials")
             print(xovers_df.index)
             print("max_xov_part =", max_xov_part)
             print("nxov_part_all_equal=", nxov_part_all_equal)
         # Update general df
-        #self.xovers = self.xovers.append(xovers_df)
+        # self.xovers = self.xovers.append(xovers_df)
 
     def upd_orbrep(self, ladata_df, xovers_df):
         """
@@ -875,16 +889,16 @@ class xov:
 
     def get_partials(self, l):
 
-        #comb1 = self.tracks
+        # comb1 = self.tracks
         # ladata_df = self.ladata_df
         xovers_df = self.xovtmp
 
         if debug:
             print("xov fin")
-            print(xovers_df[['ladata_idA']].values.astype(int).flatten(),l)
+            print(xovers_df[['ladata_idA']].values.astype(int).flatten(), l)
 
         out_finloc = np.vstack(self.get_xOver_fine(xovers_df[['ladata_idA']].values.astype(int).flatten(),
-                                                    xovers_df[['ladata_idB']].values.astype(int).flatten(), l))  # seq
+                                                   xovers_df[['ladata_idB']].values.astype(int).flatten(), l))  # seq
 
         if len(xovers_df) != len(out_finloc[0]):
             if debug:
