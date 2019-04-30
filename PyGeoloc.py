@@ -16,6 +16,7 @@ import multiprocessing as mp
 # from geopy.distance import vincenty
 
 import spiceypy as spice
+import numpy as np
 
 # from collections import defaultdict
 # import mpl_toolkits.basemap as basemap
@@ -25,7 +26,7 @@ import time
 # mylib
 # from mapcount import mapcount
 from ground_track import gtrack
-from prOpt import parallel, SpInterp, new_gtrack, outdir, auxdir, local, vecopts
+from prOpt import parallel, SpInterp, new_gtrack, outdir, auxdir, local, vecopts, debug
 
 # from util import lflatten
 ########################################
@@ -65,17 +66,19 @@ def launch_gtrack(args):
         if os.path.isfile(gtrack_out) == False or new_gtrack == 2:
 
             if not os.path.exists(outdir + outdir_in):
-                os.mkdir(outdir + outdir_in)
+                os.makedirs(outdir + outdir_in, exist_ok=True)
 
             # try:
             track.setup(infil)
             #
-            # print("track#:", track.name)
-            # print("max diff R",abs(track.ladata_df.loc[:,'R']-track.df_input.loc[:,'altitude']).max())
-            # print("max diff LON", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.df_input.loc[:, 'geoc_long']).max())))
-            # print("max diff LAT", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
-            # print("max elev sim", abs(track.df_input.loc[:,'altitude']).max())
-            # exit()
+            if debug:
+                print("track#:", track.name)
+                print("max diff R",abs(track.ladata_df.loc[:,'R']-track.df_input.loc[:,'altitude']).max())
+                print("R",track.ladata_df.loc[:,'R'].max(),track.df_input.loc[:,'altitude'].max())
+                print("max diff LON", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.df_input.loc[:, 'geoc_long']).max())))
+                print("max diff LAT", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
+                print("max elev sim", abs(track.df_input.loc[:,'altitude']).max())
+            #exit()
             track.save(gtrack_out)
             print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
         # except:

@@ -114,7 +114,7 @@ class xov:
     def load(self, filnam):
 
         try:
-            print(filnam)
+            #print(filnam)
             pklfile = open(filnam, 'rb')
             self = pickle.load(pklfile)
             pklfile.close()

@@ -80,6 +80,7 @@ class Amat:
         print(dict_)
         self.parNames = dict_
 
+        # exit()
         # Retrieve and re-organize partials w.r.t. observations, parameters and orbits
 
         # Set-up columns to extract
@@ -114,7 +115,7 @@ class Amat:
             #     val *= 1.
             #     print(val)
 
-            if True:
+            if debug:
                 print("analyze df")
                 par_xy_loc = list(set([str(y).split('_')[0] for y in par_xy_loc]))
                 print(par_xy_loc)
@@ -132,7 +133,7 @@ class Amat:
 
         csr = sum(csr)
 
-        if (debug):
+        if debug:
             print(csr)
             print(list([np.array(map({v: k for k, v in dict_.items()}.get, csr.indices)), csr.data]))
             print(sys.getsizeof(csr))

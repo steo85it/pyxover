@@ -4,6 +4,7 @@ import sys
 
 import AccumXov
 # own libs
+import PyAltSim
 import PyXover
 import PyGeoloc
 
@@ -17,9 +18,9 @@ if __name__ == '__main__':
     #    Arg_list = collections.namedtuple('Arg_list', arg_names)
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
-    local = 0
-    data_sim = 'sim'  # 'data' #  !! change dataset in AccumXov.load/combine !!
-    exp = 'mlatimes'  # '1s' #'mladata' # !! change PyAltSim IllumNG source file
+    local = 1
+    data_sim = 'data' # 'sim'  # !! change dataset in AccumXov.load/combine !!
+    exp = '' # 'mlatimes/full' #  '1s' #'mladata' # !! change PyAltSim IllumNG source file
 
     # res = [0, 1, 2, 3, 4, 5, 6]
     # ampl = [1, 5, 10, 25, 50]
@@ -41,8 +42,7 @@ if __name__ == '__main__':
     else:
         sect = -1
 
-
-    print(resampl,subarg,subarg,sect)
+    print("Input args: topo res/ampl ",resampl,", sub-dataset",subarg,", geoloc/xovers/accum", sect)
 
     if data_sim == 'data':
         res = [0]
@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     if data_sim == 'sim':
         if local:
-            dirnams = ['../data/SIM_' + subarg + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp_tst/' for x in
+            dirnams = ['../data/SIM_' + subarg + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in
                        cmb]
         else:
             dirnams = ['/att/nobackup/sberton2/MLA/data/SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
         args_pyaltsim = [(i, j, k, subarg) for ((i, j), k) in zip(cmb, dirnams)]
 
-        indirnams = ['SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp_tst/' for x in cmb]
+        indirnams = ['SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
         outdirnams = ['sim/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_'+ subarg[:2] for x in cmb]
         args_pygeoloc = [(subarg, k, l, 'MLASIMRDR') for (k, l) in zip(indirnams, outdirnams)]
 
@@ -71,21 +71,19 @@ if __name__ == '__main__':
 
     else:
         indirnams = ['1301/']
-        outdirnams = ['real/1301/']
+        outdirnams = ['real/'+exp+'xov/']
         args_pyxover = [(subarg, k, l, 'MLASCIRDR') for (k, l) in zip(indirnams, outdirnams)]
 
     if sect == 1:
-    
-        print('wtf')
 
         # add option to spread over the cluster
         idx_tst = [i for i in range(len(cmb))]
-        if len(sys.argv) > 1 and local == 0:
+        if local == 0:
             print('wtf')
             ie = int(resampl)
             if data_sim == 'sim':
               print("Running PyAltSim with ", args_pyaltsim[ie], "...")
-              # PyAltSim.main(args_pyaltsim[ie])
+              PyAltSim.main(args_pyaltsim[ie])
             print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
             PyGeoloc.main(args_pygeoloc[ie])
 
@@ -112,7 +110,8 @@ if __name__ == '__main__':
     elif sect == 3:
 
         AccumXov.main([outdirnams, data_sim])
-        os.rename("tmp/tst.png", "tmp/rms_vs_exp_" + exp + ".png")
+        if os.path.isfile("tmp/tst.png"):
+            os.rename("tmp/tst.png", "tmp/rms_vs_exp_" + exp.split('/')[0] + ".png")
 
     else:
     
