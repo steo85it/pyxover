@@ -18,7 +18,7 @@ if __name__ == '__main__':
     #    Arg_list = collections.namedtuple('Arg_list', arg_names)
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
-    local = 1
+    local = 0
     data_sim = 'data' # 'sim'  # !! change dataset in AccumXov.load/combine !!
     exp = '' # 'mlatimes/full' #  '1s' #'mladata' # !! change PyAltSim IllumNG source file
 
@@ -70,8 +70,13 @@ if __name__ == '__main__':
         args_pyxover = [(subarg, k, l, 'MLASIMRDR') for (k, l) in zip(indirnams, outdirnams)]
 
     else:
-        indirnams = ['1301/']
-        outdirnams = ['real/'+exp+'xov/']
+    
+        indirnams = ['MLA_' + subarg[:2] + '/']
+        outdirnams = ['mladata/' + exp + 'gtrack_'+ subarg[:2]]
+        args_pygeoloc = [(subarg, k, l, 'MLASCIRDR') for (k, l) in zip(indirnams, outdirnams)]
+    
+        indirnams = ['mladata/' + exp + 'gtrack_']
+        outdirnams = ['mladata/'+exp]
         args_pyxover = [(subarg, k, l, 'MLASCIRDR') for (k, l) in zip(indirnams, outdirnams)]
 
     if sect == 1:

@@ -211,6 +211,8 @@ def main(args):
     allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
     allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
 
+    print(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
+
     if misycmb[par][0] == misycmb[par][1]:
         allFiles = allFilesA
     else:
