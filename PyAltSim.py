@@ -183,6 +183,7 @@ class sim_gtrack(gtrack):
                         ['grdtrack', gmt_in, '-G' + dem],
                         universal_newlines=True, cwd='tmp')
                     r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+                    r_dem *= 1.e3
 
             # else:
             #     print(lontmp)
@@ -196,11 +197,11 @@ class sim_gtrack(gtrack):
             # exit()
 
             texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
-            # print("texture noise check",texture_noise,r_dem,rtmp)
+            # print("texture noise check",texture_noise,r_dem)
 
-            # update Rmerc with r_dem/text
+            # update Rmerc with r_dem/text (meters)
             radius = vecopts['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
-            # print(radius,r_dem,texture_noise)
+            # print("radius etc",radius,r_dem,texture_noise)
         else:
             radius = vecopts['PLANETRADIUS'] * 1.e3
 

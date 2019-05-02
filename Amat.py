@@ -25,6 +25,8 @@ class Amat:
     def __init__(self, vecopts):
 
         self.vecopts = vecopts
+        self.parNames = None
+        self.sol = None
 
     def setup(self, xov):
 

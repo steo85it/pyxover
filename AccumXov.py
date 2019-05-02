@@ -265,11 +265,12 @@ def prepare_Amat(xov, vecopts, par_list=''):
 def solve(xovi_amat,dataset):
     # Solve
     # select subset of parameters
-    sol4_orb = [] # ['1501040322','1411031307'] # ['1301250752'] # '1301011544','1301042351']
-    sol4_orbpar = [] # ['dA0','dC0','dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
-    sol4_glo = [] # ['dR/dL','dR/dRA','dR/dDEC'] #'dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
+    sol4_orb = [None] # ['1501040322','1411031307'] # ['1301250752'] # '1301011544','1301042351']
+    sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
+    sol4_glo = [] #'dR/dRA','dR/dL','dR/dh2'] #['dR/dL','dR/dRA','dR/dDEC'] #'dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
 
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
+    print(sol4_pars)
 
     xovi_amat.sol4_pars = sol4_pars
 
@@ -297,23 +298,26 @@ def solve(xovi_amat,dataset):
         print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
 
     # Compute LSQR solution
-    xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=1000,atol=1.e-9,btol=1.e-9,calc_var=True)
+    xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
 
     # Save to pkl
     xovi_amat.save(outdir + 'Abmat_' + dataset.split('/')[0] + '.pkl')
 
     #print('sparse density = ' + str(xovi_amat.spA.density))
 
-    if (debug):  # check if correctly saved
+    if debug:  # check if correctly saved
+        vecopts = {}
         tmp = Amat(vecopts)
-        tmp = tmp.load(outdir + 'Amat_' + dataset.split('/')[0] + '.pkl')
-        print(tmp.A)
-
+        tmp = tmp.load(outdir + 'Abmat_' + dataset.split('/')[0] + '.pkl')
+        print(tmp.spA)
+        print(tmp.sol)
 
 def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
     if sol4_orb == []:
         sol4_orb = set([i.split('_')[0] for i in track_names])
         sol4_orb = [x for x in sol4_orb if x.isdigit()]
+    elif sol4_orb == [None]:
+        sol4_orb = []
 
     if sol4_orbpar == []:
         sol4_orbpar = list(parOrb.keys())
@@ -334,47 +338,66 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 def analyze_sol(xovi_amat,xov):
     # print('xovi_amat.sol',xovi_amat.sol)
 
-    _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)), np.reshape(xovi_amat.sol[-1], (-1, 1)) ))
-    df_ = pd.DataFrame(_, columns=['key', 'sol', 'std'])
-    df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
-    df_.drop('key', axis=1, inplace=True)
-    # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
-    df_ = df_.replace(to_replace='None', value=np.nan).dropna()
-    table = pd.pivot_table(df_, values=['sol','std'], index=['orb'], columns=['par'], aggfunc=np.sum)
-    # print(table)
+    # print(parOrb)
+    # print([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars])
+    # print(np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]))
+    # exit()
 
+    _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)),
+                   np.reshape(xovi_amat.sol[-1], (-1, 1))))
+
+    # Extract solution for global parameters
     glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(parGlo.keys()) for x in _[:,0]]],columns=['par','sol','std'])
 
-    if any(xov.xovers.filter(like='dist', axis=1)):
-        xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-        xov.xovers = xov.xovers[xov.xovers.dist_max < 5]
-        _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
-        table['num_obs'] = _
+    # Extract solution for orbit parameters
+    if np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]) > 0:
+        df_ = pd.DataFrame(_, columns=['key', 'sol', 'std'])
+        df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
+        df_.drop('key', axis=1, inplace=True)
+        # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
+        df_ = df_.replace(to_replace='None', value=np.nan).dropna()
+        table = pd.pivot_table(df_, values=['sol','std'], index=['orb'], columns=['par'], aggfunc=np.sum)
+    # print(table)
 
-        df1 = xov.xovers.groupby(['orbA'], sort=False)['dist_max'].max().reset_index()
-        df2 = xov.xovers.groupby(['orbB'], sort=False)['dist_max'].max().reset_index()
+        if any(xov.xovers.filter(like='dist', axis=1)):
+            xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+            xov.xovers = xov.xovers[xov.xovers.dist_max < 5]
+            _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
+            table['num_obs'] = _
 
-        merged_Frame = pd.merge(df1, df2, left_on='orbA', right_on='orbB',how='outer')
-        merged_Frame['orbA'] = merged_Frame['orbA'].fillna(merged_Frame['orbB'])
-        merged_Frame['orbB'] = merged_Frame['orbB'].fillna(merged_Frame['orbA'])
-        merged_Frame['dist_max'] = merged_Frame[['dist_max_x','dist_max_y']].mean(axis=1)
-        merged_Frame = merged_Frame[['orbA','dist_max']]
-        merged_Frame.columns = ['orb','dist_max']
+            df1 = xov.xovers.groupby(['orbA'], sort=False)['dist_max'].max().reset_index()
+            df2 = xov.xovers.groupby(['orbB'], sort=False)['dist_max'].max().reset_index()
 
-        table.columns = ['_'.join(col).strip() for col in table.columns.values]
-        table = pd.merge(table.reset_index(),merged_Frame,on='orb')
+            merged_Frame = pd.merge(df1, df2, left_on='orbA', right_on='orbB',how='outer')
+            merged_Frame['orbA'] = merged_Frame['orbA'].fillna(merged_Frame['orbB'])
+            merged_Frame['orbB'] = merged_Frame['orbB'].fillna(merged_Frame['orbA'])
+            merged_Frame['dist_max'] = merged_Frame[['dist_max_x','dist_max_y']].mean(axis=1)
+            merged_Frame = merged_Frame[['orbA','dist_max']]
+            merged_Frame.columns = ['orb','dist_max']
+
+            table.columns = ['_'.join(col).strip() for col in table.columns.values]
+            table = pd.merge(table.reset_index(),merged_Frame,on='orb')
     # print([isinstance(i,tuple) for i in table.columns])
     # print(['_'.join(i) for i in table.columns if isinstance(i,tuple)])
     print('-- Solutions -- ')
-    print('Orbit parameters: ')
-    print('-- -- -- -- ')
-    print(table)
-    print('-- -- -- -- ')
+    if np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]) > 0:
+        print('Orbit parameters: ')
+        print('-- -- -- -- ')
+        print(table)
+        print('-- -- -- -- ')
     print('-- -- -- -- ')
     print('Global parameters: ')
     print('-- -- -- -- ')
     print(glb_sol)
     print('-- -- -- -- ')
+
+    _ = xov.remove_outliers('dR')
+    print(xov.xovers.columns)
+    print(xov.xovers.loc[xov.xovers.orbA == '1301022341' ])
+    #print(xov.xovers.loc[xov.xovers.orbA == '1301022341' ].sort_values(by='R_A', ascending=True)[:10])
+    if np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]) > 0:
+        print(table.reindex(table.sort_values(by='sol_dR/dR', ascending=False).index)[:10])
+        print(table.loc[table.orb=='1301022341',:])
 
     # table[['sol_dR/dA','std_dR/dA','num_obs']] = table[['sol_dR/dA','std_dR/dA','num_obs_']].apply(pd.to_numeric, errors='coerce')
     # table['sol_dR/dA'] = table['sol_dR/dA'] #+ 100

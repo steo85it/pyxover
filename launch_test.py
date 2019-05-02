@@ -18,9 +18,9 @@ if __name__ == '__main__':
     #    Arg_list = collections.namedtuple('Arg_list', arg_names)
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
-    local = 0
-    data_sim = 'data' # 'sim'  # !! change dataset in AccumXov.load/combine !!
-    exp = '' # 'mlatimes/full' #  '1s' #'mladata' # !! change PyAltSim IllumNG source file
+    local = 1
+    data_sim = 'sim'  # 'data' #  !! change dataset in AccumXov.load/combine !!
+    exp = 'mlatimes/1301' # 'xov/' #  '1s' #'mladata' # !! change PyAltSim IllumNG source file
 
     # res = [0, 1, 2, 3, 4, 5, 6]
     # ampl = [1, 5, 10, 25, 50]
@@ -94,9 +94,9 @@ if __name__ == '__main__':
 
         else:
             for ie in range(len(args_pyxover)):
-                # if data_sim == 'sim':
-                #     print("Running PyAltSim with ", args_pyaltsim[ie], "...")
-                #     PyAltSim.main(args_pyaltsim[ie])
+                if data_sim == 'sim':
+                    print("Running PyAltSim with ", args_pyaltsim[ie], "...")
+                    PyAltSim.main(args_pyaltsim[ie])
                 print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
                 PyGeoloc.main(args_pygeoloc[ie])
 
