@@ -730,6 +730,22 @@ class xov:
             print(pd.concat([xovtmp, df_], axis=1))
             # exit(2)
 
+    def get_xov_latlon(self, trackA):
+        """
+        Retrieve LAT/LON of xover from geolocalisation table and add to xovers table
+        (useful to analyze/plot xovers on map). Updates input xov.xovers.
+
+        :param trackA: gtrack containing ladata table
+        """
+        # TODO could also average trackB idB for more accuracy
+        tmp0 = trackA.ladata_df.iloc[self.xovers.ladata_idA.round()][['LON', 'LAT']].reset_index(drop=True)
+        tmp1 = trackA.ladata_df.iloc[self.xovers.ladata_idA.round() + 1][['LON', 'LAT']].reset_index(drop=True)
+        tmp = pd.concat([tmp0, tmp1], axis=1)
+        tmp = tmp.groupby(by=tmp.columns, axis=1).mean()
+
+        self.xovers = pd.concat([self.xovers, tmp], axis=1)
+
+
     def set_partials(self):
         # Compute crossover position for partials at + and -
         # and combine them for each observation and parameter

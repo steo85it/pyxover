@@ -4,11 +4,11 @@
 ##############################################
 # @profile
 # local or PGDA
-local = 0
+local = 1
 # debug mode
 debug = 0
 # parallel processing?
-parallel = 1
+parallel = 0
 
 # compute partials?
 partials = 1
@@ -27,9 +27,9 @@ OrbRep = 'cnt' #'lin'
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 SpInterp = 2
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
-new_gtrack = 1
+new_gtrack = 2
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
-new_xov = 1
+new_xov = 2
 
 # PyAltSim stuff
 # simulation mode
@@ -38,6 +38,9 @@ sim = 0
 new_illumNG = 0
 # use topo
 apply_topo = 1
+# range noise
+range_noise = 1
+
 # vecopts
 # Setup some useful options
 vecopts = {'SCID': '-236',

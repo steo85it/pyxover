@@ -23,6 +23,7 @@ from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, p
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
+from util import mergsum
 
 
 class gtrack:
@@ -53,12 +54,13 @@ class gtrack:
                         'dPM': [0., 0., 0.],
                         'dL': 0.}  # ,
         # 'dh2': 0. }
+        self.sol_prev_iter = None
 
     # create groundtrack from data and save to file
     def setup(self, filnam):
 
         # read data and fill ladata_df
-        self.read_fill(filnam)
+        # self.read_fill(filnam)
 
         if len(self.ladata_df) > 0:
             if not hasattr(self, 'SpObj'):
@@ -310,7 +312,13 @@ class gtrack:
         if debug:
             print('check pert', self.name, self.pert_cloop)
 
-        # exit()
+        # read solution from previous iteration and
+        # add to self.pert_cloop (orb and glo)
+        if self.sol_prev_iter != None:
+            self.par_solupd()
+
+        if debug:
+            print('check pert', self.name, self.pert_cloop)
 
         if hasattr(self, 'SpObj'):
             SpObj = self.SpObj
@@ -405,6 +413,19 @@ class gtrack:
         if (debug):
             print('----- Runtime Geoloc = ' + str(endGeoloc - startGeoloc) + ' sec -----' + str(
                 (endGeoloc - startGeoloc) / 60.) + ' min -----')
+
+    def par_solupd(self):
+        corr_orb = self.sol_prev_iter['orb'].filter(regex='sol.*$', axis=1).apply(pd.to_numeric, errors='ignore',
+                                                                                  downcast='float'
+                                                                                  ).to_dict('records')[0]
+        corr_orb = {key.split('_')[1].split('/')[1]: corr_orb[key] for key in corr_orb.keys()}
+        _ = self.sol_prev_iter['glo'].apply(pd.to_numeric, errors='ignore', downcast='float')
+        corr_glo = dict(zip(_.par, _.sol))
+        corr_glo = {key.split('/')[1]: corr_glo[key] for key in corr_glo.keys()}
+        self.pert_cloop = mergsum(self.pert_cloop, corr_orb)
+        self.pert_cloop = mergsum(self.pert_cloop, corr_glo)
+        if debug:
+            print(self.pert_cloop)
 
     # @profile
     def get_geoloc_part(self, par):

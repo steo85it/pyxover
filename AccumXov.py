@@ -119,7 +119,6 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
 
 def get_stats(xov_lst,resval,amplval):
     import seaborn.apionly as sns
-    import scipy.stats as stats
 
     print('resval,amplval', resval, amplval)
     #print(xov_cmb.xovers)
@@ -160,21 +159,7 @@ def get_stats(xov_lst,resval,amplval):
             # print(xov.xovers[['dist_max','dR']].abs())
 
             if debug:
-                # the histogram of the data
-                num_bins = 1000
-                n, bins, patches = plt.hist(xov.xovers.dR, bins='auto', density=True, facecolor='blue', alpha=0.5)
-
-                # add a 'best fit' line
-                y = stats.norm.pdf(bins, mean_dR, std_dR)
-                plt.plot(bins, y, 'r--')
-                plt.xlabel('dR (m)')
-                plt.ylabel('Probability')
-                plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
-
-                # Tweak spacing to prevent clipping of ylabel
-                plt.subplots_adjust(left=0.15)
-                plt.savefig('tmp/histo_dR_' + str(idx) + '.png')
-                plt.clf()
+                plt_histo_dR(idx, mean_dR, std_dR, xov)
 
                 xov.xovers[['dist_max', 'dR']].abs().plot(kind='scatter', x='dist_max', y='dR')
                 plt.savefig('tmp/dR_vs_dist_' + str(idx) + '.png')
@@ -217,6 +202,24 @@ def get_stats(xov_lst,resval,amplval):
 
     #ax0.set_title('variable, symmetric error')
     #print(dR_avg,dR_std,dR_max,dR_min)
+
+
+def plt_histo_dR(idx, mean_dR, std_dR, xov):
+    import scipy.stats as stats
+
+    # the histogram of the data
+    num_bins = 10
+    n, bins, patches = plt.hist(xov.xovers.dR, bins='auto', density=True, facecolor='blue', alpha=0.5)
+    # add a 'best fit' line
+    y = stats.norm.pdf(bins, mean_dR, std_dR)
+    plt.plot(bins, y, 'r--')
+    plt.xlabel('dR (m)')
+    plt.ylabel('Probability')
+    plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+    # Tweak spacing to prevent clipping of ylabel
+    plt.subplots_adjust(left=0.15)
+    plt.savefig('/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/histo_dR_' + str(idx) + '.png')
+    plt.clf()
 
 
 def prepare_Amat(xov, vecopts, par_list=''):
@@ -265,9 +268,9 @@ def prepare_Amat(xov, vecopts, par_list=''):
 def solve(xovi_amat,dataset):
     # Solve
     # select subset of parameters
-    sol4_orb = [None] # ['1501040322','1411031307'] # ['1301250752'] # '1301011544','1301042351']
+    sol4_orb = [] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
     sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
-    sol4_glo = [] #'dR/dRA','dR/dL','dR/dh2'] #['dR/dL','dR/dRA','dR/dDEC'] #'dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
+    sol4_glo = ['dR/dL','dR/dh2'] #'dR/dRA','dR/dL','dR/dh2'] #['dR/dL','dR/dRA','dR/dDEC'] #'dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
 
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     print(sol4_pars)
@@ -300,17 +303,7 @@ def solve(xovi_amat,dataset):
     # Compute LSQR solution
     xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
 
-    # Save to pkl
-    xovi_amat.save(outdir + 'Abmat_' + dataset.split('/')[0] + '.pkl')
-
     #print('sparse density = ' + str(xovi_amat.spA.density))
-
-    if debug:  # check if correctly saved
-        vecopts = {}
-        tmp = Amat(vecopts)
-        tmp = tmp.load(outdir + 'Abmat_' + dataset.split('/')[0] + '.pkl')
-        print(tmp.spA)
-        print(tmp.sol)
 
 def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
     if sol4_orb == []:
@@ -377,27 +370,11 @@ def analyze_sol(xovi_amat,xov):
 
             table.columns = ['_'.join(col).strip() for col in table.columns.values]
             table = pd.merge(table.reset_index(),merged_Frame,on='orb')
+
+            orb_sol = table
+
     # print([isinstance(i,tuple) for i in table.columns])
     # print(['_'.join(i) for i in table.columns if isinstance(i,tuple)])
-    print('-- Solutions -- ')
-    if np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]) > 0:
-        print('Orbit parameters: ')
-        print('-- -- -- -- ')
-        print(table)
-        print('-- -- -- -- ')
-    print('-- -- -- -- ')
-    print('Global parameters: ')
-    print('-- -- -- -- ')
-    print(glb_sol)
-    print('-- -- -- -- ')
-
-    _ = xov.remove_outliers('dR')
-    print(xov.xovers.columns)
-    print(xov.xovers.loc[xov.xovers.orbA == '1301022341' ])
-    #print(xov.xovers.loc[xov.xovers.orbA == '1301022341' ].sort_values(by='R_A', ascending=True)[:10])
-    if np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]) > 0:
-        print(table.reindex(table.sort_values(by='sol_dR/dR', ascending=False).index)[:10])
-        print(table.loc[table.orb=='1301022341',:])
 
     # table[['sol_dR/dA','std_dR/dA','num_obs']] = table[['sol_dR/dA','std_dR/dA','num_obs_']].apply(pd.to_numeric, errors='coerce')
     # table['sol_dR/dA'] = table['sol_dR/dA'] #+ 100
@@ -411,11 +388,37 @@ def analyze_sol(xovi_amat,xov):
     # # df_.groupby('par').plot(x='orb', y='sol', legend=False)
     #
     # plt.savefig('tmp/plotsol.png')
+    return orb_sol, glb_sol
+
+
+def print_sol(orb_sol, glb_sol, xov, xovi_amat):
+
+    print('-- Solutions -- ')
+    if np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]) > 0:
+        print('Orbit parameters: ')
+        print('-- -- -- -- ')
+        print(orb_sol)
+        print('-- -- -- -- ')
+    print('-- -- -- -- ')
+    print('Global parameters: ')
+    print('-- -- -- -- ')
+    print(glb_sol)
+    print('-- -- -- -- ')
+    if debug:
+        _ = xov.remove_outliers('dR')
+        print(xov.xovers.columns)
+        print(xov.xovers.loc[xov.xovers.orbA == '1301022345'])
+        # print(xov.xovers.loc[xov.xovers.orbA == '1301022341' ].sort_values(by='R_A', ascending=True)[:10])
+        if np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]) > 0:
+            print(orb_sol.reindex(orb_sol.sort_values(by='sol_dR/dR', ascending=False).index)[:10])
+            print(orb_sol.loc[orb_sol.orb == '1301022345', :])
+
 
 def main(arg):
     print(arg)
     datasets = arg[0]  # ['sim_mlatimes/0res_35amp']
     data_sim = arg[1]
+    ext_iter = arg[2]
 
     if data_sim == 'sim':
         _ = [x.split('/')[-2] for x in datasets]
@@ -443,7 +446,12 @@ def main(arg):
         par_list = ['orbA', 'orbB', 'xOvID']
         xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
         solve(xovi_amat, ds)
-        analyze_sol(xovi_amat,xov_cmb)
+
+        # Save to pkl
+        xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_' + ds.split('/')[2])[:-1] + str(ext_iter+1) + '.pkl')
+
+        orb_sol, glb_sol = analyze_sol(xovi_amat,xov_cmb)
+        print_sol(orb_sol, glb_sol, xov, xovi_amat)
 
         # append to list for stats
         xov_cmb_lst.append(xov_cmb)

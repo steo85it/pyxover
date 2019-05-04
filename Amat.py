@@ -47,6 +47,13 @@ class Amat:
         pickle.dump(self, pklfile)
         pklfile.close()
 
+        if debug:  # check if correctly saved
+            vecopts = {}
+            tmp = Amat(vecopts)
+            tmp = tmp.load(filnam)
+            print(tmp.spA)
+            print(tmp.sol)
+
     # load groundtrack from file
     def load(self, filnam):
 

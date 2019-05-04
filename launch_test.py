@@ -19,8 +19,10 @@ if __name__ == '__main__':
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
     local = 0
-    data_sim = 'sim'  # 'data' #  !! change dataset in AccumXov.load/combine !!
-    exp = 'mlatimes' # 'xov/' #  '1s' #'mladata' # !! change PyAltSim IllumNG source file
+    data_sim = 'sim'  # 'data' #  
+    exp = 'mlatimes' # 'xov/' #  '1s' #'mladata' # 
+    ext_iter = 0  # external iteration
+    # exp += '_'+str(ext_iter)
 
     # res = [0, 1, 2, 3, 4, 5, 6]
     # ampl = [1, 5, 10, 25, 50]
@@ -53,7 +55,7 @@ if __name__ == '__main__':
 
     if data_sim == 'sim':
         if local:
-            dirnams = ['../data/SIM_' + subarg + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in
+            dirnams = ['../data/SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in
                        cmb]
         else:
             dirnams = ['/att/nobackup/sberton2/MLA/data/SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(
@@ -62,22 +64,22 @@ if __name__ == '__main__':
         args_pyaltsim = [(i, j, k, subarg) for ((i, j), k) in zip(cmb, dirnams)]
 
         indirnams = ['SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
-        outdirnams = ['sim/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_'+ subarg[:2] for x in cmb]
-        args_pygeoloc = [(subarg, k, l, 'MLASIMRDR') for (k, l) in zip(indirnams, outdirnams)]
+        outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_'+ subarg[:2] for x in cmb]
+        args_pygeoloc = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
 
-        indirnams = ['sim/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_' for x in cmb]
-        outdirnams = ['sim/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
-        args_pyxover = [(subarg, k, l, 'MLASIMRDR') for (k, l) in zip(indirnams, outdirnams)]
+        indirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_' for x in cmb]
+        outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
+        args_pyxover = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
 
     else:
     
         indirnams = ['MLA_' + subarg[:2] + '/']
         outdirnams = ['mladata/' + exp + 'gtrack_'+ subarg[:2]]
-        args_pygeoloc = [(subarg, k, l, 'MLASCIRDR') for (k, l) in zip(indirnams, outdirnams)]
+        args_pygeoloc = [(subarg, k, l, 'MLASCIRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
     
         indirnams = ['mladata/' + exp + 'gtrack_']
         outdirnams = ['mladata/'+exp]
-        args_pyxover = [(subarg, k, l, 'MLASCIRDR') for (k, l) in zip(indirnams, outdirnams)]
+        args_pyxover = [(subarg, k, l, 'MLASCIRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
 
     if sect == 1:
 
@@ -85,7 +87,7 @@ if __name__ == '__main__':
         idx_tst = [i for i in range(len(cmb))]
         if local == 0:
             ie = int(resampl)
-            if data_sim == 'sim':
+            if data_sim == 'sim' and ext_iter == 0:
               print("Running PyAltSim with ", args_pyaltsim[ie], "...")
               #PyAltSim.main(args_pyaltsim[ie])
             print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
@@ -93,9 +95,9 @@ if __name__ == '__main__':
 
         else:
             for ie in range(len(args_pyxover)):
-                if data_sim == 'sim':
+                if data_sim == 'sim' and ext_iter == 0:
                     print("Running PyAltSim with ", args_pyaltsim[ie], "...")
-                    PyAltSim.main(args_pyaltsim[ie])
+                    # PyAltSim.main(args_pyaltsim[ie])
                 print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
                 PyGeoloc.main(args_pygeoloc[ie])
 
@@ -113,7 +115,7 @@ if __name__ == '__main__':
 
     elif sect == 3:
 
-        AccumXov.main([outdirnams, data_sim])
+        AccumXov.main([outdirnams, data_sim, ext_iter])
         if os.path.isfile("tmp/tst.png"):
             os.rename("tmp/tst.png", "tmp/rms_vs_exp_" + exp.split('/')[0] + ".png")
 
