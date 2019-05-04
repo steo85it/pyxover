@@ -12,3 +12,10 @@ def remove_zero_rows(X):
     nonzero_row_indice, _ = X.nonzero()
     unique_nonzero_indice = np.unique(nonzero_row_indice)
     return X[unique_nonzero_indice]
+
+def mergsum(a, b):
+    for k in b:
+        if k in a:
+            b[k] = b[k] + a[k]
+    c = {**a, **b}
+    return c

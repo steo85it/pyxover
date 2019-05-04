@@ -7,6 +7,9 @@
 #
 import warnings
 
+from Amat import Amat
+import AccumXov as xovacc
+
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
 import glob
@@ -58,8 +61,9 @@ from prOpt import parallel, SpInterp, new_gtrack, outdir, auxdir, local, vecopts
 
 
 def launch_gtrack(args):
-    track_id, infil, outdir_in = args
-    track = gtrack(vecopts)
+    track, infil, outdir_in = args
+    track_id = 'gtrack_' + track.name
+    # track = gtrack(vecopts)
 
     if new_gtrack:
         gtrack_out = outdir + outdir_in + '/' + track_id + '.pkl'
@@ -68,8 +72,9 @@ def launch_gtrack(args):
             if not os.path.exists(outdir + outdir_in):
                 os.makedirs(outdir + outdir_in, exist_ok=True)
 
-            # try:
             track.setup(infil)
+            print(track.ladata_df.LON)
+            exit()
             #
             if debug:
                 print("track#:", track.name)
@@ -99,6 +104,7 @@ def main(args):
     epo_in = args[0]
     indir_in = args[1]
     outdir_in = args[2]
+    iter_in = args[4]
 
     # locate data
     if local == 0:
@@ -149,8 +155,16 @@ def main(args):
     # Prepare list of tracks to geolocalise
     tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles]
 
+    # Import solution at previous iteration
+    if int(iter_in)>0:
+        tmp = Amat(vecopts)
+        tmp = tmp.load(outdir+'Abmat_'+('_').join(outdir_in.split('/')[:-2])+'.pkl')
+        orb_sol, glo_sol = xovacc.analyze_sol(tmp, tmp.xov)
+    # sol_prev_iter = {'orb':orb_sol, 'glo':glb_sol}
+
     if new_gtrack:
         # epo_in=[]
+        tracks = []
         for track_id, infil in zip(tracknames, allFiles):
             track = track_id
             track = gtrack(vecopts)
@@ -160,6 +174,11 @@ def main(args):
             #    print('Issue in preprocessing for '+track_id)
             # epo_in.extend(track.ladata_df.ET_TX.values)
 
+            if int(iter_in) > 0:
+                track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.orb==str(track.name)],
+                                   'glo':glo_sol}
+
+            tracks.append(track)
         # epo_in = np.array(epo_in)
         # print(epo_in)
         # print(epo_in.shape)
@@ -182,7 +201,7 @@ def main(args):
 
     startGeoloc = time.time()
 
-    args = ((tr, fil, outdir_in) for (tr, fil) in zip(tracknames,allFiles))
+    args = ((tr, fil, outdir_in) for (tr, fil) in zip(tracks,allFiles))
 
     # loop over all gtracks
     if parallel:

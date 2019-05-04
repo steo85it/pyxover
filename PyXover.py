@@ -97,7 +97,9 @@ def launch_xov(
                         trackB = gtrack(vecopts)
                         trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
                         if not trackB == None and len(trackB.ladata_df) > 0:
+
                             xov_tmp.setup(pd.concat([trackA.ladata_df, trackB.ladata_df]).reset_index(drop=True))
+
                     # except:
                     #     print(
                     #         'failed to load trackB ' + outdir + 'gtrack_' + gtrackB + '.pkl' + ' to process ' + outdir + 'gtrack_' + track_id + '.pkl')
@@ -105,6 +107,7 @@ def launch_xov(
                 # for each gtrackA, write
                 # print([s for s in comb if track_id in s[0]])
                 if [s for s in comb if track_id in s[0]] and len(xov_tmp.xovers) > 0:
+                    xov_tmp.get_xov_latlon(trackA)
                     xov_tmp.save(outdir + 'xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
                     # print(xov_tmp.xovers)
                     # trackxov_list.append(gtrackA)

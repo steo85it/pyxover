@@ -26,9 +26,10 @@ import multiprocessing as mp
 import subprocess
 
 import spiceypy as spice
+import matplotlib.pyplot as plt
 
 # mylib
-from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts
+from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts, range_noise
 import astro_trans as astr
 from ground_track import gtrack
 from geolocate_altimetry import get_sc_ssb, get_sc_pla
@@ -46,6 +47,7 @@ class sim_gtrack(gtrack):
         self.orbID = orbID
         self.name = str(orbID)
         self.outdir = None
+        # self.ran_noise = None
 
     def setup(self, df):
         df_ = df.copy()
@@ -68,7 +70,28 @@ class sim_gtrack(gtrack):
 
         # actual processing
         self.lt_topo_corr(df=df_)
+
+        # add range noise
+        if range_noise:
+            mean = 0.
+            std = 0.2
+            self.add_range_noise(df_,mean,std)
+
         self.setup_rdr()
+
+    @staticmethod
+    def add_range_noise(df_, mean=0., std=0.2):
+        """
+        Add range noise (normal distribution) to simulated time of flight (seconds)
+        :param df_: input altimetry dataframe
+        :param mean: mean value for normal distribution (meters)
+        :param std: standard deviation for normal distribution (meters)
+        """
+        tof_noise = (std * np.random.randn(len(df_)) + mean) / clight
+        df_.loc[:, 'TOF'] += tof_noise
+        if debug:
+            plt.plot(df_.loc[:, 'ET_TX'], df_.TOF, 'bo', df_.loc[:, 'ET_TX'], df_.TOF - tof_noise, 'k')
+            plt.savefig('tmp/noise.png')
 
     def lt_topo_corr(self, df, itmax=100, tol=1.e-2):
         """
@@ -124,6 +147,7 @@ class sim_gtrack(gtrack):
 
             # update tof
             tof = 2. * rng_new / clight
+
             self.ladata_df.loc[:, 'TOF'] = tof  # convert to update
             self.ladata_df.loc[:, 'converged'] = abs(dr) < tol
             self.ladata_df.loc[:, 'offnadir'] = np.rad2deg(offndr)
@@ -169,21 +193,22 @@ class sim_gtrack(gtrack):
 
                 if local == 0:
                     dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-                    r_dem = subprocess.check_output(
-                        ['grdtrack', gmt_in,
-                         '-G' + dem],
-                        universal_newlines=True, cwd='tmp')
-                    r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-        # np.savetxt('gmt_'+self.name+'.out', r_dem)
+        #             r_dem = subprocess.check_output(
+        #                 ['grdtrack', gmt_in,
+        #                  '-G' + dem],
+        #                 universal_newlines=True, cwd='tmp')
+        #             r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+        # # np.savetxt('gmt_'+self.name+'.out', r_dem)
 
                 else:
                     dem = auxdir + 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
                     # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
-                    r_dem = subprocess.check_output(
-                        ['grdtrack', gmt_in, '-G' + dem],
-                        universal_newlines=True, cwd='tmp')
-                    r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-                    r_dem *= 1.e3
+
+                r_dem = subprocess.check_output(
+                    ['grdtrack', gmt_in, '-G' + dem],
+                    universal_newlines=True, cwd='tmp')
+                r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+                r_dem *= 1.e3
 
             # else:
             #     print(lontmp)
