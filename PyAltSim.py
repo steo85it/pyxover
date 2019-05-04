@@ -169,21 +169,23 @@ class sim_gtrack(gtrack):
 
                 if local == 0:
                     dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-                    r_dem = subprocess.check_output(
-                        ['grdtrack', gmt_in,
-                         '-G' + dem],
-                        universal_newlines=True, cwd='tmp')
-                    r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-        # np.savetxt('gmt_'+self.name+'.out', r_dem)
+        #             r_dem = subprocess.check_output(
+        #                 ['grdtrack', gmt_in,
+        #                  '-G' + dem],
+        #                 universal_newlines=True, cwd='tmp')
+        #             r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+        # # np.savetxt('gmt_'+self.name+'.out', r_dem)
 
                 else:
                     dem = auxdir + 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
                     # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
-                    r_dem = subprocess.check_output(
-                        ['grdtrack', gmt_in, '-G' + dem],
-                        universal_newlines=True, cwd='tmp')
-                    r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-                    r_dem *= 1.e3
+
+                r_dem = subprocess.check_output(
+                    ['grdtrack', gmt_in, '-G' + dem],
+                    universal_newlines=True, cwd='tmp')
+                r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+                r_dem *= 1.e3
+
 
             # else:
             #     print(lontmp)

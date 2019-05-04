@@ -18,9 +18,9 @@ if __name__ == '__main__':
     #    Arg_list = collections.namedtuple('Arg_list', arg_names)
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
-    local = 1
+    local = 0
     data_sim = 'sim'  # 'data' #  !! change dataset in AccumXov.load/combine !!
-    exp = 'mlatimes/1301' # 'xov/' #  '1s' #'mladata' # !! change PyAltSim IllumNG source file
+    exp = 'mlatimes' # 'xov/' #  '1s' #'mladata' # !! change PyAltSim IllumNG source file
 
     # res = [0, 1, 2, 3, 4, 5, 6]
     # ampl = [1, 5, 10, 25, 50]
@@ -57,7 +57,7 @@ if __name__ == '__main__':
                        cmb]
         else:
             dirnams = ['/att/nobackup/sberton2/MLA/data/SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(
-                x[0]) + 'amp_tst/' for x in cmb]
+                x[0]) + 'amp/' for x in cmb]
 
         args_pyaltsim = [(i, j, k, subarg) for ((i, j), k) in zip(cmb, dirnams)]
 
@@ -84,11 +84,10 @@ if __name__ == '__main__':
         # add option to spread over the cluster
         idx_tst = [i for i in range(len(cmb))]
         if local == 0:
-            print('wtf')
             ie = int(resampl)
             if data_sim == 'sim':
               print("Running PyAltSim with ", args_pyaltsim[ie], "...")
-              PyAltSim.main(args_pyaltsim[ie])
+              #PyAltSim.main(args_pyaltsim[ie])
             print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
             PyGeoloc.main(args_pygeoloc[ie])
 
