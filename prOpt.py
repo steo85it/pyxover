@@ -4,11 +4,11 @@
 ##############################################
 # @profile
 # local or PGDA
-local = 1
+local = 0
 # debug mode
 debug = 0
 # parallel processing?
-parallel = 0
+parallel = 1
 
 # compute partials?
 partials = 1
@@ -27,7 +27,7 @@ OrbRep = 'cnt' #'lin'
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 SpInterp = 2
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
-new_gtrack = 2
+new_gtrack = 1
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 new_xov = 2
 

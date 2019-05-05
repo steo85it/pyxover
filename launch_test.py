@@ -19,8 +19,8 @@ if __name__ == '__main__':
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
     local = 0
-    data_sim = 'sim'  # 'data' #  
-    exp = 'mlatimes' # 'xov/' #  '1s' #'mladata' # 
+    data_sim = 'data' #  'sim'  # 
+    exp = '' # 'mlatimes' #  '1s' #'mladata' # 
     ext_iter = 0  # external iteration
     # exp += '_'+str(ext_iter)
 
