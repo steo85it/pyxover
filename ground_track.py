@@ -520,7 +520,7 @@ class gtrack:
 
     # Compute stereographic projection of measurements location
     # and feed it to ladata_df
-    def project(self):
+    def project(self,lon0=0,lat0=90):
 
         ladata_df = self.ladata_df
         param = self.param
@@ -537,7 +537,7 @@ class gtrack:
             pool.close()
             pool.join()
         else:
-            results = [self.launch_stereoproj(i) for i in param.items()]  # seq
+            results = [self.launch_stereoproj(i,lon0,lat0) for i in param.items()]  # seq
 
         # print(results)
 
@@ -559,7 +559,7 @@ class gtrack:
     # @profile
     #################
     # Correct for perturbations by using partials (if needed) and launch projection
-    def launch_stereoproj(self, par_d):
+    def launch_stereoproj(self, par_d, lon0 = 0, lat0 = 90):
 
         ladata_df = self.ladata_df
         vecopts = self.vecopts
@@ -585,7 +585,7 @@ class gtrack:
                 print('corr', ladata_df['dLAT/' + par].values * diff_step, ladata_df['dLON/' + par].values * diff_step)
 
         # project latlon to xy from North Pole in stereo projection
-        proj = np.vstack([project_stereographic(lon_tmp[:][k], lat_tmp[:][k], 0, 90, vecopts['PLANETRADIUS']) for k in
+        proj = np.vstack([project_stereographic(lon_tmp[:][k], lat_tmp[:][k], lon0, lat0, vecopts['PLANETRADIUS']) for k in
                           range(0, np.shape(lon_tmp)[0])]).T
 
         # stg_proj_cols = {}

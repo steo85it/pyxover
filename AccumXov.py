@@ -268,7 +268,7 @@ def prepare_Amat(xov, vecopts, par_list=''):
 def solve(xovi_amat,dataset):
     # Solve
     # select subset of parameters
-    sol4_orb = [] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
+    sol4_orb = [None] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
     sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
     sol4_glo = ['dR/dL','dR/dh2'] #'dR/dRA','dR/dL','dR/dh2'] #['dR/dL','dR/dRA','dR/dDEC'] #'dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
 
@@ -371,7 +371,10 @@ def analyze_sol(xovi_amat,xov):
             table.columns = ['_'.join(col).strip() for col in table.columns.values]
             table = pd.merge(table.reset_index(),merged_Frame,on='orb')
 
-            orb_sol = table
+        orb_sol = table
+
+    else:
+        orb_sol = pd.DataFrame()
 
     # print([isinstance(i,tuple) for i in table.columns])
     # print(['_'.join(i) for i in table.columns if isinstance(i,tuple)])

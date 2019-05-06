@@ -98,7 +98,7 @@ def launch_xov(
                         trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
                         if not trackB == None and len(trackB.ladata_df) > 0:
 
-                            xov_tmp.setup(pd.concat([trackA.ladata_df, trackB.ladata_df]).reset_index(drop=True))
+                            xov_tmp.setup([trackA,trackB])
 
                     # except:
                     #     print(

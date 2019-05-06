@@ -4,7 +4,7 @@
 ##############################################
 # @profile
 # local or PGDA
-local = 0
+local = 1
 # debug mode
 debug = 0
 # parallel processing?

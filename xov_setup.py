@@ -38,7 +38,10 @@ class xov:
             columns=['x0', 'y0', 'ladata_idA', 'ladata_idB', 'R_A', 'R_B', 'dR'])
         self.param = {'': 1.}
 
-    def setup(self, df):
+    def setup(self, gtracks):
+
+        self.gtracks = gtracks
+        df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df]).reset_index(drop=True)
 
         self.ladata_df = df.drop('chn', axis=1)
         self.msrm_sampl = 100
@@ -107,6 +110,8 @@ class xov:
         # clean ladata, which is now useless
         if hasattr(self, 'ladata_df'):
             del (self.ladata_df)
+        if hasattr(self, 'gtracks'):
+            del (self.gtracks)
         pickle.dump(self, pklfile)
         pklfile.close()
 
@@ -410,6 +415,12 @@ class xov:
                   Y_stgA, \
                   X_stgB, \
                   Y_stgB)
+
+        # Recompute stereogr projection around average LON/LAT of track
+        df_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][['LON', 'LAT']].values
+        lon_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 0].mean()
+        lat_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 1].mean()
+        [obj.project(lon_mean_A, lat_mean_A) for obj in self.gtracks]
 
         # compute more accurate location
         # Retrieve ladata_df index of observations involved in the crossover
