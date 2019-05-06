@@ -581,8 +581,8 @@ class gtrack:
             lat_tmp = [lat_tmp[:][0] + ladata_df['dLAT/' + par].values * k * diff_step for k in [-1, 1]]
 
             if (debug):
-                print('corr', lon_tmp[:][0], lat_tmp[:][0])
-                print('corr', ladata_df['dLAT/' + par].values * diff_step, ladata_df['dLON/' + par].values * diff_step)
+                print('corr: lon lat', lon_tmp[:][0], lat_tmp[:][0])
+                print('corr: partials add', ladata_df['dLAT/' + par].values * diff_step, ladata_df['dLON/' + par].values * diff_step)
 
         # project latlon to xy from North Pole in stereo projection
         proj = np.vstack([project_stereographic(lon_tmp[:][k], lat_tmp[:][k], lon0, lat0, vecopts['PLANETRADIUS']) for k in

@@ -44,7 +44,7 @@ class xov:
         df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df]).reset_index(drop=True)
 
         self.ladata_df = df.drop('chn', axis=1)
-        self.msrm_sampl = 100
+        self.msrm_sampl = 50
 
         self.tracks = df.orbID.unique()
         # print(df.orbID)
@@ -79,7 +79,8 @@ class xov:
             self.xovers.reset_index(drop=True, inplace=True)
             self.xovers['xOvID'] = self.xovers.index
 
-        # print(self.xovers)
+            # print(self.xovers)
+        # exit()
 
     def combine(self, xov_list):
 
@@ -274,7 +275,7 @@ class xov:
             print('R_B_Rbf (supp more accurate)', z_dense_smooth_rbf)
             print('R_B_1d', R_B)
 
-        if debug and len(ind_B_int) == 1:
+        if debug and len(ind_B_int) == 1 and False:
             self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0],
                                ladata_df, ldA_, ldB_,
                                tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0])
@@ -313,7 +314,7 @@ class xov:
         # #exit()
         # #interpolate.RectBivariateSpline
 
-        if (debug):
+        if debug and False:
             print(xyintA[0][0], np.array(xyintA[0][0]))
             print(ldA_)
             plt.plot(xyintA[0][0], xyintA[0][1], 'o', xyintA[0][0], fA_interp[0](xyintA[0][0]), '-')
@@ -417,10 +418,14 @@ class xov:
                   Y_stgB)
 
         # Recompute stereogr projection around average LON/LAT of track
-        df_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][['LON', 'LAT']].values
-        lon_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 0].mean()
-        lat_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 1].mean()
-        [obj.project(lon_mean_A, lat_mean_A) for obj in self.gtracks]
+        if param is '':
+            df_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][['LON', 'LAT']].values
+            lon_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 0].mean()
+            lat_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 1].mean()
+            [obj.project(lon_mean_A, lat_mean_A) for obj in self.gtracks]
+            df = pd.concat([self.gtracks[0].ladata_df, self.gtracks[1].ladata_df]).reset_index(drop=True)
+            self.ladata_df.update(df)
+            ladata_df = self.ladata_df
 
         # compute more accurate location
         # Retrieve ladata_df index of observations involved in the crossover
@@ -503,7 +508,7 @@ class xov:
 
             # plot and check intersections (rough, fine, ...)
             # if (debug):
-            if debug and len(intersec_x) > 0:
+            if debug and len(intersec_x) > 0 and param is '':
                 self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB)
                 # exit()
 
@@ -615,6 +620,8 @@ class xov:
                 ldA, ldB, R_A, R_B = self.get_elev(arg, subldA, subldB, ldA, ldB, x=x, y=y)
 
                 # print(arg, x, y, ldA, ldB, R_A, R_B)
+                # print(arg, x, y, R_A, R_B)
+                # exit()
                 return np.vstack((x, y, ldA, ldB, R_A, R_B)).T
             # except:
 
@@ -671,7 +678,6 @@ class xov:
             # Update xovtmp as attribute for partials
             self.xovtmp = xovtmp
 
-            # print(self.xovers)
             if (debug):
                 print(str(len(xovtmp)) + " xovers found btw " + self.tracks[0] + " and " + self.tracks[1])
 
@@ -803,12 +809,17 @@ class xov:
         # parxy_df=pd.DataFrame(np.diff(np.diff(np.hstack(out_elev))[:,::2])[:,::2]/list(param.values())[1:],columns=par_xy)
         if debug:
             print(par_xy)
-            # print(ladata_df)
+            print(out_elev)
             # exit()
 
         max_xov_part = np.max([len(i) for i in out_elev[0]])
         nxov_part_all_equal = len(set([len(i) for i in out_elev[0]])) == 1
-        if len(xovers_df.index) == max_xov_part and nxov_part_all_equal:
+        no_nan_part = [i!=None for i in out_elev]
+        # print(nan_part)
+        # print([i!=None for i in out_elev])
+        # print(out_elev)
+
+        if len(xovers_df.index) == max_xov_part and nxov_part_all_equal and no_nan_part:
 
             if (len(xovers_df.index) > 1):
                 # print("len(xovers_df.index) > 1 ")
@@ -877,9 +888,10 @@ class xov:
 
         else:
             print("Observations in ", self.tracks, " excluded for inconsistent number of partials")
-            print(xovers_df.index)
+            print("nxov = ", len(xovers_df.index))
             print("max_xov_part =", max_xov_part)
             print("nxov_part_all_equal=", nxov_part_all_equal)
+            print("no nans in part = ", no_nan_part)
         # Update general df
         # self.xovers = self.xovers.append(xovers_df)
 
