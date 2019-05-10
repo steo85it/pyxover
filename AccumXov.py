@@ -142,9 +142,9 @@ def get_stats(xov_lst,resval,amplval):
 
             # remove data if xover distance from measurements larger than 5km (interpolation error)
             # plus remove outliers with median method
-            xov.xovers = xov.xovers[xov.xovers.dist_max < 5]
-            print(len(xov.xovers[xov.xovers.dist_max > 5]),
-                  'xovers removed by dist from obs > 5km')
+            xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
+            print(len(xov.xovers[xov.xovers.dist_max > 1]),
+                  'xovers removed by dist from obs > 1km')
             if sim == 0:
                 mean_dR, std_dR = xov.remove_outliers('dR')
 
@@ -159,7 +159,7 @@ def get_stats(xov_lst,resval,amplval):
             # print(xov.xovers[['dist_max','dR']].abs())
 
             if debug:
-                plt_histo_dR(idx, mean_dR, std_dR, xov)
+                plt_histo_dR(idx, mean_dR, std_dR, xov.xovers)
 
                 xov.xovers[['dist_max', 'dR']].abs().plot(kind='scatter', x='dist_max', y='dR')
                 plt.savefig('tmp/dR_vs_dist_' + str(idx) + '.png')
@@ -189,12 +189,13 @@ def get_stats(xov_lst,resval,amplval):
     piv = pd.pivot_table(df_, values="RMS",index=["ampl"], columns=["res"], fill_value=0)
     #plot pivot table as heatmap using seaborn
 
-    fig, [ax0,ax1] = plt.subplots(nrows=2)
-    ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
-    ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
-    ax1 = sns.heatmap(piv, square=False, annot=True, robust=True,
-                      cbar_kws={'label': 'RMS (m)'}, xticklabels=piv.columns.values.round(2), fmt='.4g')
-    ax1.set(xlabel='Topog scale (1st octave, km)',
+    fig, ax0 = plt.subplots(nrows=1)
+    # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
+    # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
+    ax0.set_aspect(aspect=0.6)
+    ax0 = sns.heatmap(piv, square=False, annot=True, robust=True,
+                      cbar_kws={'label': 'RMS (m)','orientation': 'horizontal'}, xticklabels=piv.columns.values.round(2), fmt='.4g')
+    ax0.set(xlabel='Topog scale (1st octave, km)',
             ylabel='Topog ampl rms (1st octave, m)')
     fig.savefig('tmp/tst.png')
     plt.clf()
@@ -209,7 +210,7 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov):
 
     # the histogram of the data
     num_bins = 10
-    n, bins, patches = plt.hist(xov.xovers.dR, bins='auto', density=True, facecolor='blue', alpha=0.5)
+    n, bins, patches = plt.hist(xov.dR, bins='auto', density=True, facecolor='blue', alpha=0.5)
     # add a 'best fit' line
     y = stats.norm.pdf(bins, mean_dR, std_dR)
     plt.plot(bins, y, 'r--')
@@ -236,13 +237,13 @@ def prepare_Amat(xov, vecopts, par_list=''):
     # plus remove outliers with median method
     if xov.xovers.filter(regex='^dist_.*$').empty==False:
         xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-        xov.xovers = xov.xovers[xov.xovers.dist_max < 5]
+        print("max_dist",xov.xovers.filter(regex='^dist_.*$'))
+        print(len(xov.xovers[xov.xovers.dist_max > 1]),
+              'xovers removed by dist from obs > 1km')
+        xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
 
     if sim == 0:
         mean_dR, std_dR = xov.remove_outliers('dR')
-
-    print(xov.xovers.dR.max())
-    # exit()
 
     # simplify and downsize
     if par_list=='':

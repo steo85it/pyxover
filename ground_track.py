@@ -520,14 +520,17 @@ class gtrack:
 
     # Compute stereographic projection of measurements location
     # and feed it to ladata_df
-    def project(self,lon0=0,lat0=90):
+    def project(self,lon0=0,lat0=90,inplace=True):
 
-        ladata_df = self.ladata_df
+        ladata_df = self.ladata_df.copy()
         param = self.param
+
+        if partials==0:
+            param = dict([next(iter(param.items()))])
 
         startProj = time.time()
 
-        if (parallel and 1 == 2):  # not convenient for small datasets (<5 orbits)
+        if (parallel and False):  # not convenient for small datasets (<5 orbits)
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count() - 1)
             results = pool.map(self.launch_stereoproj, param.items())  # parallel
@@ -551,10 +554,15 @@ class gtrack:
         else:
             ladata_df[np.hstack((col_sim))] = pd.DataFrame(np.hstack(results), index=ladata_df.index)
 
+        if inplace:
+            self.ladata_df = ladata_df.copy()
+
         endProj = time.time()
         if (debug):
             print('----- Runtime Proj = ' + str(endProj - startProj) + ' sec -----' + str(
                 (endProj - startProj) / 60.) + ' min -----')
+
+        return ladata_df
 
     # @profile
     #################
