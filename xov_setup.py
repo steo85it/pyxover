@@ -37,6 +37,7 @@ class xov:
         self.xovers = pd.DataFrame(
             columns=['x0', 'y0', 'ladata_idA', 'ladata_idB', 'R_A', 'R_B', 'dR'])
         self.param = {'': 1.}
+        self.proj_center = None
 
     def setup(self, gtracks):
 
@@ -216,7 +217,7 @@ class xov:
         tA_interp = [interpolate.interp1d(xyintA[k][2], t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
         R_A = [fA_interp[k](tA_interp[k](ind_A.item(k))) for k in range(0, ind_A.size)]
 
-        if debug:
+        if debug and False:
             ldA2_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj', 'Y_stgprj', 'R']].values
             xyintA = [ldA2_[max(0, k - msrm_sampl):min(k + msrm_sampl, ladata_df.shape[0])].T for k in ind_A_int]
             zfun_smooth_rbf = interpolate.Rbf(xyintA[0][0], xyintA[0][1], xyintA[0][2], function='cubic',
@@ -266,7 +267,7 @@ class xov:
         tB_interp = [interpolate.interp1d(xyintB[k][2], t_ldB[k], kind='linear') for k in range(0, len(ind_B_int))]
         R_B = [fB_interp[k](tB_interp[k](ind_B.item(k))) for k in range(0, ind_B.size)]
 
-        if debug:
+        if debug and False:
             ldB2_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj', 'Y_stgprj', 'R']].values
             zfun_smooth_rbf = interpolate.Rbf(ldB2_[:, 0], ldB2_[:, 1], ldB2_[:, 2], function='cubic',
                                               smooth=0)  # default smooth=0 for interpolation
@@ -274,6 +275,11 @@ class xov:
                                                  y)  # not really a function, but a callable class instance
             print('R_B_Rbf (supp more accurate)', z_dense_smooth_rbf)
             print('R_B_1d', R_B)
+
+            print('dR',arg,[a-b for a in R_A for b in R_B])
+
+        # if np.abs([a-b for a in R_A for b in R_B])>50:
+        #     exit(2)
 
         if debug and len(ind_B_int) == 1 and False:
             self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0],
@@ -382,7 +388,7 @@ class xov:
         orb_lst = self.tracks.copy()
 
         msrm_sampl = self.msrm_sampl
-        ladata_df = self.ladata_df
+        ladata_df = self.ladata_df.copy()
 
         X_stgA = 'X_stgprj'
         Y_stgA = 'Y_stgprj'
@@ -422,10 +428,11 @@ class xov:
             df_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][['LON', 'LAT']].values
             lon_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 0].mean()
             lat_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 1].mean()
-            [obj.project(lon_mean_A, lat_mean_A) for obj in self.gtracks]
-            df = pd.concat([self.gtracks[0].ladata_df, self.gtracks[1].ladata_df]).reset_index(drop=True)
-            self.ladata_df.update(df)
-            ladata_df = self.ladata_df
+            self.proj_center = {'lon':lon_mean_A,'lat':lat_mean_A}
+            tmp = [obj.project(lon_mean_A, lat_mean_A,inplace=False) for obj in self.gtracks]
+            ladata_df = pd.concat([tmp[0], tmp[1]]).reset_index(drop=True)
+            # self.ladata_df.update(df)
+            # ladata_df = self.ladata_df
 
         # compute more accurate location
         # Retrieve ladata_df index of observations involved in the crossover
@@ -435,11 +442,15 @@ class xov:
         # ind0 and ind1 now are the indeces of the points just before the
         # intersection in ladata_df, so that (ind0,ind0+1) and (ind1,ind1+1) are the
         # bracketing points' indeces
+
         if set([X_stgA, Y_stgA, X_stgB, Y_stgB]).issubset(ladata_df.columns):
             ldA_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]].values
             ldB_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB, Y_stgB]].values
-            # print("Fine")
-            # print(rough_indA, rough_indB)
+
+            if debug:
+                print("Fine")
+                print(rough_indA, rough_indB)
+                print(ldA_[rough_indA[0]],ldB_[rough_indB[0]- len(ldA_)])
 
             intersec_out = [
                 intersection(ldA_[max(0, rough_indA[k] - msrm_sampl):min(rough_indA[k] + msrm_sampl, len(ldA_)), 0],
@@ -452,8 +463,10 @@ class xov:
                                                                                 len(ldB_)), 1])
                 for k in range(len(rough_indA))]
 
-            # print(len(rough_indA), len(intersec_out[0][0]),intersec_out[0][0] )
-            # print(intersec_out)
+            if debug:
+                print("intersection")
+                print(len(rough_indA), len(intersec_out[0][0]),intersec_out[0][0] )
+                print(intersec_out)
 
             if len(rough_indA) > 1:
                 # print("len>1", len(rough_indA))
@@ -509,18 +522,23 @@ class xov:
             # plot and check intersections (rough, fine, ...)
             # if (debug):
             if debug and len(intersec_x) > 0 and param is '':
+                print("intersec_x, intersec_y",intersec_x, intersec_y)
                 self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB)
                 # exit()
 
-            if not all(intersec_x):
+            isarray = all(intersec_x)
+            if not isarray:
                 ld_ind_A = [np.squeeze(x) for x in ld_ind_A[intersec_x > 0]][0]
                 ld_ind_B = [np.squeeze(x) for x in ld_ind_B[intersec_x > 0]][0]
-                return lflatten(intersec_x[intersec_x > 0]), lflatten(intersec_y[intersec_x > 0]), lflatten(
-                    fine_indA[intersec_x > 0]), lflatten(fine_indB[
-                                                             intersec_x > 0]), ld_ind_A, ld_ind_B
+                # return lflatten(intersec_x[intersec_x > 0]), lflatten(intersec_y[intersec_x > 0]), lflatten(
+                #     fine_indA[intersec_x > 0]), lflatten(fine_indB[
+                #                                                  intersec_x > 0]), ld_ind_A, ld_ind_B
+                return lflatten(intersec_x), lflatten(intersec_y), lflatten(
+                    fine_indA), lflatten(fine_indB), ld_ind_A, ld_ind_B
             else:
-                return intersec_x[intersec_x > 0], intersec_y[intersec_x > 0], fine_indA[intersec_x > 0], fine_indB[
-                    intersec_x > 0], ld_ind_A[intersec_x > 0], ld_ind_B[intersec_x > 0]
+                # return intersec_x[intersec_x > 0], intersec_y[intersec_x > 0], fine_indA[intersec_x > 0], fine_indB[
+                #     intersec_x > 0], ld_ind_A[intersec_x > 0], ld_ind_B[intersec_x > 0]
+                return intersec_x, intersec_y, fine_indA, fine_indB, ld_ind_A, ld_ind_B
         else:
             return [], [], [], [], [], []
 
@@ -697,20 +715,32 @@ class xov:
         :param xovtmp: x-over dataframe
         :return: updated x-over dataframe with distance of xover from the 4 altimetry bounce points used to locate it
         """
+        from project_coord import project_stereographic
 
         xovtmp = self.xovtmp.copy()
         xovtmp.reset_index(drop=True, inplace=True)
-        # get coordinates of neighbouring measurements
+
+        # get coordinates of neighbouring measurements in local projection
         msrmnt_crd = []
 
         for trk in ['A', 'B']:
             obslist = xovtmp[['ladata_id' + trk]].values.astype(int).tolist()
             obslist = lflatten(obslist)
 
-            msrmnt_crd.extend(
-                self.ladata_df.loc[obslist][['X_stgprj', 'Y_stgprj']].values)
-            msrmnt_crd.extend(
-                self.ladata_df.loc[[l + 1 for l in obslist]][['X_stgprj', 'Y_stgprj']].values)
+            lonlat_bef = self.ladata_df.loc[obslist][['LON', 'LAT']].to_dict('records')
+            lonlat_aft = self.ladata_df.loc[[l + 1 for l in obslist]][['LON', 'LAT']].to_dict('records')
+            for obs in [lonlat_bef,lonlat_aft]:
+                for x in range(len(obs)):
+                    # print(obs[x])
+                    msrmnt_crd.extend(project_stereographic(obs[x]['LON'],obs[x]['LAT'],
+                                                self.proj_center['lon'],
+                                                self.proj_center['lat'],
+                                                self.vecopts['PLANETRADIUS']))
+
+            # msrmnt_crd.extend(
+            #     self.ladata_df.loc[obslist][['X_stgprj', 'Y_stgprj']].values)
+            # msrmnt_crd.extend(
+            #     self.ladata_df.loc[[l + 1 for l in obslist]][['X_stgprj', 'Y_stgprj']].values)
 
         msrmnt_crd = np.reshape(msrmnt_crd, (-1, 2))
         # print(msrmnt_crd)

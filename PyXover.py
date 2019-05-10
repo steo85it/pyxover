@@ -98,6 +98,12 @@ def launch_xov(
                         trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
                         if not trackB == None and len(trackB.ladata_df) > 0:
 
+                            # # TODO remove when recomputing
+                            # trackA.ladata_df[['X_NPstgprj', 'Y_NPstgprj']] = trackA.ladata_df[['X_stgprj', 'Y_stgprj']]
+                            # trackB.ladata_df[['X_NPstgprj', 'Y_NPstgprj']] = trackB.ladata_df[['X_stgprj', 'Y_stgprj']]
+                            # trackA.ladata_df[] = trackA.ladata_df.rename(index=str, columns={"X_stgprj": "X_NPstgprj", "Y_stgprj": "Y_NPstgprj"})
+                            # trackB.ladata_df = trackB.ladata_df.rename(index=str, columns={"X_stgprj": "X_NPstgprj", "Y_stgprj": "Y_NPstgprj"})
+
                             xov_tmp.setup([trackA,trackB])
 
                     # except:
@@ -211,8 +217,8 @@ def main(args):
     # of orbits from A and B
     # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
     # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
-    allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
-    allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
+    allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*1301*'))
+    allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*1301*'))
 
     print(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
 
