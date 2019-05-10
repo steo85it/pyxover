@@ -18,9 +18,9 @@ if __name__ == '__main__':
     #    Arg_list = collections.namedtuple('Arg_list', arg_names)
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
-    local = 1
+    local = 0
     data_sim = 'sim'  # 'data' #
-    exp = 'mlatimes/1301_noise' # '' #  '1s' #'mladata' #
+    exp = 'mlatimes' # '' #  '1s' #'mladata' #
     ext_iter = 0  # external iteration
     # exp += '_'+str(ext_iter)
 
