@@ -424,6 +424,7 @@ class xov:
                   Y_stgB)
 
         # Recompute stereogr projection around average LON/LAT of track
+        # print("crash for orbits ",self.tracks)
         if param is '':
             df_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][['LON', 'LAT']].values
             lon_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 0].mean()

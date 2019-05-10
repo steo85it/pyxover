@@ -73,8 +73,6 @@ def launch_gtrack(args):
                 os.makedirs(outdir + outdir_in, exist_ok=True)
 
             track.setup(infil)
-            print(track.ladata_df.LON)
-            exit()
             #
             if debug:
                 print("track#:", track.name)

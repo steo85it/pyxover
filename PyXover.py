@@ -217,8 +217,8 @@ def main(args):
     # of orbits from A and B
     # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
     # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
-    allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*1301*'))
-    allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*1301*'))
+    allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
+    allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
 
     print(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
 
