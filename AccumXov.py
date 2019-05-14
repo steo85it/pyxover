@@ -100,7 +100,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     # misycmb = [x + '_' + y for x in tracknames for y in misy]
     # print(misycmb)
 
-    allFiles = glob.glob(os.path.join(xov_pth, 'xov_*.pkl'))
+    allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.pkl'))
 
     # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
     xov_list = [xov_.load(x) for x in allFiles]
@@ -241,7 +241,7 @@ def prepare_Amat(xov, vecopts, par_list=''):
         print(len(xov.xovers[xov.xovers.dist_max > 1]),
               'xovers removed by dist from obs > 1km')
         xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
-
+    #
     if sim == 0:
         mean_dR, std_dR = xov.remove_outliers('dR')
 
@@ -269,7 +269,7 @@ def prepare_Amat(xov, vecopts, par_list=''):
 def solve(xovi_amat,dataset):
     # Solve
     # select subset of parameters
-    sol4_orb = [None] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
+    sol4_orb = [] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
     sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
     sol4_glo = ['dR/dL','dR/dh2'] #'dR/dRA','dR/dL','dR/dh2'] #['dR/dL','dR/dRA','dR/dDEC'] #'dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
 
@@ -355,7 +355,7 @@ def analyze_sol(xovi_amat,xov):
 
         if any(xov.xovers.filter(like='dist', axis=1)):
             xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-            xov.xovers = xov.xovers[xov.xovers.dist_max < 5]
+            xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
             _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
             table['num_obs'] = _
 
@@ -452,7 +452,11 @@ def main(arg):
         solve(xovi_amat, ds)
 
         # Save to pkl
-        xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_' + ds.split('/')[2])[:-1] + str(ext_iter+1) + '.pkl')
+        print(ds)
+        if len(ds.split('/'))>2:
+            xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_' + ds.split('/')[2])[:-1] + str(ext_iter+1) + '.pkl')
+        else:
+            xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter+1) + '.pkl')
 
         orb_sol, glb_sol = analyze_sol(xovi_amat,xov_cmb)
         print_sol(orb_sol, glb_sol, xov, xovi_amat)

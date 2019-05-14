@@ -92,12 +92,30 @@ class gtrack:
         # testInterp(self.ladata_df,self.vecopts)
         # exit()
 
+        # check spk coverage and select obs in ladata_df
+        self.check_coverage()
+
+        # np.sum([t[0] <= val <= t[1] for t in twind])
+        # print(self.ladata_df.loc[np.sum([t[0] <= self.ladata_df.ET_TX <= t[1] for t in twind])])
+        # exit()
+
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
             self.interpolate()
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
+
+    def check_coverage(self):
+        cover = spice.utils.support_types.SPICEDOUBLE_CELL(2000)
+        spice.spkcov('/home/sberton2/Works/NASA/Mercury_tides/spktst/MSGR_HGM008_INTGCB.bsp', -236, cover)
+        twind = [spice.wnfetd(cover, i) for i in range(spice.wncard(cover))]
+        epo_in = np.sort(self.ladata_df.ET_TX.values)
+        self.ladata_df['in_spk'] = np.array([np.sum([t[0] <= val <= t[1] for t in twind]) for val in epo_in]) > 0
+        if debug:
+            print(len(self.ladata_df.loc[self.ladata_df['in_spk'] == False]))
+            print("lensel", len(self.ladata_df), len(self.ladata_df.loc[self.ladata_df['in_spk']]))
+        self.ladata_df = self.ladata_df.loc[self.ladata_df['in_spk']]
 
     # create groundtrack from list of epochs
     def simulate(self, filnam):
@@ -211,6 +229,7 @@ class gtrack:
             exit(2)
 
         # print("Start spkezr MGR")
+
         # trajectory
         xv_spc = np.array([spice.spkezr(self.vecopts['SCNAME'],
                                         t,

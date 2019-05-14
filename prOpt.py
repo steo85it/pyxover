@@ -29,7 +29,7 @@ SpInterp = 2
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 new_gtrack = 2
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
-new_xov = 2
+new_xov = 1
 
 # PyAltSim stuff
 # simulation mode
