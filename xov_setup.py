@@ -424,6 +424,7 @@ class xov:
                   Y_stgB)
 
         # Recompute stereogr projection around average LON/LAT of track
+        # print("crash for orbits ",self.tracks)
         if param is '':
             df_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][['LON', 'LAT']].values
             lon_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 0].mean()
@@ -784,9 +785,12 @@ class xov:
 
         :param trackA: gtrack containing ladata table
         """
-        # TODO could also average trackB idB for more accuracy
-        tmp0 = trackA.ladata_df.iloc[self.xovers.ladata_idA.round()][['LON', 'LAT']].reset_index(drop=True)
-        tmp1 = trackA.ladata_df.iloc[self.xovers.ladata_idA.round() + 1][['LON', 'LAT']].reset_index(drop=True)
+        # TODO could also average trackB idB for more accuracy (or call this function
+	# for trackB too)
+        idx = self.xovers.ladata_idA.round()
+        tmp0 = trackA.ladata_df.iloc[idx][['LON', 'LAT']].reset_index(drop=True)
+        idx[idx >= len(trackA.ladata_df)-1] = len(trackA.ladata_df)-2
+        tmp1 = trackA.ladata_df.iloc[idx + 1][['LON', 'LAT']].reset_index(drop=True)
         tmp = pd.concat([tmp0, tmp1], axis=1)
         tmp = tmp.groupby(by=tmp.columns, axis=1).mean()
 
