@@ -785,10 +785,11 @@ class xov:
 
         :param trackA: gtrack containing ladata table
         """
-        # TODO could also average trackB idB for more accuracy
+        # TODO could also average trackB idB for more accuracy (or call this function
+	    # for trackB too)
         idx = self.xovers.ladata_idA.round()
         tmp0 = trackA.ladata_df.iloc[idx][['LON', 'LAT']].reset_index(drop=True)
-        idx[idx > len(trackA.ladata_df)-1] = len(trackA.ladata_df)-1
+        idx[idx >= len(trackA.ladata_df)-1] = len(trackA.ladata_df)-2
         tmp1 = trackA.ladata_df.iloc[idx + 1][['LON', 'LAT']].reset_index(drop=True)
         tmp = pd.concat([tmp0, tmp1], axis=1)
         tmp = tmp.groupby(by=tmp.columns, axis=1).mean()
