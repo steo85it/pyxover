@@ -68,7 +68,7 @@ def launch_xov(
     outdir = args[4]
 
     if new_xov:  # and track_id=='1301232350':
-        if not os.path.isfile(outdir + 'xov_' + track_id + '_' + misycmb[par][1] + '.pkl') or new_xov == 2:
+        if not os.path.isfile(outdir + 'xov/xov_' + track_id + '_' + misycmb[par][1] + '.pkl') or new_xov == 2:
 
             # print("Processing " + track_id + " ...")
 
@@ -114,10 +114,12 @@ def launch_xov(
                 # print([s for s in comb if track_id in s[0]])
                 if [s for s in comb if track_id in s[0]] and len(xov_tmp.xovers) > 0:
                     xov_tmp.get_xov_latlon(trackA)
-                    xov_tmp.save(outdir + 'xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
+                    if not os.path.exists(outdir + 'xov/'):
+                        os.mkdir(outdir + 'xov/')
+                    xov_tmp.save(outdir + 'xov/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
                     # print(xov_tmp.xovers)
                     # trackxov_list.append(gtrackA)
-                    print('Xov for ' + track_id + ' processed and written to ' + outdir + 'xov_' + gtrackA + '_' +
+                    print('Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
                           misycmb[par][1] + '.pkl !')
                     return gtrackA
 
@@ -221,6 +223,7 @@ def main(args):
     allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
 
     print(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
+    print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*')))
 
     if misycmb[par][0] == misycmb[par][1]:
         allFiles = allFilesA

@@ -7,6 +7,9 @@
 #
 import warnings
 
+import seaborn as sns
+from matplotlib import pyplot as plt
+
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
 import glob
@@ -26,7 +29,7 @@ from scipy.sparse.linalg import lsqr
 
 # mylib
 # from mapcount import mapcount
-from prOpt import debug, outdir, local, sim, parOrb, parGlo
+from prOpt import debug, outdir, local, sim, parOrb, parGlo, partials
 from xov_setup import xov
 from Amat import Amat
 
@@ -222,6 +225,31 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov):
     plt.savefig('/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/histo_dR_' + str(idx) + '.png')
     plt.clf()
 
+def plt_geo_dR(empty_geomap_df, sol, xov):
+    # dR absolute value taken
+    xov.xovers['dR_orig'] = xov.xovers.dR
+    xov.xovers['dR'] = xov.xovers.dR.abs()
+    mladR = xov.xovers.round({'LON': 0, 'LAT': 0, 'dR': 3}).groupby(['LON', 'LAT']).dR.median().reset_index()
+    # print(mladR)
+    fig, ax1 = plt.subplots(nrows=1)
+    # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
+    # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
+    # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
+    # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
+    # Draw the heatmap with the mask and correct aspect ratio
+    piv = pd.pivot_table(mladR, values="dR", index=["LAT"], columns=["LON"], fill_value=0)
+    # plot pivot table as heatmap using seaborn
+    piv = (piv + empty_geomap_df).fillna(0)
+    # print(piv)
+    # exit()
+    sns.heatmap(piv, xticklabels=10, yticklabels=10, vmax=50)
+    plt.tight_layout()
+    ax1.invert_yaxis()
+    #         ylabel='Topog ampl rms (1st octave, m)')
+    fig.savefig('/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/mla_dR_' + sol + '.png')
+    plt.clf()
+    plt.close()
+
 
 def prepare_Amat(xov, vecopts, par_list=''):
     xovtmp = xov.xovers.copy()
@@ -233,28 +261,15 @@ def prepare_Amat(xov, vecopts, par_list=''):
 
     # exit()
 
-    # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
-    # plus remove outliers with median method
-    if xov.xovers.filter(regex='^dist_.*$').empty==False:
-        xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-        print("max_dist",xov.xovers.filter(regex='^dist_.*$'))
-        print(len(xov.xovers[xov.xovers.dist_max > 1]),
-              'xovers removed by dist from obs > 1km')
-        xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
-    #
-    if sim == 0:
-        mean_dR, std_dR = xov.remove_outliers('dR')
+    clean_xov(par_list, xov)
 
     # simplify and downsize
-    if par_list=='':
+    if par_list == '':
         par_list = xov.xovers.columns.filter(regex='^dR.*$')
-
     df_orig = xov.xovers[par_list]
     df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore', downcast='float')
-
     xov.xovers = pd.concat([df_orig, df_float], axis=1)
     xov.xovers.info(memory_usage='deep')
-
     if debug:
         pd.set_option('display.max_columns', 500)
         print(xov.xovers)
@@ -265,6 +280,20 @@ def prepare_Amat(xov, vecopts, par_list=''):
     xov.xovers = xovtmp.copy()
 
     return xovi_amat
+
+
+def clean_xov(par_list, xov):
+    # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
+    # plus remove outliers with median method
+    if xov.xovers.filter(regex='^dist_.*$').empty == False:
+        xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+        print("max_dist", xov.xovers.filter(regex='^dist_.*$'))
+        print(len(xov.xovers[xov.xovers.dist_max > 1]),
+              'xovers removed by dist from obs > 1km')
+        xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
+
+    if sim == 0:
+        mean_dR, std_dR = xov.remove_outliers('dR')
 
 def solve(xovi_amat,dataset):
     # Solve
@@ -446,20 +475,35 @@ def main(arg):
         print(_.dtypes)
         # exit()
 
-        # solve dataset
-        par_list = ['orbA', 'orbB', 'xOvID']
-        xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
-        solve(xovi_amat, ds)
+        if partials == 1:
+            # solve dataset
+            par_list = ['orbA', 'orbB', 'xOvID']
+            xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
+            solve(xovi_amat, ds)
 
-        # Save to pkl
-        print(ds)
-        if len(ds.split('/'))>2:
-            xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_' + ds.split('/')[2])[:-1] + str(ext_iter+1) + '.pkl')
+            # Save to pkl
+            print(ds)
+            if len(ds.split('/'))>2:
+                xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_' + ds.split('/')[2])[:-1] + str(ext_iter+1) + '.pkl')
+            else:
+                xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter+1) + '.pkl')
+
+            orb_sol, glb_sol = analyze_sol(xovi_amat,xov_cmb)
+            print_sol(orb_sol, glb_sol, xov, xovi_amat)
+
         else:
-            xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter+1) + '.pkl')
+            # clean only
+            clean_xov('', xov_cmb)
+            # plot histo and geo_dist
+            tstname = [x.split('/')[-2] for x in datasets][0]
+            mean_dR, std_dR = xov_cmb.remove_outliers('dR')
+            plt_histo_dR(tstname, mean_dR, std_dR,
+                         xov_cmb.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
 
-        orb_sol, glb_sol = analyze_sol(xovi_amat,xov_cmb)
-        print_sol(orb_sol, glb_sol, xov, xovi_amat)
+            empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
+                                           columns=np.arange(-180, 181))
+            plt_geo_dR(empty_geomap_df, tstname, xov_cmb)
+
 
         # append to list for stats
         xov_cmb_lst.append(xov_cmb)
