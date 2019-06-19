@@ -10,8 +10,28 @@ def cosd(x):
     return np.cos(np.deg2rad(x))
 
 
-# Transform rsw orbital frame to inertial
+# Transform vector in rsw orbital frame to inertial
 def rsw_2_xyz(vec_in, r_vec, v_vec):
+    rot_mat = get_rotmat_xyz_2_rsw(r_vec, v_vec, vec_in)
+
+    # print("vec_in rsw2xyz", vec_in)
+    # print("rot_mat rsw2xyz", rot_mat)
+    # print("vec_out rsw2xyz", np.einsum('ijk,ij->ik', rot_mat, vec_in))
+    # print("vec_out_norm rsw2xyz", np.linalg.norm(vec_in,axis=1))
+
+    # multiply along the right axes (transposed rot_mat)
+    return np.einsum('ijk,ij->ik', rot_mat, vec_in)
+
+# Transform vector in inertial to given rsw orbital frame
+# TODO weird results
+def xyz_2_rsw(vec_in, r_vec, v_vec):
+    rot_mat = get_rotmat_xyz_2_rsw(r_vec, v_vec, vec_in)
+
+    # multiply along the right axes (good luck!^^)
+    return np.einsum('ijk,ik->ij', rot_mat, vec_in)
+
+
+def get_rotmat_xyz_2_rsw(r_vec, v_vec, vec_in):
     Rtx = np.linalg.norm(r_vec, axis=1)
     vec_R = (r_vec.T / Rtx).T
     Vtx = np.linalg.norm(v_vec, axis=1)
@@ -19,11 +39,24 @@ def rsw_2_xyz(vec_in, r_vec, v_vec):
     vec_C = np.cross(vec_R, vec_A)
     Ctx = np.linalg.norm(vec_C, axis=1)
     vec_C = (vec_C.T / Ctx).T
-    # write rotation matrix ACR -> XYZ
-    rot_mat = np.column_stack((vec_A, vec_C, vec_R)).reshape(-1, 3, 3).transpose(0, 2, 1)
+    # compute third axis (should be close to R for a quasi-circular orbit)
+    vec_B = np.cross(vec_A, vec_C)
+    Btx = np.linalg.norm(vec_B, axis=1)
+    vec_B = (vec_B.T / Btx).T
+    # write rotation matrix XYZ -> ACR
+    rot_mat = np.concatenate((vec_B, vec_A, vec_C), axis=1).reshape(-1, 3, 3)
 
-    # multiply along the right axes (good luck!^^)
-    return np.einsum('ijk,ij->ik', rot_mat, vec_in)
+    # print("A", vec_A, np.linalg.norm(vec_A))
+    # print("C", vec_C, np.linalg.norm(vec_C))
+    # print("R", vec_R, np.linalg.norm(vec_R))
+    # print("B", vec_B, np.linalg.norm(vec_B))
+
+    # print("vec_in xyz2rsw", vec_in)
+    # print("rot_mat xyz2rsw", rot_mat, "det", np.linalg.det(rot_mat))
+    # print("vec_out xyz2rsw", np.einsum('ijk,ik->ij', rot_mat, vec_in))
+    # print("vec_out_norm xyz2rsw", np.linalg.norm(vec_in, axis=1))
+
+    return rot_mat
 
 
 # Transform roll and pitch corrections to inertial

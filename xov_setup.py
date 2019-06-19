@@ -103,8 +103,9 @@ class xov:
             # print(self.tracks)
             # print(orb_unique)
 
-            self.parOrb_xy = xov_list[0].parOrb_xy
-            self.parGlo_xy = xov_list[0].parGlo_xy
+            if partials == 1:
+                self.parOrb_xy = xov_list[0].parOrb_xy
+                self.parGlo_xy = xov_list[0].parGlo_xy
             # print(self.parOrb_xy, self.parGlo_xy)
 
     def save(self, filnam):

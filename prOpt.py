@@ -4,7 +4,7 @@
 ##############################################
 # @profile
 # local or PGDA
-local = 0
+local = 1
 # debug mode
 debug = 0
 # parallel processing?
@@ -26,9 +26,9 @@ pert_tracks = []  # ['1301011544', '1301042351']  # ['1301042351','1301012343']
 OrbRep = 'cnt' #'lin'
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 SpInterp = 0
-# interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
+# create new gtrack (0:no, 1:yes, use, 2: yes, create)
 new_gtrack = 1
-# interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
+# create new xov (0:no, 1:yes, use, 2: yes, create)
 new_xov = 1
 
 # PyAltSim stuff
