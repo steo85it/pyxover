@@ -19,7 +19,7 @@ import astro_trans as astr
 import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
-from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim
+from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim, local
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
@@ -108,7 +108,11 @@ class gtrack:
 
     def check_coverage(self):
         cover = spice.utils.support_types.SPICEDOUBLE_CELL(2000)
-        spice.spkcov('/home/sberton2/Works/NASA/Mercury_tides/spktst/MSGR_HGM008_INTGCB.bsp', -236, cover)
+        if local == 0:
+             spice.spkcov(auxdir+'spk/MSGR_HGM008_INTGCB.bsp', -236, cover)
+        else:
+             spice.spkcov('/home/sberton2/Works/NASA/Mercury_tides/spktst/MSGR_HGM008_INTGCB.bsp', -236, cover)
+        
         twind = [spice.wnfetd(cover, i) for i in range(spice.wncard(cover))]
         epo_in = np.sort(self.ladata_df.ET_TX.values)
         self.ladata_df['in_spk'] = np.array([np.sum([t[0] <= val <= t[1] for t in twind]) for val in epo_in]) > 0

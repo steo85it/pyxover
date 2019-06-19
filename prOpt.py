@@ -8,10 +8,10 @@ local = 0
 # debug mode
 debug = 0
 # parallel processing?
-parallel = 1
+parallel = 0
 
 # compute partials?
-partials = 1
+partials = 0
 # std perturbations for finite differences
 parOrb = {'dA': 100., 'dC':100., 'dR':20., } # 'dRl':20e-6, 'dPt':20e-6} #, 'dA':100., 'dC':100., 'dR':20., } #, 'dRl':20e-6, 'dPt':20e-6}
 parGlo = {'dL':0.01,'dRA':[0.0001, 0.000, 0.000], 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dh2': 1.}
@@ -25,7 +25,7 @@ pert_tracks = []  # ['1301011544', '1301042351']  # ['1301042351','1301012343']
 # orbital representation
 OrbRep = 'cnt' #'lin'
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
-SpInterp = 2
+SpInterp = 0
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 new_gtrack = 1
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
