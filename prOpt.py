@@ -11,7 +11,7 @@ debug = 0
 parallel = 0
 
 # compute partials?
-partials = 0
+partials = 1
 # std perturbations for finite differences
 parOrb = {'dA': 100., 'dC':100., 'dR':20., } # 'dRl':20e-6, 'dPt':20e-6} #, 'dA':100., 'dC':100., 'dR':20., } #, 'dRl':20e-6, 'dPt':20e-6}
 parGlo = {'dL':0.01,'dRA':[0.0001, 0.000, 0.000], 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dh2': 1.}
@@ -26,9 +26,9 @@ pert_tracks = []  # ['1301011544', '1301042351']  # ['1301042351','1301012343']
 OrbRep = 'cnt' #'lin'
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 SpInterp = 0
-# create new gtrack (0:no, 1:yes, use, 2: yes, create)
-new_gtrack = 1
-# create new xov (0:no, 1:yes, use, 2: yes, create)
+# create new gtrack (0:no, 1:yes, check if present, 2: yes, create)
+new_gtrack = 2
+# create new xov (0:no, 1:yes, check if present, 2: yes, create)
 new_xov = 1
 
 # PyAltSim stuff

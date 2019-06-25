@@ -416,7 +416,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
     if apply_topo:
         # read and interpolate DEM
-        # open netCDF file
+        # # open netCDF file
         # nc_file = "/home/sberton2/Works/NASA/Mercury_tides/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD"
         # sim_gtrack.dem_xr = xr.open_dataset(nc_file)
 

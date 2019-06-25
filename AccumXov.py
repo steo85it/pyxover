@@ -295,6 +295,8 @@ def clean_xov(par_list, xov):
     if sim == 0:
         mean_dR, std_dR = xov.remove_outliers('dR')
 
+    return "xov cleaned!"
+
 def solve(xovi_amat,dataset):
     # Solve
     # select subset of parameters

@@ -44,7 +44,7 @@ def get_rotmat_xyz_2_rsw(r_vec, v_vec, vec_in):
     Btx = np.linalg.norm(vec_B, axis=1)
     vec_B = (vec_B.T / Btx).T
     # write rotation matrix XYZ -> ACR
-    rot_mat = np.concatenate((vec_B, vec_A, vec_C), axis=1).reshape(-1, 3, 3)
+    rot_mat = np.concatenate((vec_A, vec_C, vec_B), axis=1).reshape(-1, 3, 3)
 
     # print("A", vec_A, np.linalg.norm(vec_A))
     # print("C", vec_C, np.linalg.norm(vec_C))
