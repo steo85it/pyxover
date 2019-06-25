@@ -212,7 +212,7 @@ def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt,itmax=100,
         # avgerr=shap_dl+shap_ul
 
         oneway = oneway + 0.5 * avgerr
-        #print(it, max(abs(avgerr)))
+        # print(it, max(abs(avgerr)))
 
         if (max(abs(avgerr)) < tlcbnc):
             # if (max(abs(avgerr-avgerr_old))<tlcbnc):
