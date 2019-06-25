@@ -4,11 +4,11 @@
 ##############################################
 # @profile
 # local or PGDA
-local = 1
+local = 0
 # debug mode
 debug = 0
 # parallel processing?
-parallel = 0
+parallel = 1
 
 # compute partials?
 partials = 0
