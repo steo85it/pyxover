@@ -388,7 +388,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
             np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_tx, fmt="%4d")
             print("Do you have all of illumNG predictions?")
             exit()
-        path = '../aux/illumNG/1301_32ppd/' # sph_7d_mla/'  # _1s/'  #  sph/' #grd/' # use your path
+        path = '../aux/illumNG/'+epos_in+'_32ppd/' # sph_7d_mla/'  # _1s/'  #  sph/' #grd/' # use your path
         illumNGf = glob.glob(path + "bore*")
     else:
         if new_illumNG:
@@ -477,6 +477,8 @@ if __name__ == '__main__':
     # launch program and clock
     # -----------------------------
     start = time.time()
+
+    print("Running PyAltsim")
 
     if len(sys.argv) == 1:
 

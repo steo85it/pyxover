@@ -19,7 +19,7 @@ import astro_trans as astr
 import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
-from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim, local
+from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim_altdata, local
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
@@ -27,8 +27,8 @@ from util import mergsum
 
 
 class gtrack:
-    interp_obj.interp = interp_obj.interpSpl  # Cby  # Spl #
-    interp_obj.eval = interp_obj.evalSpl  # Cby  # Spl #
+    interp_obj.interp = interp_obj.interpCby  # Cby  # Spl #
+    interp_obj.eval = interp_obj.evalCby  # Cby  # Spl #
 
     def __init__(self, vecopts):
 
@@ -55,6 +55,7 @@ class gtrack:
                         'dL': 0.}  # ,
         # 'dh2': 0. }
         self.sol_prev_iter = None
+        self.t0_orb = None
 
     # create groundtrack from data and save to file
     def setup(self, filnam):
@@ -93,7 +94,7 @@ class gtrack:
         # exit()
 
         # check spk coverage and select obs in ladata_df
-        self.check_coverage()
+        # self.check_coverage()
 
         # np.sum([t[0] <= val <= t[1] for t in twind])
         # print(self.ladata_df.loc[np.sum([t[0] <= self.ladata_df.ET_TX <= t[1] for t in twind])])
@@ -299,7 +300,7 @@ class gtrack:
             print('----- Runtime SpInterp = ' + str(endSpInterp - startSpInterp) + ' sec -----' + str(
                 (endSpInterp - startSpInterp) / 60.) + ' min -----')
 
-    def geoloc(self):
+    def geoloc(self, get_partials=partials):
 
         #vecopts = self.vecopts.copy()
 
@@ -313,7 +314,7 @@ class gtrack:
         startGeoloc = time.time()
 
         # Prepare
-        if partials:
+        if get_partials:
             param = {'': 1.}
             param.update(parOrb)
             param.update(parGlo)
@@ -438,15 +439,24 @@ class gtrack:
                 (endGeoloc - startGeoloc) / 60.) + ' min -----')
 
     def par_solupd(self):
-        corr_orb = self.sol_prev_iter['orb'].filter(regex='sol.*$', axis=1).apply(pd.to_numeric, errors='ignore',
-                                                                                  downcast='float'
-                                                                                  ).to_dict('records')[0]
-        corr_orb = {key.split('_')[1].split('/')[1]: corr_orb[key] for key in corr_orb.keys()}
-        _ = self.sol_prev_iter['glo'].apply(pd.to_numeric, errors='ignore', downcast='float')
-        corr_glo = dict(zip(_.par, _.sol))
-        corr_glo = {key.split('/')[1]: corr_glo[key] for key in corr_glo.keys()}
-        self.pert_cloop = mergsum(self.pert_cloop, corr_orb)
-        self.pert_cloop = mergsum(self.pert_cloop, corr_glo)
+        """
+        Updates perturbations to a priori parameters based on solution from previous iteration (stored at AccumXov step
+        in pkl file).
+        """
+        if len(self.sol_prev_iter['orb']) > 0:
+            corr_orb = self.sol_prev_iter['orb'].filter(regex='sol.*$', axis=1).apply(pd.to_numeric, errors='ignore',
+                                                                                      downcast='float'
+                                                                                      ).to_dict('records')[0]
+            corr_orb = {key.split('_')[1].split('/')[1]: corr_orb[key] for key in corr_orb.keys()}
+            self.pert_cloop = mergsum(self.pert_cloop, corr_orb)
+
+        if len(self.sol_prev_iter['glo']) > 0:
+            _ = self.sol_prev_iter['glo'].apply(pd.to_numeric, errors='ignore', downcast='float')
+            corr_glo = dict(zip(_.par, _.sol))
+            corr_glo = {key.split('/')[1]: corr_glo[key] for key in corr_glo.keys()}
+
+            self.pert_cloop = mergsum(self.pert_cloop, corr_glo)
+
         if debug:
             print(self.pert_cloop)
 
@@ -481,13 +491,13 @@ class gtrack:
         # tmp_pertPar = {**tmp_pertPar, **self.pert_cloop}
         # print('norm',tmp_pertPar, diff_step)
         # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
-        geoloc_out, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
+        geoloc_out, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0 = self.t0_orb)
 
         #print(self.ladata_df)
         tmp_df.loc[:,'ET_BC'] = et_bc
 
         # Compute partial derivatives if required
-        if (self.vecopts['PARTDER'] is not ''):
+        if self.vecopts['PARTDER'] is not '':
 
             # Read self.vecopts[partder] and apply perturbation
             # if needed (for partials AND for closed loop sim)
@@ -523,6 +533,7 @@ class gtrack:
     def pertpar(self, diff_step, sign=1.):
         tmp_pertPar = self.pertPar.copy()
         tmp_pertPar[self.vecopts['PARTDER']] = diff_step
+
         if sign != 1:
             try:
                 tmp_pertPar[self.vecopts['PARTDER']] *= sign
@@ -532,7 +543,10 @@ class gtrack:
         # add pert for closed loop sim
         for key in self.pert_cloop:
             if key in tmp_pertPar:
-                # print(tmp_pertPar[key], self.pert_cloop[key])
+
+                if debug:
+                    print("pertpar", self.name, key, tmp_pertPar[key], self.pert_cloop[key])
+
                 if hasattr(tmp_pertPar[key], "__len__"):
                     tmp_pertPar[key] = [sum(pair) for pair in zip(tmp_pertPar[key], self.pert_cloop[key])]
                 else:

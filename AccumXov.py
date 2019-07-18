@@ -29,9 +29,11 @@ from scipy.sparse.linalg import lsqr
 
 # mylib
 # from mapcount import mapcount
-from prOpt import debug, outdir, local, sim, parOrb, parGlo, partials
+from prOpt import debug, outdir, local, sim_altdata, parOrb, parGlo, partials
 from xov_setup import xov
 from Amat import Amat
+
+sim_altdata = 1
 
 ########################################
 # test space
@@ -148,7 +150,7 @@ def get_stats(xov_lst,resval,amplval):
             xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
             print(len(xov.xovers[xov.xovers.dist_max > 1]),
                   'xovers removed by dist from obs > 1km')
-            if sim == 0:
+            if sim_altdata == 0:
                 mean_dR, std_dR = xov.remove_outliers('dR')
 
             #print(xov.xovers[['dist_max','dist_avg','dist_minA','dist_minB','dist_min_avg','dR']])
@@ -212,8 +214,8 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov):
     import scipy.stats as stats
 
     # the histogram of the data
-    num_bins = 10
-    n, bins, patches = plt.hist(xov.dR, bins='auto', density=True, facecolor='blue', alpha=0.5)
+    num_bins = 100
+    n, bins, patches = plt.hist(xov.dR, bins=num_bins, density=True, facecolor='blue', alpha=0.5)
     # add a 'best fit' line
     y = stats.norm.pdf(bins, mean_dR, std_dR)
     plt.plot(bins, y, 'r--')
@@ -292,7 +294,7 @@ def clean_xov(par_list, xov):
               'xovers removed by dist from obs > 1km')
         xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
 
-    if sim == 0:
+    if sim_altdata == 0:
         mean_dR, std_dR = xov.remove_outliers('dR')
 
     return "xov cleaned!"
@@ -300,9 +302,9 @@ def clean_xov(par_list, xov):
 def solve(xovi_amat,dataset):
     # Solve
     # select subset of parameters
-    sol4_orb = [] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
+    sol4_orb = [] #['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
     sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
-    sol4_glo = ['dR/dL','dR/dh2'] #'dR/dRA','dR/dL','dR/dh2'] #['dR/dL','dR/dRA','dR/dDEC'] #'dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
+    sol4_glo = [None] # ['dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
 
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     print(sol4_pars)
@@ -352,8 +354,10 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
     if sol4_glo == []:
         sol4_glo = list(parGlo.keys())
         sol4_glo = ['dR/'+x for x in sol4_glo]
+    elif sol4_glo == [None]:
+        sol4_glo = []
 
-    sol4_pars = sol4_orb + sol4_glo
+    sol4_pars = sorted(sol4_orb) + sorted(sol4_glo)
 
     print('solving for:',sol4_pars)
 
@@ -484,14 +488,32 @@ def main(arg):
             solve(xovi_amat, ds)
 
             # Save to pkl
+            orb_sol, glb_sol = analyze_sol(xovi_amat,xov_cmb)
+            print("Sol for iter ", str(ext_iter))
+            print_sol(orb_sol, glb_sol, xov, xovi_amat)
+
+            if int(ext_iter) > 0:
+                tmp = Amat(vecopts)
+                # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
+                tmp = tmp.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+                                '_' + str(ext_iter - 1) + '/' +
+                               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+                # orb_sol_old, glo_sol_old = analyze_sol(tmp, tmp.xov)
+                # print_sol(orb_sol_old, glo_sol_old, xov, xovi_amat)
+                # exit()
+
+                xovi_amat.sol = (xovi_amat.sol[0] + tmp.sol[0], *xovi_amat.sol[1:])
+                orb_sol, glb_sol = analyze_sol(xovi_amat, xov_cmb)
+                print("Cumulated solution")
+                print_sol(orb_sol, glb_sol, xov, xovi_amat)
+
             print(ds)
             if len(ds.split('/'))>2:
-                xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_' + ds.split('/')[2])[:-1] + str(ext_iter+1) + '.pkl')
+                xovi_amat.save(('_').join((data_pth + 'Abmat_' + ds.split('/')[0] + '_' +
+                                           ds.split('/')[1]).split('_')[:-1])+'_'+ str(ext_iter+1) +
+                               '_' + ds.split('/')[2] + '.pkl')
             else:
-                xovi_amat.save((outdir + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter+1) + '.pkl')
-
-            orb_sol, glb_sol = analyze_sol(xovi_amat,xov_cmb)
-            print_sol(orb_sol, glb_sol, xov, xovi_amat)
+                xovi_amat.save((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter+1) + '.pkl')
 
         else:
             # clean only

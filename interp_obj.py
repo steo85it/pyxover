@@ -20,6 +20,9 @@ class interp_obj:
 
     def __init__(self, name):
         self.name = name
+        self.timeb = None
+        self.cheb = None
+        self.chebdeg = None
         # self.tck = None
         # self.u = None
 
@@ -37,20 +40,27 @@ class interp_obj:
 
         return interpolate.splev(t_in, self.tck)
 
-    def interpCby(self, x_in, t_in, deg=15):
+    def interpCby(self, x_in, t_in, deg=20):
         # print("t_in",t_in)
         # print("x_in",x_in)
+
+        self.timeb = [t_in.min(), t_in.max()]
+        self.chebdeg = deg
+
         x_in = np.transpose(x_in)
-        cheb_coef = cheby.chebfit(x=t_in, y=x_in, deg=deg)
+        t_fit = t_in - self.timeb[0]
+
+        cheb_coef = cheby.chebfit(x=t_fit, y=x_in, deg=deg, full=False)
         # print(cheby.chebfit(x=t_in,y=x_in,deg=deg,full=True))
         # print("cheb_coef",cheb_coef)
-        self.timeb = [t_in.min, t_in.max]
+        # cheb_coef = cheb_coef[0]
         self.cheb = cheb_coef
-        self.chebdeg = deg
 
     def evalCby(self, t_in):
 
-        return cheby.chebval(t_in, self.cheb)
+        t_eval = t_in - self.timeb[0]
+
+        return cheby.chebval(t_eval, self.cheb)
 
     def savetopkl(self, filename):
         with open(filename, 'wb') as f:

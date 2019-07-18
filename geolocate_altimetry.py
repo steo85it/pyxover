@@ -39,7 +39,7 @@ from tidal_deform import tidal_deform
 
 ##############################################
 # @profile
-def geoloc(inp_df, vecopts, tmp_pertPar, SpObj):
+def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     """
 
     :type inp_df: ladata_df containing TOF(sec) and ET_TX(sec from J2000)
@@ -51,25 +51,25 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj):
 
     #print('tof')
     #print(tof)
-    #print('et_tx')
-    #print(et_tx)
+    # print('et_tx')
+    # print(et_tx)
 
     oneway = tof * clight.value / 2.
     twoway = tof * clight.value
 
     # Set all corrections to 0
-    dACR = [0, 0, 0]
+    # dACR = [0, 0, 0]
 
     #print("testObjGeoLoc", SpObj['MGRx'].eval(et_tx))
     #exit()
 
-    scpos_tx, scvel_tx = get_sc_ssb(et_tx, SpObj, tmp_pertPar, vecopts)
+    scpos_tx, scvel_tx = get_sc_ssb(et_tx, SpObj, tmp_pertPar, vecopts, t0 = t0)
     # update after offset
     Rtx = np.linalg.norm(scpos_tx, axis=1)
 
     # get probe CoM state at RX
     # --------------------------
-    scpos_rx, scvel_rx = get_sc_ssb(et_tx + tof, SpObj, tmp_pertPar, vecopts)
+    scpos_rx, scvel_rx = get_sc_ssb(et_tx + tof, SpObj, tmp_pertPar, vecopts, t0 = t0)
     # update after offset
     Rrx = np.linalg.norm(scpos_rx, axis=1)
 
@@ -225,7 +225,7 @@ def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt,itmax=100,
     return oneway
 
 
-def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts):
+def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
 
     # get probe CoM state at TX
     # --------------------------
@@ -244,9 +244,10 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts):
                                    vecopts['INERTIALFRAME'],
                                    'NONE',
                                    vecopts['INERTIALCENTER'])
-        scpv = np.squeeze(scpv)
+        scpv = np.atleast_2d(np.squeeze(scpv))
 
     # print('check scpv', scpv)
+    # exit()
     scpos = 1.e3 * scpv[:, :3]
     scvel = 1.e3 * scpv[:, 3:]
     # scpos = 1.e3 * np.squeeze(scpv)[:, :3]
@@ -254,18 +255,43 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts):
 
     # Compute and add ACR offset (if corrections != 0)
     # print([tmp_pertPar[k] for k in ['dA','dC','dR']])
-    if ([tmp_pertPar[k] for k in ['dA', 'dC', 'dR']] != [0, 0, 0]):
-        dACR = np.reshape(np.tile([tmp_pertPar[k] for k in ['dA', 'dC', 'dR']], len(et)), (-1, 3))
-        # print(dACR.shape)
-        # print(len(inp_df))
+    if any(value != 0 for value in tmp_pertPar.values()):
+        # print(tmp_pertPar)
+        dirs = ['A', 'C', 'R']
+        rev_per = 0.5 * 86400 # 12h to secs
+        w = 2*np.pi / rev_per
+        nvals = len(et)
+        dACR = np.zeros((nvals,3))
+        for coeff, val in tmp_pertPar.items():
+            if coeff in ['dA', 'dC', 'dR'] and val != 0:
+                column = dirs.index(coeff[1])
+                dACR[:,column] += np.tile(val, len(et))
+            elif coeff[:3] in ['dA1', 'dC1', 'dR1'] and val != 0:
+                column = dirs.index(coeff[1])
+                dACR[:, column] += np.tile(val, len(et)) * (et-t0)
+            elif coeff[:3] in ['dAc', 'dCc', 'dRc'] and val != 0:
+                n_per_orbit = int(coeff[3:])
+                column = dirs.index(coeff[1])
+                coskwt = np.cos(n_per_orbit * w * (et - t0))
+                dACR[:, column] += np.tile(val, len(et))*coskwt
+            elif coeff[:3] in ['dAs', 'dCs', 'dRs'] and val != 0:
+                n_per_orbit = int(coeff[3:])
+                column = dirs.index(coeff[1])
+                sinkwt = np.sin(n_per_orbit * w * (et - t0))
+                dACR[:, column] += np.tile(val, len(et))*sinkwt
+
+        # from matplotlib import pyplot as plt
+        # plt.clf()
+        # plt.plot((et - t0),dACRs)
+        # plt.savefig('tmp/tst.png')
 
         # get probe CoM state at TX (w.r.t. planet center)
         # ------------------------------------------------
         scpos_p, scvel_p = get_sc_pla(et, scpos, scvel, SpObj, vecopts)
 
         dXYZ = astr.rsw_2_xyz(dACR, scpos_p, scvel_p)
-        #    print("test dACR", dACR, dXYZ)
-        #    print("test dACR", np.linalg.norm(dACR, axis=1), np.linalg.norm(dXYZ, axis=1))
+        # print("test dACR", dACR, dXYZ)
+        # print("test dACR", np.linalg.norm(dACR, axis=1), np.linalg.norm(dXYZ, axis=1))
 
         # add rotated offset to satpos
         scpos += dXYZ

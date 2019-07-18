@@ -25,10 +25,10 @@ import spiceypy as spice
 
 import xarray as xr
 import matplotlib.pyplot as plt
-from scipy import stats
+from scipy import stats, signal
+
 
 def import_dem(filein):
-
     # grid point lists
 
     # open netCDF file
@@ -68,15 +68,16 @@ def rosen(x):
     return sum(100.0 * (x[1:] - x[:-1] ** 2.0) ** 2.0 + (1 - x[:-1]) ** 2.0)
 
 
-def get_demres(df,dorb):
-
+def get_demres(df, dorb, coeff_set=['dA', 'dC', 'dR']):
     df_ = df.copy()
-    # print("dorb =", dorb)
-    # print(len(df_))
 
-    track.pertPar['dA'] = dorb[0]
-    track.pertPar['dC'] = dorb[1]
-    track.pertPar['dR'] = dorb[2]
+    for idx, key in enumerate(coeff_set):
+        if key in track.pertPar:
+            track.pertPar[key] += dorb[idx]
+            # print("exist", key, idx, track.pertPar[key])
+        else:
+            track.pertPar[key] = dorb[idx]
+            # print("new", key, idx, track.pertPar[key])
 
     # get time of flight in ns from probe one-way range in km
     # df_['TOF'] = df_['rng'] * 2. * 1.e3 / clight
@@ -92,12 +93,15 @@ def get_demres(df,dorb):
         track.interpolate()
     else:
         track.SpObj = pickleIO.load(auxdir + 'spaux_' + track.name + '.pkl')
+
     old_tof = track.ladata_df.loc[:, 'TOF'].values
     rng_apr = old_tof * clight / 2.
     # read just lat, lon, elev from geoloc (reads ET and TOF and updates LON, LAT, R in df)
-    track.geoloc()
+    track.geoloc(get_partials=False)
+
+    # Clean data --> commented out for consistency
     # print('pre',len(track.ladata_df))
-    track.ladata_df = mad_clean(track.ladata_df,'R')
+    # track.ladata_df = mad_clean(track.ladata_df,'R')
     # print('post',len(track.ladata_df))
 
     lontmp, lattmp, rtmp = np.transpose(track.ladata_df[['LON', 'LAT', 'R']].values)
@@ -122,7 +126,8 @@ def get_demres(df,dorb):
     # print(np.abs(dr).max())
     elev_rms = np.sqrt(np.mean(dr ** 2))
     # print("elev_rms: ", elev_rms)
-    return elev_rms, dr
+
+    return elev_rms, dr, track.ladata_df.ET_TX.values - track.t0_orb
 
 
 def read_dem(lattmp, lontmp):
@@ -143,7 +148,7 @@ def read_dem(lattmp, lontmp):
     return radius
 
 
-def mad_clean(df,column):
+def mad_clean(df, column):
     # print("enter mad_clean")
     # print(column)
     # print(df[column])
@@ -164,13 +169,82 @@ def mad_clean(df,column):
     return df
 
 
+def lomb(data_df: pd.DataFrame,
+         min_period: float,
+         max_period: float):
+    """
+    Lomb–Scargle periodogram implementation
+    :param data: list
+    :param high_frequency: float
+    :param low_frequency: float
+    :return lomb-scargle pgram and frequency values
+    """
+
+    time_stamps = data_df.Dt.values
+    samples = data_df.altdiff_dem.values
+
+    window = signal.tukey(len(samples))
+    samples *= window
+
+    # nout = 10000  # number of frequency-space points at which to calculate the signal strength (output)
+    periods = np.linspace(min_period, max_period, len(data_df)*100)
+    freqs = 1.0 / periods
+    frequency_range = 2 * np.pi * freqs
+    # frequency_range = np.linspace(low_frequency, high_frequency, len(data_df))
+    result = signal.lombscargle(time_stamps, samples, frequency_range, precenter=True, normalize=True)
+    return result, frequency_range
+
+
+def plot_pergram(dforb,filename):
+
+    n_per_orb_min = 1
+    n_per_orb_max = 86400
+    orb_period = 0.5*86400 # 12h to seconds
+    twopi = 2*np.pi
+    w = twopi / orb_period
+
+    # extract data from df
+    tmp_df = pd.DataFrame(dforb.Dt)
+    tmp_df.columns = ['Dt']
+    tmp_df['altdiff_dem'] = dforb.altdiff_dem.values  # + # 1*np.sin(100*tmp_df.Dt.values*2*np.pi/(0.5*86400)) #
+    # generate periodogram
+    pgram, freq = lomb(tmp_df.reset_index(), n_per_orb_min, n_per_orb_max)
+
+    plt.clf()
+    fig, [ax1, ax2] = plt.subplots(2, 1)
+    # data
+    tmp_df.plot(x='Dt', y='altdiff_dem', ax=ax1, style='.',label='data')
+    ax1.xaxis.set_ticks_position('top')
+    window = signal.tukey(len(tmp_df))
+    ax1.plot(tmp_df.Dt.values,window*tmp_df.altdiff_dem.values,label='windata')
+    # periodogram
+    ax2.plot(freq / w, pgram, label='lbscft')
+    ax2.set_xscale('log')
+    ax2.set_xlabel('n_per_orbit (12h)')
+    plt.legend()
+    # ax2.axvline(41.3*2*np.pi/(0.5*86400), lw=2, color='red', alpha=0.4)
+    # freq axes (Hz)
+    ax3 = ax2.twiny()
+    ax3.set_xlim(ax2.get_xlim()[0] * w, ax2.get_xlim()[1] * w)
+    ax3.set_xscale('log')
+    ax3.tick_params(direction='in', length=6, width=2, colors='r', which='both',
+                    grid_color='r', grid_alpha=0.5)
+    plt.savefig(filename)
+
+    return
+
 if __name__ == '__main__':
 
     start = time.time()
 
-    local = 0
+    local = 1
     debug = 0
     numer_sol = 0
+    pergram = 0
+    check_pkl = 0
+    test_name = 'ct_40'
+    coeff_set_re = '^dR/d[A,C,R]'
+    n_per_orbit = [40] # 100,800] #
 
     epo = '1212'
     spk = ['KX']  # ['KX', 'AGr']
@@ -190,16 +264,19 @@ if __name__ == '__main__':
 
     for ex in spk:
 
-        if False:
-            sol_df = pd.read_pickle("tmp/sol_demfit_" + ex + ".pkl")
-            sol_df = sol_df.filter(regex='^[d,r].*$').apply(pd.to_numeric, errors='ignore', downcast='float')
+        if check_pkl:
+            sol_df = pd.read_pickle("tmp/sol_demfit_" + ex + "_"+test_name+".pkl")
+            sol_df = sol_df.filter(regex='^[d,r].*$').apply(pd.to_numeric, errors='coerce', downcast='float').fillna(0)
 
             print(sol_df)
             plt.clf()
             plt.figure(1)
             sol_df[['rms_pre', 'rms_post']].plot(kind='hist')
+            plt.xlabel("RMS (m)")
             plt.legend()
-            plt.savefig("tmp/dr_fit_rms_" + ex + ".png")
+            plt.title('pre-fit:' + str(np.sqrt(np.mean(sol_df.values ** 2, axis=0))[-2]) +
+                      ' post-fit:' + str(np.sqrt(np.mean(sol_df.values ** 2, axis=0))[-1]))
+            plt.savefig("tmp/dr_fit_rms_" + ex + "_"+test_name+".png")
 
             print("Correction avg:", sol_df.mean(axis=0))
             print("Correction rms:", np.sqrt(np.mean(sol_df.values ** 2, axis=0)))
@@ -207,7 +284,7 @@ if __name__ == '__main__':
 
         if local:
             path = '/home/sberton2/Works/NASA/Mercury_tides/out/mladata/' + epo + '_' + ex + '/gtrack_' + epo[
-                                                                                                    :2] + '/' + '*.pkl'
+                                                                                                          :2] + '/' + '*.pkl'
         else:
             path = "/att/nobackup/sberton2/MLA/out/mladata/" + ex + "/gtrack_*/*.pkl"
 
@@ -224,7 +301,7 @@ if __name__ == '__main__':
         # Prepare list of tracks to geolocalise
         for fil in allFiles[:]:
             prel_track = prel_track.load(fil)
-            df_ = prel_track.ladata_df.iloc[:]
+            df_ = prel_track.ladata_df
 
             if len(df_ > 0):
 
@@ -240,83 +317,146 @@ if __name__ == '__main__':
                 print(orb_unique)
 
                 for orb in orb_unique:
-                    dforb = df_[df_.orbID == orb].iloc[:]
-                    print("pre-clean:",len(dforb),dforb.altdiff_dem.abs().max())
+                    dforb = df_[df_.orbID == orb]
+                    dforb["Dt"] = dforb.ET_TX.values - dforb.ET_TX.iloc[0]
+                    # store t0 orbit
+                    track.t0_orb = dforb.ET_TX.iloc[0]
+                    print("ET0", track.t0_orb)
 
-                    dforb = mad_clean(dforb,'altdiff_dem')
-                    print("post-clean:",len(dforb),dforb.altdiff_dem.abs().max())
-                    # exit()
+                    if pergram:
+                        plot_pergram(dforb,"tmp/dr_pref_res_" + orb + "_" + ex + ".png")
 
-                    # print(dforb.filter(regex='dLON/d[A,C,R]$'))
+                    print("pre-clean:", len(dforb), dforb.altdiff_dem.abs().max())
+                    dforb = mad_clean(dforb, 'altdiff_dem')
+                    print("post-clean:", len(dforb), dforb.altdiff_dem.abs().max())
 
-                    # dforb['dR/dLON'] = \
-                    # print(dem_xarr)
                     dforb['dR/dLON'] = get_demz_diff_at(dem_xarr, dforb.LAT.values, dforb.LON.values, 'lon')
                     dforb['dR/dLAT'] = get_demz_diff_at(dem_xarr, dforb.LAT.values, dforb.LON.values, 'lat')
-                    # print(dforb.filter(regex='dR/dL[O,A]'))
-                    #
-                    # print(dforb.filter(regex='dR/d[A,C,R]$').values)
 
                     dforb_full = (dforb.filter(regex='dR/d[A,C,R]$') +
                                   dforb[['dR/dLON']].values * dforb.filter(regex='dLON/d[A,C,R]$').values +
                                   dforb[['dR/dLAT']].values * dforb.filter(regex='dLAT/d[A,C,R]$').values)
-                    # print(dforb_full.filter(regex='dR/d[A,C,R]$').values)
-                    # exit()
+                    # Add linear terms
+                    # _ = pd.DataFrame(np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values,dforb.Dt.values[..., np.newaxis]),columns=['dR/dA_1','dR/dC_1','dR/dR_1'])
+                    # dforb_full = pd.concat([dforb_full,_],axis=1)
 
-                    Amat = dforb_full.filter(regex='dR/d[A,C,R]$').values[:,:]
+                    # Add sin and cos terms to bias coeff
+                    orb_period = 0.5 * 86400  # 12h to seconds
+                    twopi = 2 * np.pi
+                    w = twopi / orb_period
+
+                    for cpr in n_per_orbit:
+                        cpr_str = str(cpr)
+                        coskwt = np.cos(cpr * w * dforb.Dt.values)
+                        sinkwt = np.sin(cpr * w * dforb.Dt.values)
+                        cos_coeffs = pd.DataFrame(
+                            np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values, coskwt[..., np.newaxis]),
+                            columns=['dR/dAc'+cpr_str, 'dR/dCc'+cpr_str, 'dR/dRc'+cpr_str])
+                        sin_coeffs = pd.DataFrame(
+                            np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values, sinkwt[..., np.newaxis]),
+                            columns=['dR/dAs'+cpr_str, 'dR/dCs'+cpr_str, 'dR/dRs'+cpr_str])
+                        dforb_full = pd.concat([dforb_full, cos_coeffs, sin_coeffs], axis=1)
+
+                    Amat = dforb_full.filter(regex=coeff_set_re).values[:, :]
                     bvec = dforb.altdiff_dem[:]
                     # print(bvec)
                     # print(Amat)
-                    # print(max(bvec),min(bvec))
-                    # # # print(pd.concat([bvec,Amat],axis=1))
-                    # # # print(bvec)
                     # exit()
 
                     solstd = np.linalg.lstsq(Amat, bvec, rcond=None)
-                    print("Sol for ",orb,":",solstd[0],"+-",solstd[3])
+
+                    if debug:
+                        print("Sol for ", orb, ":", solstd[0], "+-", solstd[3])
+
+                    # exit()
+                    # numerical check of partials
+                    # dorb = [0,0,0,0,0,0,0,0,0]
+                    # elev_rms_pre, dr_min = get_demres(dforb.copy(),dorb)
+                    # dorb = [0,0,0,0,0.1,0,0,0,0]
+                    # elev_rms_pre, dr_plu = get_demres(dforb.copy(),dorb)
+                    # print((dr_plu-dr_min)/0.1)
+                    # exit()
 
                     # compute residuals pre-fit
-                    dorb = [0,0,0]
-                    elev_rms_pre, dr_pre = get_demres(dforb.copy(),dorb)
+                    coeff_set = dforb_full.filter(regex=coeff_set_re).columns.values
+                    coeff_set = [str.split('/')[-1] for str in coeff_set]
+                    dorb = np.zeros(len(coeff_set))
+                    # print(coeff_set,dorb)
+                    elev_rms_pre, dr_pre, dt_pre = get_demres(dforb.copy(), dorb,coeff_set=coeff_set)
                     # print(elev_rms_pre, dr_pre)
 
-                    # apply corrections and compute post-fit residuals
-                    dorb = -1.*solstd[0]
-                    elev_rms_post, dr_post = get_demres(dforb.copy(),dorb)
-                    # print(elev_rms_post, dr_post)
-                    #
-                    # print(np.max(np.abs(dr_pre)),np.max(np.abs(dr_post)))
-                    dr_pre = mad_clean(pd.DataFrame(dr_pre,columns=['a']),'a').a.values
-                    dr_post = mad_clean(pd.DataFrame(dr_post,columns=['a']),'a').a.values
-                    sol_df.append(np.concatenate([[orb], solstd[0], solstd[3],
-                                                  [np.sqrt(np.mean(dr_pre ** 2, axis=0))],[np.sqrt(np.mean(dr_post ** 2, axis=0))]]))
+                    # iter over orbit corrections until convergence
+                    maxiter = 100
+                    tol = 1
+                    for i in range(maxiter):
+                        try:
+                            # apply corrections and compute post-fit residuals
+                            dorb = -1. * solstd[0]
+                            elev_rms_post, dr_post, dt_post = get_demres(dforb.copy(), dorb, coeff_set=coeff_set)
 
-                    print("pre-fit rms for orb#",orb," :",elev_rms_pre, np.sqrt(np.mean(dr_pre ** 2, axis=0)))
-                    # print(dr_pre)
+                            # print(elev_rms_post, dr_post)
+                            #
+                            # print(len(Amat), len(bvec), len(dr_post), len(dr_pre))
+                            bvec = dr_post
+                            solstd = np.linalg.lstsq(Amat, bvec, rcond=None)
+
+                            if debug:
+                                print("post-fit rms for orb#", orb, " iter ", i, " :", elev_rms_post,
+                                      np.sqrt(np.mean(dr_post ** 2, axis=0)))
+                                print("Sol2 for ", orb, ":", solstd[0], "+-", solstd[3])
+
+                            if max(abs(solstd[0])) < tol:
+                                # if (max(abs(avgerr-avgerr_old))<tlcbnc):
+                                print("Final pars values",track.pertPar)
+                                # print("post-fit rms for orb#", orb, " iter ", i, " :", elev_rms_post)
+                                break
+                            elif i == maxiter - 1:
+                                print("Max iter reached for orb ", orb, i)
+                        except:
+                            print("Failed for orbit ",orb,"at iter",i,"rms: ",elev_rms_pre, elev_rms_post)
+                            break
 
                     plt.clf()
-                    plt.figure(1)
-                    plt.hist(dr_pre, density=True,label="pre-fit")
+                    fig, [ax1, ax2] = plt.subplots(2, 1)
+                    ax1.xaxis.set_ticks_position('top')
+                    ax1.plot(dt_pre, dr_pre, label='data_pre')
+                    ax1.plot(dt_post, dr_post, label='data_post')
+
+                    # Clean up residuals for plotting/histo
+                    dr_pre = mad_clean(pd.DataFrame(dr_pre, columns=['a']), 'a').a.values
+                    dr_post = mad_clean(pd.DataFrame(dr_post, columns=['a']), 'a').a.values
+                    sol_df.append(np.concatenate([[orb], list([v for x, v in track.pertPar.items() if x in coeff_set]),
+                                                  solstd[3],
+                                                  [np.sqrt(np.mean(dr_pre ** 2, axis=0))],
+                                                  [np.sqrt(np.mean(dr_post ** 2, axis=0))]]))
+
+                    print("pre-fit rms for orb#", orb, " :", elev_rms_pre, np.sqrt(np.mean(dr_pre ** 2, axis=0)))
+                    # print(dr_pre)
+
+                    ax2.hist(dr_pre, density=True, bins=50, label="pre-fit")
                     # print(min(dr_pre), max(dr_pre))
 
                     mean = np.mean(dr_pre)
                     variance = np.var(dr_pre)
                     sigma = np.sqrt(variance)
                     x = np.linspace(min(dr_pre), max(dr_pre), 100)
-                    plt.plot(x, stats.norm.pdf(x, mean, sigma),label="pre-fit")
+                    ax2.plot(x, stats.norm.pdf(x, mean, sigma), label="pre-fit")
 
-                    print("post-fit rms for orb#",orb," :",elev_rms_post, np.sqrt(np.mean(dr_post ** 2, axis=0)))
+                    print("post-fit rms for orb#", orb, " :", elev_rms_post, np.sqrt(np.mean(dr_post ** 2, axis=0)))
 
-                    plt.hist(dr_post, density=True,label="post-fit")
-                    plt.xlim((min(dr_post), max(dr_post)))
+                    ax2.hist(dr_post, density=True, bins=50, label="post-fit")
+                    ax2.set_xlim((min(dr_post), max(dr_post)))
 
                     mean = np.mean(dr_post)
                     variance = np.var(dr_post)
                     sigma = np.sqrt(variance)
                     x = np.linspace(min(dr_post), max(dr_post), 100)
-                    plt.plot(x, stats.norm.pdf(x, mean, sigma),label="post-fit")
+                    ax2.plot(x, stats.norm.pdf(x, mean, sigma), label="post-fit")
+                    plt.title('pre-fit:'+str(np.mean(dr_pre).round(2))+', '+str(np.std(dr_pre).round(2))+
+                              ' post-fit:'+str(np.mean(dr_post).round(2))+', '+str(np.std(dr_post).round(2)))
+
                     plt.legend()
-                    plt.savefig("tmp/dr_fit_"+orb+".png")
+                    plt.savefig("tmp/dr_fit_" + orb + "_" + ex + "_"+test_name+".png")
 
                 if debug:
                     Amat = dforb.filter(regex='dR/d[A,C,R]$')
@@ -340,8 +480,12 @@ if __name__ == '__main__':
             else:
                 print("No data in ", fil)
 
-        sol_df = pd.DataFrame(sol_df, columns=['orb', 'dA', 'dC', 'dR', 'sig_dA', 'sig_dC', 'sig_dR','rms_pre','rms_post'])
-        sol_df.to_pickle("tmp/sol_demfit_"+ex+".pkl")
+        # print(track.pertPar)
+        sol_df = pd.DataFrame(sol_df)
+        sol_df.columns=['orb'] + coeff_set + ['sig_'+str for str in coeff_set] + ['rms_pre', 'rms_post']
+
+        # print("Final param solution: ",sol_df)
+        sol_df.to_pickle("tmp/sol_demfit_" + ex + "_"+test_name+".pkl")
 
     # stop clock and print runtime
     # -----------------------------

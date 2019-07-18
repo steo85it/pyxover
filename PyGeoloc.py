@@ -159,7 +159,9 @@ def main(args):
     # Import solution at previous iteration
     if int(iter_in)>0:
         tmp = Amat(vecopts)
-        tmp = tmp.load(outdir+'Abmat_'+('_').join(outdir_in.split('/')[:-2])+'.pkl')
+        tmp = tmp.load(('_').join(((outdir+('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1])+
+                       '_'+str(iter_in-1)+'/'+
+                       outdir_in.split('/')[-2]+'/Abmat_'+('_').join(outdir_in.split('/')[:-1])+'.pkl')
         orb_sol, glo_sol = xovacc.analyze_sol(tmp, tmp.xov)
     # sol_prev_iter = {'orb':orb_sol, 'glo':glb_sol}
 
@@ -178,7 +180,6 @@ def main(args):
             if int(iter_in) > 0:
                 track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.orb==str(track.name)],
                                    'glo':glo_sol}
-
             tracks.append(track)
         # epo_in = np.array(epo_in)
         # print(epo_in)
