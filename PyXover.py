@@ -205,7 +205,9 @@ def main(args):
     misy = ['11', '12', '13', '14', '15']
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
     # print(misycmb)
-    # print(par, misycmb[par])
+    print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
+    print(par, misycmb[par]," has been selected!")
+    # exit()
 
     # -------------------------------
     # File reading and ground-tracks computation
@@ -219,11 +221,12 @@ def main(args):
     # of orbits from A and B
     # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
     # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
+
+    # print(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
+    # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*')))
+
     allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
     allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
-
-    print(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
-    print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*')))
 
     if misycmb[par][0] == misycmb[par][1]:
         allFiles = allFilesA

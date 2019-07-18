@@ -7,6 +7,7 @@ import AccumXov
 import PyAltSim
 import PyXover
 import PyGeoloc
+from prOpt import sim_altdata
 
 if __name__ == '__main__':
 
@@ -19,9 +20,8 @@ if __name__ == '__main__':
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
     local = 1
-    data_sim = 'data' #'sim'  #
-    exp = '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
-    ext_iter = 0  # external iteration
+    data_sim = 'sim'  # 'data' #
+    exp = '1301_pe3' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
     # res = [0, 1, 2, 3, 4, 5, 6]
@@ -44,7 +44,13 @@ if __name__ == '__main__':
     else:
         sect = -1
 
-    print("Input args: topo res/ampl ",resampl,", sub-dataset",subarg,", geoloc/xovers/accum", sect)
+    if len(sys.argv) > 4:
+        ext_iter = int(sys.argv[4])
+    else:
+        ext_iter = 0  # external iteration
+
+    print("Input args: topo res/ampl ",resampl,", sub-dataset",subarg,
+          ", geoloc/xovers/accum", sect, ", ext_iter", ext_iter)
 
     if data_sim == 'data':
         res = [0]
@@ -87,17 +93,19 @@ if __name__ == '__main__':
         idx_tst = [i for i in range(len(cmb))]
         if local == 0:
             ie = int(resampl)
-            if data_sim == 'sim' and ext_iter == 0:
+            if data_sim == 'sim' and sim_altdata and ext_iter == 0:
               print("Running PyAltSim with ", args_pyaltsim[ie], "...")
-              # PyAltSim.main(args_pyaltsim[ie])
+              PyAltSim.main(args_pyaltsim[ie])
+              exit(0)
             print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
             PyGeoloc.main(args_pygeoloc[ie])
 
         else:
             for ie in range(len(args_pyxover)):
-                if data_sim == 'sim' and ext_iter == 0:
+                if data_sim == 'sim' and sim_altdata and ext_iter == 0:
                     print("Running PyAltSim with ", args_pyaltsim[ie], "...")
-                    # PyAltSim.main(args_pyaltsim[ie])
+                    PyAltSim.main(args_pyaltsim[ie])
+                    exit(0)
                 print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
                 PyGeoloc.main(args_pygeoloc[ie])
 

@@ -8,38 +8,38 @@ local = 1
 # debug mode
 debug = 0
 # parallel processing?
-parallel = 0
+parallel = 1
 
 # compute partials?
 partials = 1
 # std perturbations for finite differences
-parOrb = {'dA': 100., 'dC':100., 'dR':20., } # 'dRl':20e-6, 'dPt':20e-6} #, 'dA':100., 'dC':100., 'dR':20., } #, 'dRl':20e-6, 'dPt':20e-6}
-parGlo = {'dL':0.01,'dRA':[0.0001, 0.000, 0.000], 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dh2': 1.}
+parOrb = {'dA': 100., 'dC':200., 'dR':20., } # 'dRl':20e-6, 'dPt':20e-6} #, 'dA':100., 'dC':100., 'dR':20., } #, 'dRl':20e-6, 'dPt':20e-6}
+parGlo = {} #'dL':0.01,'dRA':[0.0001, 0.000, 0.000], 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dh2': 1.}
 # ... and closed loop sims
-pert_cloop_orb = {}  # 'dRl':20e-6, 'dPt':60e-6} #'dA':100., 'dC':100., 'dR':20.} #, 'dC':100., 'dR':2.} #, 'dRl':20e-6, 'dPt':20e-6}
-pert_cloop_glo = {}  # 'dL':0.01,'dh2': .2} #'dRA':[0.0005, 0.000, 0.000]}#, 'dC':100., 'dR':20., 'dRl':20e-6, 'dPt':20e-6}
+pert_cloop_orb = {'dA':100., 'dC':200., 'dR':20.} # {'dA':100., 'dC':100., 'dR':20.} # 'dRl':20e-6, 'dPt':60e-6} #
+pert_cloop_glo = {} # {'dL':0.01,'dh2': .2} #'dRA':[0.0005, 0.000, 0.000]}#, 'dC':100., 'dR':20., 'dRl':20e-6, 'dPt':20e-6}
 pert_cloop = {'orb': pert_cloop_orb, 'glo': pert_cloop_glo}
 
-pert_tracks = []  # ['1301011544', '1301042351']  # ['1301042351','1301012343']
+pert_tracks = ['1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343']  # ['1301042351','1301012343']
 
 # orbital representation
 OrbRep = 'cnt' #'lin'
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
-SpInterp = 0
+SpInterp = 1
 # create new gtrack (0:no, 1:yes, check if present, 2: yes, create)
 new_gtrack = 2
 # create new xov (0:no, 1:yes, check if present, 2: yes, create)
-new_xov = 1
+new_xov = 2
 
 # PyAltSim stuff
 # simulation mode
-sim = 0
+sim_altdata = 0
 # recompute a priori
 new_illumNG = 0
 # use topo
-apply_topo = 1
+apply_topo = 0
 # range noise
-range_noise = 1
+range_noise = 0
 
 # vecopts
 # Setup some useful options

@@ -104,8 +104,13 @@ class xov:
             # print(orb_unique)
 
             if partials == 1:
-                self.parOrb_xy = xov_list[0].parOrb_xy
-                self.parGlo_xy = xov_list[0].parGlo_xy
+                for xovi, xov in enumerate(xov_list):
+                    if hasattr(xov_list[xovi],'parOrb_xy'):
+                        self.parOrb_xy = xov_list[xovi].parOrb_xy
+                        self.parGlo_xy = xov_list[xovi].parGlo_xy
+                        break
+                    else:
+                        print("### xov element ", xovi," is missing partials!!")
             # print(self.parOrb_xy, self.parGlo_xy)
 
     def save(self, filnam):
@@ -152,8 +157,8 @@ class xov:
             self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) >= 3 * std_median]),
               "xovers removed out of", orig_len)
 
-        self.xovers = self.xovers[
-            abs(self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) < 3 * std_median]
+        # self.xovers = self.xovers[
+        #     abs(self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) < 3 * std_median]
         # print(self.xovers)
         return self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0)
 
@@ -843,6 +848,7 @@ class xov:
 
         # parxy_df=pd.DataFrame(np.diff(np.diff(np.hstack(out_elev))[:,::2])[:,::2]/list(param.values())[1:],columns=par_xy)
         if debug:
+            print("par_xy")
             print(par_xy)
             print(out_elev)
             # exit()
@@ -914,6 +920,9 @@ class xov:
             self.parOrb_xy = xovers_df.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values  # update partials list
             self.parGlo_xy = parGlo_xy
             self.par_xy = xovers_df.filter(regex='^dR/[a-zA-Z0-9]+.*$').columns.values  # update partials list
+
+            # print("parOrb_xy", self.parOrb_xy)
+            # print("par_xy", self.par_xy)
 
             # Update xovtmp as attribute for partials
             self.xovtmp = xovers_df
