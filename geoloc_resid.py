@@ -45,6 +45,7 @@ def get_demz_at(dem_xarr, lattmp, lontmp):
 
 def get_demz_diff_at(dem_xarr, lattmp, lontmp, axis='lon'):
     lontmp[lontmp < 0] += 360.
+    print(dem_xarr)
     diff_dem_xarr = dem_xarr.differentiate(axis)
 
     lat_ax = xr.DataArray(lattmp, dims='z')
@@ -174,7 +175,11 @@ if __name__ == '__main__':
     epo = '1212'
     spk = ['KX']  # ['KX', 'AGr']
     vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
-    spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
+    
+    if local:
+      spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
+    else:
+      spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
 
     if local:
         dem_xarr = import_dem(
@@ -185,7 +190,7 @@ if __name__ == '__main__':
 
     for ex in spk:
 
-        if True:
+        if False:
             sol_df = pd.read_pickle("tmp/sol_demfit_" + ex + ".pkl")
             sol_df = sol_df.filter(regex='^[d,r].*$').apply(pd.to_numeric, errors='ignore', downcast='float')
 
@@ -204,7 +209,7 @@ if __name__ == '__main__':
             path = '/home/sberton2/Works/NASA/Mercury_tides/out/mladata/' + epo + '_' + ex + '/gtrack_' + epo[
                                                                                                     :2] + '/' + '*.pkl'
         else:
-            path = "/att/nobackup/sberton2/MLA/out/mladata_" + ex + "/gtrack_*/*.pkl"
+            path = "/att/nobackup/sberton2/MLA/out/mladata/" + ex + "/gtrack_*/*.pkl"
 
         allFiles = glob.glob(os.path.join(path))
         allFiles = np.sort(allFiles)
