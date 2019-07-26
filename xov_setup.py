@@ -38,6 +38,7 @@ class xov:
             columns=['x0', 'y0', 'ladata_idA', 'ladata_idB', 'R_A', 'R_B', 'dR'])
         self.param = {'': 1.}
         self.proj_center = None
+        self.pertPar = None
 
     def setup(self, gtracks):
 
@@ -48,6 +49,7 @@ class xov:
         self.msrm_sampl = 50
 
         self.tracks = df.orbID.unique()
+        self.pertPar = {'orbA':gtracks[0].pertPar,'orbB':gtracks[1].pertPar}
         # print(df.orbID)
         # print(df.orbID.unique())
 

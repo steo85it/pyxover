@@ -64,7 +64,7 @@ class gtrack:
         # self.read_fill(filnam)
 
         if len(self.ladata_df) > 0:
-            if not hasattr(self, 'SpObj'):
+            if not hasattr(self, 'SpObj') and SpInterp == 2:
                 # print(filnam)
                 # print(self.ladata_df)
                 # create interp for track
@@ -102,7 +102,13 @@ class gtrack:
 
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
-            self.interpolate()
+            if not hasattr(self, 'SpObj') and SpInterp == 2:
+                # print(filnam)
+                # print(self.ladata_df)
+                # create interp for track
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
@@ -134,7 +140,13 @@ class gtrack:
 
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
-            self.interpolate()
+            if not hasattr(self, 'SpObj') and SpInterp == 2:
+                # print(filnam)
+                # print(self.ladata_df)
+                # create interp for track
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
@@ -163,6 +175,8 @@ class gtrack:
     def read_fill(self, infil):
 
         df = pd.read_csv(infil, sep=',', header=0)
+        # print(df)
+        # exit()
         df['orbID'] = infil.split('.')[0][-10:]
         self.name = df['orbID'].unique().squeeze()
 

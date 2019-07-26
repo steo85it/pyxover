@@ -19,7 +19,7 @@ from scipy.constants import c as clight
 import pickleIO
 from PyAltSim import sim_gtrack
 from ground_track import gtrack
-from prOpt import vecopts, auxdir
+from prOpt import vecopts, auxdir, SpInterp
 import astro_trans as astr
 import spiceypy as spice
 
@@ -87,7 +87,7 @@ def get_demres(df, dorb, coeff_set=['dA', 'dC', 'dR']):
     # copy to self
     track.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
     # retrieve spice data for geoloc
-    if not hasattr(track, 'SpObj'):
+    if not hasattr(track, 'SpObj') and SpInterp == 2:
         # create interp for track
         track.interpolate()
     else:

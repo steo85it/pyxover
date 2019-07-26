@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     local = 1
     data_sim = 'sim'  # 'data' #
-    exp = '1301_pe3' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'a00' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
     # res = [0, 1, 2, 3, 4, 5, 6]
@@ -132,3 +132,4 @@ if __name__ == '__main__':
     
         print("Wrong sect option ", sect)
         exit(2)
+

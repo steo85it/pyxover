@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 # import mpl_toolkits.basemap as basemap
 
 import time
-from scipy.sparse.linalg import lsqr
+from scipy.sparse.linalg import lsqr, lsmr
 
 # mylib
 # from mapcount import mapcount
@@ -244,7 +244,7 @@ def plt_geo_dR(empty_geomap_df, sol, xov):
     piv = (piv + empty_geomap_df).fillna(0)
     # print(piv)
     # exit()
-    sns.heatmap(piv, xticklabels=10, yticklabels=10, vmax=50)
+    sns.heatmap(piv, xticklabels=10, yticklabels=10)
     plt.tight_layout()
     ax1.invert_yaxis()
     #         ylabel='Topog ampl rms (1st octave, m)')
@@ -255,6 +255,8 @@ def plt_geo_dR(empty_geomap_df, sol, xov):
 
 def prepare_Amat(xov, vecopts, par_list=''):
     xovtmp = xov.xovers.copy()
+
+    print(xov.pertPar)
 
     # xov.xovers = xov.xovers[xov.xovers.orbA=='1301042351']
     # xov.xovers.append(xovtmp[xovtmp.orbA=='1301011544'])
@@ -300,9 +302,11 @@ def clean_xov(par_list, xov):
     return "xov cleaned!"
 
 def solve(xovi_amat,dataset):
+    from scipy.sparse import csr_matrix
+
     # Solve
     # select subset of parameters
-    sol4_orb = [] #['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
+    sol4_orb = [] # ['1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
     sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
     sol4_glo = [None] # ['dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
 
@@ -311,11 +315,9 @@ def solve(xovi_amat,dataset):
 
     xovi_amat.sol4_pars = sol4_pars
 
-    # sol4_pars = ['1301011544_dR/dA',
-    #              '1301042351_dR/dA']  # 1301011544_dR/dRl','1301042351_dR/dRl','1301011544_dR/dPt','1301042351_dR/dPt'] #,'1301011544_dR/dC','1301042351_dR/dC','1301011544_dR/dR','1301042351_dR/dR'] #,'1301012343_dR/dA','1301011544_dR/dC','1301011544_dR/dR'] #,'dR/dh2']
-    # print([xovi_amat.parNames[p] for p in sol4_pars])
     if sol4_pars != []:
-        print('pars', [xovi_amat.parNames[p] for p in sol4_pars])
+        # select columns of design matrix corresponding to chosen parameters to solve for
+        print([xovi_amat.parNames[p] for p in sol4_pars])
         spA_sol4 = xovi_amat.spA[:,[xovi_amat.parNames[p] for p in sol4_pars]]
         # set b=0 for rows not involving chosen set of parameters
         nnz_per_row = spA_sol4.getnnz(axis=1)
@@ -329,14 +331,58 @@ def solve(xovi_amat,dataset):
         print('dense A', spA_sol4.todense())
         print('B', xovi_amat.b)
         print('max B', xovi_amat.b.max(),xovi_amat.b.mean())
+
         # Compute the covariance matrix
         print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
         # compute sol
         print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
 
-    # Compute LSQR solution
-    xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
 
+    A = spA_sol4.transpose()*spA_sol4
+    b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
+
+    par_constr = {'dR/dA': 50, 'dR/dC': 50, 'dR/dR': 100}
+    csr = []
+    for constrain in par_constr.items():
+
+        # print(constrain)
+        # print(constrain[0])
+        # print(len(sol4_pars))
+        parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if constrain[0] in p])
+        val = parindex[:,1]
+        row = col = parindex[:,0]
+
+        csr.append(
+                csr_matrix((1/val, (row, col)), dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
+    penalty_matrix = sum(csr)
+
+    xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
+    # print(xovi_amat.sol)
+    # exit()
+    # print(np.linalg.pinv(A.todense())*b)
+    # _ = lsmr(A,b.toarray(),show=False, maxiter=5000)
+    # print(np.diag(np.linalg.pinv((A.transpose() * A).todense())))
+    # print(xovi_amat.sol)
+    _ = lsmr(A+penalty_matrix,b.toarray(),show=False, maxiter=5000)
+    # print(np.diag(np.linalg.pinv(((A+penalty_matrix).transpose() * (A+penalty_matrix)).todense())))
+    # print(xovi_amat.sol)
+    xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
+    # print(lsmr(spA_sol4,xovi_amat.b,damp=1.e-4,show=False, maxiter=5000))
+    # exit()
+    # print(lsmr(A,np.squeeze(np.asarray(b.todense())),damp=1.e-2,show=False, maxiter=5000))
+    # exit()
+    # # Compute LSQR solution
+    # xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=False,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
+    # print(xovi_amat.sol)
+    # xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
+    # print(xovi_amat.sol)
+    # exit()
+    # import scipy
+    # # print(xovi_amat.parNames.keys())
+    # lb = np.tile([-100,-200,-20],int(len(xovi_amat.parNames.keys())/3))
+    # ub = np.tile([100,200,20],int(len(xovi_amat.parNames.keys())/3))
+    # _ = scipy.optimize.lsq_linear(spA_sol4, xovi_amat.b, bounds=(lb,ub), method='trf', tol=1e-9, max_iter=5000, verbose=0)
+    # xovi_amat.sol = (_.x, *xovi_amat.sol[1:])
     #print('sparse density = ' + str(xovi_amat.spA.density))
 
 def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
