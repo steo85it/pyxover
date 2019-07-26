@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # #
     #     exit()
 
-    for i in np.arange(2,10 ):
+    for i in np.arange(0,10 ):
 
         if local:
             start = time.time()

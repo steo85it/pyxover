@@ -54,6 +54,7 @@ class gtrack:
                         'dPM': [0., 0., 0.],
                         'dL': 0.}  # ,
         # 'dh2': 0. }
+        self.pert_cloop = None
         self.sol_prev_iter = None
         self.t0_orb = None
 
@@ -546,6 +547,10 @@ class gtrack:
 
     def pertpar(self, diff_step, sign=1.):
         tmp_pertPar = self.pertPar.copy()
+        tmp_pertcloop = self.pert_cloop.copy()
+        # set all elements to 0 before reworking
+        tmp_pertPar = tmp_pertPar.fromkeys(tmp_pertPar, 0)
+
         tmp_pertPar[self.vecopts['PARTDER']] = diff_step
 
         if sign != 1:
@@ -555,18 +560,22 @@ class gtrack:
                 tmp_pertPar[self.vecopts['PARTDER']] = [sign * x for x in tmp_pertPar[self.vecopts['PARTDER']]]
 
         # add pert for closed loop sim
-        for key in self.pert_cloop:
+        for key in tmp_pertcloop:
             if key in tmp_pertPar:
 
                 if debug:
-                    print("pertpar", self.name, key, tmp_pertPar[key], self.pert_cloop[key])
+                    print("pertpar", self.name, key, tmp_pertPar[key], tmp_pertcloop[key])
+
+                np.random.seed(int(self.name))
+                tmp_pertcloop[key] = tmp_pertcloop[key]*np.random.randn()
 
                 if hasattr(tmp_pertPar[key], "__len__"):
-                    tmp_pertPar[key] = [sum(pair) for pair in zip(tmp_pertPar[key], self.pert_cloop[key])]
+                    tmp_pertPar[key] = [sum(pair) for pair in zip(tmp_pertPar[key], tmp_pertcloop[key])]
                 else:
-                    tmp_pertPar[key] += self.pert_cloop[key]
+                    tmp_pertPar[key] += tmp_pertcloop[key]
                 # print(key, len(tmp_pertPar[key]),tmp_pertPar[key])
-        # exit()
+
+        self.pertPar = tmp_pertPar.copy()
         return tmp_pertPar
 
     # Compute stereographic projection of measurements location

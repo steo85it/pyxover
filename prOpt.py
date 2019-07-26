@@ -14,13 +14,15 @@ parallel = 1
 partials = 1
 # std perturbations for finite differences
 parOrb = {'dA': 10., 'dC':10., 'dR':10., } # 'dRl':20e-6, 'dPt':20e-6} #, 'dA':100., 'dC':100., 'dR':20., } #, 'dRl':20e-6, 'dPt':20e-6}
-parGlo = {} #'dL':0.01,'dRA':[0.0001, 0.000, 0.000], 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dh2': 1.}
+parGlo = {'dL':0.001,'dh2': 0.1} #'dL':0.01,'dRA':[0.0001, 0.000, 0.000], 'dDEC':[0.001, 0.000, 0.000], 'dPM':[0.0, 0.00001, 0.0], 'dh2': 1.}
+# parameter constraints for solution
+par_constr = {'dR/dA': 50, 'dR/dC': 50, 'dR/dR': 100, 'dR/dL': 0.001, 'dR/dh2': 0.001}
 # ... and closed loop sims
-pert_cloop_orb = {'dA':100., 'dC':200., 'dR':20.} # {'dA':100., 'dC':100., 'dR':20.} # 'dRl':20e-6, 'dPt':60e-6} #
-pert_cloop_glo = {} # {'dL':0.01,'dh2': .2} #'dRA':[0.0005, 0.000, 0.000]}#, 'dC':100., 'dR':20., 'dRl':20e-6, 'dPt':20e-6}
+pert_cloop_orb = {} # {'dA':100., 'dC':200., 'dR':20.} # {'dA':100., 'dC':100., 'dR':20.} # 'dRl':20e-6, 'dPt':60e-6} #
+pert_cloop_glo = {'dL':0.1,'dh2': .8} #'dRA':[0.0005, 0.000, 0.000]}#, 'dC':100., 'dR':20., 'dRl':20e-6, 'dPt':20e-6}
 pert_cloop = {'orb': pert_cloop_orb, 'glo': pert_cloop_glo}
 
-pert_tracks = [] #'1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343']  # ['1301042351','1301012343']
+pert_tracks = [None] #'1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343']  # ['1301042351','1301012343']
 
 # orbital representation
 OrbRep = 'cnt' #'lin'

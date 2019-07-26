@@ -111,13 +111,16 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     xov_list = [xov_.load(x) for x in allFiles]
     print(len(xov_list))
 
-
     orb_unique = [x.xovers['orbA'].tolist() for x in xov_list if len(x.xovers) > 0]
     orb_unique.extend([x.xovers['orbB'].tolist() for x in xov_list if len(x.xovers) > 0])
     orb_unique = list(set([y for x in orb_unique for y in x]))
 
     xov_cmb = xov(vecopts)
     xov_cmb.combine(xov_list)
+
+    # save cloop perturbations to xov_cmb
+    pertdict = [x.pertPar for x in xov_list if hasattr(x, 'pertPar')]
+    xov_cmb.pert_cloop = pd.concat([pd.DataFrame(l) for l in pertdict],axis=1).T
     #print(len(xov_cmb.xovers))
 
     return xov_cmb
@@ -256,8 +259,6 @@ def plt_geo_dR(empty_geomap_df, sol, xov):
 def prepare_Amat(xov, vecopts, par_list=''):
     xovtmp = xov.xovers.copy()
 
-    print(xov.pertPar)
-
     # xov.xovers = xov.xovers[xov.xovers.orbA=='1301042351']
     # xov.xovers.append(xovtmp[xovtmp.orbA=='1301011544'])
     # xov.xovers.append(xovtmp[xovtmp.orbB=='1301042351'])
@@ -303,12 +304,13 @@ def clean_xov(par_list, xov):
 
 def solve(xovi_amat,dataset):
     from scipy.sparse import csr_matrix
+    from prOpt import par_constr
 
     # Solve
     # select subset of parameters
-    sol4_orb = [] # ['1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
+    sol4_orb = [None] # ['1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
     sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
-    sol4_glo = [None] # ['dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
+    sol4_glo = ['dR/dL','dR/dh2'] # [None] # ['dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
 
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     print(sol4_pars)
@@ -341,7 +343,9 @@ def solve(xovi_amat,dataset):
     A = spA_sol4.transpose()*spA_sol4
     b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
 
-    par_constr = {'dR/dA': 50, 'dR/dC': 50, 'dR/dR': 100}
+    # select constrains for processed parameters (TODO should go in sol4pars)
+    par_constr = { your_key: par_constr[your_key] for your_key in sol4_pars }
+
     csr = []
     for constrain in par_constr.items():
 
