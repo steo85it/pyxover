@@ -19,16 +19,10 @@ if __name__ == '__main__':
     #    Arg_list = collections.namedtuple('Arg_list', arg_names)
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
-<<<<<<< HEAD
     local = 0
-    data_sim = 'data' #'sim'  #
-    exp = 'AGr/' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
-    ext_iter = 0  # external iteration
-=======
-    local = 1
     data_sim = 'sim'  # 'data' #
-    exp = '1301_pe3' # 'mlatimes/1301' # '' #  '1s' #
->>>>>>> 133696aa068203b0a8872f3736f822bc97a25005
+    exp = 'sph' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
+
     # exp += '_'+str(ext_iter)
 
     # res = [0, 1, 2, 3, 4, 5, 6]
@@ -139,3 +133,4 @@ if __name__ == '__main__':
     
         print("Wrong sect option ", sect)
         exit(2)
+

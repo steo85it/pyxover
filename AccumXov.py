@@ -29,7 +29,7 @@ from scipy.sparse.linalg import lsqr
 
 # mylib
 # from mapcount import mapcount
-from prOpt import debug, outdir, local, sim_altdata, parOrb, parGlo, partials
+from prOpt import debug, outdir, tmpdir, local, sim_altdata, parOrb, parGlo, partials
 from xov_setup import xov
 from Amat import Amat
 
@@ -224,7 +224,7 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov):
     plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
     # Tweak spacing to prevent clipping of ylabel
     plt.subplots_adjust(left=0.15)
-    plt.savefig('/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/histo_dR_' + str(idx) + '.png')
+    plt.savefig(tmpdir+'/histo_dR_' + str(idx) + '.png')
     plt.clf()
 
 def plt_geo_dR(empty_geomap_df, sol, xov):
@@ -248,7 +248,7 @@ def plt_geo_dR(empty_geomap_df, sol, xov):
     plt.tight_layout()
     ax1.invert_yaxis()
     #         ylabel='Topog ampl rms (1st octave, m)')
-    fig.savefig('/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/mla_dR_' + sol + '.png')
+    fig.savefig(tmpdir+'/mla_dR_' + sol + '.png')
     plt.clf()
     plt.close()
 
@@ -302,9 +302,9 @@ def clean_xov(par_list, xov):
 def solve(xovi_amat,dataset):
     # Solve
     # select subset of parameters
-    sol4_orb = [] #['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
-    sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
-    sol4_glo = [None] # ['dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
+    sol4_orb = [] #'1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
+    sol4_orbpar = ["dR"] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
+    sol4_glo = [None] # ['dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL','dR/dh2'] # 
 
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     print(sol4_pars)

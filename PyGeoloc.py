@@ -111,10 +111,10 @@ def main(args):
         data_pth += dataset
 
         # load kernels
-        spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'#])
-                      ,
-                      '/att/nobackup/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp',
-                      '/att/nobackup/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp'])
+        spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
+                      #,
+                      #'/att/nobackup/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp',
+                      #'/att/nobackup/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp'])
     else:
         data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'
         # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
