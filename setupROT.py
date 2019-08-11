@@ -13,6 +13,7 @@ import numpy as np
 
 
 def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
+
     # IAU
     POLE_RA0 = np.array([281.0097, -0.0328, 0.])
     POLE_DEC0 = np.array([61.4143, -0.0049, 0.])

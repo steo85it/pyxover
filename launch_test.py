@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     local = 1
     data_sim = 'sim'  # 'data' #
-    exp = 'a00' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'd00' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
     # res = [0, 1, 2, 3, 4, 5, 6]
@@ -58,6 +58,7 @@ if __name__ == '__main__':
 
     cmb = list(
         itert.product(ampl, res))
+    # print(dict(zip(range(len(cmb)),cmb)))
 
     if data_sim == 'sim':
         if local:
@@ -101,8 +102,9 @@ if __name__ == '__main__':
             PyGeoloc.main(args_pygeoloc[ie])
 
         else:
-            for ie in range(len(args_pyxover)):
+            for ie in range(len(args_pyaltsim)):
                 if data_sim == 'sim' and sim_altdata and ext_iter == 0:
+                    ie = int(resampl)
                     print("Running PyAltSim with ", args_pyaltsim[ie], "...")
                     PyAltSim.main(args_pyaltsim[ie])
                     exit(0)

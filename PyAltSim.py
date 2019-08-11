@@ -29,7 +29,7 @@ import spiceypy as spice
 import matplotlib.pyplot as plt
 
 # mylib
-from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts, range_noise
+from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts, range_noise, SpInterp
 import astro_trans as astr
 from ground_track import gtrack
 from geolocate_altimetry import get_sc_ssb, get_sc_pla
@@ -62,7 +62,7 @@ class sim_gtrack(gtrack):
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
         # retrieve spice data for geoloc
-        if not hasattr(self, 'SpObj'):
+        if not os.path.exists(auxdir + 'spaux_' + self.name + '.pkl') or SpInterp == 2:
             # create interp for track
             self.interpolate()
         else:
@@ -93,7 +93,7 @@ class sim_gtrack(gtrack):
             plt.plot(df_.loc[:, 'ET_TX'], df_.TOF, 'bo', df_.loc[:, 'ET_TX'], df_.TOF - tof_noise, 'k')
             plt.savefig('tmp/noise.png')
 
-    def lt_topo_corr(self, df, itmax=100, tol=1.e-2):
+    def lt_topo_corr(self, df, itmax=50, tol=5.e-2):
         """
         iterate from a priori rough TOF @ ET_TX to account for light-time and
         terrain roughness and topography
@@ -157,16 +157,25 @@ class sim_gtrack(gtrack):
             else:
                 df.update(self.ladata_df)
 
-            if debug:
-                print("it = " + str(it))
-                print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol))
+            percent_left = 100. - (len(df) - np.count_nonzero(abs(dr) > tol))/len(df)*100.
+
+            # if debug:
+            print("it = " + str(it))
+            print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol), percent_left,' %')
 
             if (max(abs(dr)) < tol):
                 # print("Convergence reached")
                 # pass all epochs to next step
                 self.ladata_df = df.copy()
                 break
-            elif (it == itmax - 1):
+            elif it > 10 and percent_left < 5:
+                print('### altsim: Most data point converged!')
+                print("it = " + str(it))
+                print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol), percent_left,' %')
+                print('offnadir max', max(np.rad2deg(offndr)))
+                self.ladata_df = df.copy()  # keep non converged but set chn>5 (bad msrmts)
+                break
+            elif it == itmax - 1:
                 print('### altsim: Max number of iterations reached!')
                 print("it = " + str(it))
                 print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol))

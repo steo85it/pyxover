@@ -109,7 +109,6 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
 
     # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
     xov_list = [xov_.load(x) for x in allFiles]
-    print(len(xov_list))
 
     orb_unique = [x.xovers['orbA'].tolist() for x in xov_list if len(x.xovers) > 0]
     orb_unique.extend([x.xovers['orbB'].tolist() for x in xov_list if len(x.xovers) > 0])
@@ -119,7 +118,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     xov_cmb.combine(xov_list)
 
     # save cloop perturbations to xov_cmb
-    pertdict = [x.pertPar for x in xov_list if hasattr(x, 'pertPar')]
+    pertdict = [x.pert_cloop for x in xov_list if hasattr(x, 'pert_cloop')]
     xov_cmb.pert_cloop = pd.concat([pd.DataFrame(l) for l in pertdict],axis=1).T
     #print(len(xov_cmb.xovers))
 
@@ -258,7 +257,6 @@ def plt_geo_dR(empty_geomap_df, sol, xov):
 
 def prepare_Amat(xov, vecopts, par_list=''):
     xovtmp = xov.xovers.copy()
-
     # xov.xovers = xov.xovers[xov.xovers.orbA=='1301042351']
     # xov.xovers.append(xovtmp[xovtmp.orbA=='1301011544'])
     # xov.xovers.append(xovtmp[xovtmp.orbB=='1301042351'])
@@ -302,15 +300,15 @@ def clean_xov(par_list, xov):
 
     return "xov cleaned!"
 
-def solve(xovi_amat,dataset):
+def solve(xovi_amat,dataset,previous_iter=None):
     from scipy.sparse import csr_matrix
     from prOpt import par_constr
 
     # Solve
     # select subset of parameters
-    sol4_orb = [None] # ['1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
-    sol4_orbpar = [] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
-    sol4_glo = ['dR/dL','dR/dh2'] # [None] # ['dR/dL','dR/dh2','dR/dRA','dR/dDEC'] # ['dR/dL']
+    sol4_orb = [] # ['1104281831','1206290713','1407081256','1503212147'] # ['1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
+    sol4_orbpar = [] # ['dA','dC','dR'] # 'dA','dC','dR'] #'dA','dC','dR'] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
+    sol4_glo = ['dR/dRA','dR/dDEC','dR/dPM','dR/dh2'] #,'dR/dh2','dR/dRA','dR/dDEC','dR/dPM']
 
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     print(sol4_pars)
@@ -339,12 +337,12 @@ def solve(xovi_amat,dataset):
         # compute sol
         print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
 
-
-    A = spA_sol4.transpose()*spA_sol4
-    b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
+        A = spA_sol4.transpose()*spA_sol4
+        b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
 
     # select constrains for processed parameters (TODO should go in sol4pars)
-    par_constr = { your_key: par_constr[your_key] for your_key in sol4_pars }
+    mod_par = [your_key.split('_')[1] if len(your_key.split('_'))>1 else your_key for your_key in sol4_pars ]
+    par_constr = { your_key: par_constr[your_key] for your_key in mod_par }
 
     csr = []
     for constrain in par_constr.items():
@@ -360,34 +358,25 @@ def solve(xovi_amat,dataset):
                 csr_matrix((1/val, (row, col)), dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
     penalty_matrix = sum(csr)
 
-    xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
-    # print(xovi_amat.sol)
-    # exit()
-    # print(np.linalg.pinv(A.todense())*b)
-    # _ = lsmr(A,b.toarray(),show=False, maxiter=5000)
-    # print(np.diag(np.linalg.pinv((A.transpose() * A).todense())))
-    # print(xovi_amat.sol)
-    _ = lsmr(A+penalty_matrix,b.toarray(),show=False, maxiter=5000)
-    # print(np.diag(np.linalg.pinv(((A+penalty_matrix).transpose() * (A+penalty_matrix)).todense())))
-    # print(xovi_amat.sol)
-    xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
-    # print(lsmr(spA_sol4,xovi_amat.b,damp=1.e-4,show=False, maxiter=5000))
-    # exit()
-    # print(lsmr(A,np.squeeze(np.asarray(b.todense())),damp=1.e-2,show=False, maxiter=5000))
-    # exit()
-    # # Compute LSQR solution
-    # xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=False,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
-    # print(xovi_amat.sol)
-    # xovi_amat.sol = lsqr(spA_sol4, xovi_amat.b,show=True,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
-    # print(xovi_amat.sol)
-    # exit()
-    # import scipy
-    # # print(xovi_amat.parNames.keys())
-    # lb = np.tile([-100,-200,-20],int(len(xovi_amat.parNames.keys())/3))
-    # ub = np.tile([100,200,20],int(len(xovi_amat.parNames.keys())/3))
-    # _ = scipy.optimize.lsq_linear(spA_sol4, xovi_amat.b, bounds=(lb,ub), method='trf', tol=1e-9, max_iter=5000, verbose=0)
-    # xovi_amat.sol = (_.x, *xovi_amat.sol[1:])
-    #print('sparse density = ' + str(xovi_amat.spA.density))
+    # Add constrain to mean value of parameters
+    penalty_par_mean = np.identity(len(sol4_pars)) - 1/len(sol4_pars) * np.ones((len(sol4_pars), len(sol4_pars)))
+    penalty_matrix += 1/0.01 * csr_matrix(penalty_par_mean)
+
+    # Choleski decompose matrix and append to design matrix
+    Q = np.linalg.cholesky(penalty_matrix.todense())
+    if previous_iter != None:
+        b_penal = np.hstack([xovi_amat.b, np.ravel(np.dot(Q,previous_iter.sol[0]))])
+    else:
+        b_penal = np.hstack([xovi_amat.b, np.zeros(len(sol4_pars))])
+    import scipy
+    spA_sol4_penal = scipy.sparse.vstack([spA_sol4,csr_matrix(Q)])
+    xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,show=False,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
+    # print(xovi_amat.sol[0])
+
+    # _ = lsmr(A+penalty_matrix,b.toarray(),show=False, maxiter=5000)
+    # # print(np.diag(np.linalg.pinv(((A+penalty_matrix).transpose() * (A+penalty_matrix)).todense())))
+    # # print(xovi_amat.sol)
+    # xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
 
 def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
     if sol4_orb == []:
@@ -493,6 +482,7 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
     print('-- -- -- -- ')
     print(glb_sol)
     print('-- -- -- -- ')
+
     if debug:
         _ = xov.remove_outliers('dR')
         print(xov.xovers.columns)
@@ -527,37 +517,40 @@ def main(arg):
 
         # count occurrences for each orbit ID
         _ = xov_cmb.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
-        print(_)
-        print(_.dtypes)
+        # print(_)
+        # print(_.dtypes)
         # exit()
 
         if partials == 1:
+
+            # retrieve old solution
+            if int(ext_iter) > 0:
+                previous_iter = Amat(vecopts)
+                # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
+                previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+                                '_' + str(ext_iter - 1) + '/' +
+                               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+            else:
+                previous_iter = None
+
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
             xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
-            solve(xovi_amat, ds)
+            solve(xovi_amat, ds, previous_iter)
 
             # Save to pkl
             orb_sol, glb_sol = analyze_sol(xovi_amat,xov_cmb)
             print("Sol for iter ", str(ext_iter))
             print_sol(orb_sol, glb_sol, xov, xovi_amat)
 
+            # Cumulate with solution from previous iter
             if int(ext_iter) > 0:
-                tmp = Amat(vecopts)
-                # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-                tmp = tmp.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-                                '_' + str(ext_iter - 1) + '/' +
-                               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
-                # orb_sol_old, glo_sol_old = analyze_sol(tmp, tmp.xov)
-                # print_sol(orb_sol_old, glo_sol_old, xov, xovi_amat)
-                # exit()
 
-                xovi_amat.sol = (xovi_amat.sol[0] + tmp.sol[0], *xovi_amat.sol[1:])
+                xovi_amat.sol = (xovi_amat.sol[0] + previous_iter.sol[0], *xovi_amat.sol[1:])
                 orb_sol, glb_sol = analyze_sol(xovi_amat, xov_cmb)
                 print("Cumulated solution")
                 print_sol(orb_sol, glb_sol, xov, xovi_amat)
 
-            print(ds)
             if len(ds.split('/'))>2:
                 xovi_amat.save(('_').join((data_pth + 'Abmat_' + ds.split('/')[0] + '_' +
                                            ds.split('/')[1]).split('_')[:-1])+'_'+ str(ext_iter+1) +

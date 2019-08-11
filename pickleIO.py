@@ -8,7 +8,7 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 08-Feb-2019
-
+import glob
 import pickle
 
 
@@ -20,7 +20,13 @@ def save(objIn, filnam):
 
 # load groundtrack from file
 def load(filnam):
-    pklfile = open(filnam, 'rb')
+
+    try:
+        pklfile = open(filnam, 'rb')
+    except:
+        # accounts for different minutes (time-scale?) btw real and simulated data
+        pklfile = open(glob.glob(filnam[:-6]+"??.pkl")[0], 'rb')
+
     objOut = pickle.load(pklfile)
     pklfile.close()
 

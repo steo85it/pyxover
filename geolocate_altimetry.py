@@ -20,6 +20,7 @@
 # ALTIM_BORESIGHT in SBF
 # INERTIALFRAME 'J2000'
 # INERTIALCENTER 'SSB'
+import re
 
 import numpy as np
 import spiceypy as spice
@@ -170,7 +171,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # exit()
 
     # apply tidal deformation (deformation in meters in radial, lon, lat)
-    dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj)
+    dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar)
 
     # convert xyz to latlon, then apply correction
     rtmp, lattmp, lontmp = astr.cart2sph(np.array(vmbf).reshape(-1, 3))
@@ -255,8 +256,9 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
 
     # Compute and add ACR offset (if corrections != 0)
     # print([tmp_pertPar[k] for k in ['dA','dC','dR']])
-    if any(value != 0 for value in tmp_pertPar.values()):
-        # print(tmp_pertPar)
+    orb_pert_dict = {k:v for (k,v) in tmp_pertPar.items() for filter_string in ['dA','dC','dR[1,c,s]','dR$'] if re.search(filter_string, k)}
+    if any(value != 0 for value in orb_pert_dict.values()):
+        # print("got in", orb_pert_dict)
         dirs = ['A', 'C', 'R']
         rev_per = 0.5 * 86400 # 12h to secs
         w = 2*np.pi / rev_per

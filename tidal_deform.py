@@ -24,6 +24,7 @@
 from math import pi
 
 import numpy as np
+import pandas as pd
 import spiceypy as spice
 from scipy.special import lpmv
 
@@ -34,7 +35,7 @@ from prOpt import SpInterp
 
 ##############################################
 
-def set_const():
+def set_const(h2_sol):
     from prOpt import pert_cloop
 
     h2 = 0.8  # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
@@ -47,6 +48,7 @@ def set_const():
     # # check if h2 is perturbed
     if 'dh2' in pert_cloop['glo'].keys():
         h2 += pert_cloop['glo']['dh2']
+        h2 += h2_sol
 
     return h2, l2, GMsun, Gm
 
@@ -65,8 +67,12 @@ def cosz(TH, LO, latSUN, lonSUN):
 
 
 # @profile
-def tidal_deform(vecopts, xyz_bf, ET, SpObj):
-    h2, l2, GMsun, Gm = set_const()
+def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
+
+    if isinstance(delta_par, dict) and 'dh2' in delta_par.keys():
+        h2, l2, GMsun, Gm = set_const(h2_sol=delta_par['dh2'])
+    else:
+        h2, l2, GMsun, Gm = set_const(0)
 
     plarad = vecopts['PLANETRADIUS'] * 1.e3
     gSurf = Gm / np.square(plarad)  # surface g of body
@@ -152,8 +158,15 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj):
     return urtot, lotot, thtot
 
 
-def tidepart_h2(vecopts, xyz_bf, ET, SpObj):
+def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0):
     # print(  'vecopts check',  vecopts['PARTDER'])
-    h2, l2, GMsun, Gm = set_const()
 
-    return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj)[0]) / h2, 0., 0.
+    dh2 = 0
+    if isinstance(delta_par, pd.DataFrame) and 'dR/dh2' in delta_par.par.values:
+        dh2 = delta_par.set_index('par').apply(pd.to_numeric, errors='ignore',
+                                              downcast='float'
+                                              ).to_dict('index')['dR/dh2']['sol']
+
+    h2, l2, GMsun, Gm = set_const(h2_sol=dh2)
+
+    return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par={'dh2':dh2})[0]) / h2, 0., 0.

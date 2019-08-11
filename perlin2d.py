@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+# ---------------------------------------------------------
+# Generate fractal noise appropriate for terrain simulation
+# ---------------------------------------------------------
+# Author: Stefano Bertone
+# Created: 16-May-2019
+#
+# source: https://github.com/pvigier/perlin-numpy
+
+
 import numpy as np
 
 # def generate_perlin_noise_2d(shape, res):
@@ -73,7 +83,9 @@ def generate_fractal_noise_2d(shape, res, octaves=1, persistence=0.5):
 def generate_periodic_fractal_noise_2d(amplitude, shape, res, octaves=1, persistence=0.5):
 
     noise = generate_fractal_noise_2d(shape, res, octaves, persistence)
+    print("pre",noise)
     noise *= amplitude
+    print("post",noise)
     #_ = np.hstack([noise,np.flip(noise,axis=1)])
     #noise = np.vstack([_,np.flip(_,axis=0)])
     return noise
@@ -90,10 +102,10 @@ if __name__ == '__main__':
 
     np.random.seed(62)
     shape_text = 1024
-    res_text = 1
-    depth_text = 8
+    res_text = 2**4
+    depth_text = 5
     size_stamp = 0.25
-    noise = generate_periodic_fractal_noise_2d(35, (shape_text, shape_text), (res_text, res_text), depth_text)
+    noise = generate_periodic_fractal_noise_2d(30, (shape_text, shape_text), (res_text, res_text), depth_text, persistence=0.65)
     noise = hill_shade(noise,terrain=noise * 10)
     #noise = abs(noise)**2.1/(abs(noise)**2.1).max()*35
     #interp_spline = RectBivariateSpline(np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
