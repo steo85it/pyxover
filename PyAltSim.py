@@ -29,7 +29,7 @@ import spiceypy as spice
 import matplotlib.pyplot as plt
 
 # mylib
-from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts, range_noise
+from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts, range_noise, SpInterp
 import astro_trans as astr
 from ground_track import gtrack
 from geolocate_altimetry import get_sc_ssb, get_sc_pla
@@ -62,7 +62,7 @@ class sim_gtrack(gtrack):
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
         # retrieve spice data for geoloc
-        if not hasattr(self, 'SpObj'):
+        if not os.path.exists(auxdir + 'spaux_' + self.name + '.pkl') or SpInterp == 2:
             # create interp for track
             self.interpolate()
         else:
@@ -79,21 +79,22 @@ class sim_gtrack(gtrack):
 
         self.setup_rdr()
 
-    @staticmethod
-    def add_range_noise(df_, mean=0., std=0.2):
+    #@staticmethod
+    def add_range_noise(self, df_, mean=0., std=0.2):
         """
         Add range noise (normal distribution) to simulated time of flight (seconds)
         :param df_: input altimetry dataframe
         :param mean: mean value for normal distribution (meters)
         :param std: standard deviation for normal distribution (meters)
         """
+        np.random.seed(int(self.name))
         tof_noise = (std * np.random.randn(len(df_)) + mean) / clight
         df_.loc[:, 'TOF'] += tof_noise
         if debug:
             plt.plot(df_.loc[:, 'ET_TX'], df_.TOF, 'bo', df_.loc[:, 'ET_TX'], df_.TOF - tof_noise, 'k')
             plt.savefig('tmp/noise.png')
 
-    def lt_topo_corr(self, df, itmax=100, tol=1.e-2):
+    def lt_topo_corr(self, df, itmax=50, tol=1.e-2):
         """
         iterate from a priori rough TOF @ ET_TX to account for light-time and
         terrain roughness and topography
@@ -157,16 +158,25 @@ class sim_gtrack(gtrack):
             else:
                 df.update(self.ladata_df)
 
+            percent_left = 100. - (len(df) - np.count_nonzero(abs(dr) > tol))/len(df)*100.
+
             if debug:
                 print("it = " + str(it))
-                print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol))
+                print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol), percent_left,' %')
 
             if (max(abs(dr)) < tol):
                 # print("Convergence reached")
                 # pass all epochs to next step
                 self.ladata_df = df.copy()
                 break
-            elif (it == itmax - 1):
+            elif it > 10 and percent_left < 5:
+                print('### altsim: Most data point converged!')
+                print("it = " + str(it))
+                print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol), percent_left,' %')
+                print('offnadir max', max(np.rad2deg(offndr)))
+                self.ladata_df = df.copy()  # keep non converged but set chn>5 (bad msrmts)
+                break
+            elif it == itmax - 1:
                 print('### altsim: Max number of iterations reached!')
                 print("it = " + str(it))
                 print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol))
@@ -333,7 +343,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     print('epos_in', epos_in)
 
     if local == 0:
-        data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+        data_pth = '/att/nobackup/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
         dataset = ''  # 'small_test/' #'test1/' #'1301/' #
         data_pth += dataset
         # load kernels
@@ -359,6 +369,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     if new_illumNG and True:
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
+        print(data_pth, epos_in)
         print(allFiles)
 
         # Prepare list of tracks
@@ -394,7 +405,6 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         if new_illumNG:
             np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_in, fmt="%10.5f")
             print("illumNG call")
-            exit()
             if not os.path.exists("illumNG/"):
                 print('*** create and copy required files to ./illumNG')
                 exit()
@@ -421,6 +431,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # sim_gtrack.dem_xr = xr.open_dataset(nc_file)
 
         # prepare surface texture "stamp" and assign the interpolated function as class attribute
+	# persistence = 0.65 to fit power law of Steinbrugge 2018 over scales 50m (spot-size) to 200m (spots distance)
         np.random.seed(62)
         shape_text = 1024
         res_text = 2 ** res_in
@@ -428,7 +439,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         size_stamp = 0.25
         amplitude = ampl_in
         noise = perlin2d.generate_periodic_fractal_noise_2d(amplitude, (shape_text, shape_text), (res_text, res_text),
-                                                            depth_text)
+                                                            depth_text,persistence=0.65)
         interp_spline = RectBivariateSpline(np.array(range(shape_text)) / shape_text * size_stamp,
                                             np.array(range(shape_text)) / shape_text * size_stamp,
                                             noise)

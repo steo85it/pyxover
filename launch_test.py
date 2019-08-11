@@ -21,14 +21,14 @@ if __name__ == '__main__':
 
     local = 0
     data_sim = 'sim'  # 'data' #
-    exp = 'sph' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'tp2' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
 
     # exp += '_'+str(ext_iter)
 
-    # res = [0, 1, 2, 3, 4, 5, 6]
-    # ampl = [1, 5, 10, 25, 50]
-    res = [0]
-    ampl = [1]
+    res = [3,4]
+    ampl = [20,30,40]
+    # res = [0]
+    # ampl = [1]
 
     if len(sys.argv) > 1:
         resampl = sys.argv[1]
