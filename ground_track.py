@@ -19,7 +19,8 @@ import astro_trans as astr
 import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
-from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim_altdata, local
+from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim_altdata, \
+    local, pert_cloop_orb
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
@@ -54,6 +55,7 @@ class gtrack:
                         'dPM': [0., 0., 0.],
                         'dL': 0.}  # ,
         # 'dh2': 0. }
+        self.pert_cloop = None
         self.sol_prev_iter = None
         self.t0_orb = None
 
@@ -64,7 +66,7 @@ class gtrack:
         # self.read_fill(filnam)
 
         if len(self.ladata_df) > 0:
-            if not hasattr(self, 'SpObj'):
+            if not hasattr(self, 'SpObj') and SpInterp == 2:
                 # print(filnam)
                 # print(self.ladata_df)
                 # create interp for track
@@ -102,7 +104,13 @@ class gtrack:
 
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
-            self.interpolate()
+            if not hasattr(self, 'SpObj') and SpInterp == 2:
+                # print(filnam)
+                # print(self.ladata_df)
+                # create interp for track
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
@@ -134,7 +142,13 @@ class gtrack:
 
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
-            self.interpolate()
+            if not hasattr(self, 'SpObj') and SpInterp == 2:
+                # print(filnam)
+                # print(self.ladata_df)
+                # create interp for track
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
@@ -163,6 +177,8 @@ class gtrack:
     def read_fill(self, infil):
 
         df = pd.read_csv(infil, sep=',', header=0)
+        # print(df)
+        # exit()
         df['orbID'] = infil.split('.')[0][-10:]
         self.name = df['orbID'].unique().squeeze()
 
@@ -327,14 +343,23 @@ class gtrack:
         # check if track has to be perturbed (else only apply global pars)
         if self.name in pert_tracks or pert_tracks == []:
             _ = {}
-            # for k, v in pert_cloop.items():
+            # get cloop sim perturbations from prOpt
             [_.update(v) for k, v in pert_cloop.items()]
             self.pert_cloop = _.copy()
         else:
-            self.pert_cloop = pert_cloop['glo'].copy()
-        
-        if debug:
-            print('check pert', self.name, self.pert_cloop)
+            self.pert_cloop = {}
+
+        # randomize and assign pert for closed loop sim IF orbit in pert_tracks
+        if self.name in pert_tracks or pert_tracks==[]:
+
+            np.random.seed(int(self.name))
+            rand_pert_orb = np.random.randn(len(pert_cloop_orb))
+            self.pert_cloop = dict(zip(self.pert_cloop.keys(),list(pert_cloop_orb.values()) * rand_pert_orb))
+            if debug:
+                print("random pert_cloop", self.pert_cloop)
+
+        # add global parameters (if perturbed)
+        self.pert_cloop = mergsum(self.pert_cloop.copy(), pert_cloop['glo'].copy())
 
         # read solution from previous iteration and
         # add to self.pert_cloop (orb and glo)
@@ -342,7 +367,8 @@ class gtrack:
             self.par_solupd()
 
         if debug:
-            print('check pert', self.name, self.pert_cloop)
+            print('check pert_cloop', self.name, self.pertPar)
+            print('check pert_cloop', self.name, self.pert_cloop)
 
         if hasattr(self, 'SpObj'):
             SpObj = self.SpObj
@@ -404,9 +430,13 @@ class gtrack:
                 # Add partials w.r.t. tidal h2
                 ladata_df['dLON/dh2'] = 0
                 ladata_df['dLAT/dh2'] = 0
-                ladata_df['dR/dh2'] = \
-                tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]), \
-                            ladata_df['ET_TX'] + 0.5 * ladata_df['TOF'], SpObj)[0]
+
+                if self.sol_prev_iter != None :
+                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
+                                                      ladata_df['ET_TX'] + 0.5 * ladata_df['TOF'], SpObj, self.sol_prev_iter['glo'])[0]
+                else:
+                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
+                                                      ladata_df['ET_TX'] + 0.5 * ladata_df['TOF'], SpObj)[0]
 
             elif (self.vecopts['OUTPUTTYPE'] == 1):
                 for i in range(1, len(param)):
@@ -420,7 +450,16 @@ class gtrack:
                 self.vecopts['PARTDER'] = ''
                 ladata_df['dLON/dh2'] = 0
                 ladata_df['dLAT/dh2'] = 0
-                ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, \
+
+                if self.sol_prev_iter != None :
+                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, \
+                                                  np.transpose(astr.sph2cart(
+                                                      ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                                                      ladata_df['LAT'].values, ladata_df['LON'].values)), \
+                                                  ladata_df['ET_TX'].values + 0.5 * ladata_df['TOF'].values, SpObj,
+                                                  self.sol_prev_iter['glo'])[0]
+                else:
+                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, \
                                                   np.transpose(astr.sph2cart(
                                                       ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
                                                       ladata_df['LAT'].values, ladata_df['LON'].values)), \
@@ -430,6 +469,7 @@ class gtrack:
         self.ladata_df = ladata_df.copy()
 
         if debug:
+            print("print ladata_df")
             print(ladata_df)
             exit()
 
@@ -443,22 +483,42 @@ class gtrack:
         Updates perturbations to a priori parameters based on solution from previous iteration (stored at AccumXov step
         in pkl file).
         """
+
+        tmp_pertcloop = self.pert_cloop.copy()
+
+        if debug:
+            print("pre-corr", tmp_pertcloop)
+
         if len(self.sol_prev_iter['orb']) > 0:
             corr_orb = self.sol_prev_iter['orb'].filter(regex='sol.*$', axis=1).apply(pd.to_numeric, errors='ignore',
                                                                                       downcast='float'
                                                                                       ).to_dict('records')[0]
             corr_orb = {key.split('_')[1].split('/')[1]: corr_orb[key] for key in corr_orb.keys()}
-            self.pert_cloop = mergsum(self.pert_cloop, corr_orb)
+            tmp_pertcloop = mergsum(tmp_pertcloop, corr_orb)
 
         if len(self.sol_prev_iter['glo']) > 0:
             _ = self.sol_prev_iter['glo'].apply(pd.to_numeric, errors='ignore', downcast='float')
             corr_glo = dict(zip(_.par, _.sol))
             corr_glo = {key.split('/')[1]: corr_glo[key] for key in corr_glo.keys()}
 
-            self.pert_cloop = mergsum(self.pert_cloop, corr_glo)
+            # update corrections to rotational parameters as vectors (when present)
+            tmp = {}
+            for p in ['dDEC', 'dRA']:
+                if p in corr_glo.keys():
+                    tmp = mergsum(tmp,{p:corr_glo[p]*np.array([1,0,0])})
+            if 'dPM' in corr_glo.keys():
+                tmp = mergsum(tmp, {'dPM': corr_glo['dPM'] * np.array([0, 1, 0])})
+
+            corr_glo.update(tmp)
+
+            # combine synth perturbations to corrections from previous
+            tmp_pertcloop = mergsum(tmp_pertcloop, corr_glo)
+
+        self.pert_cloop = tmp_pertcloop.copy()
 
         if debug:
-            print(self.pert_cloop)
+            print("sol prev iter",self.sol_prev_iter)
+            print("postdit values",self.pert_cloop)
 
     # @profile
     def get_geoloc_part(self, par):
@@ -486,7 +546,7 @@ class gtrack:
 
         # Read self.vecopts[partder] and apply perturbation
         # if needed (for partials AND for closed loop sim)
-        tmp_pertPar = self.pertpar(diff_step)
+        tmp_pertPar = self.perturb_orbits(diff_step)
 
         # tmp_pertPar = {**tmp_pertPar, **self.pert_cloop}
         # print('norm',tmp_pertPar, diff_step)
@@ -501,7 +561,7 @@ class gtrack:
 
             # Read self.vecopts[partder] and apply perturbation
             # if needed (for partials AND for closed loop sim)
-            tmp_pertPar = self.pertpar(diff_step, -1.)
+            tmp_pertPar = self.perturb_orbits(diff_step, -1.)
 
             # print('part',tmp_pertPar, diff_step)
             geoloc_min, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
@@ -530,8 +590,21 @@ class gtrack:
 
             return geoloc_out
 
-    def pertpar(self, diff_step, sign=1.):
+    def perturb_orbits(self, diff_step, sign=1.):
+        """
+        Read self.vecopts[partder] and apply perturbation
+        for partials, then ADD current state of parameters (cloop+sol
+        from previous iter)
+        :param diff_step:
+        :param sign: set -1 if negative diff_step for finite differences
+        :return: updated perturbations for orbital parameters
+        """
         tmp_pertPar = self.pertPar.copy()
+        tmp_pertcloop = self.pert_cloop.copy()
+        # set all elements to 0 before reworking
+        tmp_pertPar = tmp_pertPar.fromkeys(tmp_pertPar, 0)
+
+        # setup pert for partial derivatives
         tmp_pertPar[self.vecopts['PARTDER']] = diff_step
 
         if sign != 1:
@@ -540,19 +613,19 @@ class gtrack:
             except:  # if perturbation is a vector
                 tmp_pertPar[self.vecopts['PARTDER']] = [sign * x for x in tmp_pertPar[self.vecopts['PARTDER']]]
 
-        # add pert for closed loop sim
-        for key in self.pert_cloop:
-            if key in tmp_pertPar:
+        # update corrections to rotational parameters as vectors
+        tmp = dict(zip(['dDEC', 'dRA', 'dPM'], [tmp_pertPar[x] * np.array([1, 0, 0]) for x in ['dDEC', 'dRA']] + [
+            tmp_pertPar['dPM'] * np.array([0, 1, 0])]))
+        tmp_pertPar.update(tmp)
 
-                if debug:
-                    print("pertpar", self.name, key, tmp_pertPar[key], self.pert_cloop[key])
+        tmp_pertPar = mergsum(tmp_pertcloop, tmp_pertPar)
+        self.pertPar = tmp_pertPar.copy()
 
-                if hasattr(tmp_pertPar[key], "__len__"):
-                    tmp_pertPar[key] = [sum(pair) for pair in zip(tmp_pertPar[key], self.pert_cloop[key])]
-                else:
-                    tmp_pertPar[key] += self.pert_cloop[key]
-                # print(key, len(tmp_pertPar[key]),tmp_pertPar[key])
-        # exit()
+        if debug:
+            print("tmp_percloop post pertpar (should be sum of cloop+prev_sol+part_pert")
+            print(self.pertPar)
+            # exit()
+
         return tmp_pertPar
 
     # Compute stereographic projection of measurements location

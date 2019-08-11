@@ -27,6 +27,7 @@ class Amat:
         self.vecopts = vecopts
         self.parNames = None
         self.sol = None
+        self.pert_cloop = None
 
     def setup(self, xov):
 
@@ -34,6 +35,14 @@ class Amat:
         # print(self.xov.tracks)
         self.xovpart_reorder()
         # print(self.A)
+        self.pert_cloop = xov.pert_cloop
+        self.pert_cloop.drop(columns=['dL','dRA', 'dDEC', 'dPM', 'dh2'],errors='ignore',inplace=True)
+
+        if len(self.pert_cloop.columns) > 0 or not self.pert_cloop.empty:
+            print("Max perturb cloop", self.pert_cloop.abs().max())
+
+            self.pert_cloop.drop_duplicates(inplace=True)
+            self.pert_cloop.sort_index(inplace=True)
 
     def save(self, filnam):
         pklfile = open(filnam, "wb")
@@ -228,3 +237,14 @@ class Amat:
         if (debug):
             print(Amat_df)
             print(xovers_df.dR)
+
+    def corr_mat(self):
+
+        A = self.spA
+        N = len(self.b)
+        C = ((A.T * A - (sum(A).T * sum(A) / N)) / (N - 1)).todense()
+        V = np.sqrt(np.mat(np.diag(C)).T * np.mat(np.diag(C)))
+
+        par_names = [x.split('/')[-1] for x in self.parNames]
+
+        return pd.DataFrame(np.divide(C, V + 1e-119),index=par_names,columns=par_names)

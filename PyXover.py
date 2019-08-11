@@ -202,7 +202,7 @@ def main(args):
 
     # setup all combinations between years
     par = int(cmb_y_in)
-    misy = ['11', '12', '13', '14', '15']
+    misy = ['08','11', '12', '13', '14', '15']
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
     # print(misycmb)
     print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))

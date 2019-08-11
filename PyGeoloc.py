@@ -178,8 +178,13 @@ def main(args):
             # epo_in.extend(track.ladata_df.ET_TX.values)
 
             if int(iter_in) > 0:
-                track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.orb==str(track.name)],
-                                   'glo':glo_sol}
+                if len(orb_sol)>0:
+                    track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.orb==str(track.name)],
+                                       'glo':glo_sol}
+                else:
+                    track.sol_prev_iter = {'orb':orb_sol,
+                                       'glo':glo_sol}
+
             tracks.append(track)
         # epo_in = np.array(epo_in)
         # print(epo_in)

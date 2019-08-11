@@ -38,6 +38,10 @@ class xov:
             columns=['x0', 'y0', 'ladata_idA', 'ladata_idB', 'R_A', 'R_B', 'dR'])
         self.param = {'': 1.}
         self.proj_center = None
+        self.pert_cloop = None
+        # self.per_cloop = None
+        self.sol_prev_iter = None
+
 
     def setup(self, gtracks):
 
@@ -48,6 +52,10 @@ class xov:
         self.msrm_sampl = 50
 
         self.tracks = df.orbID.unique()
+        # store the imposed perturbation (if closed loop simulation)
+        self.pert_cloop = {self.tracks[0]:gtracks[0].pert_cloop, self.tracks[1]:gtracks[1].pert_cloop}
+        # store the solution from the previous iteration
+        self.sol_prev_iter = {self.tracks[0]:gtracks[0].sol_prev_iter,self.tracks[1]:gtracks[1].sol_prev_iter}
         # print(df.orbID)
         # print(df.orbID.unique())
 
@@ -157,8 +165,8 @@ class xov:
             self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) >= 3 * std_median]),
               "xovers removed out of", orig_len)
 
-        # self.xovers = self.xovers[
-        #     abs(self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) < 3 * std_median]
+        self.xovers = self.xovers[
+            abs(self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) < 3 * std_median]
         # print(self.xovers)
         return self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0)
 
