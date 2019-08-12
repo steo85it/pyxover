@@ -150,25 +150,44 @@ class xov:
         return self
 
     # remove outliers using the median method
-    def remove_outliers(self, data_col):
+    def remove_outliers(self, data_col,remove_bad = True):
 
-        orig_len = len(self.xovers)
+        xoverstmp = self.xovers.copy()
+        total_occ_tracks = pd.DataFrame([xoverstmp['orbA'].value_counts(),xoverstmp['orbB'].value_counts()]).T.fillna(0).sum(axis=1).sort_values(ascending=False)
+
+        orig_len = len(xoverstmp)
         # print(self.xovers.loc[:,data_col].median(axis=0))
-        sorted = np.sort(abs(self.xovers.loc[:, data_col].values - self.xovers.loc[:, data_col].median(axis=0)))
+        sorted = np.sort(abs(xoverstmp.loc[:, data_col].values - xoverstmp.loc[:, data_col].median(axis=0)))
         # print(len(sorted))
         std_median = sorted[round(0.68 * len(sorted))]
         # sorted = sorted[sorted<3*std_median]
 
-        print("Mean, std of data:", self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0))
-        print("Median, std_med of data:", self.xovers.loc[:, data_col].median(axis=0), std_median)
-        print(len(self.xovers[abs(
-            self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) >= 3 * std_median]),
-              "xovers removed out of", orig_len)
+        print("Mean, std of data:", xoverstmp.loc[:, data_col].mean(axis=0), xoverstmp.loc[:, data_col].std(axis=0))
+        print("Median, std_med of data:", xoverstmp.loc[:, data_col].median(axis=0), std_median)
+        if remove_bad:
+            print(len(xoverstmp[abs(
+                xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) >= 3 * std_median]),
+                  "xovers removed out of", orig_len)
 
-        self.xovers = self.xovers[
-            abs(self.xovers.loc[:, data_col] - self.xovers.loc[:, data_col].median(axis=0)) < 3 * std_median]
-        # print(self.xovers)
-        return self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0)
+        bad_xov = xoverstmp[
+            abs(xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) >= 3 * std_median]
+        print("worst tracks:")
+        # print(bad_xov['orbA'].value_counts().sort_values())
+        # print(bad_xov['orbB'].value_counts().sort_values())
+        worse_tracks = pd.DataFrame([bad_xov['orbA'].value_counts(),bad_xov['orbB'].value_counts()]).T.fillna(0).sum(axis=1).sort_values(ascending=False)
+        worse_tracks = pd.concat([worse_tracks,total_occ_tracks],axis=1).fillna(0)
+        worse_tracks.columns = ['bad','total']
+        worse_tracks['percent'] = (worse_tracks.bad/worse_tracks.total*100.).sort_values(ascending=False)
+        print(worse_tracks[worse_tracks.percent>=50].sort_values(by='percent',ascending=False))
+
+        if remove_bad:
+            xoverstmp = xoverstmp[
+                abs(xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) < 3 * std_median]
+            # print(self.xovers)
+
+        self.xovers = xoverstmp.copy()
+
+        return self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0), worse_tracks[worse_tracks.percent>=50].index
 
     # Compute elevation R at crossover points by interpolation
     # (should be put in a function and looped over -

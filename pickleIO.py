@@ -25,7 +25,10 @@ def load(filnam):
         pklfile = open(filnam, 'rb')
     except:
         # accounts for different minutes (time-scale?) btw real and simulated data
-        pklfile = open(glob.glob(filnam[:-6]+"??.pkl")[0], 'rb')
+        tmp = [glob.glob(filnam[:-8] + f'{(int(filnam[-8:-6]) + i):02}' + "??.pkl") for i in [-1, 0, 1]]
+        print("alternate file for same orbit: ",tmp)
+        tmp = [x for x in tmp if x != []][0][0]
+        pklfile = open(tmp, 'rb')
 
     objOut = pickle.load(pklfile)
     pklfile.close()

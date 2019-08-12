@@ -5,6 +5,7 @@
 # Author: Stefano Bertone
 # Created: 16-May-2019
 #
+from mpl_toolkits.basemap import Basemap
 
 import AccumXov as xovacc
 import numpy as np
@@ -19,19 +20,22 @@ from xov_setup import xov
 from Amat import Amat
 from prOpt import outdir, tmpdir, local
 
+remove_max_dist = True
+remove_3sigma_median = True
+
 def xovnum_plot():
 
     vecopts = {}
 
     if True:
         #xov_cmb = xov.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim_mlatimes/0res_1amp/',vecopts)
-        #xov_sim = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/1301_sph_0/0res_1amp/', vecopts)
-        # xov_real = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/1301/0res_1amp/', vecopts)
+        xov_sim = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/1301_sph_0/0res_1amp/', vecopts)
+        xov_real = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/1301/0res_1amp/', vecopts)
         # xov_real = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/full/0res_1amp/', vecopts)
         #xov_real = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/real/xov/', vecopts,'real')
 
-        mean_dR, std_dR = xov_sim.remove_outliers('dR')
-        mean_dR, std_dR = xov_real.remove_outliers('dR')
+        mean_dR, std_dR, worst_tracks = xov_sim.remove_outliers('dR',remove_bad=remove_3sigma_median)
+        mean_dR, std_dR, worst_tracks = xov_real.remove_outliers('dR',remove_bad=remove_3sigma_median)
 
         mon = [i for i in range(1, 13)]
         yea = [i for i in range(11, 16)]
@@ -134,6 +138,25 @@ def print_corrmat(amat,filename):
     f.savefig(filename)
     plt.close()
 
+def draw_map(m, scale=0.2):
+    from itertools import chain
+
+    # draw a shaded-relief image
+    # m.shadedrelief(scale=scale)
+
+    # lats and longs are returned as a dictionary
+    lats = m.drawparallels(np.linspace(-90, 90, 13))
+    lons = m.drawmeridians(np.linspace(-180, 180, 13))
+
+    # keys contain the plt.Line2D instances
+    lat_lines = chain(*(tup[1][0] for tup in lats.items()))
+    lon_lines = chain(*(tup[1][0] for tup in lons.items()))
+    all_lines = chain(lat_lines, lon_lines)
+
+    # cycle through these lines and set the desired style
+    for line in all_lines:
+        line.set(linestyle='-', alpha=0.3, color='w')
+
 def analyze_sol(sol, ref_sol = '', subexp = ''):
     from matplotlib.cm import get_cmap
 
@@ -148,14 +171,38 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # print(ref.corr_mat())
 
     if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
+
         tmp.xov.xovers['dist_max'] = tmp.xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-        print(len(tmp.xov.xovers[tmp.xov.xovers.dist_max > 1]),
-              'xovers removed by dist from obs > 1km')
-        tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_max < 1]
+        tmp.xov.xovers['dist_minA'] = tmp.xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
+        tmp.xov.xovers['dist_minB'] = tmp.xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
+        tmp.xov.xovers['dist_min_mean'] = tmp.xov.xovers.filter(regex='^dist_min.*$').mean(axis=1)
+        xovacc.analyze_dist_vs_dR(tmp.xov)
+
+        if remove_max_dist:
+            print(len(tmp.xov.xovers[tmp.xov.xovers.dist_min_mean > 1]),
+                  'xovers removed by dist from obs > 1km')
+            tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_min_mean < 1]
+
+    # Remove huge outliers
+    mean_dR, std_dR, worst_tracks = tmp.xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
+    print(tmp.xov.xovers[['orbA','orbB','dR']].nlargest(10,'dR'))
+
+    # Recheck distance after cleaning
+    xovacc.analyze_dist_vs_dR(tmp.xov)
 
     if True:
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
         print(mlacount.sort_values(['LON']))
+
+        fig = plt.figure(figsize=(8, 6), edgecolor='w')
+        m = Basemap(projection='moll', resolution=None,
+                    lat_0=0, lon_0=0)
+        x, y = m(mlacount.LON.values, mlacount.LAT.values)
+        m.scatter(x, y, marker=',') #,c=piv.count(), s=3**piv.count(),cmap='Reds')
+        draw_map(m)
+        fig.savefig(tmpdir+'mla_count_moll_'+sol+'_'+subexp+'.png')
+        plt.clf()
+        plt.close()
 
         empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
                             columns = np.arange(-180, 181))
@@ -166,8 +213,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
         # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
         # Draw the heatmap with the mask and correct aspect ratio
-        piv = pd.pivot_table(mlacount, values="count", index=["LAT"], columns=["LON"], fill_value=0)
         # plot pivot table as heatmap using seaborn
+        piv = pd.pivot_table(mlacount, values="count", index=["LAT"], columns=["LON"], fill_value=-1)
         piv = (piv+empty_geomap_df).fillna(0)
 
         sns.heatmap(piv, xticklabels=10, yticklabels=10)
@@ -222,7 +269,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             # postfit_res = postfit_res[["sol_dR/" + x for x in orbpar_sol]].fillna(0)
             print("par recovery avg, std:",tmp.pert_cloop.columns.values)
             print("iter", tmp.pert_cloop.mean(axis=0).values, tmp.pert_cloop.std(axis=0).values)
-            print("pre-fit",ref.pert_cloop.mean(axis=0).values, ref.pert_cloop.std(axis=0).values)
+            if ref_sol != '':
+                print("pre-fit",ref.pert_cloop.mean(axis=0).values, ref.pert_cloop.std(axis=0).values)
 
             fig, ax = plt.subplots(nrows=1)
             name = "Accent"
@@ -244,8 +292,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             plt.savefig(tmpdir+'residuals_tseries_'+sol+'_'+subexp+'.png')
             plt.close()
 
-        print(tmp.xov.xovers.dR)
-        mean_dR, std_dR = tmp.xov.remove_outliers('dR')
         xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
                             tmp.xov.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
 
@@ -316,4 +362,4 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
 if __name__ == '__main__':
 
-    analyze_sol(sol='d00_0', ref_sol='d00_0', subexp = '0res_1amp')
+    analyze_sol(sol='d00_0', ref_sol='', subexp = '0res_1amp')

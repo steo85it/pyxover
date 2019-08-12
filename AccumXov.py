@@ -29,11 +29,14 @@ from scipy.sparse.linalg import lsqr, lsmr
 
 # mylib
 # from mapcount import mapcount
-from prOpt import debug, outdir, tmpdir, local, sim_altdata, parOrb, parGlo, partials
+from prOpt import debug, outdir, tmpdir, local, sim_altdata, parOrb, parGlo, partials, sol4_glo, sol4_orb, sol4_orbpar
 from xov_setup import xov
 from Amat import Amat
 
-sim_altdata = 1
+sim_altdata = 0
+
+remove_max_dist = False
+remove_3sigma_median = True
 
 ########################################
 # test space
@@ -149,11 +152,12 @@ def get_stats(xov_lst,resval,amplval):
 
             # remove data if xover distance from measurements larger than 5km (interpolation error)
             # plus remove outliers with median method
-            xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
-            print(len(xov.xovers[xov.xovers.dist_max > 1]),
-                  'xovers removed by dist from obs > 1km')
+            if remove_max_dist:
+                xov.xovers = xov.xovers[xov.xovers.dist_min_avg < 1]
+                print(len(xov.xovers[xov.xovers.dist_min_avg > 1]),
+                      'xovers removed by dist from obs > 1km')
             if sim_altdata == 0:
-                mean_dR, std_dR = xov.remove_outliers('dR')
+                mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
 
             #print(xov.xovers[['dist_max','dist_avg','dist_minA','dist_minB','dist_min_avg','dR']])
             # checks = ['dist_minA','dist_minB','dist_max','dist_min_avg','dist_avg','dR']
@@ -290,26 +294,60 @@ def clean_xov(par_list, xov):
     # plus remove outliers with median method
     if xov.xovers.filter(regex='^dist_.*$').empty == False:
         xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-        print("max_dist", xov.xovers.filter(regex='^dist_.*$'))
-        print(len(xov.xovers[xov.xovers.dist_max > 1]),
-              'xovers removed by dist from obs > 1km')
-        xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
+        tmp = xov.xovers.copy()
+        tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
+        tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
+        tmp['dist_min_mean'] = tmp.filter(regex='^dist_min.*$').mean(axis=1)
+        xov.xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
+        analyze_dist_vs_dR(xov)
+
+        if remove_max_dist:
+            print(len(xov.xovers[xov.xovers.dist_min_mean > 1]),
+              'xovers removed by dist from obs > 1km out of ', len(xov.xovers))
+            xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
     if sim_altdata == 0:
-        mean_dR, std_dR = xov.remove_outliers('dR')
+        mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
+        analyze_dist_vs_dR(xov)
+        # exit()
 
     return "xov cleaned!"
+
+
+def analyze_dist_vs_dR(xov):
+    tmp = xov.xovers.copy()
+    tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
+    tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
+    tmp['dist_min_mean'] = tmp.filter(regex='^dist_min.*$').mean(axis=1)
+    tmp.drop(['dist_minA', 'dist_minB'], inplace=True, axis='columns')
+    tmp['abs_dR'] = abs(tmp['dR'])
+    # print(tmp.nlargest(5, ['abs_dR']))
+    # print(tmp.nsmallest(5, ['abs_dR']))
+    # exit()
+    tmp['tracks'] = tmp.filter(regex='orb?').apply(lambda x: '{}-{}'.format(x[0], x[1]), axis=1)
+    # print('dists_df')
+    # print(tmp.set_index('tracks').filter(regex='^dist_.*$'))
+    print(tmp.set_index('tracks').filter(regex=r'(^dist_.*$|^abs_dR$)').nlargest(5,'abs_dR'))
+    print(tmp.set_index('tracks').filter(regex=r'(^dist_.*$|^abs_dR$)').nsmallest(5,'abs_dR'))
+    print(tmp.set_index('tracks').filter(regex=r'(^dist_.*$|^abs_dR$)').nlargest(5,'dist_min_mean'))
+
+    # fig, ax = plt.subplots(nrows=1)
+    # tmp.plot(x="dist_min_mean", y='abs_dR', ax=ax)
+    #
+    # # ax.set_xticks(orb_sol.index.values)
+    # # ax.locator_params(nbins=10, axis='x')
+    # # ax.set_ylabel('sol (m)')
+    # # ax.set_ylim(-300,300)
+    # plt.savefig(tmpdir + 'tst_dR_dist_' + '.png')
+    # plt.close()
+
+    print("corrs", tmp[['dist_min_mean', 'dist_max', 'abs_dR']].corr()) #(method='spearman','kendall'))
 
 def solve(xovi_amat,dataset,previous_iter=None):
     from scipy.sparse import csr_matrix
     from prOpt import par_constr
 
     # Solve
-    # select subset of parameters
-    sol4_orb = [] # ['1104281831','1206290713','1407081256','1503212147'] # ['1301312356','1301101544','1301240758','1301281555','1301031543'] # ['1301010743', '1301011544', '1301012343'] # ['1301142347'] # [None] # ['1501040322','1411031307'] # '1301011544','1301042351']
-    sol4_orbpar = [] # ['dA','dC','dR'] # 'dA','dC','dR'] #'dA','dC','dR'] #['dR0'] # 'dR/dA', 'dR/dC', 'dR/dR'] # ['dR/dA0','dR/dC0'] #['dR/dA'] #
-    sol4_glo = ['dR/dRA','dR/dDEC','dR/dPM','dR/dh2'] #,'dR/dh2','dR/dRA','dR/dDEC','dR/dPM']
-
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     print(sol4_pars)
 
@@ -429,7 +467,10 @@ def analyze_sol(xovi_amat,xov):
 
         if any(xov.xovers.filter(like='dist', axis=1)):
             xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-            xov.xovers = xov.xovers[xov.xovers.dist_max < 1]
+
+            if remove_max_dist:
+                xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+
             _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
             table['num_obs'] = _
 
@@ -484,7 +525,7 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
     print('-- -- -- -- ')
 
     if debug:
-        _ = xov.remove_outliers('dR')
+        _ = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
         print(xov.xovers.columns)
         print(xov.xovers.loc[xov.xovers.orbA == '1301022345'])
         # print(xov.xovers.loc[xov.xovers.orbA == '1301022341' ].sort_values(by='R_A', ascending=True)[:10])
@@ -563,7 +604,7 @@ def main(arg):
             clean_xov('', xov_cmb)
             # plot histo and geo_dist
             tstname = [x.split('/')[-2] for x in datasets][0]
-            mean_dR, std_dR = xov_cmb.remove_outliers('dR')
+            mean_dR, std_dR, worst_tracks = xov_cmb.remove_outliers('dR',remove_bad=remove_3sigma_median)
             plt_histo_dR(tstname, mean_dR, std_dR,
                          xov_cmb.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
 
