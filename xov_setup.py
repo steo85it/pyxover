@@ -895,7 +895,7 @@ class xov:
                 DelR = (np.diff(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[:, ::2])[:, ::2])[:len(xovers_df)]
 
                 DelR_orb = np.array(DelR)[:, :2 * len(parOrb)]
-                DelR_orb /= (2. * np.tile(list(param.values())[1:len(parOrb) + 1], 2))
+                DelR_orb /= (2. * np.repeat(list(param.values())[1:len(parOrb) + 1], 2))
                 DelR_glo = np.array(DelR)[:, 2 * len(parOrb):]
                 DelR_glo /= (2. * np.array([np.linalg.norm(x) for x in list(param.values())][len(parOrb) + 1:]))
 
