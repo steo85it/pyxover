@@ -162,7 +162,9 @@ def main(args):
         tmp = tmp.load(('_').join(((outdir+('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1])+
                        '_'+str(iter_in-1)+'/'+
                        outdir_in.split('/')[-2]+'/Abmat_'+('_').join(outdir_in.split('/')[:-1])+'.pkl')
-        orb_sol, glo_sol = xovacc.analyze_sol(tmp, tmp.xov)
+        orb_sol, glo_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
+        # print(sol_dict)
+        # exit()
     # sol_prev_iter = {'orb':orb_sol, 'glo':glb_sol}
 
     if new_gtrack:

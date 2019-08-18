@@ -157,6 +157,9 @@ def draw_map(m, scale=0.2):
     for line in all_lines:
         line.set(linestyle='-', alpha=0.3, color='w')
 
+def rmse(y, y_pred):
+    return np.sqrt(np.mean(np.square(y - y_pred)))
+
 def analyze_sol(sol, ref_sol = '', subexp = ''):
     from matplotlib.cm import get_cmap
 
@@ -179,13 +182,18 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         xovacc.analyze_dist_vs_dR(tmp.xov)
 
         if remove_max_dist:
-            print(len(tmp.xov.xovers[tmp.xov.xovers.dist_min_mean > 1]),
+            print(len(tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]),
                   'xovers removed by dist from obs > 1km')
+            tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]
             tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_min_mean < 1]
 
     # Remove huge outliers
     mean_dR, std_dR, worst_tracks = tmp.xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
-    print(tmp.xov.xovers[['orbA','orbB','dR']].nlargest(10,'dR'))
+    tmp.xov.xovers['dR_abs'] = tmp.xov.xovers.dR.abs()
+    print("Largest dR ( # above 1km", len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 1.e3])," or ",
+          (len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 1.e3])/len(tmp.xov.xovers)*100.),'%)')
+    print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nlargest(10,'dR_abs'))
+    print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nsmallest(10,'dR_abs'))
 
     # Recheck distance after cleaning
     xovacc.analyze_dist_vs_dR(tmp.xov)
@@ -225,7 +233,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.clf()
         plt.close()
 
-        orb_sol, glb_sol = xovacc.analyze_sol(tmp, tmp.xov)
+        orb_sol, glb_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
         xovacc.print_sol(orb_sol, glb_sol, tmp.xov, tmp)
 
         # trackA = gtrack(vecopts)
@@ -236,27 +244,37 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         cols = orb_sol.filter(regex='sol.*$', axis=1).columns
         print(list(cols))
         orb_sol[cols] = orb_sol.filter(regex='sol.*$', axis=1).apply(pd.to_numeric, errors='ignore')
+        orb_std = orb_sol.copy().filter(regex='std.*$', axis=1).apply(pd.to_numeric, errors='ignore')
 
         name = "Accent"
         cmap = get_cmap(name)  # type: matplotlib.colors.ListedColormap
         colors = cmap.colors  # type: list
 
-        if pd.Series(['dA', 'dC','dR']).isin(tmp.pert_cloop.columns).any():
-            fig, ax = plt.subplots(nrows=1)
+        fig, ax = plt.subplots(nrows=1)
 
-            for idx, col in enumerate(cols):
-                ax.set_prop_cycle(color=colors)
-                orb_sol.reset_index().plot(kind="scatter", x="index", y=col, color=colors[idx], label=col, ax=ax)
 
-            ax.set_xticks(orb_sol.index.values)
-            ax.locator_params(nbins=10, axis='x')
-            ax.set_ylabel('sol (m)')
-            # ax.set_ylim(-300,300)
-            plt.savefig(tmpdir+'orbcorr_tseries_'+sol+'.png')
-            plt.close()
+        for idx, col in enumerate(cols):
+            ax.set_prop_cycle(color=colors)
+            orb_sol.reset_index().plot(kind="scatter", x="index", y=col, yerr=orb_std['std_dR/dC'], color=colors[idx], label=col, ax=ax)
+            # plt.errorbar(orb_std.index, orb_std['gas'], yerr=orb_std['std'])
+
+        ax.set_xticks(orb_sol.index.values)
+        ax.locator_params(nbins=10, axis='x')
+        ax.set_ylabel('sol (m)')
+        # ax.set_ylim(-300,300)
+        plt.savefig(tmpdir + 'orbcorr_tseries_' + sol + '.png')
+        plt.close()
+
+
+        if pd.Series(['dA', 'dC','dR$']).isin(tmp.pert_cloop.columns).any() and False:
 
             # print residuals (original cloop perturbation - latest cumulated solution)
             orbpar_sol = list(set([x.split("_")[0].split("/")[1] for x in tmp.xov.parOrb_xy]))
+            tmp_orb_sol = orb_sol.iloc[:,:4].copy()
+            tmp_orb_sol.columns = ['orb'] + orbpar_sol
+            tmp_orb_sol = tmp_orb_sol.set_index('orb')
+
+            # initial pert + corrections from previous iteration
             tmp.pert_cloop = tmp.pert_cloop[orbpar_sol].dropna()
 
             if ref_sol != '':
@@ -267,10 +285,15 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             # postfit_res = orb_sol.set_index('orb').apply(pd.to_numeric, errors='ignore',
             #                                              downcast='float') + tmp.pert_cloop
             # postfit_res = postfit_res[["sol_dR/" + x for x in orbpar_sol]].fillna(0)
+            tmp.pert_cloop.sort_index(axis=1, inplace=True)
             print("par recovery avg, std:",tmp.pert_cloop.columns.values)
-            print("iter", tmp.pert_cloop.mean(axis=0).values, tmp.pert_cloop.std(axis=0).values)
+            tmp_orb_sol.sort_index(axis=1, inplace=True)
+            print("sol curr iter", tmp_orb_sol.mean(axis=0).values, tmp_orb_sol.std(axis=0).values)
+            print("initial pert + corrections prev.iter.", tmp.pert_cloop.mean(axis=0).values, tmp.pert_cloop.std(axis=0).values)
+            print("rmse",rmse(tmp.pert_cloop,0).values)
             if ref_sol != '':
-                print("pre-fit",ref.pert_cloop.mean(axis=0).values, ref.pert_cloop.std(axis=0).values)
+                ref.pert_cloop.sort_index(axis=1, inplace=True)
+                print("initial pert",ref.pert_cloop.mean(axis=0).values, ref.pert_cloop.std(axis=0).values)
 
             fig, ax = plt.subplots(nrows=1)
             name = "Accent"
@@ -288,15 +311,45 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
             ax.set_xlabel('orbit #')
             ax.set_ylabel('sol (m)')
-            ax.set_ylim(-200,200)
+            ax.set_ylim(-1000,1000)
             plt.savefig(tmpdir+'residuals_tseries_'+sol+'_'+subexp+'.png')
             plt.close()
 
-        xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
+        if ref_sol != '':
+            xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
+                            tmp.xov.xovers,xov_ref=ref.xov.xovers)
+        else:
+            xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
                             tmp.xov.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
 
         xovacc.plt_geo_dR(empty_geomap_df, sol+subexp, tmp.xov)
 
+    if False:
+        tmp_plot = tmp.xov.xovers.copy()
+        fig, ax1 = plt.subplots(nrows=1)
+        tmp_plot[['xOvID', 'dR/dL']].plot(x='xOvID',y=['dR/dL'], ax=ax1)
+        ax1.set_ylim(-30,30)
+        fig.savefig(tmpdir+'mla_dR_dL_'+sol+'.png')
+        plt.clf()
+        plt.close()
+
+    if False:
+        # Check dR/dC / dR/dA
+        # plot dR/dL and dR/dh2
+        tmp_plot = tmp.xov.xovers.copy()
+        tmp_plot['dR/dC'] = tmp.xov.xovers.loc[:,['dR/dC_A','dR/dC_B']].mean(axis=1)
+        tmp_plot['dR/dA'] = tmp.xov.xovers.loc[:,['dR/dA_A','dR/dA_B']].mean(axis=1)
+        tmp_plot['dR/dR'] = tmp.xov.xovers.loc[:,['dR/dR_A','dR/dR_B']].mean(axis=1)
+
+        print(tmp_plot.columns)
+        print(tmp_plot[['xOvID','dR/dC','dR/dA','dR/dR']])
+        # exit()
+        fig, ax1 = plt.subplots(nrows=1)
+        tmp_plot[['xOvID', 'dR/dC', 'dR/dA','dR/dR']].plot(x='xOvID',y=['dR/dC','dR/dA','dR/dR'], ax=ax1)
+        ax1.set_ylim(-3,3)
+        fig.savefig(tmpdir+'mla_dR_dCAR_'+sol+'.png')
+        plt.clf()
+        plt.close()
 
     if False:
 
@@ -311,7 +364,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
         ax.set_xlabel('LAT')
         ax.set_ylabel('dR/dC / dR/dA')
-        ax.set_ylim(-0.1,0.1)
+        # ax.set_ylim(-0.1,0.1)
         plt.savefig('/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/dRdC_dA_'+sol+'.png')
         plt.close()
 
@@ -362,4 +415,4 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
 if __name__ == '__main__':
 
-    analyze_sol(sol='d00_0', ref_sol='', subexp = '0res_1amp')
+    analyze_sol(sol='d01_4', ref_sol='d01_0', subexp = '0res_1amp')

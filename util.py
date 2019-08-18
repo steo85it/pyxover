@@ -19,3 +19,11 @@ def mergsum(a, b):
             b[k] = b[k] + a[k]
     c = {**a, **b}
     return c
+
+
+def update_in_alist(alist, key, value):
+    return [[k, v] if (k != key) else (key, value) for (k, v) in alist]
+
+
+def update_in_alist_inplace(alist, key, value):
+    alist[:] = update_in_alist(alist, key, value)

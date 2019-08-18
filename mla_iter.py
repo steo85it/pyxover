@@ -14,8 +14,8 @@ if __name__ == '__main__':
         if local:
             start = time.time()
             print("Processing PyXover series at external iteration",i)
-            for y in np.append([8],np.arange(11, 16, 1)):
-                for m in np.arange(1, 13, 1):
+            for y in np.arange(13, 14, 1): #np.append([8],np.arange(11, 16, 1)):
+                for m in np.arange(1, 2, 1):
                     # print(["python3", "launch_test.py", str(rough_test), ' ', str(y), f'{m:02}', "1", str(i)])
                     # exit()
                     ym = f'{y:02}'+ f'{m:02}'
@@ -29,7 +29,7 @@ if __name__ == '__main__':
             print('----- Runtime PyGeoloc tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
             start = time.time()
 
-            for ymc in np.arange(0, 21, 1):
+            for ymc in np.arange(15, 16, 1):
                 iostat = s.call(["python3", "launch_test.py", str(rough_test), str(ymc), "2", str(i)])
                 if iostat != 0:
                     print("*** PyXover failed on iter", i)

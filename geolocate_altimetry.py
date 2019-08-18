@@ -98,17 +98,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # compute s/c frame to inertial rotation (using np.frompyfunc to vectorize pxform)
     # ck+fk+sclk needed
     if (SpInterp > 0):
-        quat = SpObj['MGRa'].eval(et_tx)
-        quat = np.reshape(np.vstack(np.transpose(quat)), (-1, 4))
-        cmat = []
-        for i in range(0, len(et_tx)):
-            cmat.append(spice.q2m(quat[i, :]))
-        # print('interp cmat',cmat)
-
-        # pxform_array = np.frompyfunc(spice.pxform, 3, 1)
-        # cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)
-        # print('cmat spice',cmat)
-
+        cmat = SpObj['MGRa'].evalCmat(et_tx)
     else:
         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
         cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)
@@ -186,7 +176,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
         vmbf = astr.sph2cart(rtmp, lattmp, lontmp)
         return np.array(vmbf).reshape(-1, 3), dr #2 * oneway / clight.value;
     elif (vecopts['OUTPUTTYPE'] == 1):
-        return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc #2 * oneway / clight.value
+        return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr #2 * oneway / clight.value
 
 
 def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt,itmax=100,tlcbnc = 1.e-3):

@@ -7,7 +7,7 @@ import AccumXov
 import PyAltSim
 import PyXover
 import PyGeoloc
-from prOpt import sim_altdata
+from prOpt import sim_altdata, local
 
 if __name__ == '__main__':
 
@@ -19,15 +19,14 @@ if __name__ == '__main__':
     #    Arg_list = collections.namedtuple('Arg_list', arg_names)
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
-    local = 0
     data_sim = 'sim'  # 'data' #
-    exp = 'tp2' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'd00' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
-    res = [3,4]
-    ampl = [20,30,40]
-    # res = [0]
-    # ampl = [1]
+    # res = [3,4]
+    # ampl = [20,30,40]
+    res = [0]
+    ampl = [1]
 
     if len(sys.argv) > 1:
         resampl = sys.argv[1]

@@ -6,9 +6,12 @@
 # Created: 04-Mar-2019
 #
 import warnings
+from functools import reduce
 
 import seaborn as sns
 from matplotlib import pyplot as plt
+
+from util import mergsum, update_in_alist
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -29,14 +32,15 @@ from scipy.sparse.linalg import lsqr, lsmr
 
 # mylib
 # from mapcount import mapcount
-from prOpt import debug, outdir, tmpdir, local, sim_altdata, parOrb, parGlo, partials, sol4_glo, sol4_orb, sol4_orbpar
+from prOpt import debug, outdir, tmpdir, local, sim_altdata, parOrb, parGlo, partials, sol4_glo, sol4_orb, sol4_orbpar, \
+    mean_constr
 from xov_setup import xov
 from Amat import Amat
 
 sim_altdata = 0
 
-remove_max_dist = False
-remove_3sigma_median = True
+remove_max_dist = True
+remove_3sigma_median = False
 
 ########################################
 # test space
@@ -87,27 +91,8 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     # Combine all xovers and setup Amat
     xov_ = xov(vecopts)
 
-    # if local == 0:
-    #     data_pth = '/att/nobackup/sberton2/MLA/MLA_RDR/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    #     dataset = ''  # 'small_test/' #'test1/' #'1301/' #
-    #     data_pth += dataset
-    #     # load kernels
-    # else:
-    #     data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    #     #### TODO needs to be updated automat if sim
-    #     if dataset=='real':
-    #         dataset = "" # '1301' #'SIM_1301/mlatimes/0res_1amp_tst' #
-    #     else:
-    #         dataset = 'SIM_1301/mlatimes/0res_1amp_tst' #
-    #     data_pth += dataset
-    #
-    # allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + '*.TAB'))
-    # # print(allFiles)
-    # tracknames = [fil.split('.')[0][-10:] for fil in allFiles]
-    # misy = ['11', '12', '13', '14', '15']
-    # misycmb = [x + '_' + y for x in tracknames for y in misy]
-    # print(misycmb)
-
+    # modify this selection to use sub-sample of xov only!!
+    #------------------------------------------------------
     allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.pkl'))
 
     # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
@@ -190,8 +175,11 @@ def get_stats(xov_lst,resval,amplval):
             # print(np.count_nonzero(np.isnan(xov.xovers.dR.values**2)))
 
             print("xov_xovers_value_count:")
-            print(xov.xovers['orbA'].value_counts()[:5])
-            print(xov.xovers['orbB'].value_counts()[:5])
+            print(xov.xovers['orbA'].value_counts().add(xov.xovers['orbB'].value_counts(), fill_value=0).sort_values(ascending=False))
+            # print(xov.xovers['orbA'].value_counts()[:5])
+            # print(xov.xovers['orbA'].value_counts()[-5:])
+            # print(xov.xovers['orbB'].value_counts()[:5])
+            # print(xov.xovers['orbB'].value_counts()[-5:])
 
     #print(len(resval),len(amplval),len(dR_RMS))
     df_ = pd.DataFrame(list(zip(resval,amplval,dR_RMS)), columns=['res','ampl','RMS'])
@@ -216,15 +204,18 @@ def get_stats(xov_lst,resval,amplval):
     #print(dR_avg,dR_std,dR_max,dR_min)
 
 
-def plt_histo_dR(idx, mean_dR, std_dR, xov):
+def plt_histo_dR(idx, mean_dR, std_dR, xov, xov_ref=''):
     import scipy.stats as stats
 
     # the histogram of the data
-    num_bins = 100
-    n, bins, patches = plt.hist(xov.dR, bins=num_bins, density=True, facecolor='blue', alpha=0.5)
+    num_bins = 'auto'
+    n, bins, patches = plt.hist(xov.dR, bins=num_bins, density=True, facecolor='blue', alpha=0.7) #, range=[-100,100])
     # add a 'best fit' line
-    y = stats.norm.pdf(bins, mean_dR, std_dR)
-    plt.plot(bins, y, 'r--')
+    # y = stats.norm.pdf(bins, mean_dR, std_dR)
+    # plt.plot(bins, y, 'b--')
+    if isinstance(xov_ref, pd.DataFrame):
+        n, bins, patches = plt.hist(xov_ref.dR, bins=num_bins, density=True, facecolor='red',
+                                    alpha=0.3)  # , range=[-100,100])
     plt.xlabel('dR (m)')
     plt.ylabel('Probability')
     plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
@@ -260,7 +251,7 @@ def plt_geo_dR(empty_geomap_df, sol, xov):
 
 
 def prepare_Amat(xov, vecopts, par_list=''):
-    xovtmp = xov.xovers.copy()
+
     # xov.xovers = xov.xovers[xov.xovers.orbA=='1301042351']
     # xov.xovers.append(xovtmp[xovtmp.orbA=='1301011544'])
     # xov.xovers.append(xovtmp[xovtmp.orbB=='1301042351'])
@@ -268,7 +259,9 @@ def prepare_Amat(xov, vecopts, par_list=''):
 
     # exit()
 
-    clean_xov(par_list, xov)
+    clean_xov(xov, par_list)
+
+    xovtmp = xov.xovers.copy()
 
     # simplify and downsize
     if par_list == '':
@@ -281,20 +274,24 @@ def prepare_Amat(xov, vecopts, par_list=''):
         pd.set_option('display.max_columns', 500)
         print(xov.xovers)
 
+    xov.xovers = xovtmp.copy()
+
     xovi_amat = Amat(vecopts)
     xovi_amat.setup(xov)
-
-    xov.xovers = xovtmp.copy()
 
     return xovi_amat
 
 
-def clean_xov(par_list, xov):
+def clean_xov(xov, par_list=[]):
     # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
     # plus remove outliers with median method
+    tmp = xov.xovers.copy()
+
+    # print(tmp[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
+
     if xov.xovers.filter(regex='^dist_.*$').empty == False:
         xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-        tmp = xov.xovers.copy()
+
         tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
         tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
         tmp['dist_min_mean'] = tmp.filter(regex='^dist_min.*$').mean(axis=1)
@@ -302,8 +299,9 @@ def clean_xov(par_list, xov):
         analyze_dist_vs_dR(xov)
 
         if remove_max_dist:
-            print(len(xov.xovers[xov.xovers.dist_min_mean > 1]),
+            print(len(xov.xovers[xov.xovers.dist_max < 0.4]),
               'xovers removed by dist from obs > 1km out of ', len(xov.xovers))
+            xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
             xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
     if sim_altdata == 0:
@@ -311,7 +309,11 @@ def clean_xov(par_list, xov):
         analyze_dist_vs_dR(xov)
         # exit()
 
-    return "xov cleaned!"
+    # print(xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
+    # exit()
+    # xov.xovers = tmp.copy()
+
+    return xov
 
 
 def analyze_dist_vs_dR(xov):
@@ -345,17 +347,19 @@ def analyze_dist_vs_dR(xov):
 
 def solve(xovi_amat,dataset,previous_iter=None):
     from scipy.sparse import csr_matrix
-    from prOpt import par_constr
+    from prOpt import par_constr, sol4_orb
 
     # Solve
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
-    print(sol4_pars)
+    # print(xovi_amat.parNames)
+    # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
+    #     print("{} : {}".format(key, value))
 
     xovi_amat.sol4_pars = sol4_pars
 
     if sol4_pars != []:
         # select columns of design matrix corresponding to chosen parameters to solve for
-        print([xovi_amat.parNames[p] for p in sol4_pars])
+        # print([xovi_amat.parNames[p] for p in sol4_pars])
         spA_sol4 = xovi_amat.spA[:,[xovi_amat.parNames[p] for p in sol4_pars]]
         # set b=0 for rows not involving chosen set of parameters
         nnz_per_row = spA_sol4.getnnz(axis=1)
@@ -375,8 +379,8 @@ def solve(xovi_amat,dataset,previous_iter=None):
         # compute sol
         print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
 
-        A = spA_sol4.transpose()*spA_sol4
-        b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
+    A = spA_sol4.transpose()*spA_sol4
+    b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
 
     # select constrains for processed parameters (TODO should go in sol4pars)
     mod_par = [your_key.split('_')[1] if len(your_key.split('_'))>1 else your_key for your_key in sol4_pars ]
@@ -389,6 +393,15 @@ def solve(xovi_amat,dataset,previous_iter=None):
         # print(constrain[0])
         # print(len(sol4_pars))
         parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if constrain[0] in p])
+
+        # Constrain tightly to 0 those parameters with few observations
+        nobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
+            ascending=False)
+        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in nobs_tracks[nobs_tracks < 10].index]
+        for p in parindex:
+            if p[0] in to_constrain:
+                p[1] *= 1.e10
+        print(parindex)
         val = parindex[:,1]
         row = col = parindex[:,0]
 
@@ -398,12 +411,12 @@ def solve(xovi_amat,dataset,previous_iter=None):
 
     # Add constrain to mean value of parameters
     penalty_par_mean = np.identity(len(sol4_pars)) - 1/len(sol4_pars) * np.ones((len(sol4_pars), len(sol4_pars)))
-    penalty_matrix += 1/0.01 * csr_matrix(penalty_par_mean)
+    penalty_matrix += 1/mean_constr * csr_matrix(penalty_par_mean)
 
     # Choleski decompose matrix and append to design matrix
     Q = np.linalg.cholesky(penalty_matrix.todense())
     if previous_iter != None:
-        b_penal = np.hstack([xovi_amat.b, np.ravel(np.dot(Q,previous_iter.sol[0]))])
+        b_penal = np.hstack([xovi_amat.b, np.zeros(len(sol4_pars))]) #np.ravel(np.dot(Q,previous_iter.sol[0]))])
     else:
         b_penal = np.hstack([xovi_amat.b, np.zeros(len(sol4_pars))])
     import scipy
@@ -417,6 +430,7 @@ def solve(xovi_amat,dataset,previous_iter=None):
     # xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
 
 def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
+
     if sol4_orb == []:
         sol4_orb = set([i.split('_')[0] for i in track_names])
         sol4_orb = [x for x in sol4_orb if x.isdigit()]
@@ -451,6 +465,12 @@ def analyze_sol(xovi_amat,xov):
 
     _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)),
                    np.reshape(xovi_amat.sol[-1], (-1, 1))))
+    sol_dict = {'sol': dict(zip(_[:,0],_[:,1].astype(float))), 'std': dict(zip(_[:,0],_[:,2].astype(float))) }
+
+    # print(_)
+    # print(np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape([xovi_amat.parNames[p] for p in xovi_amat.sol4_pars], (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)),
+    #                np.reshape(xovi_amat.sol[-1], (-1, 1)))))
+    # exit()
 
     # Extract solution for global parameters
     glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(parGlo.keys()) for x in _[:,0]]],columns=['par','sol','std'])
@@ -467,8 +487,14 @@ def analyze_sol(xovi_amat,xov):
 
         if any(xov.xovers.filter(like='dist', axis=1)):
             xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+            tmp = xov.xovers.copy()
+            tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
+            tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
+            tmp['dist_min_mean'] = tmp.filter(regex='^dist_min.*$').mean(axis=1)
+            xov.xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
 
             if remove_max_dist:
+                xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
                 xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
             _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
@@ -507,7 +533,7 @@ def analyze_sol(xovi_amat,xov):
     # # df_.groupby('par').plot(x='orb', y='sol', legend=False)
     #
     # plt.savefig('tmp/plotsol.png')
-    return orb_sol, glb_sol
+    return orb_sol, glb_sol, sol_dict
 
 
 def print_sol(orb_sol, glb_sol, xov, xovi_amat):
@@ -557,7 +583,7 @@ def main(arg):
         xov_cmb = load_combine(data_pth, vecopts)
 
         # count occurrences for each orbit ID
-        _ = xov_cmb.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
+        xov_cmb.nobs_x_track = xov_cmb.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False)
         # print(_)
         # print(_.dtypes)
         # exit()
@@ -580,18 +606,20 @@ def main(arg):
             solve(xovi_amat, ds, previous_iter)
 
             # Save to pkl
-            orb_sol, glb_sol = analyze_sol(xovi_amat,xov_cmb)
+            orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat,xov_cmb)
+            xovi_amat.sol_dict = sol_dict
             print("Sol for iter ", str(ext_iter))
             print_sol(orb_sol, glb_sol, xov, xovi_amat)
 
             # Cumulate with solution from previous iter
             if int(ext_iter) > 0:
-
-                xovi_amat.sol = (xovi_amat.sol[0] + previous_iter.sol[0], *xovi_amat.sol[1:])
-                orb_sol, glb_sol = analyze_sol(xovi_amat, xov_cmb)
+                # sum the values with same keys
+                updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
+                xovi_amat.sol_dict = {'sol': updated_sol, 'std' : xovi_amat.sol_dict['std']}
+                xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:])
+                orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
                 print("Cumulated solution")
                 print_sol(orb_sol, glb_sol, xov, xovi_amat)
-
             if len(ds.split('/'))>2:
                 xovi_amat.save(('_').join((data_pth + 'Abmat_' + ds.split('/')[0] + '_' +
                                            ds.split('/')[1]).split('_')[:-1])+'_'+ str(ext_iter+1) +
@@ -601,7 +629,7 @@ def main(arg):
 
         else:
             # clean only
-            clean_xov('', xov_cmb)
+            clean_xov(xov_cmb, '')
             # plot histo and geo_dist
             tstname = [x.split('/')[-2] for x in datasets][0]
             mean_dR, std_dR, worst_tracks = xov_cmb.remove_outliers('dR',remove_bad=remove_3sigma_median)

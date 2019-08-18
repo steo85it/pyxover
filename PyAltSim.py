@@ -7,6 +7,7 @@
 #
 import warnings
 
+from dem_util import get_demz_at, import_dem
 from icrf2pbf import icrf2pbf
 from setupROT import setupROT
 
@@ -136,9 +137,17 @@ class sim_gtrack(gtrack):
             # compute range btw probe@TX and bounce point@BC (no BC epoch needed, all coord planet fixed)
             rngvec = (bcxyz_pbf - scxyz_tx_pbf)
             # compute correction for off-nadir observation
-            offndr = np.arccos(np.einsum('ij,ij->i', rngvec, -scxyz_tx_pbf) /
-                               np.linalg.norm(rngvec, axis=1) /
-                               np.linalg.norm(scxyz_tx_pbf, axis=1))
+            rngvec_normed = rngvec/np.linalg.norm(rngvec, axis=1)[:, np.newaxis]
+            scxyz_tx_pbf_normed = np.array(scxyz_tx_pbf)/np.linalg.norm(scxyz_tx_pbf, axis=1)[:, np.newaxis]
+            # print(np.max(np.abs(np.einsum('ij,ij->i', rngvec_normed, -scxyz_tx_pbf_normed))))
+            # compute correction for off-nadir observation (with check to avoid numerical issues on arccos)
+            if np.max(np.abs(np.einsum('ij,ij->i', rngvec_normed, -scxyz_tx_pbf_normed))) <= 1:
+                offndr = np.arccos(np.einsum('ij,ij->i', rngvec_normed, -scxyz_tx_pbf_normed))
+            else:
+                offndr = 0.
+            # offndr = np.arccos(np.einsum('ij,ij->i', rngvec, -scxyz_tx_pbf) /
+            #                    np.linalg.norm(rngvec, axis=1) /
+            #                    np.linalg.norm(scxyz_tx_pbf, axis=1))
 
             # compute residual between "real" elevation and geoloc (based on a priori TOF)
             dr = (r_bc - radius) * np.cos(offndr)
@@ -194,42 +203,40 @@ class sim_gtrack(gtrack):
 
         if apply_topo:
             # st = time.time()
-            gmt = 1
+
+            if local == 0:
+                dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            else:
+                dem = auxdir + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+
+            # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
+            gmt = False
+            if not gmt:
+                if self.dem == None:
+                    self.dem = import_dem(dem)
+                else:
+                    print("DEM already read")
+            else:
+                print("Using grdtrack")
+
             if gmt:
                 gmt_in = 'gmt_' + self.name + '.in'
                 if os.path.exists('tmp/' + gmt_in):
                     os.remove('tmp/' + gmt_in)
                 np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp)))
 
-                if local == 0:
-                    dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-        #             r_dem = subprocess.check_output(
-        #                 ['grdtrack', gmt_in,
-        #                  '-G' + dem],
-        #                 universal_newlines=True, cwd='tmp')
-        #             r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-        # # np.savetxt('gmt_'+self.name+'.out', r_dem)
-
-                else:
-                    dem = auxdir + 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-                    # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
-
                 r_dem = subprocess.check_output(
-                    ['grdtrack', gmt_in, '-G' + dem],
-                    universal_newlines=True, cwd='tmp')
+                ['grdtrack', gmt_in, '-G' + dem],
+                universal_newlines=True, cwd='tmp')
                 r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-                r_dem *= 1.e3
+            else:
+                lontmp[lontmp < 0] += 360.
+                r_dem = get_demz_at(self.dem, lattmp, lontmp)
+                # Works but slower (interpolates each time, could be improved by https://github.com/JiaweiZhuang/xESMF/issues/24)
+                # radius_xarr = dem_xarr.interp(lon=xr.DataArray(lontmp, dims='z'), lat= xr.DataArray(lattmp, dims='z')).z.values * 1.e3 #
 
-            # else:
-            #     print(lontmp)
-            #     print(lontmp+180.)
-            #     print(lattmp)
-            #     r_dem = self.dem_xr.interp(lon=lontmp+180.,lat=lattmp).to_dataframe().loc[:, 'z'].values
-
-            # print(r_dem)
-            # en = time.time()
-            # print(en-st)
-            # exit()
+            # Convert to meters (if DEM given in km)
+            r_dem *= 1.e3
 
             texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
             # print("texture noise check",texture_noise,r_dem)
