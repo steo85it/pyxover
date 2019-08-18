@@ -1,3 +1,15 @@
+python3 launch_test.py 0 0801 1 0
+python3 launch_test.py 0 0802 1 0
+python3 launch_test.py 0 0803 1 0
+python3 launch_test.py 0 0804 1 0
+python3 launch_test.py 0 0805 1 0
+python3 launch_test.py 0 0806 1 0
+python3 launch_test.py 0 0807 1 0
+python3 launch_test.py 0 0808 1 0
+python3 launch_test.py 0 0809 1 0
+python3 launch_test.py 0 0810 1 0
+python3 launch_test.py 0 0811 1 0
+python3 launch_test.py 0 0812 1 0
 python3 launch_test.py 0 1101 1 0
 python3 launch_test.py 0 1102 1 0
 python3 launch_test.py 0 1103 1 0

@@ -83,9 +83,9 @@ def generate_fractal_noise_2d(shape, res, octaves=1, persistence=0.5):
 def generate_periodic_fractal_noise_2d(amplitude, shape, res, octaves=1, persistence=0.5):
 
     noise = generate_fractal_noise_2d(shape, res, octaves, persistence)
-    print("pre",noise)
+    #print("pre",noise)
     noise *= amplitude
-    print("post",noise)
+    #print("post",noise)
     #_ = np.hstack([noise,np.flip(noise,axis=1)])
     #noise = np.vstack([_,np.flip(_,axis=0)])
     return noise

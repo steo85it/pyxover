@@ -551,10 +551,11 @@ class gtrack:
         # tmp_pertPar = {**tmp_pertPar, **self.pert_cloop}
         # print('norm',tmp_pertPar, diff_step)
         # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
-        geoloc_out, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0 = self.t0_orb)
+        geoloc_out, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0 = self.t0_orb)
 
         #print(self.ladata_df)
         tmp_df.loc[:,'ET_BC'] = et_bc
+        tmp_df.loc[:,'dR_tid'] = dr_tidal
 
         # Compute partial derivatives if required
         if self.vecopts['PARTDER'] is not '':
@@ -564,7 +565,7 @@ class gtrack:
             tmp_pertPar = self.perturb_orbits(diff_step, -1.)
 
             # print('part',tmp_pertPar, diff_step)
-            geoloc_min, et_bc = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
+            geoloc_min, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
             partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
 
             tmp_df.loc[:,'ET_BC_'+self.vecopts['PARTDER']] = et_bc

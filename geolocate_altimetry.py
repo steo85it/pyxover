@@ -184,9 +184,9 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
 
     if (vecopts['OUTPUTTYPE'] == 0):
         vmbf = astr.sph2cart(rtmp, lattmp, lontmp)
-        return np.array(vmbf).reshape(-1, 3), dr #2 * oneway / clight.value;
+        return np.array(vmbf).reshape(-1, 3), et_bc, dr #2 * oneway / clight.value;
     elif (vecopts['OUTPUTTYPE'] == 1):
-        return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc #2 * oneway / clight.value
+        return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr #2 * oneway / clight.value
 
 
 def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt,itmax=100,tlcbnc = 1.e-3):
