@@ -1,5 +1,12 @@
+#!/usr/bin/env python3
+# ----------------------------------
+# utilities
+# ----------------------------------
+# Author: Stefano Bertone
+# Created: 16-Mar-2019
+#
 
-
+import numpy as np
 
 def lflatten(l):
     l = [item for sublist in l for item in sublist]
@@ -19,3 +26,15 @@ def mergsum(a, b):
             b[k] = b[k] + a[k]
     c = {**a, **b}
     return c
+
+
+def update_in_alist(alist, key, value):
+    return [[k, v] if (k != key) else (key, value) for (k, v) in alist]
+
+
+def update_in_alist_inplace(alist, key, value):
+    alist[:] = update_in_alist(alist, key, value)
+    
+
+def rms(y):
+    return np.sqrt(np.mean(y ** 2))

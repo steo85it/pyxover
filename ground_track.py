@@ -55,9 +55,15 @@ class gtrack:
                         'dPM': [0., 0., 0.],
                         'dL': 0.}  # ,
         # 'dh2': 0. }
+        # imposed perts for closed loop sim
         self.pert_cloop = None
+        # parameter solution from previous iterations (cumulated)
         self.sol_prev_iter = None
+        # initial epoch of track (useful for cheby interp
+        # and linear corrections to track)
         self.t0_orb = None
+        # store interpolated DEM
+        self.dem = None
 
     # create groundtrack from data and save to file
     def setup(self, filnam):
@@ -240,8 +246,12 @@ class gtrack:
 
         # Define call times for the SPICE
         try:
-            t_spc = np.array(
-                [x for x in np.arange(self.ladata_df['ET_TX'].min(), self.ladata_df['ET_TX'].max(), tstep)])
+            t_spc = self.ladata_df['ET_TX'].values
+            # t_spc = np.array(
+            #     [x for x in np.arange(self.ladata_df['ET_TX'].min(), self.ladata_df['ET_TX'].max(), tstep)])
+            # add 1000s to each side of track to avoid boundary effects
+            t_spc = np.hstack([t_spc[0] + np.arange(-1000, -1, 1), t_spc, t_spc[-1] + np.arange(1, 1000, 1)])
+
         except:
             print("*** ground_track.py: Issue interpolating ..." + self.name)
             print(self.ladata_df)
@@ -250,7 +260,6 @@ class gtrack:
             exit(2)
 
         # print("Start spkezr MGR")
-
         # trajectory
         xv_spc = np.array([spice.spkezr(self.vecopts['SCNAME'],
                                         t,
@@ -264,15 +273,15 @@ class gtrack:
         # attitude
         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
         cmat = pxform_array('MSGR_SPACECRAFT', self.vecopts['INERTIALFRAME'], t_spc)
-        m2q_array = np.frompyfunc(spice.m2q, 1, 1)
-        quat = m2q_array(cmat)
-        quat = np.reshape(np.concatenate(quat), (-1, 4))
+        # m2q_array = np.frompyfunc(spice.m2q, 1, 1)
+        # quat = m2q_array(cmat)
+        # quat = np.reshape(np.concatenate(quat), (-1, 4))
 
         # print("Start MGR interpolation")
 
         self.MGRx.interp([xv_spc[:, i] for i in range(0, 3)], t_spc)
         self.MGRv.interp([xv_spc[:, i] for i in range(3, 6)], t_spc)
-        self.MGRa.interp([quat[:, i] for i in range(0, 4)], t_spc)
+        self.MGRa.interpCmat(cmat, t_spc)
 
         # print("Start spkezr MER")
 
@@ -512,6 +521,8 @@ class gtrack:
             corr_glo.update(tmp)
 
             # combine synth perturbations to corrections from previous
+            corr_glo = dict((key, -1. * values)
+                    for key, values in corr_glo.items())
             tmp_pertcloop = mergsum(tmp_pertcloop, corr_glo)
 
         self.pert_cloop = tmp_pertcloop.copy()

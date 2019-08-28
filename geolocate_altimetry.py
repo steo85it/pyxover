@@ -98,17 +98,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # compute s/c frame to inertial rotation (using np.frompyfunc to vectorize pxform)
     # ck+fk+sclk needed
     if (SpInterp > 0):
-        quat = SpObj['MGRa'].eval(et_tx)
-        quat = np.reshape(np.vstack(np.transpose(quat)), (-1, 4))
-        cmat = []
-        for i in range(0, len(et_tx)):
-            cmat.append(spice.q2m(quat[i, :]))
-        # print('interp cmat',cmat)
-
-        # pxform_array = np.frompyfunc(spice.pxform, 3, 1)
-        # cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)
-        # print('cmat spice',cmat)
-
+        cmat = SpObj['MGRa'].evalCmat(et_tx)
     else:
         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
         cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)

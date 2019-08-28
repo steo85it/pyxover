@@ -71,6 +71,7 @@ def rosen(x):
 def get_demres(df, dorb, coeff_set=['dA', 'dC', 'dR']):
     df_ = df.copy()
 
+    print('dorb')
     for idx, key in enumerate(coeff_set):
         if key in track.pertPar:
             track.pertPar[key] += dorb[idx]
@@ -92,7 +93,7 @@ def get_demres(df, dorb, coeff_set=['dA', 'dC', 'dR']):
         # create interp for track
         track.interpolate()
     else:
-        track.SpObj = pickleIO.load(auxdir + 'spaux_' + track.name + '.pkl')
+        track.SpObj = pickleIO.load(auxdir + 'spaux_cby/spaux_' + track.name + '.pkl')
 
     old_tof = track.ladata_df.loc[:, 'TOF'].values
     rng_apr = old_tof * clight / 2.
@@ -238,13 +239,13 @@ if __name__ == '__main__':
     start = time.time()
 
     local = 1
-    debug = 0
+    debug = 1
     numer_sol = 0
     pergram = 0
     check_pkl = 0
     test_name = 'ct_40'
     coeff_set_re = '^dR/d[A,C,R]'
-    n_per_orbit = [40] # 100,800] #
+    n_per_orbit = [600] # 100,800] #
 
     epo = '1212'
     spk = ['KX']  # ['KX', 'AGr']
@@ -289,7 +290,7 @@ if __name__ == '__main__':
             path = "/att/nobackup/sberton2/MLA/out/mladata/" + ex + "/gtrack_*/*.pkl"
 
         allFiles = glob.glob(os.path.join(path))
-        allFiles = np.sort(allFiles)
+        allFiles = np.sort(allFiles)[:1]
         print("Processing ", ex)
         print(os.path.join(path))
         print("nfiles: ", len(allFiles))
@@ -337,25 +338,25 @@ if __name__ == '__main__':
                                   dforb[['dR/dLON']].values * dforb.filter(regex='dLON/d[A,C,R]$').values +
                                   dforb[['dR/dLAT']].values * dforb.filter(regex='dLAT/d[A,C,R]$').values)
                     # Add linear terms
-                    # _ = pd.DataFrame(np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values,dforb.Dt.values[..., np.newaxis]),columns=['dR/dA_1','dR/dC_1','dR/dR_1'])
-                    # dforb_full = pd.concat([dforb_full,_],axis=1)
+                    _ = pd.DataFrame(np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values,dforb.Dt.values[..., np.newaxis]),columns=['dR/dA_1','dR/dC_1','dR/dR_1'])
+                    dforb_full = pd.concat([dforb_full,_],axis=1)
 
                     # Add sin and cos terms to bias coeff
-                    orb_period = 0.5 * 86400  # 12h to seconds
-                    twopi = 2 * np.pi
-                    w = twopi / orb_period
-
-                    for cpr in n_per_orbit:
-                        cpr_str = str(cpr)
-                        coskwt = np.cos(cpr * w * dforb.Dt.values)
-                        sinkwt = np.sin(cpr * w * dforb.Dt.values)
-                        cos_coeffs = pd.DataFrame(
-                            np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values, coskwt[..., np.newaxis]),
-                            columns=['dR/dAc'+cpr_str, 'dR/dCc'+cpr_str, 'dR/dRc'+cpr_str])
-                        sin_coeffs = pd.DataFrame(
-                            np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values, sinkwt[..., np.newaxis]),
-                            columns=['dR/dAs'+cpr_str, 'dR/dCs'+cpr_str, 'dR/dRs'+cpr_str])
-                        dforb_full = pd.concat([dforb_full, cos_coeffs, sin_coeffs], axis=1)
+                    # orb_period = 0.5 * 86400  # 12h to seconds
+                    # twopi = 2 * np.pi
+                    # w = twopi / orb_period
+                    #
+                    # for cpr in n_per_orbit:
+                    #     cpr_str = str(cpr)
+                    #     coskwt = np.cos(cpr * w * dforb.Dt.values)
+                    #     sinkwt = np.sin(cpr * w * dforb.Dt.values)
+                    #     cos_coeffs = pd.DataFrame(
+                    #         np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values, coskwt[..., np.newaxis]),
+                    #         columns=['dR/dAc'+cpr_str, 'dR/dCc'+cpr_str, 'dR/dRc'+cpr_str])
+                    #     sin_coeffs = pd.DataFrame(
+                    #         np.multiply(dforb_full.filter(regex='dR/d[A,C,R]$').values, sinkwt[..., np.newaxis]),
+                    #         columns=['dR/dAs'+cpr_str, 'dR/dCs'+cpr_str, 'dR/dRs'+cpr_str])
+                    #     dforb_full = pd.concat([dforb_full, cos_coeffs, sin_coeffs], axis=1)
 
                     Amat = dforb_full.filter(regex=coeff_set_re).values[:, :]
                     bvec = dforb.altdiff_dem[:]
@@ -386,7 +387,7 @@ if __name__ == '__main__':
                     # print(elev_rms_pre, dr_pre)
 
                     # iter over orbit corrections until convergence
-                    maxiter = 100
+                    maxiter = 3
                     tol = 1
                     for i in range(maxiter):
                         try:

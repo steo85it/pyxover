@@ -28,6 +28,7 @@ class Amat:
         self.parNames = None
         self.sol = None
         self.pert_cloop = None
+        self.sol_dict = None
 
     def setup(self, xov):
 

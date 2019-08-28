@@ -14,7 +14,10 @@ import pickle
 import numpy as np
 import numpy.polynomial.chebyshev as cheby
 from scipy import interpolate
-
+#from scipy.spatial.transform import Slerp
+#from scipy.spatial.transform import Rotation as R
+from rotation import Slerp
+from rotation import Rotation as R
 
 class interp_obj:
 
@@ -61,6 +64,16 @@ class interp_obj:
         t_eval = t_in - self.timeb[0]
 
         return cheby.chebval(t_eval, self.cheb)
+
+    def interpCmat(self, cmat, t_in):
+
+        key_rots = R.from_dcm(np.stack(cmat, axis=0))
+
+        self.slerp = Slerp(t_in, key_rots)
+
+    def evalCmat(self, t_eval):
+
+        return self.slerp(t_eval).as_dcm()
 
     def savetopkl(self, filename):
         with open(filename, 'wb') as f:
