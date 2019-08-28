@@ -125,6 +125,17 @@ def print_corrmat(amat,filename):
     # Compute the covariance matrix
     # print(np.linalg.pinv((ref.spA.transpose() * ref.spA).todense()))
     corr = amat.corr_mat()
+    print(len(corr))
+    # mask to select only parameters with corrs > 0.9
+    m = (corr.mask(np.eye(len(corr), dtype=bool)).abs() > 0.95).any()
+    # exit()
+    corr = corr.loc[m,m]
+    print(len(corr))
+    # print(corr.columns)
+    # print(np.sort(corr.columns))
+    # print(corr.index)
+    corr.sort_index(axis=1, inplace=True)
+    corr.sort_index(axis=0, inplace=True)
     # Generate a mask for the upper triangle
     mask = np.zeros_like(corr, dtype=np.bool)
     mask[np.triu_indices_from(mask)] = True
@@ -134,9 +145,44 @@ def print_corrmat(amat,filename):
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
     # Draw the heatmap with the mask and correct aspect ratio
     sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1, center=0,
-                square=True, linewidths=.5,annot=True, fmt='.1f', cbar_kws={"shrink": .5})
+                square=True, linewidths=.5,annot=False, fmt='.1f', cbar_kws={"shrink": .5})
     f.savefig(filename)
     plt.close()
+
+    # nice visualization to test from https://towardsdatascience.com/better-heatmaps-and-correlation-matrix-plots-in-python-41445d0f2bec
+    # plot_grid = plt.GridSpec(1, 15, hspace=0.2, wspace=0.1)  # Setup a 1x15 grid
+    # ax = plt.subplot(plot_grid[:, :-1])  # Use the leftmost 14 columns of the grid for the main plot
+    #
+    # ax.scatter(
+    #     x=x.map(x_to_num),  # Use mapping for x
+    #     y=y.map(y_to_num),  # Use mapping for y
+    #     s=size * size_scale,  # Vector of square sizes, proportional to size parameter
+    #     c=color.apply(value_to_color),  # Vector of square colors, mapped to color palette
+    #     marker='s'  # Use square as scatterplot marker
+    # )
+    # # ...
+    #
+    # # Add color legend on the right side of the plot
+    # ax = plt.subplot(plot_grid[:, -1])  # Use the rightmost column of the plot
+    #
+    # col_x = [0] * len(palette)  # Fixed x coordinate for the bars
+    # bar_y = np.linspace(color_min, color_max, n_colors)  # y coordinates for each of the n_colors bars
+    #
+    # bar_height = bar_y[1] - bar_y[0]
+    # ax.barh(
+    #     y=bar_y,
+    #     width=[5] * len(palette),  # Make bars 5 units wide
+    #     left=col_x,  # Make bars start at 0
+    #     height=bar_height,
+    #     color=palette,
+    #     linewidth=0
+    # )
+    # ax.set_xlim(1, 2)  # Bars are going from 0 to 5, so lets crop the plot somewhere in the middle
+    # ax.grid(False)  # Hide grid
+    # ax.set_facecolor('white')  # Make background white
+    # ax.set_xticks([])  # Remove horizontal ticks
+    # ax.set_yticks(np.linspace(min(bar_y), max(bar_y), 3))  # Show vertical ticks for min, middle and max
+    # ax.yaxis.tick_right()  # Show vertical ticks on the right
 
 def draw_map(m, scale=0.2):
     from itertools import chain
@@ -145,8 +191,8 @@ def draw_map(m, scale=0.2):
     # m.shadedrelief(scale=scale)
 
     # lats and longs are returned as a dictionary
-    lats = m.drawparallels(np.linspace(-90, 90, 13))
-    lons = m.drawmeridians(np.linspace(-180, 180, 13))
+    lats = m.drawparallels(np.linspace(-90, 90, 13),labels=[False,True,True,False])
+    lons = m.drawmeridians(np.linspace(-180, 180, 13),labels=[False,True,True,False])
 
     # keys contain the plt.Line2D instances
     lat_lines = chain(*(tup[1][0] for tup in lats.items()))
@@ -157,7 +203,7 @@ def draw_map(m, scale=0.2):
     for line in all_lines:
         line.set(linestyle='-', alpha=0.3, color='w')
 
-def rmse(y, y_pred):
+def rmse(y, y_pred=0):
     return np.sqrt(np.mean(np.square(y - y_pred)))
 
 def analyze_sol(sol, ref_sol = '', subexp = ''):
@@ -190,13 +236,15 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     # Remove huge outliers
     mean_dR, std_dR, worst_tracks = tmp.xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
     tmp.xov.xovers['dR_abs'] = tmp.xov.xovers.dR.abs()
-    print("Largest dR ( # above 1km", len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 1.e3])," or ",
-          (len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 1.e3])/len(tmp.xov.xovers)*100.),'%)')
+    print("Largest dR ( # above 400m", len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 400])," or ",
+          (len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 400])/len(tmp.xov.xovers)*100.),'%)')
     print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nlargest(10,'dR_abs'))
     print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nsmallest(10,'dR_abs'))
 
     # Recheck distance after cleaning
     xovacc.analyze_dist_vs_dR(tmp.xov)
+
+    print_corrmat(tmp,tmpdir+"corrmat.png")
 
     if True:
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
@@ -222,7 +270,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
         # Draw the heatmap with the mask and correct aspect ratio
         # plot pivot table as heatmap using seaborn
-        piv = pd.pivot_table(mlacount, values="count", index=["LAT"], columns=["LON"], fill_value=-1)
+        piv = pd.pivot_table(mlacount, values="count", index=["LAT"], columns=["LON"], fill_value=0)
         piv = (piv+empty_geomap_df).fillna(0)
 
         sns.heatmap(piv, xticklabels=10, yticklabels=10)
@@ -323,6 +371,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                             tmp.xov.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
 
         xovacc.plt_geo_dR(empty_geomap_df, sol+subexp, tmp.xov)
+        exit()
 
     if False:
         tmp_plot = tmp.xov.xovers.copy()
@@ -415,4 +464,4 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
 if __name__ == '__main__':
 
-    analyze_sol(sol='tp6_0', ref_sol='tp6_0', subexp = '3res_5amp')
+    analyze_sol(sol='dKX_0', ref_sol='dKX_0', subexp = '0res_1amp')

@@ -34,7 +34,6 @@ def update_in_alist(alist, key, value):
 
 def update_in_alist_inplace(alist, key, value):
     alist[:] = update_in_alist(alist, key, value)
-    
 
 def rms(y):
     return np.sqrt(np.mean(y ** 2))

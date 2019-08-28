@@ -29,6 +29,7 @@ if __name__ == '__main__':
                 # stop clock and print runtime
                 # -----------------------------
                 end = time.time()
+
                 print('----- Runtime PyGeoloc tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
                 start = time.time()
     
@@ -40,6 +41,7 @@ if __name__ == '__main__':
                 # stop clock and print runtime
                 # -----------------------------
                 end = time.time()
+
                 print('----- Runtime PyXover tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
                 start = time.time()
     
@@ -57,40 +59,45 @@ if __name__ == '__main__':
                 loadfile = open("loadPyGeoloc", "w")  # write mode
     
                 for y in np.append([8],np.arange(11, 16, 1)):
+
                     for m in np.arange(1, 13, 1):
                         # print(('').join(
                         #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
                         loadfile.write(('').join(
                             ['python3 launch_test.py ', str(rt), ' ', f'{y:02}', f'{m:02}', ' 1 ', str(i), '\n']))
-    
+
                 loadfile.close()
-    
+
                 loadfile = open("loadPyXover", "w")  # write mode
-    
+
                 for ymc in np.arange(0, 21, 1):
-                        # print(('').join(
-                        #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
-                        loadfile.write(('').join(
-                            ['python3 launch_test.py ', str(rt), ' ', str(ymc), ' 2 ', str(i), '\n']))
-    
+                    # print(('').join(
+                    #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
+                    loadfile.write(('').join(
+                        ['python3 launch_test.py ', str(rt), ' ', str(ymc), ' 2 ', str(i), '\n']))
+
                 loadfile.close()
-    
-                print("Processing PyXover series at external iteration",i)
+
+                print("Processing PyXover series at external iteration", i)
                 iostat = 0
-                #iostat = s.call(['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeol_'+str(rt), '8', '0:30:00', '10'])
+                iostat = s.call(
+                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeol_' + str(rt), '8', '2:30:00', '10'])
                 if iostat != 0:
-                    print("*** PyGeol_"+str(rt)+" failed on iter", i)
+                    print("*** PyGeol_" + str(rt) + " failed on iter", i)
                     exit(iostat)
-                iostat = s.call(['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_'+str(rt), '8', '99:99:99', '10'])
+                iostat = s.call(
+                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt), '8', '99:99:99', '10'])
                 if iostat != 0:
-                    print("*** PyXov_"+str(rt)+" failed on iter", i)
+                    print("*** PyXov_" + str(rt) + " failed on iter", i)
                     exit(iostat)
-                iostat = s.call(['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_'+str(rt), '8', '00:30:00', '10'])
+                iostat = s.call(
+                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt), '8', '99:99:99', '10'])
                 if iostat != 0:
-                    print("*** PyAcc_"+str(rt)+" failed on iter", i)
+                    print("*** PyAcc_" + str(rt) + " failed on iter", i)
                     exit(iostat)
-    
+
                 # stop clock and print runtime
                 # -----------------------------
                 end = time.time()
-                print('----- Runtime tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
+                print(
+                    '----- Runtime tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')

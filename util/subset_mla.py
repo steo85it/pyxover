@@ -55,8 +55,7 @@ if __name__ == '__main__':
         if local:
             os.remove(rmf)
         else:
-            #shutil.move(rmf,rmf[:-3]+'bak')
-            pass
+            shutil.move(rmf,'_'+rmf[:-3]+'.bak')
 
     # select same orbits on simulated data
     orbs = [f.split('_')[-1].split('.')[0] for f in selected]
@@ -67,15 +66,14 @@ if __name__ == '__main__':
        obsfil = glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/*res_*amp/*.TAB")
 
     selected = [s for s in obsfil for orb in orbs if orb in s]
-    #print('selected datafiles: ',selected)
+
     print('total spk:',len(all_spk))
     print('num selected: ',len(selected))
+
     remove_these = list(set(obsfil)^set(selected))
     for rmf in remove_these:
         if local:
             os.remove(rmf)
         else:
             shutil.move(rmf,rmf[:-3]+'BAK')
-
     exit()
-

@@ -6,7 +6,9 @@
 # Created: 16-May-2019
 #
 # source: https://github.com/pvigier/perlin-numpy
-
+# check if similar to grdinfo mla01:/Volumes/disk1/mazarico/CLIPPER/scripts/Matlab/Topography/gaussii.grd
+# Command to create: grdfft -I gaussi.grd -Ggaussii.grd
+# Command to cut: grdcut -R2844/5796/2844/5796 gaussii16384_8640cut.grd -Ggaussii16384_2952cut.grd
 
 import numpy as np
 
@@ -102,11 +104,12 @@ if __name__ == '__main__':
 
     np.random.seed(62)
     shape_text = 1024
-    res_text = 2**4
+    res_text = 2**3
     depth_text = 5
     size_stamp = 0.25
     noise = generate_periodic_fractal_noise_2d(30, (shape_text, shape_text), (res_text, res_text), depth_text, persistence=0.65)
-    noise = hill_shade(noise,terrain=noise * 10)
+
+    # noise = hill_shade(noise,terrain=noise * 10)
     #noise = abs(noise)**2.1/(abs(noise)**2.1).max()*35
     #interp_spline = RectBivariateSpline(np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
     #                                    np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
