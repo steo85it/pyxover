@@ -107,7 +107,10 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
 
     # save cloop perturbations to xov_cmb
     pertdict = [x.pert_cloop for x in xov_list if hasattr(x, 'pert_cloop')]
-    xov_cmb.pert_cloop = pd.concat([pd.DataFrame(l) for l in pertdict],axis=1).T
+    if pertdict != []:
+        xov_cmb.pert_cloop = pd.concat([pd.DataFrame(l) for l in pertdict],axis=1).T
+    else:
+        xov_cmb.pert_cloop = pd.DataFrame()
     #print(len(xov_cmb.xovers))
 
     return xov_cmb
@@ -249,7 +252,6 @@ def plt_geo_dR(empty_geomap_df, sol, xov):
     plt.clf()
     plt.close()
 
-
 def prepare_Amat(xov, vecopts, par_list=''):
 
     # xov.xovers = xov.xovers[xov.xovers.orbA=='1301042351']
@@ -307,7 +309,10 @@ def clean_xov(xov, par_list=[]):
     if sim_altdata == 0:
         mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
         analyze_dist_vs_dR(xov)
-        # exit()
+
+        print("REMOVING ALL XOV dR>200m", len(xov.xovers))
+        xov.xovers = xov.xovers[xov.xovers.dR.abs() < 200]
+        print('xovers removed by dR > 200m : ', len(xov.xovers))
 
     # print(xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
     # exit()
@@ -401,7 +406,7 @@ def solve(xovi_amat,dataset,previous_iter=None):
         for p in parindex:
             if p[0] in to_constrain:
                 p[1] *= 1.e10
-        print(parindex)
+        #print(parindex)
         val = parindex[:,1]
         row = col = parindex[:,0]
 

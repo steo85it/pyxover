@@ -246,6 +246,7 @@ class Amat:
         C = ((A.T * A - (sum(A).T * sum(A) / N)) / (N - 1)).todense()
         V = np.sqrt(np.mat(np.diag(C)).T * np.mat(np.diag(C)))
 
-        par_names = [x.split('/')[-1] for x in self.parNames]
+        # par_names = [x.split('/')[-1] for x in self.parNames]
+        par_names = [x for x in self.parNames]
 
         return pd.DataFrame(np.divide(C, V + 1e-119),index=par_names,columns=par_names)
