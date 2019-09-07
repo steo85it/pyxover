@@ -464,4 +464,4 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
 if __name__ == '__main__':
 
-    analyze_sol(sol='dKX_0', ref_sol='dKX_0', subexp = '0res_1amp')
+    analyze_sol(sol='KX1_1', ref_sol='KX1_0', subexp = '0res_1amp')
