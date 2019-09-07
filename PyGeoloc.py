@@ -186,9 +186,10 @@ def main(args):
                     track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.orb==str(track.name)],
                                        'glo':glo_sol}
                     # remove corrections if "unreasonable" (larger than 500 meters in any direction)
-                    max_orb_corr = np.max(track.sol_prev_iter['orb'].values[0][1:4].astype(float))
-                    if max_orb_corr > 500.:
-                        track.sol_prev_iter['orb'] = pd.DataFrame(columns=track.sol_prev_iter['orb'].columns)
+                    if len(track.sol_prev_iter['orb'])>0:
+                        max_orb_corr = np.max(track.sol_prev_iter['orb'].values[0][1:4].astype(float))
+                        if max_orb_corr > 500.:
+                            track.sol_prev_iter['orb'] = pd.DataFrame(columns=track.sol_prev_iter['orb'].columns)
                 else:
                     track.sol_prev_iter = {'orb':orb_sol,
                                        'glo':glo_sol}

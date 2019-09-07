@@ -1,5 +1,5 @@
 import itertools as itert
-import os
+1;5202;0cimport os
 import sys
 
 import AccumXov
@@ -19,7 +19,7 @@ from prOpt import sim_altdata, local
 if __name__ == '__main__':
 
     data_sim = 'sim'  # 'data' #
-    exp = 'KX1r' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'KX1' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
 #    res = [3]

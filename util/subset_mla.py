@@ -24,16 +24,17 @@ def read_all_files(path):
 if __name__ == '__main__':
 
     local = 0
-    exp = "tp6"
-    use_existing_sel = False
-    ntracks = 1000
+    exp = "KX1r"
+    use_existing_sel =True
+    ntracks = 500
 
     if local:
        spk_path = '/home/sberton2/Works/NASA/Mercury_tides/aux/spaux_*.pkl'
        rem_path = '/home/sberton2/Works/NASA/Mercury_tides/aux/subset_list.pkl'
     else:
        spk_path = '/att/nobackup/sberton2/MLA/aux/spaux_*.pkl'
-       rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
+       #rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
+       rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks.pkl'
 
     all_spk = read_all_files(spk_path)
 
@@ -45,17 +46,23 @@ if __name__ == '__main__':
     else:
         selected = all_spk
         with open (rem_path, 'rb') as fp:
-            selected = pickle.load(fp)
+            sel = pickle.load(fp)
+            selected = []
+            for f in sel:
+               selected.append('/att/nobackup/sberton2/MLA/aux/spaux_'+f+'.pkl')
 
     print('selected spk: ',len(selected),' out of ',len(all_spk))
     remove_these = list(set(all_spk)^set(selected))
+#    print(remove_these)
+#    exit()
 
     for rmf in remove_these:
         # Probably no need to remove these, sufficient to rename
         if local:
             os.remove(rmf)
         else:
-            shutil.move(rmf,'_'+rmf[:-3]+'.bak')
+            shutil.move(rmf,rmf[:-3]+'bak')
+#            pass
 
     # select same orbits on simulated data
     orbs = [f.split('_')[-1].split('.')[0] for f in selected]
@@ -64,7 +71,9 @@ if __name__ == '__main__':
        obsfil = glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/"+exp+"/0res_1amp/*.TAB")
     else:
        obsfil = glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/*res_*amp/*.TAB")
-
+       # use if want to rename gtracks instead of data
+       #obsfil = glob("/att/nobackup/sberton2/MLA/out/sim/"+exp+"/*res_*amp/gtrack_??/*.pkl")
+      
     selected = [s for s in obsfil for orb in orbs if orb in s]
 
     print('total spk:',len(all_spk))

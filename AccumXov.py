@@ -355,6 +355,7 @@ def solve(xovi_amat,dataset,previous_iter=None):
     from prOpt import par_constr, sol4_orb
 
     # Solve
+    sol4_glo = [None]
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -372,7 +373,7 @@ def solve(xovi_amat,dataset,previous_iter=None):
     else:
         spA_sol4 = xovi_amat.spA
 
-    print("sol4pars:", sol4_pars)
+    print("sol4pars:", np.array(sol4_pars))
 
     if debug and len(sol4_pars)<50:
         print('dense A', spA_sol4.todense())
@@ -455,7 +456,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
     sol4_pars = sorted(sol4_orb) + sorted(sol4_glo)
 
-    print('solving for:',sol4_pars)
+    print('solving for:',np.array(sol4_pars))
 
     return sol4_pars
 
@@ -468,6 +469,9 @@ def analyze_sol(xovi_amat,xov):
     # print(np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]))
     # exit()
 
+    print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
+                              len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
+    
     _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)),
                    np.reshape(xovi_amat.sol[-1], (-1, 1))))
     sol_dict = {'sol': dict(zip(_[:,0],_[:,1].astype(float))), 'std': dict(zip(_[:,0],_[:,2].astype(float))) }
@@ -636,7 +640,7 @@ def main(arg):
             # clean only
             clean_xov(xov_cmb, '')
             # plot histo and geo_dist
-            tstname = [x.split('/')[-2] for x in datasets][0]
+            tstname = [x.split('/')[-3] for x in datasets][0]
             mean_dR, std_dR, worst_tracks = xov_cmb.remove_outliers('dR',remove_bad=remove_3sigma_median)
             plt_histo_dR(tstname, mean_dR, std_dR,
                          xov_cmb.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
