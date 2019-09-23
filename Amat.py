@@ -93,10 +93,10 @@ class Amat:
         # select cols
         OrbParFull = [x + '_' + y.split('_')[0] for x in orb_unique for y in parOrb_xy]
         Amat_col = list(set(OrbParFull)) + parGlo_xy
-        print(Amat_col)
+#        print(np.array(Amat_col))
 
         dict_ = dict(zip(Amat_col, range(len(Amat_col))))
-        print(dict_)
+#        print(dict_)
         self.parNames = dict_
 
         # exit()

@@ -215,7 +215,8 @@ class sim_gtrack(gtrack):
                 if self.dem == None:
                     self.dem = import_dem(dem)
                 else:
-                    print("DEM already read")
+                    #print("DEM already read")
+                    pass
             else:
                 print("Using grdtrack")
 

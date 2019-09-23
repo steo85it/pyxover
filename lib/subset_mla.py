@@ -5,6 +5,9 @@
 # Author: Stefano Bertone
 # Created: 24-Jul-2019
 #
+# if main PyXover in other folder, first launch "export PYTHONPATH="$PWD:$PYTHONPATH" from PyXover dir
+# note: revert with **for f in data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${i%..BAK}.TAB";done**
+#       check with **for f in data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
 
 import os
 import shutil
@@ -21,8 +24,8 @@ def read_all_files(path):
 if __name__ == '__main__':
 
     local = 0
-    exp = "tp6"
-    use_existing_sel = True
+    exp = "tp0"
+    use_existing_sel =True
     ntracks = 500
 
     if local:
@@ -30,30 +33,36 @@ if __name__ == '__main__':
        rem_path = '/home/sberton2/Works/NASA/Mercury_tides/aux/subset_list.pkl'
     else:
        spk_path = '/att/nobackup/sberton2/MLA/aux/spaux_*.pkl'
-       rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
+       #rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
+       rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks.pkl'
 
-    all_spk = read_all_files()
+    all_spk = read_all_files(spk_path)
 
     # make selection and remove other spk
     if not use_existing_sel:
         selected = np.sort(np.random.choice(all_spk, ntracks, replace=False))
+        with open(rem_path, 'wb') as fp:
+             pickle.dump(selected, fp)
     else:
         selected = all_spk
         with open (rem_path, 'rb') as fp:
-            selected = pickle.load(fp)
+            sel = pickle.load(fp)
+            selected = []
+            for f in sel:
+               selected.append('/att/nobackup/sberton2/MLA/aux/spaux_'+f+'.pkl')
 
-    print(len(selected),len(all_spk))
+    print('selected spk: ',len(selected),' out of ',len(all_spk))
     remove_these = list(set(all_spk)^set(selected))
-
-    with open(rem_path, 'wb') as fp:
-       pickle.dump(remove_these, fp)
+#    print(remove_these)
+#    exit()
 
     for rmf in remove_these:
         # Probably no need to remove these, sufficient to rename
         if local:
             os.remove(rmf)
         else:
-            shutil.move(rmf,'_'+rmf[:-3]+'.bak')
+            shutil.move(rmf,rmf[:-3]+'bak')
+#            pass
 
     # select same orbits on simulated data
     orbs = [f.split('_')[-1].split('.')[0] for f in selected]
@@ -61,17 +70,20 @@ if __name__ == '__main__':
     if local:
        obsfil = glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/"+exp+"/0res_1amp/*.TAB")
     else:
-       obsfil = glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/*res_*amp/*.TAB")
+       obsfil = glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/3res_20amp/*.TAB")
+       # use if want to rename gtracks instead of data
+       #obsfil = glob("/att/nobackup/sberton2/MLA/out/sim/"+exp+"/*res_*amp/gtrack_??/*.pkl")
+      
+    selected = [s for s in obsfil for orb in orbs if orb[:-2] in s]
 
-    selected = [s for s in obsfil for orb in orbs if orb in s]
-    print(selected)
-    print(len(all_spk))
-    print(len(selected))
+    print('total spk:',len(all_spk))
+    print('obs selected: ',len(selected))
+
     remove_these = list(set(obsfil)^set(selected))
     for rmf in remove_these:
         if local:
             os.remove(rmf)
         else:
-            shutil.move(rmf,'_'+rmf[:-3]+'.BAK')
-
+            shutil.move(rmf,rmf[:-3]+'BAK')
+#            pass
     exit()

@@ -7,19 +7,21 @@ from prOpt import local, sim_altdata
 
 if __name__ == '__main__':
 
-    rough_test = [0]
+    # set up res and amp to 'loop onto' in launch_test.py 
+    #(they should have been previously created by PyAltSim)
+    rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for i in np.arange(0, 1):
-
+        for i in np.arange(1, 5 ):
+    
             if local:
                 start = time.time()
-                print("Processing PyXover series at external iteration", i)
-                for y in np.append([8], np.arange(11, 16, 1)):
+                print("Processing PyXover series at external iteration",i)
+                for y in np.append([8],np.arange(11, 16, 1)):
                     for m in np.arange(1, 13, 1):
                         # print(["python3", "launch_test.py", str(rough_test), ' ', str(y), f'{m:02}', "1", str(i)])
                         # exit()
-                        ym = f'{y:02}' + f'{m:02}'
+                        ym = f'{y:02}'+ f'{m:02}'
                         iostat = s.call(["python3", "launch_test.py", str(rt), ym, "1", str(i)])
                         if iostat != 0:
                             print("*** PyGeoloc failed on iter", i)
@@ -27,10 +29,10 @@ if __name__ == '__main__':
                 # stop clock and print runtime
                 # -----------------------------
                 end = time.time()
-                print('----- Runtime PyGeoloc tot = ' + str(end - start) + ' sec -----' + str(
-                    (end - start) / 60.) + ' min -----')
-                start = time.time()
 
+                print('----- Runtime PyGeoloc tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
+                start = time.time()
+    
                 for ymc in np.arange(0, 21, 1):
                     iostat = s.call(["python3", "launch_test.py", str(rt), str(ymc), "2", str(i)])
                     if iostat != 0:
@@ -39,25 +41,25 @@ if __name__ == '__main__':
                 # stop clock and print runtime
                 # -----------------------------
                 end = time.time()
-                print('----- Runtime PyXover tot = ' + str(end - start) + ' sec -----' + str(
-                    (end - start) / 60.) + ' min -----')
-                start = time.time()
 
+                print('----- Runtime PyXover tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
+                start = time.time()
+    
                 iostat = s.call(["python3", "launch_test.py", str(rt), "0", "3", str(i)])
                 if iostat != 0:
                     print("*** PyAccum failed on iter", i)
-                    # exit(iostat)
+                        # exit(iostat)
                 # stop clock and print runtime
                 # -----------------------------
                 end = time.time()
-                print('----- Runtime AccumXov tot = ' + str(end - start) + ' sec -----' + str(
-                    (end - start) / 60.) + ' min -----')
-
+                print('----- Runtime AccumXov tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
+    
             else:
                 start = time.time()
                 loadfile = open("loadPyGeoloc", "w")  # write mode
+    
+                for y in np.append([8],np.arange(11, 16, 1)):
 
-                for y in np.append([8], np.arange(11, 16, 1)):
                     for m in np.arange(1, 13, 1):
                         # print(('').join(
                         #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
@@ -79,17 +81,17 @@ if __name__ == '__main__':
                 print("Processing PyXover series at external iteration", i)
                 iostat = 0
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeol_' + str(rt), '8', '2:30:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt)+'_'+str(i), '8', '2:30:00', '10'])
                 if iostat != 0:
                     print("*** PyGeol_" + str(rt) + " failed on iter", i)
                     exit(iostat)
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt), '8', '99:99:99', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt)+'_'+str(i), '8', '99:99:99', '10'])
                 if iostat != 0:
                     print("*** PyXov_" + str(rt) + " failed on iter", i)
                     exit(iostat)
-                iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt), '8', '99:99:99', '10'])
+                iostat = s.call(["python3", "launch_test.py", str(rt), "0", "3", str(i)])
+#                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt), '8', '99:99:99', '10'])
                 if iostat != 0:
                     print("*** PyAcc_" + str(rt) + " failed on iter", i)
                     exit(iostat)

@@ -14,9 +14,10 @@ import pickle
 import numpy as np
 import numpy.polynomial.chebyshev as cheby
 from scipy import interpolate
-from scipy.spatial.transform import Slerp
-from scipy.spatial.transform import Rotation as R
-
+#from scipy.spatial.transform import Slerp
+#from scipy.spatial.transform import Rotation as R
+from rotation import Slerp
+from rotation import Rotation as R
 
 class interp_obj:
 

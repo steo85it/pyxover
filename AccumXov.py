@@ -40,7 +40,7 @@ from Amat import Amat
 
 sim_altdata = 0
 
-remove_max_dist = False
+remove_max_dist = True
 remove_3sigma_median = False
 
 ########################################
@@ -142,9 +142,9 @@ def get_stats(xov_lst,resval,amplval):
             # remove data if xover distance from measurements larger than 5km (interpolation error)
             # plus remove outliers with median method
             if remove_max_dist:
-                xov.xovers = xov.xovers[xov.xovers.dist_min_avg < 1]
-                print(len(xov.xovers[xov.xovers.dist_min_avg > 1]),
-                      'xovers removed by dist from obs > 1km')
+                xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
+                print(len(xov.xovers[xov.xovers.dist_max > 0.4]),
+                      'xovers removed by dist from obs > 0.4 km')
             if sim_altdata == 0:
                 mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
 
@@ -200,7 +200,7 @@ def get_stats(xov_lst,resval,amplval):
                       cbar_kws={'label': 'RMS (m)','orientation': 'horizontal'}, xticklabels=piv.columns.values.round(2), fmt='.4g')
     ax0.set(xlabel='Topog scale (1st octave, km)',
             ylabel='Topog ampl rms (1st octave, m)')
-    fig.savefig('tmp/tst.png')
+    fig.savefig(tmpdir+'tst.png')
     plt.clf()
     plt.close()
 
@@ -303,9 +303,9 @@ def clean_xov(xov, par_list=[]):
 
         if remove_max_dist:
             print(len(xov.xovers[xov.xovers.dist_max < 0.4]),
-              'xovers removed by dist from obs > 1km out of ', len(xov.xovers))
+              'xovers removed by dist from obs > 0.4km out of ', len(xov.xovers))
             xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
-            xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+            #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
     if sim_altdata == 0:
         mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
@@ -356,6 +356,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
     from prOpt import par_constr, sol4_orb
 
     # Solve
+    if not local:
+        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'] #,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -373,7 +375,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     else:
         spA_sol4 = xovi_amat.spA
 
-    print("sol4pars:", sol4_pars)
+    print("sol4pars:", np.array(sol4_pars))
 
     # if len(sol4_pars)<50:
     #     print('dense A', spA_sol4.todense())
@@ -399,6 +401,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
     #
     # exit()
 
+    # # Compute the covariance matrix
+    # print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
+    # # compute sol
+    # print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
+    #
     # A = spA_sol4.transpose()*spA_sol4
     # b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
 
@@ -412,7 +419,9 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # val /= np.max(np.abs(val))
     row = col = regbas_weights.index.values
 
-    obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+
     # Cholesky decomposition of diagonal matrix == square root of diagonal
     L = obs_weights
 
@@ -458,7 +467,10 @@ def solve(xovi_amat,dataset, previous_iter=None):
         b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))])
     import scipy
     spA_sol4_penal = scipy.sparse.vstack([spA_sol4,csr_matrix(Q)])
-    xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,show=False,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
+
+    print("Pre-sol: len(A,b)=",len(b_penal),spA_sol4_penal.shape)
+
+    xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,show=False,iter_lim=10000,atol=1.e-9,btol=1.e-9,calc_var=True)
     # print(xovi_amat.sol[0])
 
     # _ = lsmr(A+penalty_matrix,b.toarray(),show=False, maxiter=5000)
@@ -487,7 +499,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
     sol4_pars = sorted(sol4_orb) + sorted(sol4_glo)
 
-    print('solving for:',sol4_pars)
+    print('solving for:',np.array(sol4_pars))
 
     return sol4_pars
 
@@ -499,6 +511,9 @@ def analyze_sol(xovi_amat,xov):
     # print([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars])
     # print(np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]))
     # exit()
+
+    print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
+                              len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
 
     _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)),
                    np.reshape(xovi_amat.sol[-1], (-1, 1))))
@@ -532,7 +547,7 @@ def analyze_sol(xovi_amat,xov):
 
             if remove_max_dist:
                 xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
-                xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+                #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
             _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
             table['num_obs'] = _
@@ -633,10 +648,9 @@ def main(arg):
             if int(ext_iter) > 0:
                 previous_iter = Amat(vecopts)
                 # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-                # previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-                #                 '_' + str(ext_iter - 1) + '/' +
-                #                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
-                previous_iter = previous_iter.load("/home/sberton2/Works/NASA/Mercury_tides/out/sim/KX1_0/0res_1amp/Abmat_sim_KX1_1_0res_1amp.pkl")
+                previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+                                '_' + str(ext_iter - 1) + '/' +
+                               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
             else:
                 previous_iter = None
 
@@ -672,7 +686,7 @@ def main(arg):
             # clean only
             clean_xov(xov_cmb, '')
             # plot histo and geo_dist
-            tstname = [x.split('/')[-2] for x in datasets][0]
+            tstname = [x.split('/')[-3] for x in datasets][0]
             mean_dR, std_dR, worst_tracks = xov_cmb.remove_outliers('dR',remove_bad=remove_3sigma_median)
             plt_histo_dR(tstname, mean_dR, std_dR,
                          xov_cmb.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
@@ -685,7 +699,7 @@ def main(arg):
         # append to list for stats
         xov_cmb_lst.append(xov_cmb)
 
-    print(len(xov_cmb_lst[0].xovers))
+    print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
 
     get_stats(xov_cmb_lst,resval,amplval)
 

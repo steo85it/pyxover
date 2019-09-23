@@ -19,9 +19,9 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
     POLE_DEC0 = np.array([61.4143, -0.0049, 0.])
     PM0 = np.array([329.5469, 6.1385025, 0.])
     # AG
-    # POLE_RA0 = np.array([281.0082, -0.0328, 0.])
-    # POLE_DEC0 = np.array([61.4164, -0.0049, 0.])
-    # PM0 = np.array([329.75, 6.1385054, 0.])
+    #POLE_RA0 = np.array([281.0082, -0.0328, 0.])
+    #POLE_DEC0 = np.array([61.4164, -0.0049, 0.])
+    #PM0 = np.array([329.75, 6.1385054, 0.])
 
     rotpar = {'ORIENT0': '',
               'NUT_PREC_PM0': np.transpose([0.00993822, \

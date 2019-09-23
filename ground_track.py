@@ -174,7 +174,8 @@ class gtrack:
             self = pickle.load(pklfile)
             pklfile.close()
         else:
-            print("No "+filnam+" found")
+            if debug:
+                print("No "+filnam+" found")
             self = None
         # print('Groundtrack loaded from '+filnam)
         # print(self.ladata_df)

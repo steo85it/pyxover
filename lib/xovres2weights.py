@@ -6,12 +6,19 @@
 # Created: 6-Sep-2019
 #
 
+import pickle
+
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
+#from mpl_toolkits.basemap import Basemap
+from scipy.interpolate import RectBivariateSpline
 
 import pickleIO
-from prOpt import tmpdir, auxdir
-
+#from eval_sol import rmse#, draw_map
+from prOpt import tmpdir, auxdir, local
+from xov_setup import xov
 
 def run(xov_):
     # vecopts = {}
@@ -103,9 +110,10 @@ def run(xov_):
 
     print(ev)
 
-    fig, ax1 = plt.subplots(nrows=1)
-    ax1.imshow(ev,origin='lower',vmin=20,vmax=60,cmap="RdBu")
-    fig.savefig(auxdir+'test_interp_KX1.png')
+    if local:
+        fig, ax1 = plt.subplots(nrows=1)
+        ax1.imshow(ev,origin='lower',vmin=20,vmax=60,cmap="RdBu")
+        fig.savefig(auxdir+'test_interp_KX1.png')
 
     xov_.xovers['region'] = get_demz_at(interp_spline,xov_.xovers['LAT'].values,xov_.xovers['LON'].values)
     step = 10

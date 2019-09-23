@@ -1,5 +1,12 @@
-import numpy as np
+#!/usr/bin/env python3
+# ----------------------------------
+# utilities
+# ----------------------------------
+# Author: Stefano Bertone
+# Created: 16-Mar-2019
+#
 
+import numpy as np
 
 def lflatten(l):
     l = [item for sublist in l for item in sublist]

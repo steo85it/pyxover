@@ -14,8 +14,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# from AccumXov import plt_geo_dR
-# from ground_track import gtrack
+from AccumXov import plt_geo_dR
+from ground_track import gtrack
 from xov_setup import xov
 from Amat import Amat
 from prOpt import outdir, tmpdir, local
@@ -190,8 +190,8 @@ def draw_map(m, scale=0.2):
     # m.shadedrelief(scale=scale)
 
     # lats and longs are returned as a dictionary
-    lats = m.drawparallels(np.linspace(-90, 90, 13),labels=[True,False,False,False])
-    lons = m.drawmeridians(np.linspace(-180, 180, 13),labels=[False,False,True,True])
+    lats = m.drawparallels(np.linspace(-90, 90, 13),labels=[False,True,True,False])
+    lons = m.drawmeridians(np.linspace(-180, 180, 13),labels=[False,True,True,False])
 
     # keys contain the plt.Line2D instances
     lat_lines = chain(*(tup[1][0] for tup in lats.items()))
@@ -214,7 +214,9 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
     if ref_sol != '':
         ref = Amat(vecopts)
-        ref = ref.load('/home/sberton2/Works/NASA/Mercury_tides/out/sim/'+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+        ref = ref.load(outdir+'sim/'+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+
+        # if correlation matrix wanted (long, only prints >0.95)
         # print(ref.corr_mat())
 
     if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
@@ -372,6 +374,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             tmp.pert_cloop.reset_index().plot(x="index", color=colors, style='-', ax=ax)
             # tmp.pert_cloop.apply(lambda x: x.abs()).reset_index().plot(x="index", color=colors, style='-', ax=ax)
             # ax.set_xticks(orb_sol.index.values)
+
             ax.set_xlabel('orbit #')
             ax.set_ylabel('sol (m)')
             # ax.set_ylim(-500,500)

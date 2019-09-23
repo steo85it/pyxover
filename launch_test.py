@@ -9,22 +9,21 @@ import PyXover
 import PyGeoloc
 from prOpt import sim_altdata, local
 
+# Experiments
+#------------
+# tp2: full dataset, simulation, no perturbations (0-test)
+# tp3: full dataset, simulation, h2 = 0, no perturbations
+# KX1: real data, tidal h2=0.8 included 
+
+
 if __name__ == '__main__':
 
-    #    arg_names = ['command', 'subset', 'y', 'operation', 'option']
-    #    args = dict(zip(arg_names, sys.argv))
-
-    #    You could even use it to generate a namedtuple with values that default to None -- all in four lines!
-
-    #    Arg_list = collections.namedtuple('Arg_list', arg_names)
-    #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
-
     data_sim = 'sim'  # 'data' #
-    exp = 'd00' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'KX1r' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
-    # res = [3,4]
-    # ampl = [20,30,40]
+#    res = [3]
+#    ampl = [5,10,20,30,40,60,80]
     res = [0]
     ampl = [1]
 
