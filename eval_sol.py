@@ -14,8 +14,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from AccumXov import plt_geo_dR
-from ground_track import gtrack
+# from AccumXov import plt_geo_dR
+# from ground_track import gtrack
 from xov_setup import xov
 from Amat import Amat
 from prOpt import outdir, tmpdir, local
@@ -190,8 +190,8 @@ def draw_map(m, scale=0.2):
     # m.shadedrelief(scale=scale)
 
     # lats and longs are returned as a dictionary
-    lats = m.drawparallels(np.linspace(-90, 90, 13),labels=[False,True,True,False])
-    lons = m.drawmeridians(np.linspace(-180, 180, 13),labels=[False,True,True,False])
+    lats = m.drawparallels(np.linspace(-90, 90, 13),labels=[True,False,False,False])
+    lons = m.drawmeridians(np.linspace(-180, 180, 13),labels=[False,False,True,True])
 
     # keys contain the plt.Line2D instances
     lat_lines = chain(*(tup[1][0] for tup in lats.items()))
@@ -220,6 +220,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
 
         tmp.xov.xovers['dist_max'] = tmp.xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+        tmp.xov.xovers['dist_min'] = tmp.xov.xovers.filter(regex='^dist_.*$').min(axis=1)
         tmp.xov.xovers['dist_minA'] = tmp.xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
         tmp.xov.xovers['dist_minB'] = tmp.xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
         tmp.xov.xovers['dist_min_mean'] = tmp.xov.xovers.filter(regex='^dist_min.*$').mean(axis=1)
@@ -251,35 +252,38 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         print(mlacount.sort_values(['LON']))
 
         fig = plt.figure(figsize=(8, 6), edgecolor='w')
-        m = Basemap(projection='moll', resolution=None,
-                    lat_0=0, lon_0=0)
+        # m = Basemap(projection='moll', resolution=None,
+        #             lat_0=0, lon_0=0)
+        m = Basemap(projection='npstere',boundinglat=10,lon_0=0,resolution='l')
         x, y = m(mlacount.LON.values, mlacount.LAT.values)
-        m.scatter(x, y, marker=',') #,c=piv.count(), s=3**piv.count(),cmap='Reds')
+        map = m.scatter(x, y,c=np.log(mlacount['count'].values), cmap='afmhot') # , marker=',', s=3**piv.count(),
+        plt.colorbar(map)
         draw_map(m)
-        fig.savefig(tmpdir+'mla_count_moll_'+sol+'_'+subexp+'.png')
+        fig.savefig(tmpdir+'mla_count_nps_'+sol+'_'+subexp+'.png')
         plt.clf()
         plt.close()
+        print("npstere printed")
 
         empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
                             columns = np.arange(-180, 181))
-
-        fig, ax1 = plt.subplots(nrows=1)
-        # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
-        # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
-        # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
-        # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
-        # Draw the heatmap with the mask and correct aspect ratio
-        # plot pivot table as heatmap using seaborn
-        piv = pd.pivot_table(mlacount, values="count", index=["LAT"], columns=["LON"], fill_value=0)
-        piv = (piv+empty_geomap_df).fillna(0)
-
-        sns.heatmap(piv, xticklabels=10, yticklabels=10)
-        plt.tight_layout()
-        ax1.invert_yaxis()
-        #         ylabel='Topog ampl rms (1st octave, m)')
-        fig.savefig(tmpdir+'mla_count_'+sol+'_'+subexp+'.png')
-        plt.clf()
-        plt.close()
+        #
+        # fig, ax1 = plt.subplots(nrows=1)
+        # # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
+        # # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
+        # # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
+        # # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
+        # # Draw the heatmap with the mask and correct aspect ratio
+        # # plot pivot table as heatmap using seaborn
+        # piv = pd.pivot_table(mlacount, values="count", index=["LAT"], columns=["LON"], fill_value=0)
+        # piv = (piv+empty_geomap_df).fillna(0)
+        #
+        # sns.heatmap(piv, xticklabels=10, yticklabels=10)
+        # plt.tight_layout()
+        # ax1.invert_yaxis()
+        # #         ylabel='Topog ampl rms (1st octave, m)')
+        # fig.savefig(tmpdir+'mla_count_'+sol+'_'+subexp+'.png')
+        # plt.clf()
+        # plt.close()
 
         orb_sol, glb_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
         xovacc.print_sol(orb_sol, glb_sol, tmp.xov, tmp)
@@ -313,6 +317,17 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.savefig(tmpdir + 'orbcorr_tseries_' + sol + '.png')
         plt.close()
 
+        num_bins = 'auto'
+        for idx, col in enumerate(cols):
+            ax.set_prop_cycle(color=colors)
+            n, bins, patches = plt.hist(orb_sol[col], bins=num_bins, density=True, facecolor=colors[idx], label=col, alpha=0.7)
+
+        plt.legend()
+        plt.xlabel('delta (m)')
+        plt.ylabel('Probability')
+        plt.title(r'Histogram of par corr') #: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+        plt.savefig(tmpdir + '/histo_corr_' + sol + "_" + str(idx) + '.png')
+        plt.clf()
 
         if pd.Series(['dA', 'dC','dR$']).isin(tmp.pert_cloop.columns).any():
 
@@ -357,12 +372,32 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             tmp.pert_cloop.reset_index().plot(x="index", color=colors, style='-', ax=ax)
             # tmp.pert_cloop.apply(lambda x: x.abs()).reset_index().plot(x="index", color=colors, style='-', ax=ax)
             # ax.set_xticks(orb_sol.index.values)
-
             ax.set_xlabel('orbit #')
             ax.set_ylabel('sol (m)')
-            ax.set_ylim(-500,500)
+            # ax.set_ylim(-500,500)
             plt.savefig(tmpdir+'residuals_tseries_'+sol+'_'+subexp+'.png')
             plt.close()
+
+            num_bins = 'auto'
+            plt.clf()
+            fig, ax = plt.subplots(nrows=1)
+            for idx, col in enumerate(cols):
+                ax.set_prop_cycle(color=colors)
+                if ref_sol != '' and len(ref.pert_cloop.columns) > 0:
+                    n, bins, patches = plt.hist(np.abs(ref.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
+                                                facecolor=colors[idx], label=col.split('/')[-1],
+                                            alpha=0.3)
+                print(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)))
+                n, bins, patches = plt.hist(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
+                                            facecolor=colors[idx], label=col.split('/')[-1],
+                                            alpha=0.7)
+
+            plt.legend()
+            plt.xlabel('delta (m)')
+            plt.ylabel('Probability')
+            plt.title(r'Histogram of par corr')  #: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+            plt.savefig(tmpdir + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
+            plt.clf()
 
         if ref_sol != '':
             xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
@@ -372,14 +407,42 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                             tmp.xov.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
 
         xovacc.plt_geo_dR(empty_geomap_df, sol+subexp, tmp.xov)
-        exit()
+        # exit()
 
     if False:
         tmp_plot = tmp.xov.xovers.copy()
         fig, ax1 = plt.subplots(nrows=1)
-        tmp_plot[['xOvID', 'dR/dL']].plot(x='xOvID',y=['dR/dL'], ax=ax1)
-        ax1.set_ylim(-30,30)
-        fig.savefig(tmpdir+'mla_dR_dL_'+sol+'.png')
+        # tmp_plot[['xOvID', 'dR/dL']].plot(x='xOvID',y=['dR/dL'], ax=ax1)
+        # ax1.set_ylim(-30,30)
+        # fig.savefig(tmpdir+'mla_dR_dL_'+sol+'.png')
+        # plt.clf()
+        # plt.close()
+        print(tmp_plot.dtypes)
+        tmp_plot = tmp_plot[["dR/dL","LAT","LON"]].round(0)
+
+        _ = tmp_plot[["dR/dL","LAT","LON"]].round(0).groupby(["LAT","LON"])["dR/dL"].apply(lambda x: rmse(x)).fillna(0).reset_index()
+        print(_)
+        piv = pd.pivot_table(_, values="dR/dL", index=["LAT"], columns=["LON"], fill_value=0)
+        piv = (piv+empty_geomap_df).fillna(0)
+
+        sns.heatmap(piv, xticklabels=10, yticklabels=10)
+        plt.tight_layout()
+        ax1.invert_yaxis()
+        #         ylabel='Topog ampl rms (1st octave, m)')
+        fig.savefig(tmpdir+'mla_dR_dL_piv_'+sol+'_'+subexp+'.png')
+        plt.clf()
+        plt.close()
+        exit()
+
+        fig = plt.figure(figsize=(8, 6), edgecolor='w')
+        # m = Basemap(projection='moll', resolution=None,
+        #             lat_0=0, lon_0=0)
+        m = Basemap(projection='npstere',boundinglat=10,lon_0=0,resolution='l')
+        x, y = m(_.LON.values, _.LAT.values)
+        map = m.scatter(x, y,c=_['dR/dL'].values, s=_['dR/dL'].values, cmap='Reds') # afmhot') # , marker=',', s=3**piv.count(),
+        plt.colorbar(map)
+        draw_map(m)
+        fig.savefig(tmpdir+'mla_dR_dL_npstere_'+sol+'_'+subexp+'.png')
         plt.clf()
         plt.close()
 
@@ -417,6 +480,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # ax.set_ylim(-0.1,0.1)
         plt.savefig('/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/dRdC_dA_'+sol+'.png')
         plt.close()
+
+    if True:
 
         # plot dR/dL and dR/dh2
         tmp.xov.xovers['dR/dL'] = tmp.xov.xovers.loc[:,['dR/dL']].abs()
@@ -465,4 +530,4 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
 if __name__ == '__main__':
 
-    analyze_sol(sol='KX1r0_0', ref_sol='KX1r_0', subexp = '0res_1amp')
+    analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')

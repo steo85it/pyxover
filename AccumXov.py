@@ -12,6 +12,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from util import mergsum, update_in_alist
+from lib.xovres2weights import run
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -39,7 +40,7 @@ from Amat import Amat
 
 sim_altdata = 0
 
-remove_max_dist = True
+remove_max_dist = False
 remove_3sigma_median = False
 
 ########################################
@@ -186,7 +187,7 @@ def get_stats(xov_lst,resval,amplval):
 
     #print(len(resval),len(amplval),len(dR_RMS))
     df_ = pd.DataFrame(list(zip(resval,amplval,dR_RMS)), columns=['res','ampl','RMS'])
-    #print(df_)
+    print("Total RMS: ", df_.RMS.values)
     # create pivot table, days will be columns, hours will be rows
     piv = pd.pivot_table(df_, values="RMS",index=["ampl"], columns=["res"], fill_value=0)
     #plot pivot table as heatmap using seaborn
@@ -212,12 +213,12 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov, xov_ref=''):
 
     # the histogram of the data
     num_bins = 'auto'
-    n, bins, patches = plt.hist(xov.dR, bins=num_bins, density=True, facecolor='blue', alpha=0.7) #, range=[-100,100])
+    n, bins, patches = plt.hist(xov.dR.astype(np.float), bins=num_bins, density=True, facecolor='blue', alpha=0.7, range=[-200,200])
     # add a 'best fit' line
     # y = stats.norm.pdf(bins, mean_dR, std_dR)
     # plt.plot(bins, y, 'b--')
     if isinstance(xov_ref, pd.DataFrame):
-        n, bins, patches = plt.hist(xov_ref.dR, bins=num_bins, density=True, facecolor='red',
+        n, bins, patches = plt.hist(xov_ref.dR.astype(np.float), bins=num_bins, density=True, facecolor='red',
                                     alpha=0.3)  # , range=[-100,100])
     plt.xlabel('dR (m)')
     plt.ylabel('Probability')
@@ -269,7 +270,7 @@ def prepare_Amat(xov, vecopts, par_list=''):
     if par_list == '':
         par_list = xov.xovers.columns.filter(regex='^dR.*$')
     df_orig = xov.xovers[par_list]
-    df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore', downcast='float')
+    df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore') #, downcast='float')
     xov.xovers = pd.concat([df_orig, df_float], axis=1)
     xov.xovers.info(memory_usage='deep')
     if debug:
@@ -350,7 +351,7 @@ def analyze_dist_vs_dR(xov):
 
     print("corrs", tmp[['dist_min_mean', 'dist_max', 'abs_dR']].corr()) #(method='spearman','kendall'))
 
-def solve(xovi_amat,dataset,previous_iter=None):
+def solve(xovi_amat,dataset, previous_iter=None):
     from scipy.sparse import csr_matrix
     from prOpt import par_constr, sol4_orb
 
@@ -374,18 +375,49 @@ def solve(xovi_amat,dataset,previous_iter=None):
 
     print("sol4pars:", sol4_pars)
 
-    if debug and len(sol4_pars)<50:
-        print('dense A', spA_sol4.todense())
-        print('B', xovi_amat.b)
-        print('max B', xovi_amat.b.max(),xovi_amat.b.mean())
+    # if len(sol4_pars)<50:
+    #     print('dense A', spA_sol4.todense())
+    #     print('B', xovi_amat.b)
+    #     print('max B', np.abs(xovi_amat.b).max(),np.abs(xovi_amat.b).mean())
+    #     print('maxA',np.abs(spA_sol4.todense().T).max(),len(spA_sol4.todense().T[np.abs(spA_sol4.todense().T)>2500]))
+    #     spAdense = spA_sol4.todense()
+    #     spAdense[np.abs(spAdense) > 200] = 1
+    #
+    #     plt.clf()
+    #     fig, ax = plt.subplots()
+    #     ax.plot(spA_sol4.todense().T[np.abs(spA_sol4.todense().T)<200])
+    #     ax.plot(spAdense)
+    #     ax.plot(xovi_amat.b)
+    #     plt.savefig('/home/sberton2/.PyCharmCE2018.2/config/scratches/tst.png')
+    #
+    #     # Compute the covariance matrix
+    #     print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
+    #     # compute sol
+    #
+    #
+    #     print('sol dense',np.linalg.lstsq(spAdense[:], xovi_amat.b[:], rcond=1)[0]/0.00993822)
+    #
+    # exit()
 
-        # Compute the covariance matrix
-        print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
-        # compute sol
-        print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
+    # A = spA_sol4.transpose()*spA_sol4
+    # b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
 
-    A = spA_sol4.transpose()*spA_sol4
-    b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
+    #set up observation weights (according to local roughness and dist of obs from xover point)
+    regbas_weights = run(xovi_amat.xov).reset_index()
+    # print(regbas_weights)
+
+    # take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
+    val = np.sqrt(1./np.abs(regbas_weights.rough_at_mindist.values))
+    # print(np.max(np.abs(val)))
+    # val /= np.max(np.abs(val))
+    row = col = regbas_weights.index.values
+
+    obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # Cholesky decomposition of diagonal matrix == square root of diagonal
+    L = obs_weights
+
+    # apply weights
+    spA_sol4 = L * spA_sol4
 
     # select constrains for processed parameters (TODO should go in sol4pars)
     mod_par = [your_key.split('_')[1] if len(your_key.split('_'))>1 else your_key for your_key in sol4_pars ]
@@ -421,9 +453,9 @@ def solve(xovi_amat,dataset,previous_iter=None):
     # Choleski decompose matrix and append to design matrix
     Q = np.linalg.cholesky(penalty_matrix.todense())
     if previous_iter != None:
-        b_penal = np.hstack([xovi_amat.b, np.zeros(len(sol4_pars))]) #np.ravel(np.dot(Q,previous_iter.sol[0]))])
+        b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))]) #np.ravel(np.dot(Q,previous_iter.sol[0]))])
     else:
-        b_penal = np.hstack([xovi_amat.b, np.zeros(len(sol4_pars))])
+        b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))])
     import scipy
     spA_sol4_penal = scipy.sparse.vstack([spA_sol4,csr_matrix(Q)])
     xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,show=False,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
@@ -519,6 +551,8 @@ def analyze_sol(xovi_amat,xov):
             table = pd.merge(table.reset_index(),merged_Frame,on='orb')
 
         orb_sol = table
+        print(orb_sol)
+        # exit()
 
     else:
         orb_sol = pd.DataFrame()
@@ -599,16 +633,18 @@ def main(arg):
             if int(ext_iter) > 0:
                 previous_iter = Amat(vecopts)
                 # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-                previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-                                '_' + str(ext_iter - 1) + '/' +
-                               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+                # previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+                #                 '_' + str(ext_iter - 1) + '/' +
+                #                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+                previous_iter = previous_iter.load("/home/sberton2/Works/NASA/Mercury_tides/out/sim/KX1_0/0res_1amp/Abmat_sim_KX1_1_0res_1amp.pkl")
             else:
                 previous_iter = None
 
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
             xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
-            solve(xovi_amat, ds, previous_iter)
+
+            solve(xovi_amat, dataset=ds, previous_iter=previous_iter)
 
             # Save to pkl
             orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat,xov_cmb)

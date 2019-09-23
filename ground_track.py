@@ -64,6 +64,8 @@ class gtrack:
         self.t0_orb = None
         # store interpolated DEM
         self.dem = None
+        # spice data (if interp used)
+        self.SpObj = None
 
     # create groundtrack from data and save to file
     def setup(self, filnam):
@@ -77,7 +79,7 @@ class gtrack:
                 # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
-            else:
+            elif SpInterp > 0:
                 self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
 
             if debug:
@@ -115,7 +117,7 @@ class gtrack:
                 # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
-            else:
+            elif SpInterp > 0:
                 self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
@@ -585,9 +587,13 @@ class gtrack:
 
             # print("partder check", geoloc_out[:,0:3], geoloc_min[:,0:3],diff_step)
 
-            if (self.vecopts['PARTDER'] in ('dA', 'dC', 'dR', 'dRl', 'dPt')):
+            if self.vecopts['PARTDER'] in ('dA', 'dC', 'dR', 'dRl', 'dPt'):
                 partder /= (2. * diff_step)  # [0]
-                # print('partder', partder)
+            elif self.vecopts['PARTDER'] in ('dL'):
+                # print('partder dL pre', partder)
+                # print('diff step', 2. * diff_step, (2. * diff_step * 0.00993822))
+                partder /= (2. * diff_step * 0.00993822) # * 'NUT_PREC_PM0'[0]
+                # print('partder dL', partder)
             else:
                 # print('norm_pert', np.linalg.norm(diff_step))
                 partder /= 2. * np.linalg.norm(diff_step)  # [1]

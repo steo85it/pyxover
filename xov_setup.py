@@ -12,6 +12,8 @@ import warnings
 import perlin2d
 from scipy.interpolate import RectBivariateSpline
 
+from eval_sol import rmse
+
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import numpy as np
 import pandas as pd
@@ -25,7 +27,7 @@ import subprocess
 # from mapcount import mapcount
 from unproject_coord import unproject_stereographic
 from intersection import intersection
-from prOpt import debug, partials, OrbRep, parGlo, parOrb
+from prOpt import debug, partials, OrbRep, parGlo, parOrb, tmpdir
 from util import lflatten
 
 
@@ -156,6 +158,7 @@ class xov:
         total_occ_tracks = pd.DataFrame([xoverstmp['orbA'].value_counts(),xoverstmp['orbB'].value_counts()]).T.fillna(0).sum(axis=1).sort_values(ascending=False)
 
         orig_len = len(xoverstmp)
+
         # print(self.xovers.loc[:,data_col].median(axis=0))
         sorted = np.sort(abs(xoverstmp.loc[:, data_col].values - xoverstmp.loc[:, data_col].median(axis=0)))
         # print(len(sorted))
@@ -164,6 +167,7 @@ class xov:
 
         print("Mean, std of data:", xoverstmp.loc[:, data_col].mean(axis=0), xoverstmp.loc[:, data_col].std(axis=0))
         print("Median, std_med of data:", xoverstmp.loc[:, data_col].median(axis=0), std_median)
+        print(rmse(xoverstmp.loc[:, data_col].values))
         if remove_bad:
             print(len(xoverstmp[abs(
                 xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) >= 3 * std_median]),
@@ -314,7 +318,7 @@ class xov:
         # if np.abs([a-b for a in R_A for b in R_B])>50:
         #     exit(2)
 
-        if debug and len(ind_B_int) == 1 and False:
+        if len(ind_B_int) == 1 and False:
             self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0],
                                ladata_df, ldA_, ldB_,
                                tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0])
@@ -336,15 +340,15 @@ class xov:
         # exit()
 
         # #print(ldB_.shape)
-        # dist = np.linalg.norm(ldB_[:,:2]-np.hstack([x,y]),axis=1)
+        dist = np.linalg.norm(ldB_[:,:2]-np.hstack([x,y]),axis=1)
         # sign = np.dot(ldB_[:,:2],np.hstack([x,y]))/(np.linalg.norm(ldB_[:,:2],axis=1)*np.linalg.norm(np.hstack([x,y])))
         # print(sign)
         # exit()
         # #print(len(dist))
-        # plt.plot(dist, ldB_[:,2])
-        # plt.savefig('tmp/test_elev_prof.png')
-        # plt.clf()
-        # plt.close()
+        plt.plot(dist, ldB_[:,2])
+        plt.savefig(tmpdir+'test_elev_prof.png')
+        plt.clf()
+        plt.close()
         # #print(ldB_[0,1]-y)
         # #exit()
         # f_interp = interpolate.interp2d(ldB_[:,0],ldB_[:,1],ldB_[:,2],kind='linear')
@@ -555,7 +559,7 @@ class xov:
 
             # plot and check intersections (rough, fine, ...)
             # if (debug):
-            if debug and len(intersec_x) > 0 and param is '':
+            if len(intersec_x) > 0 and param is '':
                 print("intersec_x, intersec_y",intersec_x, intersec_y)
                 self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB)
                 # exit()
@@ -584,16 +588,16 @@ class xov:
             print('lonlat', unproject_stereographic(intersec_x, intersec_y, 0, 90, 2440))
 
         fig, ax = plt.subplots()
-        ax.plot(curve_A[:, 0], curve_A[:, 1], 'x-')
+        ax.plot(curve_A[:, 0], curve_A[:, 1], 'x-r')
         ax.plot(curve_B[:, 0], curve_B[:, 1], 'x-')
 
         if all(rough_A != 0):
             xr = curve_A[rough_A, 0]
             yr = curve_A[rough_A, 1]
-            ax.plot(xr, yr, '*r', label='rough xov A')
+            ax.plot(xr, yr, '*g', label='rough xov A')
             xr = curve_B[rough_B - len(curve_A), 0]
             yr = curve_B[rough_B - len(curve_A), 1]
-            ax.plot(xr, yr, '*g', label='rough xov B')
+            ax.plot(xr, yr, '*r', label='rough xov B')
 
         ax.plot(intersec_x, intersec_y, '*k', label='fine xov')
 
@@ -602,20 +606,20 @@ class xov:
         ax.set_ylabel('y (distance from NP, km)')
         ax.legend()
 
-        delta = 5.
-        if abs(np.amin(np.absolute(intersec_x))) > delta:
-            xmin = np.amin(np.hstack(intersec_x)) - delta
-            xmax = np.amax(np.hstack(intersec_x)) + delta
-        else:
-            xmax = 200
-            xmin = -200
+        delta = 0.4
+        # if abs(np.amin(np.absolute(intersec_x))) > delta:
+        xmin = np.amin(np.hstack(intersec_x)) - 0.5* delta
+        xmax = np.amax(np.hstack(intersec_x)) + 0.5* delta
+        # else:
+        #     xmax = 200
+        #     xmin = -200
         plt.xlim(xmin, xmax)
-        if abs(np.amin(np.absolute(intersec_y))) > delta:
-            ymin = np.amin(np.array(intersec_y)) - delta
-            ymax = np.amax(np.array(intersec_y)) + delta
-        else:
-            ymax = 200
-            ymin = -200
+        # if abs(np.amin(np.absolute(intersec_y))) > delta:
+        ymin = np.amin(np.array(intersec_y)) - delta
+        ymax = np.amax(np.array(intersec_y)) + delta
+        # else:
+        #     ymax = 200
+        #     ymin = -200
         plt.ylim(ymin, ymax)
 
         plt.savefig('tmp/img/intersect_' + self.tracks[0] + '_' + self.tracks[1] + '.png')
@@ -838,6 +842,9 @@ class xov:
 
         ladata_df = self.ladata_df
         xovers_df = self.xovtmp
+
+        # print(ladata_df.columns)
+        # exit()
 
         # Prepare
         param = self.param

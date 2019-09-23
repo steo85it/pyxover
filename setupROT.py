@@ -46,6 +46,8 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
                   'NUT_PREC_PM': (1 + offsetL) * rotpar['NUT_PREC_PM0'],
                   'NUT_PREC_ANGLES': rotpar['NUT_PREC_ANGLES0']
                   }
+    #print("librations", rotpar['NUT_PREC_PM0'], offsetL * rotpar['NUT_PREC_PM0'])
+    # exit()
 
     upd_rotpar['ORIENT'] = np.vstack([POLE_RA, POLE_DEC, PM])
 
