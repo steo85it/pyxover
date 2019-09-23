@@ -102,7 +102,6 @@ def xovnum_plot():
 
     print(df_.max())
     plt_xovrms(df_)
-
     #
     # _ = [xov_cmb.xovers.loc[(xov_cmb.xovers.orbA.str.contains('^'+a+'.*$')) & (xov_cmb.xovers.orbB.str.contains('^'+b+'.*$')),'xOvID'].count() for a,b in monyea2]
     # print(len(monyea2),len(monyea))
@@ -217,6 +216,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         ref = Amat(vecopts)
         ref = ref.load(outdir+'sim/'+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
 
+        # if correlation matrix wanted (long, only prints >0.95)
         # print(ref.corr_mat())
 
     if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
@@ -243,8 +243,10 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
     # Recheck distance after cleaning
     xovacc.analyze_dist_vs_dR(tmp.xov)
+    _ = tmp.xov.xovers.dR.values ** 2
+    print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
 
-    print_corrmat(tmp,tmpdir+"corrmat.png")
+    #print_corrmat(tmp,tmpdir+"corrmat.png")
 
     if True:
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
@@ -313,8 +315,20 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.savefig(tmpdir + 'orbcorr_tseries_' + sol + '.png')
         plt.close()
 
+        num_bins = 'auto'
+        for idx, col in enumerate(cols):
+                 ax.set_prop_cycle(color=colors)
+                 n, bins, patches = plt.hist(orb_sol[col], bins=num_bins, density=True, facecolor=colors[idx], label=col, alpha=0.7)
 
-        if pd.Series(['dA', 'dC','dR$']).isin(tmp.pert_cloop.columns).any() and False:
+        plt.legend()
+        plt.xlabel('delta (m)')
+        plt.ylabel('Probability')
+        plt.title(r'Histogram of par corr') #: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+        plt.savefig(tmpdir + '/histo_corr_' + sol + "_" + str(idx) + '.png')
+        plt.clf()
+
+        
+        if pd.Series(['dA', 'dC','dR$']).isin(tmp.pert_cloop.columns).any():
 
             # print residuals (original cloop perturbation - latest cumulated solution)
             orbpar_sol = list(set([x.split("_")[0].split("/")[1] for x in tmp.xov.parOrb_xy]))
@@ -325,7 +339,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             # initial pert + corrections from previous iteration
             tmp.pert_cloop = tmp.pert_cloop[orbpar_sol].dropna()
 
-            if ref_sol != '':
+            if ref_sol != '' and len(ref.pert_cloop.columns)>0:
+                print(ref.pert_cloop)
                 ref.pert_cloop = ref.pert_cloop[orbpar_sol].dropna()
 
             # to do this, we would need the full initial perturbed value of parameters (we don't have it...)
@@ -350,7 +365,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             # print('postfit_res')
             # print(postfit_res)
             # postfit_res.reset_index().plot(x="orb", color=colors, ax=ax)
-            if ref_sol != '':
+            if ref_sol != '' and len(ref.pert_cloop.columns)>0:
                 ref.pert_cloop.reset_index().plot(x="index", color=colors, style=':', ax=ax)
                 # ref.pert_cloop.apply(lambda x: x.abs()).reset_index().plot(x="index", color=colors, style=':', ax=ax)
             tmp.pert_cloop.reset_index().plot(x="index", color=colors, style='-', ax=ax)
@@ -359,9 +374,31 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
             ax.set_xlabel('orbit #')
             ax.set_ylabel('sol (m)')
-            ax.set_ylim(-1000,1000)
+            #ax.set_ylim(-500,500)
             plt.savefig(tmpdir+'residuals_tseries_'+sol+'_'+subexp+'.png')
             plt.close()
+
+            num_bins = 'auto'
+            plt.clf()
+            fig, ax = plt.subplots(nrows=1)
+            for idx, col in enumerate(cols):
+                ax.set_prop_cycle(color=colors)
+                if ref_sol != '' and len(ref.pert_cloop.columns) > 0:
+                    n, bins, patches = plt.hist(np.abs(ref.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
+                                                facecolor=colors[idx], label=col.split('/')[-1],
+                                            alpha=0.3)
+                print(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)))
+                n, bins, patches = plt.hist(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
+                                            facecolor=colors[idx], label=col.split('/')[-1],
+                                            alpha=0.7)
+
+            plt.legend()
+            plt.xlabel('delta (m)')
+            plt.ylabel('Probability')
+            plt.title(r'Histogram of par corr')  #: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+            plt.savefig(tmpdir + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
+            plt.clf()
+
 
         if ref_sol != '':
             xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
@@ -464,4 +501,5 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
 if __name__ == '__main__':
 
-    analyze_sol(sol='KX1_1', ref_sol='KX1_0', subexp = '0res_1amp')
+    analyze_sol(sol='KX1_0', ref_sol='KX1_0', subexp = '0res_1amp')
+

@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 print("Processing PyXover series at external iteration", i)
                 iostat = 0
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt)+'_'+str(i),, '8', '2:30:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt)+'_'+str(i), '8', '2:30:00', '10'])
                 if iostat != 0:
                     print("*** PyGeol_" + str(rt) + " failed on iter", i)
                     exit(iostat)

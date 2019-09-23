@@ -1,0 +1,15 @@
+Submitted batch job 59736
+I am finished
+Submitted batch job 59808
+I am finished
+Processing PyXover series at external iteration 0
+Traceback (most recent call last):
+  File "mla_iter.py", line 93, in <module>
+    iostat = s.call(["nohup python3", "launch_test.py", str(rt), "0", "3", str(i)])
+  File "/att/gpfsfs/briskfs01/ppl/jbnicho2/.spack-repo/opt/spack/linux-debian8-x86_64/gcc-7.3.0/python-3.6.5-v5uh3daz3favoyq2vdmnm63vudqxvhr2/lib/python3.6/subprocess.py", line 267, in call
+    with Popen(*popenargs, **kwargs) as p:
+  File "/att/gpfsfs/briskfs01/ppl/jbnicho2/.spack-repo/opt/spack/linux-debian8-x86_64/gcc-7.3.0/python-3.6.5-v5uh3daz3favoyq2vdmnm63vudqxvhr2/lib/python3.6/subprocess.py", line 709, in __init__
+    restore_signals, start_new_session)
+  File "/att/gpfsfs/briskfs01/ppl/jbnicho2/.spack-repo/opt/spack/linux-debian8-x86_64/gcc-7.3.0/python-3.6.5-v5uh3daz3favoyq2vdmnm63vudqxvhr2/lib/python3.6/subprocess.py", line 1344, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'nohup python3': 'nohup python3'

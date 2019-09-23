@@ -26,7 +26,7 @@ import subprocess
 from unproject_coord import unproject_stereographic
 from intersection import intersection
 from prOpt import debug, partials, OrbRep, parGlo, parOrb
-from util import lflatten
+from util import lflatten, rms
 
 
 class xov:
@@ -156,6 +156,7 @@ class xov:
         total_occ_tracks = pd.DataFrame([xoverstmp['orbA'].value_counts(),xoverstmp['orbB'].value_counts()]).T.fillna(0).sum(axis=1).sort_values(ascending=False)
 
         orig_len = len(xoverstmp)
+        print("orig_len", orig_len)
         # print(self.xovers.loc[:,data_col].median(axis=0))
         sorted = np.sort(abs(xoverstmp.loc[:, data_col].values - xoverstmp.loc[:, data_col].median(axis=0)))
         # print(len(sorted))
@@ -164,6 +165,8 @@ class xov:
 
         print("Mean, std of data:", xoverstmp.loc[:, data_col].mean(axis=0), xoverstmp.loc[:, data_col].std(axis=0))
         print("Median, std_med of data:", xoverstmp.loc[:, data_col].median(axis=0), std_median)
+        print("Len, rms", len(xoverstmp.loc[:, data_col]), rms(xoverstmp.loc[:, data_col].values))
+              
         if remove_bad:
             print(len(xoverstmp[abs(
                 xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) >= 3 * std_median]),
@@ -179,11 +182,13 @@ class xov:
         worse_tracks.columns = ['bad','total']
         worse_tracks['percent'] = (worse_tracks.bad/worse_tracks.total*100.).sort_values(ascending=False)
         print(worse_tracks[worse_tracks.percent>=50].sort_values(by='percent',ascending=False))
-
+              
         if remove_bad:
             xoverstmp = xoverstmp[
                 abs(xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) < 3 * std_median]
             # print(self.xovers)
+
+        print("Len, rms (post)", len(xoverstmp.loc[:, data_col]), rms(xoverstmp.loc[:, data_col].values))
 
         self.xovers = xoverstmp.copy()
 

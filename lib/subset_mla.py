@@ -24,7 +24,7 @@ def read_all_files(path):
 if __name__ == '__main__':
 
     local = 0
-    exp = "KX1r"
+    exp = "tp0"
     use_existing_sel =True
     ntracks = 500
 
@@ -70,14 +70,14 @@ if __name__ == '__main__':
     if local:
        obsfil = glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/"+exp+"/0res_1amp/*.TAB")
     else:
-       obsfil = glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/*res_*amp/*.TAB")
+       obsfil = glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/3res_20amp/*.TAB")
        # use if want to rename gtracks instead of data
        #obsfil = glob("/att/nobackup/sberton2/MLA/out/sim/"+exp+"/*res_*amp/gtrack_??/*.pkl")
       
-    selected = [s for s in obsfil for orb in orbs if orb in s]
+    selected = [s for s in obsfil for orb in orbs if orb[:-2] in s]
 
     print('total spk:',len(all_spk))
-    print('num selected: ',len(selected))
+    print('obs selected: ',len(selected))
 
     remove_these = list(set(obsfil)^set(selected))
     for rmf in remove_these:
@@ -85,4 +85,5 @@ if __name__ == '__main__':
             os.remove(rmf)
         else:
             shutil.move(rmf,rmf[:-3]+'BAK')
+#            pass
     exit()

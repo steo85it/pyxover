@@ -14,8 +14,8 @@ from pickleIO import load
 from prOpt import outdir
 
 def compare_sols():
-    listA = glob.glob(outdir+"sim/KX1r_2/0res_1amp/gtrack_13/gtrack_*pkl")
-    listB = glob.glob(outdir+"sim/KX1r_3/0res_1amp/gtrack_13/gtrack_*pkl")
+    listA = glob.glob(outdir+"sim/KX1r_7/0res_1amp/gtrack_13/gtrack_*pkl")
+    listB = glob.glob(outdir+"sim/KX1r_8/0res_1amp/gtrack_13/gtrack_*pkl")
 
     diffs = []
     for lA, lB in zip(listA, listB):

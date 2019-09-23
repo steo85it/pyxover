@@ -12,6 +12,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from util import mergsum, update_in_alist
+from lib.xovres2weights import run
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -140,11 +141,11 @@ def get_stats(xov_lst,resval,amplval):
 
             # remove data if xover distance from measurements larger than 5km (interpolation error)
             # plus remove outliers with median method
-            if remove_max_dist:
-                xov.xovers = xov.xovers[xov.xovers.dist_min_avg < 1]
-                print(len(xov.xovers[xov.xovers.dist_min_avg > 1]),
-                      'xovers removed by dist from obs > 1km')
-            if sim_altdata == 0:
+            if False and remove_max_dist:
+                xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
+                print(len(xov.xovers[xov.xovers.dist_max > 0.4]),
+                      'xovers removed by dist from obs > 0.4 km')
+            if False and sim_altdata == 0:
                 mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
 
             #print(xov.xovers[['dist_max','dist_avg','dist_minA','dist_minB','dist_min_avg','dR']])
@@ -212,12 +213,12 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov, xov_ref=''):
 
     # the histogram of the data
     num_bins = 'auto'
-    n, bins, patches = plt.hist(xov.dR, bins=num_bins, density=True, facecolor='blue', alpha=0.7) #, range=[-100,100])
+    n, bins, patches = plt.hist(xov.dR.astype(np.float), bins=num_bins, density=True, facecolor='blue', alpha=0.7) #, range=[-100,100])
     # add a 'best fit' line
     # y = stats.norm.pdf(bins, mean_dR, std_dR)
     # plt.plot(bins, y, 'b--')
     if isinstance(xov_ref, pd.DataFrame):
-        n, bins, patches = plt.hist(xov_ref.dR, bins=num_bins, density=True, facecolor='red',
+        n, bins, patches = plt.hist(xov_ref.dR.astype(np.float), bins=num_bins, density=True, facecolor='red',
                                     alpha=0.3)  # , range=[-100,100])
     plt.xlabel('dR (m)')
     plt.ylabel('Probability')
@@ -302,9 +303,9 @@ def clean_xov(xov, par_list=[]):
 
         if remove_max_dist:
             print(len(xov.xovers[xov.xovers.dist_max < 0.4]),
-              'xovers removed by dist from obs > 1km out of ', len(xov.xovers))
+              'xovers removed by dist from obs > 0.4km out of ', len(xov.xovers))
             xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
-            xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+            #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
     if sim_altdata == 0:
         mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
@@ -355,7 +356,7 @@ def solve(xovi_amat,dataset,previous_iter=None):
     from prOpt import par_constr, sol4_orb
 
     # Solve
-    sol4_glo = [None]
+    sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'] #,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -387,6 +388,25 @@ def solve(xovi_amat,dataset,previous_iter=None):
 
     A = spA_sol4.transpose()*spA_sol4
     b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
+
+    #set up observation weights (according to local roughness and dist of obs from xover point)
+    regbas_weights = run(xovi_amat.xov).reset_index()
+    # print(regbas_weights)
+
+    # take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
+    val = np.sqrt(1./np.abs(regbas_weights.rough_at_mindist.values))
+    # print(np.max(np.abs(val)))
+    # val /= np.max(np.abs(val))
+    row = col = regbas_weights.index.values
+
+    # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+
+    # Cholesky decomposition of diagonal matrix == square root of diagonal
+    L = obs_weights
+
+    # apply weights
+    spA_sol4 = L * spA_sol4
 
     # select constrains for processed parameters (TODO should go in sol4pars)
     mod_par = [your_key.split('_')[1] if len(your_key.split('_'))>1 else your_key for your_key in sol4_pars ]
@@ -422,12 +442,15 @@ def solve(xovi_amat,dataset,previous_iter=None):
     # Choleski decompose matrix and append to design matrix
     Q = np.linalg.cholesky(penalty_matrix.todense())
     if previous_iter != None:
-        b_penal = np.hstack([xovi_amat.b, np.zeros(len(sol4_pars))]) #np.ravel(np.dot(Q,previous_iter.sol[0]))])
+        b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))]) #np.ravel(np.dot(Q,previous_iter.sol[0]))])
     else:
-        b_penal = np.hstack([xovi_amat.b, np.zeros(len(sol4_pars))])
+        b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))])
     import scipy
     spA_sol4_penal = scipy.sparse.vstack([spA_sol4,csr_matrix(Q)])
-    xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,show=False,iter_lim=5000,atol=1.e-9,btol=1.e-9,calc_var=True)
+
+    print("Pre-sol: len(A,b)=",len(b_penal),spA_sol4_penal.shape)
+
+    xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,show=False,iter_lim=10000,atol=1.e-9,btol=1.e-9,calc_var=True)
     # print(xovi_amat.sol[0])
 
     # _ = lsmr(A+penalty_matrix,b.toarray(),show=False, maxiter=5000)
@@ -494,7 +517,7 @@ def analyze_sol(xovi_amat,xov):
         table = pd.pivot_table(df_, values=['sol','std'], index=['orb'], columns=['par'], aggfunc=np.sum)
     # print(table)
 
-        if any(xov.xovers.filter(like='dist', axis=1)):
+        if False and any(xov.xovers.filter(like='dist', axis=1)):
             xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
             tmp = xov.xovers.copy()
             tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
@@ -504,7 +527,7 @@ def analyze_sol(xovi_amat,xov):
 
             if remove_max_dist:
                 xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
-                xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+                #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
             _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
             table['num_obs'] = _
@@ -653,7 +676,7 @@ def main(arg):
         # append to list for stats
         xov_cmb_lst.append(xov_cmb)
 
-    print(len(xov_cmb_lst[0].xovers))
+    print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
 
     get_stats(xov_cmb_lst,resval,amplval)
 
