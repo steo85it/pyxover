@@ -13,28 +13,33 @@ import os
 import shutil
 
 import numpy as np
-from glob import glob
+import glob
 import pickle
 
+from prOpt import auxdir
+
+
 def read_all_files(path):
-   file_names = glob(path)
+   file_names = glob.glob(path)
 
    return file_names
 
 if __name__ == '__main__':
 
-    local = 0
-    exp = "tp0"
+    local = 1
+    exp = "tp2"
     use_existing_sel =True
-    ntracks = 500
+    ntracks = 200
 
     if local:
-       spk_path = '/home/sberton2/Works/NASA/Mercury_tides/aux/spaux_*.pkl'
-       rem_path = '/home/sberton2/Works/NASA/Mercury_tides/aux/subset_list.pkl'
+       spk_path = auxdir+'spaux_*.pkl'
+       # rem_path = '/home/sberton2/Works/NASA/Mercury_tides/aux/subset_list.pkl'
+       rem_path = auxdir+'bestROItracks200.pkl'
+
     else:
-       spk_path = '/att/nobackup/sberton2/MLA/aux/spaux_*.pkl'
+       spk_path = auxdir+'spaux_*.pkl'
        #rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
-       rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks.pkl'
+       rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks200.pkl'
 
     all_spk = read_all_files(spk_path)
 
@@ -47,9 +52,13 @@ if __name__ == '__main__':
         selected = all_spk
         with open (rem_path, 'rb') as fp:
             sel = pickle.load(fp)
+            sel = set(np.array(sel[0]).ravel())
+
             selected = []
             for f in sel:
-               selected.append('/att/nobackup/sberton2/MLA/aux/spaux_'+f+'.pkl')
+                _ = glob.glob(auxdir + 'spaux_' + f[:-2] + '*.pkl')
+                if len(_)>0:
+                    selected.append(_[0])
 
     print('selected spk: ',len(selected),' out of ',len(all_spk))
     remove_these = list(set(all_spk)^set(selected))
@@ -59,7 +68,8 @@ if __name__ == '__main__':
     for rmf in remove_these:
         # Probably no need to remove these, sufficient to rename
         if local:
-            os.remove(rmf)
+            # os.remove(rmf)
+            shutil.move(rmf,rmf[:-3]+'bak')
         else:
             shutil.move(rmf,rmf[:-3]+'bak')
 #            pass
@@ -68,9 +78,9 @@ if __name__ == '__main__':
     orbs = [f.split('_')[-1].split('.')[0] for f in selected]
 
     if local:
-       obsfil = glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/"+exp+"/0res_1amp/*.TAB")
+       obsfil = glob.glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/"+exp+"/3res_20amp/*.TAB")
     else:
-       obsfil = glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/3res_20amp/*.TAB")
+       obsfil = glob.glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/3res_20amp/*.TAB")
        # use if want to rename gtracks instead of data
        #obsfil = glob("/att/nobackup/sberton2/MLA/out/sim/"+exp+"/*res_*amp/gtrack_??/*.pkl")
       
@@ -82,7 +92,8 @@ if __name__ == '__main__':
     remove_these = list(set(obsfil)^set(selected))
     for rmf in remove_these:
         if local:
-            os.remove(rmf)
+            shutil.move(rmf, rmf[:-3] + 'BAK')
+            # os.remove(rmf)
         else:
             shutil.move(rmf,rmf[:-3]+'BAK')
 #            pass

@@ -119,16 +119,16 @@ def run(xov_):
     step = 10
     xov_.xovers['region'] = np.floor(xov_.xovers['region'].values / step) * step
     xov_.xovers['reg_rough_150'] = regrms_to_regrough(xov_.xovers['region'].values)
-    xov_.xovers['dist_min'] = xov_.xovers.filter(regex='dist_[A,B].*').min(axis=1).values
+    xov_.xovers['meters_dist_min'] = xov_.xovers.filter(regex='dist_[A,B].*').min(axis=1).values
     xov_.xovers['rough_at_mindist'] = roughness_at_baseline(xov_.xovers['reg_rough_150'].values,
-                                                            xov_.xovers['dist_min'].values)
+                                                            xov_.xovers['meters_dist_min'].values)
     # xov_.xovers['rough_at_max'] = roughness_at_baseline(xov_.xovers['reg_rough_150'].values,
     #                                                         xov_.xovers.filter(regex='dist_max').values)
 
-    regbas_weights = xov_.xovers[['region','reg_rough_150','dist_min','rough_at_mindist','dR']] #,
+    regbas_weights = xov_.xovers[['region','reg_rough_150','meters_dist_min','rough_at_mindist','dR']] #,
                        # 'rough_at_max','dR']])
     print(regbas_weights)
-    print(xov_.xovers[['region','reg_rough_150','dist_min','rough_at_mindist','dR']].corr()) #,
+    print(xov_.xovers[['region','reg_rough_150','meters_dist_min','rough_at_mindist','dR']].corr()) #,
                        # 'rough_at_max','dR']].corr())
 
 

@@ -43,7 +43,7 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
     PM = offsetPM + PM0
 
     upd_rotpar = {'ORIENT': '',
-                  'NUT_PREC_PM': (1 + offsetL) * rotpar['NUT_PREC_PM0'],
+                  'NUT_PREC_PM': rotpar['NUT_PREC_PM0'] + offsetL,
                   'NUT_PREC_ANGLES': rotpar['NUT_PREC_ANGLES0']
                   }
     #print("librations", rotpar['NUT_PREC_PM0'], offsetL * rotpar['NUT_PREC_PM0'])

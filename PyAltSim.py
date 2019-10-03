@@ -377,6 +377,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     if new_illumNG and True:
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
+        print("path+files")
         print(data_pth, epos_in)
         print(allFiles)
 

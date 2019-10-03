@@ -198,16 +198,19 @@ class gtrack:
         # only select the required data (column)
         self.df_input = df.copy()
         if (debug):
-            df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
+            df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
         else:
-            df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'chn', 'orbid', 'seqid']]
+            df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid']]
 
         #pd.set_option('display.max_columns', 500)
         #pd.set_option('display.max_rows', 500)
         df.chn = pd.to_numeric(df.chn, errors='coerce').fillna(8).astype(np.int64)
 
         # remove bad data (chn > 4)
+        # TODO: correct back to
         df = df[df['chn'] < 5]
+        # df = df[df['frm'] == 1]
+        df.drop('frm',axis=1,inplace=True)
         # to compare to Mike's selection (chn >= 5 only ... )
         # df = df[df['EphemerisTime']>415023259.3]
 
@@ -223,8 +226,10 @@ class gtrack:
         # print(df.index.is_unique)
 
         # Drop doublons from df, keeping the best chn for each observation
-        doublons = df.sort_values(['ET_TX','chn']).loc[df.round(3).duplicated(['ET_TX'],keep='first')].index
-        df.drop(doublons, inplace=True)
+        # doublons = df.sort_values(['ET_TX','chn']).loc[df.round(3).duplicated(['ET_TX'],keep='first')].index
+        # df.drop(doublons, inplace=True)
+        df['doublons'] = df.sort_values(['ET_TX', 'chn']).duplicated(['ET_TX'])
+        df = df.loc[df.doublons == False].drop('doublons', axis=1)
         df = df.reset_index(drop=True)
 
         # Convert TOF to seconds
@@ -482,6 +487,7 @@ class gtrack:
 
         if debug:
             print("print ladata_df")
+            ladata_df['ET_TX'] = ladata_df['ET_TX'].astype('int64')
             print(ladata_df)
             exit()
 
@@ -524,7 +530,7 @@ class gtrack:
             corr_glo.update(tmp)
 
             # combine synth perturbations to corrections from previous
-            corr_glo = dict((key, -1. * values)
+            corr_glo = dict((key, values)
                     for key, values in corr_glo.items())
             tmp_pertcloop = mergsum(tmp_pertcloop, corr_glo)
 
@@ -582,6 +588,18 @@ class gtrack:
             geoloc_min, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
             partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
 
+            ####################################################################################
+            if debug:
+                print("Store perturbed tracks")
+                cols = [x+self.vecopts['PARTDER'] for x in ['LON_p_','LAT_p_','R_p_']]
+                print(geoloc_out[:, 0:3])
+                tmp_df = pd.concat([tmp_df,pd.DataFrame(geoloc_out[:, 0:3],columns=cols)],axis=1)
+                cols = [x+self.vecopts['PARTDER'] for x in ['LON_m_','LAT_m_','R_m_']]
+                print(geoloc_min[:, 0:3])
+                tmp_df = pd.concat([tmp_df,pd.DataFrame(geoloc_min[:, 0:3],columns=cols)],axis=1)
+            ####################################################################################
+            # exit()
+
             tmp_df.loc[:,'ET_BC_'+self.vecopts['PARTDER']] = et_bc
             #print(self.ladata_df)
             #exit()
@@ -592,9 +610,10 @@ class gtrack:
                 partder /= (2. * diff_step)  # [0]
             elif self.vecopts['PARTDER'] in ('dL'):
                 # print('partder dL pre', partder)
-                # print('diff step', 2. * diff_step, (2. * diff_step * 0.00993822))
-                partder /= (2. * diff_step * 0.00993822) # * 'NUT_PREC_PM0'[0]
+                # print('diff step', 2. * diff_step)
+                partder /= (2. * diff_step) # * 'NUT_PREC_PM0'[0]
                 # print('partder dL', partder)
+                # exit()
             else:
                 # print('norm_pert', np.linalg.norm(diff_step))
                 partder /= 2. * np.linalg.norm(diff_step)  # [1]
@@ -659,6 +678,14 @@ class gtrack:
 
         startProj = time.time()
 
+        #     # TODO Remove if not needed (NOT GOOD IF ESTIMATING h2)
+        #     self.ladata_df['R_m_dh2'] = ladata_df[['R_m_dL']].values
+        #     self.ladata_df['LON_m_dh2'] = ladata_df[['LON_m_dL']].values
+        #     self.ladata_df['LAT_m_dh2'] = ladata_df[['LAT_m_dL']].values
+        #     self.ladata_df['R_p_dh2'] = ladata_df[['R_p_dL']].values
+        #     self.ladata_df['LON_p_dh2'] = ladata_df[['LON_p_dL']].values
+        #     self.ladata_df['LAT_p_dh2'] = ladata_df[['LAT_p_dL']].values
+
         if (parallel and False):  # not convenient for small datasets (<5 orbits)
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count() - 1)
@@ -701,11 +728,13 @@ class gtrack:
         ladata_df = self.ladata_df
         vecopts = self.vecopts
 
-        #print('proj: ' + str(par_d))
+        if debug:
+            print('proj: ' + str(par_d))
 
         # get dict values
         par = list(par_d)[0]
-        diff_step = np.linalg.norm(list(par_d)[1])
+        if par is not '':
+            diff_step = np.linalg.norm(list(par_d)[1])
 
         # setting up as 2D arrays to be able to access np.shape(lon_tmp)[0]
         # in the case par='' (no partial derivative)
@@ -713,13 +742,16 @@ class gtrack:
         lat_tmp = [ladata_df['LAT'].values]
 
         # Apply position correction
-        if (par is not ''):
+        if par is not '':
             lon_tmp = [lon_tmp[:][0] + ladata_df['dLON/' + par].values * k * diff_step for k in [-1, 1]]
             lat_tmp = [lat_tmp[:][0] + ladata_df['dLAT/' + par].values * k * diff_step for k in [-1, 1]]
+            # lon_tmp = [ladata_df['LON_' + k + '_' + par].values for k in ['m', 'p']]
+            # lat_tmp = [ladata_df['LAT_' + k + '_' + par].values for k in ['m', 'p']]
 
             if (debug):
-                print('corr: lon lat', lon_tmp[:][0], lat_tmp[:][0])
-                print('corr: partials add', ladata_df['dLAT/' + par].values * diff_step, ladata_df['dLON/' + par].values * diff_step)
+                print('corr: diff_step', diff_step)
+                print('corr: lon lat', lon_tmp[:][:], lat_tmp[:][:])
+                print('corr: partials add (lon, lat)', ladata_df['dLON/' + par].values * diff_step, ladata_df['dLAT/' + par].values * diff_step)
 
         # project latlon to xy from North Pole in stereo projection
         proj = np.vstack([project_stereographic(lon_tmp[:][k], lat_tmp[:][k], lon0, lat0, vecopts['PLANETRADIUS']) for k in
