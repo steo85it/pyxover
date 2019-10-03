@@ -17,9 +17,8 @@ from scipy.interpolate import RectBivariateSpline
 
 import pickleIO
 #from eval_sol import rmse#, draw_map
-from prOpt import tmpdir, auxdir
+from prOpt import tmpdir, auxdir, local
 from xov_setup import xov
-
 
 def run(xov_):
     # vecopts = {}
@@ -111,24 +110,25 @@ def run(xov_):
 
     print(ev)
 
-    #fig, ax1 = plt.subplots(nrows=1)
-    #ax1.imshow(ev,origin='lower',vmin=20,vmax=60,cmap="RdBu")
-    #fig.savefig(auxdir+'test_interp_KX1.png')
+    if local:
+        fig, ax1 = plt.subplots(nrows=1)
+        ax1.imshow(ev,origin='lower',vmin=20,vmax=60,cmap="RdBu")
+        fig.savefig(auxdir+'test_interp_KX1.png')
 
     xov_.xovers['region'] = get_demz_at(interp_spline,xov_.xovers['LAT'].values,xov_.xovers['LON'].values)
     step = 10
     xov_.xovers['region'] = np.floor(xov_.xovers['region'].values / step) * step
     xov_.xovers['reg_rough_150'] = regrms_to_regrough(xov_.xovers['region'].values)
-    xov_.xovers['dist_min'] = xov_.xovers.filter(regex='dist_[A,B].*').min(axis=1).values
+    xov_.xovers['meters_dist_min'] = xov_.xovers.filter(regex='dist_[A,B].*').min(axis=1).values
     xov_.xovers['rough_at_mindist'] = roughness_at_baseline(xov_.xovers['reg_rough_150'].values,
-                                                            xov_.xovers['dist_min'].values)
+                                                            xov_.xovers['meters_dist_min'].values)
     # xov_.xovers['rough_at_max'] = roughness_at_baseline(xov_.xovers['reg_rough_150'].values,
     #                                                         xov_.xovers.filter(regex='dist_max').values)
 
-    regbas_weights = xov_.xovers[['region','reg_rough_150','dist_min','rough_at_mindist','dR']] #,
+    regbas_weights = xov_.xovers[['region','reg_rough_150','meters_dist_min','rough_at_mindist','dR']] #,
                        # 'rough_at_max','dR']])
     print(regbas_weights)
-    print(xov_.xovers[['region','reg_rough_150','dist_min','rough_at_mindist','dR']].corr()) #,
+    print(xov_.xovers[['region','reg_rough_150','meters_dist_min','rough_at_mindist','dR']].corr()) #,
                        # 'rough_at_max','dR']].corr())
 
 

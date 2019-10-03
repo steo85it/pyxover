@@ -34,7 +34,7 @@ from scipy.sparse.linalg import lsqr, lsmr
 # mylib
 # from mapcount import mapcount
 from prOpt import debug, outdir, tmpdir, local, sim_altdata, parOrb, parGlo, partials, sol4_glo, sol4_orb, sol4_orbpar, \
-    mean_constr
+    mean_constr, pert_cloop
 from xov_setup import xov
 from Amat import Amat
 
@@ -133,19 +133,22 @@ def get_stats(xov_lst,resval,amplval):
         #print(idx, xov)
 
         if len(xov.xovers)>0:
-            xov.xovers['dist_avg'] = xov.xovers.filter(regex='^dist_.*$').mean(axis=1)
-            xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+            xov.xovers['dist_avg'] = xov.xovers.filter(regex='^dist_[A,B].*$').mean(axis=1)
+            xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
             xov.xovers['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
             xov.xovers['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
             xov.xovers['dist_min_avg'] = xov.xovers.filter(regex='^dist_min.*$').mean(axis=1)
 
             # remove data if xover distance from measurements larger than 5km (interpolation error)
             # plus remove outliers with median method
-            if False and remove_max_dist:
-                xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
+            if remove_max_dist:
+                print(xov.xovers.filter(regex='^dist_.*$'))
                 print(len(xov.xovers[xov.xovers.dist_max > 0.4]),
-                      'xovers removed by dist from obs > 0.4 km')
-            if False and sim_altdata == 0:
+                      'xovers removed by dist from obs > 0.4 km out of ',
+                      len(xov.xovers),", or ",
+                      len(xov.xovers[xov.xovers.dist_max > 0.4])/len(xov.xovers)*100.,'%')
+                xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
+            if sim_altdata == 0:
                 mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
 
             #print(xov.xovers[['dist_max','dist_avg','dist_minA','dist_minB','dist_min_avg','dR']])
@@ -187,7 +190,7 @@ def get_stats(xov_lst,resval,amplval):
 
     #print(len(resval),len(amplval),len(dR_RMS))
     df_ = pd.DataFrame(list(zip(resval,amplval,dR_RMS)), columns=['res','ampl','RMS'])
-    #print(df_)
+    print("Total RMS: ", df_.RMS.values)
     # create pivot table, days will be columns, hours will be rows
     piv = pd.pivot_table(df_, values="RMS",index=["ampl"], columns=["res"], fill_value=0)
     #plot pivot table as heatmap using seaborn
@@ -213,7 +216,7 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov, xov_ref=''):
 
     # the histogram of the data
     num_bins = 'auto'
-    n, bins, patches = plt.hist(xov.dR.astype(np.float), bins=num_bins, density=True, facecolor='blue', alpha=0.7) #, range=[-100,100])
+    n, bins, patches = plt.hist(xov.dR.astype(np.float), bins=num_bins, density=True, facecolor='blue', alpha=0.7, range=[-200,200])
     # add a 'best fit' line
     # y = stats.norm.pdf(bins, mean_dR, std_dR)
     # plt.plot(bins, y, 'b--')
@@ -270,7 +273,7 @@ def prepare_Amat(xov, vecopts, par_list=''):
     if par_list == '':
         par_list = xov.xovers.columns.filter(regex='^dR.*$')
     df_orig = xov.xovers[par_list]
-    df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore', downcast='float')
+    df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore') #, downcast='float')
     xov.xovers = pd.concat([df_orig, df_float], axis=1)
     xov.xovers.info(memory_usage='deep')
     if debug:
@@ -292,12 +295,12 @@ def clean_xov(xov, par_list=[]):
 
     # print(tmp[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
 
-    if xov.xovers.filter(regex='^dist_.*$').empty == False:
-        xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+    if xov.xovers.filter(regex='^dist_[A,B].*$').empty == False:
+        xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
 
         tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
         tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
-        tmp['dist_min_mean'] = tmp.filter(regex='^dist_min.*$').mean(axis=1)
+        tmp['dist_min_mean'] = tmp.filter(regex='^dist_min[A,B].*$').mean(axis=1)
         xov.xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
         analyze_dist_vs_dR(xov)
 
@@ -351,12 +354,13 @@ def analyze_dist_vs_dR(xov):
 
     print("corrs", tmp[['dist_min_mean', 'dist_max', 'abs_dR']].corr()) #(method='spearman','kendall'))
 
-def solve(xovi_amat,dataset,previous_iter=None):
+def solve(xovi_amat,dataset, previous_iter=None):
     from scipy.sparse import csr_matrix
-    from prOpt import par_constr, sol4_orb
+    from prOpt import par_constr, sol4_orb, sol4_glo
 
     # Solve
-    sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'] #,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
+    if not local:
+        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'] #,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -376,18 +380,62 @@ def solve(xovi_amat,dataset,previous_iter=None):
 
     print("sol4pars:", np.array(sol4_pars))
 
-    if debug and len(sol4_pars)<50:
+    if len(sol4_pars)<50 and debug:
+
+        seuil_dRdL = 1.e6
         print('dense A', spA_sol4.todense())
         print('B', xovi_amat.b)
-        print('max B', xovi_amat.b.max(),xovi_amat.b.mean())
+        print('maxB', np.abs(xovi_amat.b).max(),np.abs(xovi_amat.b).mean())
+        print('maxA',np.abs(spA_sol4.todense()).max(),
+              np.shape(spA_sol4.todense()[np.abs(spA_sol4.todense())>seuil_dRdL]),
+              np.shape(spA_sol4.todense()))
+        # print("values", spA_sol4.todense()[np.abs(spA_sol4.todense())>seuil_dRdL])
+        # print("Their indices are ", len(np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]), np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0])
+        # print("Their values are ", spA_sol4.todense()[np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]].T)
+        # print("Their values are ", xovi_amat.b[np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]].T)
+        exclude = np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]
+        spAdense = np.delete(spA_sol4.todense(), exclude, 0)
+        bvec = np.delete(xovi_amat.b, exclude, 0)
+        #
+        # keep = list(set(spA_sol4.nonzero()[0].tolist())^set(exclude))
+        # spA_sol4 = spA_sol4[keep,:]
+        # xovi_amat.b = bvec
+        # print("The new values are ", spAdense)
+        # print("The new values are ", bvec)
+        # exit()
+        # spAdense = spA_sol4.todense()
+        # spAdense[np.abs(spAdense) > 200] = 1
+
+        plt.clf()
+        fig, ax = plt.subplots()
+        # ax.plot(spA_sol4.todense()<2000)
+        ax.plot(spAdense, label=[xovi_amat.parNames[p] for p in sol4_pars])
+        ax.legend()
+        ax.plot(bvec)
+        plt.savefig(tmpdir+'b_and_A.png')
 
         # Compute the covariance matrix
-        print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
+        print("full sparse",np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
+        print("screened dense", np.linalg.pinv(spAdense.transpose()*spAdense))
         # compute sol
-        print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
 
-    A = spA_sol4.transpose()*spA_sol4
-    b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
+        # factorL = np.linalg.norm([0.00993822, \
+        #             -0.00104581, \
+        #             -0.00010280, \
+        #             -0.00002364, \
+        #             -0.00000532])
+        print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
+        print('to_be_recovered', -0.5*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]))
+
+        # exit()
+
+    # # Compute the covariance matrix
+    # print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
+    # # compute sol
+    # print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
+    #
+    # A = spA_sol4.transpose()*spA_sol4
+    # b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
 
     #set up observation weights (according to local roughness and dist of obs from xover point)
     regbas_weights = run(xovi_amat.xov).reset_index()
@@ -400,7 +448,7 @@ def solve(xovi_amat,dataset,previous_iter=None):
     row = col = regbas_weights.index.values
 
     obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
-    #obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
 
     # Cholesky decomposition of diagonal matrix == square root of diagonal
     L = obs_weights
@@ -448,15 +496,54 @@ def solve(xovi_amat,dataset,previous_iter=None):
     import scipy
     spA_sol4_penal = scipy.sparse.vstack([spA_sol4,csr_matrix(Q)])
 
-    print("Pre-sol: len(A,b)=",len(b_penal),spA_sol4_penal.shape)
+    # print("Pre-sol: len(A,b)=",len(b_penal),spA_sol4_penal.shape)
+    print([xovi_amat.parNames[p] for p in sol4_pars])
+
+    b_penal, spA_sol4_penal = clean_partials(b_penal, spA_sol4_penal, threshold = 1.e6)
+    # exit()
+    # print("Pre-sol-2: len(A,b)=",spA_sol4_penal.shape,len(b_penal))
 
     xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,show=False,iter_lim=10000,atol=1.e-9,btol=1.e-9,calc_var=True)
-    # print(xovi_amat.sol[0])
+    # print("sol sparse: ",xovi_amat.sol[0])
+
+    # exit()
 
     # _ = lsmr(A+penalty_matrix,b.toarray(),show=False, maxiter=5000)
     # # print(np.diag(np.linalg.pinv(((A+penalty_matrix).transpose() * (A+penalty_matrix)).todense())))
     # # print(xovi_amat.sol)
     # xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
+
+def clean_partials(b, spA, threshold = 1.e6):
+
+    if debug:
+        print("## clean_partials - size pre:",len(b), spA.shape)
+
+    # print(sol4_glo)
+    # print(len(sol4_glo))
+    # print(spA[:,2].data)
+
+    for i in range(len(sol4_glo)):
+        data = spA[:,-i-1].data
+        median_residuals = abs(data - np.median(data,axis=0))
+        sorted = np.sort(median_residuals)
+        std_median = sorted[round(0.68 * len(sorted))]
+
+        exclude = np.argwhere(median_residuals >= 4 * std_median).T[0]
+        keep = list(set(spA.nonzero()[0].tolist()) ^ set(exclude))
+
+        # print(exclude)
+        # print(keep)
+        # print("bad= ", i, 4 * std_median, len(median_residuals), len(exclude), len(keep), len(exclude)/len(median_residuals)*100.,"% ")
+        print("## clean_partials removed ", i, np.round((len(b)-len(keep))/len(b)*100.,2), "% observations")
+
+        b = b[keep]
+        spA = spA[keep, :]
+
+    if debug:
+        print("## clean_partials - size post:",spA.shape, len(exclude), len(keep))
+
+    return b, spA
+
 
 def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
@@ -494,7 +581,7 @@ def analyze_sol(xovi_amat,xov):
 
     print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
                               len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
-    
+
     _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)),
                    np.reshape(xovi_amat.sol[-1], (-1, 1))))
     sol_dict = {'sol': dict(zip(_[:,0],_[:,1].astype(float))), 'std': dict(zip(_[:,0],_[:,2].astype(float))) }
@@ -517,8 +604,8 @@ def analyze_sol(xovi_amat,xov):
         table = pd.pivot_table(df_, values=['sol','std'], index=['orb'], columns=['par'], aggfunc=np.sum)
     # print(table)
 
-        if False and any(xov.xovers.filter(like='dist', axis=1)):
-            xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_.*$').max(axis=1)
+        if any(xov.xovers.filter(like='dist', axis=1)):
+            xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
             tmp = xov.xovers.copy()
             tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
             tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
@@ -546,6 +633,9 @@ def analyze_sol(xovi_amat,xov):
             table = pd.merge(table.reset_index(),merged_Frame,on='orb')
 
         orb_sol = table
+        if debug:
+            print(orb_sol)
+        # exit()
 
     else:
         orb_sol = pd.DataFrame()
@@ -582,7 +672,9 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
     print(glb_sol)
     print('-- -- -- -- ')
 
-    if debug:
+    print('to_be_recovered (sim mode)', pert_cloop['glo'])
+
+    if debug and False:
         _ = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
         print(xov.xovers.columns)
         print(xov.xovers.loc[xov.xovers.orbA == '1301022345'])
@@ -638,7 +730,8 @@ def main(arg):
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
             xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
-            solve(xovi_amat, ds, previous_iter)
+
+            solve(xovi_amat, dataset=ds, previous_iter=previous_iter)
 
             # Save to pkl
             orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat,xov_cmb)
@@ -687,6 +780,9 @@ def main(arg):
     endT = time.time()
     print('----- Runtime Amat = ' + str(endT - startT) + ' sec -----' + str(
         (endT - startT) / 60.) + ' min -----')
+
+    print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
+
 
 if __name__ == '__main__':
 

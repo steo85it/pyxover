@@ -303,7 +303,6 @@ if __name__ == '__main__':
 
     args = sys.argv[1:]
     print(args)
-    exit()
     main(args)
 
     # stop clock and print runtime

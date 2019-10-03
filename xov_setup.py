@@ -25,7 +25,7 @@ import subprocess
 # from mapcount import mapcount
 from unproject_coord import unproject_stereographic
 from intersection import intersection
-from prOpt import debug, partials, OrbRep, parGlo, parOrb
+from prOpt import debug, partials, OrbRep, parGlo, parOrb, tmpdir, auxdir
 from util import lflatten, rms
 
 
@@ -156,43 +156,46 @@ class xov:
         total_occ_tracks = pd.DataFrame([xoverstmp['orbA'].value_counts(),xoverstmp['orbB'].value_counts()]).T.fillna(0).sum(axis=1).sort_values(ascending=False)
 
         orig_len = len(xoverstmp)
-        print("orig_len", orig_len)
+
+        # print("orig_len", orig_len)
         # print(self.xovers.loc[:,data_col].median(axis=0))
         sorted = np.sort(abs(xoverstmp.loc[:, data_col].values - xoverstmp.loc[:, data_col].median(axis=0)))
         # print(len(sorted))
         std_median = sorted[round(0.68 * len(sorted))]
         # sorted = sorted[sorted<3*std_median]
 
-        print("Mean, std of data:", xoverstmp.loc[:, data_col].mean(axis=0), xoverstmp.loc[:, data_col].std(axis=0))
-        print("Median, std_med of data:", xoverstmp.loc[:, data_col].median(axis=0), std_median)
-        print("Len, rms", len(xoverstmp.loc[:, data_col]), rms(xoverstmp.loc[:, data_col].values))
-              
+        # print("Mean, std of data:", xoverstmp.loc[:, data_col].mean(axis=0), xoverstmp.loc[:, data_col].std(axis=0))
+        # print("Median, std_med of data:", xoverstmp.loc[:, data_col].median(axis=0), std_median)
+        # print("Len, rms", len(xoverstmp.loc[:, data_col]), rms(xoverstmp.loc[:, data_col].values))
+
+        bad_xov = xoverstmp[
+            abs(xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) >= 3 * std_median]
+
+        # print(bad_xov['orbA'].value_counts().sort_values())
+        # print(bad_xov['orbB'].value_counts().sort_values())
+        worst_tracks = pd.DataFrame([bad_xov['orbA'].value_counts(),bad_xov['orbB'].value_counts()]).T.fillna(0).sum(axis=1).sort_values(ascending=False)
+        worst_tracks = pd.concat([worst_tracks,total_occ_tracks],axis=1).fillna(0)
+        worst_tracks.columns = ['bad','total']
+        worst_tracks['percent'] = (worst_tracks.bad/worst_tracks.total*100.).sort_values(ascending=False)
+
+        worst_tracks = worst_tracks[worst_tracks.percent>=50].sort_values(by='percent',ascending=False)
+        if len(worst_tracks)>0:
+            print("worst tracks:")
+            print(worst_tracks)
+
         if remove_bad:
             print(len(xoverstmp[abs(
                 xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) >= 3 * std_median]),
                   "xovers removed out of", orig_len)
 
-        bad_xov = xoverstmp[
-            abs(xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) >= 3 * std_median]
-        print("worst tracks:")
-        # print(bad_xov['orbA'].value_counts().sort_values())
-        # print(bad_xov['orbB'].value_counts().sort_values())
-        worse_tracks = pd.DataFrame([bad_xov['orbA'].value_counts(),bad_xov['orbB'].value_counts()]).T.fillna(0).sum(axis=1).sort_values(ascending=False)
-        worse_tracks = pd.concat([worse_tracks,total_occ_tracks],axis=1).fillna(0)
-        worse_tracks.columns = ['bad','total']
-        worse_tracks['percent'] = (worse_tracks.bad/worse_tracks.total*100.).sort_values(ascending=False)
-        print(worse_tracks[worse_tracks.percent>=50].sort_values(by='percent',ascending=False))
-              
-        if remove_bad:
             xoverstmp = xoverstmp[
                 abs(xoverstmp.loc[:, data_col] - xoverstmp.loc[:, data_col].median(axis=0)) < 3 * std_median]
             # print(self.xovers)
 
-        print("Len, rms (post)", len(xoverstmp.loc[:, data_col]), rms(xoverstmp.loc[:, data_col].values))
-
+        # print("Len, rms (post)", len(xoverstmp.loc[:, data_col]), rms(xoverstmp.loc[:, data_col].values))
         self.xovers = xoverstmp.copy()
 
-        return self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0), worse_tracks[worse_tracks.percent>=50].index
+        return self.xovers.loc[:, data_col].mean(axis=0), self.xovers.loc[:, data_col].std(axis=0), worst_tracks[worst_tracks.percent>=50].index
 
     # Compute elevation R at crossover points by interpolation
     # (should be put in a function and looped over -
@@ -227,23 +230,42 @@ class xov:
 
         # Apply elevation correction (if computing partial derivative)
         if (bool(re.search('_?A$', par)) or bool(re.search('_[p,m]$', par))):  # is not ''):
+
+            if debug:
+                print(par.partition('_')[0], ind_A_int)
+                print(ladata_df.columns)
+                print(ladata_df.filter(
+                    regex='^dR/' + par.partition('_')[0] + '$').columns)
+
             ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][np.hstack(['ET_BC', 'R', 'genID', ladata_df.filter(
                 regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
-            # print(xyintA[0][1])
+
+            if debug:
+                print("xyintA", ladata_df.loc[ladata_df['orbID'] == arg[0]][np.hstack(['ET_BC', 'R', 'genID', ladata_df.filter(
+                    regex='^dR/' + par.partition('_')[0] + '$').columns.values])])
+                print([ladata_df.loc[ladata_df['orbID'] == arg[0]][np.hstack(['ET_BC', 'R', 'genID', ladata_df.filter(
+                    regex='^dR/' + par.partition('_')[0] + '$').columns.values])].loc[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])] for k in ind_A_int])
             # exit()
             t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
 
             # print(xyintA[0][1], xyintA[0][2])
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
 
-            # TODO extend beyond first xov in list
-            # print(param[par.partition('_')[0]], diff_step)
-            if (bool(re.search('_pA?$', par))):
-                xyintA[0][1] += xyintA[0][3] * diff_step
-            elif (bool(re.search('_mA?$', par))):
-                xyintA[0][1] -= xyintA[0][3] * diff_step
-            # print(xyintA[0][1])
+            for k in range(len(ind_A_int)):
+
+                if debug:
+                    print("check elevpart", k, param[par.partition('_')[0]], diff_step, xyintA[k][1], xyintA[k][3] * diff_step)
+
+                if (bool(re.search('_pA?$', par))):
+                    xyintA[k][1] += xyintA[k][3] * diff_step
+                    # print(par, k, xyintA[k][1])
+                elif (bool(re.search('_mA?$', par))):
+                    xyintA[k][1] -= xyintA[k][3] * diff_step
+                    # print(par, k, xyintA[k][1])
+
+            # exit()
+
         else:
 
             ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['ET_BC', 'R', 'genID']].values
@@ -251,8 +273,8 @@ class xov:
             t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
 
         fA_interp = [interpolate.interp1d(t_ldA[k], xyintA[k][1], kind='cubic') for k in range(0, len(ind_A_int))]
-
         tA_interp = [interpolate.interp1d(xyintA[k][2], t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
+
         R_A = [fA_interp[k](tA_interp[k](ind_A.item(k))) for k in range(0, ind_A.size)]
 
         if debug and False:
@@ -286,15 +308,21 @@ class xov:
                       k in ind_B_int]
             t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_), 0] for k in range(0, len(ind_B_int))]
 
-            # TODO extend beyond first xov in list
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
             # print('xyintB',self.tracks)
             # print(len(xyintB))
             # print(len(xyintB[0]))
-            if (bool(re.search('_pB?$', par))):
-                xyintB[0][1] += xyintB[0][3] * diff_step
-            elif (bool(re.search('_mB?$', par))):
-                xyintB[0][1] -= xyintB[0][3] * diff_step
+
+            for k in range(len(ind_A_int)):
+
+                if debug:
+                    print("check elevpart", param[par.partition('_')[0]], diff_step, xyintA[k][3] * diff_step)
+
+                if (bool(re.search('_pB?$', par))):
+                    xyintB[k][1] += xyintB[k][3] * diff_step
+                elif (bool(re.search('_mB?$', par))):
+                    xyintB[k][1] -= xyintB[k][3] * diff_step
+
         else:
             ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['ET_BC', 'R', 'genID']].values
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
@@ -317,12 +345,13 @@ class xov:
             print('dR',arg,[a-b for a in R_A for b in R_B])
 
         # if np.abs([a-b for a in R_A for b in R_B])>50:
-        #     exit(2)
+            exit()
 
-        if debug and len(ind_B_int) == 1 and False:
+        if debug and len(ind_B_int) == 1: # and False:
             self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0],
                                ladata_df, ldA_, ldB_,
-                               tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0])
+                               tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0], param=par)
+        # exit()
 
         # xyintA = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ladata_df.shape[0])].T for k in ind_B_int]
         # f_interp = [interpolate.interp1d(xyintA[k][0], xyintA[k][1], kind='linear') for k in range(0, len(ind_B_int))]
@@ -362,53 +391,67 @@ class xov:
             print(xyintA[0][0], np.array(xyintA[0][0]))
             print(ldA_)
             plt.plot(xyintA[0][0], xyintA[0][1], 'o', xyintA[0][0], fA_interp[0](xyintA[0][0]), '-')
-            plt.savefig('tmp/test_cub.png')
+            plt.savefig(tmpdir+'test_cub.png')
             plt.clf()
             plt.close()
         # exit()
 
+        if debug:
+            print("Get elevation diff")
+            print(ind_A, ind_B, R_A, R_B)
+            # exit()
+
         return ind_A, ind_B, R_A, R_B
 
     def plot_xov_elev(self, arg, fA_interp, fB_interp, ind_A, ind_A_int, ind_B, ind_B_int, ladata_df, ldA_, ldB_,
-                      tA_interp, tB_interp, t_ldA, t_ldB):
+                      tA_interp, tB_interp, t_ldA, t_ldB,param=''):
 
+        print("plot_xov_elev START")
         print(t_ldA[0], t_ldA[len(t_ldA) - 1])
 
         tf_ldA = np.arange(t_ldA[0], t_ldA[len(t_ldA) - 1], 0.01)
         ldA_interp = fA_interp(tf_ldA)
         _ = np.squeeze(ind_A_int)
-        plt.plot(t_ldA, ldA_[:, 1], 'o', tf_ldA, ldA_interp, '-')
-        plt.plot(tA_interp(ind_A), fA_interp(tA_interp(ind_A)), '*k')
+        print(len(t_ldA),len(ldA_[:, 1]))
+        print(t_ldA)
+        print(ldA_[:, 1])
+        # plt.plot(t_ldA, ldA_[:, 1], 'o')
+        plt.plot(tf_ldA, ldA_interp, '-')
+        plt.plot(tA_interp(ind_A), fA_interp(tA_interp(ind_A)), '*r')
         tf_ldB = np.arange(t_ldB[0], t_ldB[len(t_ldB) - 1], 0.01)
         ldB_interp = fB_interp(tf_ldB)
         _ = np.squeeze(ind_B_int - len(ldA_))
-        plt.plot(t_ldB, ldB_[:, 1], 'o', tf_ldB, ldB_interp, '-')
+        # plt.plot(t_ldB, ldB_[:, 1], 'o')
+        plt.plot(tf_ldB, ldB_interp, '-')
         plt.plot(tB_interp(ind_B), fB_interp(tB_interp(ind_B)), '*k')
-        xyproj = ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj', 'Y_stgprj']].values
-        tck, u = interpolate.splprep([xyproj[:, 0],
-                                      xyproj[:, 1]]
-                                     , s=0.0)
-        x_i, y_i = interpolate.splev(np.linspace(0, 1, (len(t_ldB) - 1) * 10), tck)
-        lontmp, lattmp = unproject_stereographic(x_i, y_i, 0, 90, 2440)
-        ttmp = np.linspace(t_ldB[0], t_ldB[len(t_ldB) - 1], (len(t_ldB) - 1) * 10)
-        np.savetxt('tmp/gmt.in', list(zip(lontmp, lattmp)))
-        # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
-        r_dem = subprocess.check_output(
-            ['grdtrack', 'gmt.in', '-GMSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
-            universal_newlines=True, cwd='tmp')
-        r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-        # texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
-        # update Rmerc with r_dem/text
-        radius = r_dem  # + texture_noise
-        # print(list(zip(t_ldB, radius)))
-        plt.plot(ttmp, radius, 'x-')
-        # exit()
-        plt.xlim([t_ldB[_ - 3], t_ldB[_ + 3]])
-        plt.savefig('tmp/test_elev_prof.png')
+        # xyproj = ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj', 'Y_stgprj']].values
+        # tck, u = interpolate.splprep([xyproj[:, 0],
+        #                               xyproj[:, 1]]
+        #                              , s=0.0)
+        # x_i, y_i = interpolate.splev(np.linspace(0, 1, (len(t_ldB) - 1) * 10), tck)
+        # lontmp, lattmp = unproject_stereographic(x_i, y_i, 0, 90, 2440)
+        # ttmp = np.linspace(t_ldB[0], t_ldB[len(t_ldB) - 1], (len(t_ldB) - 1) * 10)
+        # np.savetxt('tmp/gmt.in', list(zip(lontmp, lattmp)))
+        # # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
+        # r_dem = subprocess.check_output(
+        #     ['grdtrack', 'gmt.in', '-G'+auxdir+'HDEM_64.GRD'], #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD'],
+        #     universal_newlines=True, cwd='tmp')
+        # r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+        # # texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
+        # # update Rmerc with r_dem/text
+        # radius = r_dem  # + texture_noise
+        # # print(list(zip(t_ldB, radius)))
+        # # plt.plot(ttmp, radius, 'x-')
+        # # exit()
+        print(t_ldB)
+        # plt.xlim([t_ldB[_], t_ldB[_]])
+        plt.xlim([-0.5,0.5])
+        plt.ylim([fB_interp(tB_interp(ind_B))-100,fB_interp(tB_interp(ind_B))+100])
+        plt.savefig('tmp/test_elev_prof_'+self.tracks[0]+'_'+self.tracks[1]+'_'+param+'.png')
         plt.clf()
         plt.close()
         print(self.tracks)
-        exit()
+        # exit()
 
     def get_xOver_fine(self, rough_indA, rough_indB, param):
         """
@@ -456,10 +499,62 @@ class xov:
                 Y_stgB = Y_stgB + '_' + param
 
         if (debug):
+            print("Check parts X_stg")
             print(X_stgA, \
                   Y_stgA, \
                   X_stgB, \
                   Y_stgB)
+
+            pd.set_option('display.max_columns', 500)
+            df = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]]
+            print(df)
+            # exit()
+
+        # fig, ax1 = plt.subplots(nrows=1)
+        # df[['LON', 'LAT']].plot(x='LON',y=['LAT'], ax=ax1)
+        #
+        # par = 'dL'
+        # diff_step = 1.e-2*0.00999
+        # df.loc[:,'LON_Lp'] = [df['LON'] + df['dLON/' + par].values * k * diff_step for k in [-1, 1]][1]
+        # df.loc[:,'LAT_Lp'] = [df['LAT'] + df['dLAT/' + par].values * k * diff_step for k in [-1, 1]][1]
+        # # ax1.set_ylim(-30,30)
+        # df.loc[:,'LON_Lm'] = [df['LON'] - df['dLON/' + par].values * k * diff_step for k in [-1, 1]][1]
+        # df.loc[:,'LAT_Lm'] = [df['LAT'] - df['dLAT/' + par].values * k * diff_step for k in [-1, 1]][1]
+        # df[['LON_Lp', 'LAT_Lp']].plot(x='LON_Lp',y=['LAT_Lp'], ax=ax1)
+        # # print(df[['LON','LON_Lp', 'LAT','LAT_Lp']])
+        # # print(df[['LON_p_dL','LAT_p_dL']])
+        # # print(df[['LON_m_dL','LAT_m_dL']])
+        # # print("Differences")
+        # # print(np.vstack([df['LON_m_dL'],df['LON_Lm'],df['LON_m_dL']-df['LON_Lm']]))
+        # # print(np.vstack([df['LON_p_dL'],df['LON_Lp'],df['LON_p_dL']-df['LON_Lp']]))
+        # # exit()
+        #
+        # fig.savefig(tmpdir+'mla_track_pert_'+str(orb_lst[0])+'.png')
+        # plt.clf()
+        # plt.close()
+        #
+        # fig, ax1 = plt.subplots(nrows=1)
+        # # df[['X_stgprj', 'Y_stgprj']].plot(x='X_stgprj',y=['Y_stgprj'], ax=ax1)
+        # # df[['X_stgprj_dL_p', 'Y_stgprj_dL_p']].plot(x='X_stgprj_dL_p',y=['Y_stgprj_dL_p'], ax=ax1)
+        # # df[['X_stgprj_dL_m', 'Y_stgprj_dL_m']].plot(x='X_stgprj_dL_m',y=['Y_stgprj_dL_m'], ax=ax1)
+        # # ax1.set_xlim(-1,1)
+        # # ax1.set_ylim(-315,-320)
+        # # param = self.param
+        # # param = dict([next(iter(param.items()))])
+        # # proj = [obj.launch_stereoproj(param,91.42, 75.12) for obj in self.gtracks][0]
+        # # print(proj)
+        # # ax1.plot(proj[:,0],proj[:,1])
+        # # proj = [obj.launch_stereoproj({'':1,'dL': 0.01},91.42, 75.12) for obj in self.gtracks][0]
+        # # print(proj)
+        # # ax1.plot(proj[:,0],proj[:,1])
+        # # fig.savefig(tmpdir+'mla_projtrack_pert_'+str(orb_lst[0])+'.png')
+        #
+        # ax1.plot(df['ET_TX'],df['LON_p_dL']-df['LON_Lp'])
+        # fig.savefig(tmpdir+'mla_checkpart_'+str(orb_lst[0])+'.png')
+        # plt.clf()
+        # plt.close()
+
+        # exit()
 
         # Recompute stereogr projection around average LON/LAT of track
         # print("crash for orbits ",self.tracks)
@@ -472,6 +567,8 @@ class xov:
             ladata_df = pd.concat([tmp[0], tmp[1]]).reset_index(drop=True)
             # self.ladata_df.update(df)
             # ladata_df = self.ladata_df
+
+        # exit()
 
         # compute more accurate location
         # Retrieve ladata_df index of observations involved in the crossover
@@ -562,7 +659,7 @@ class xov:
             # if (debug):
             if debug and len(intersec_x) > 0 and param is '':
                 print("intersec_x, intersec_y",intersec_x, intersec_y)
-                self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB)
+                self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB, param)
                 # exit()
 
             isarray = all(intersec_x)
@@ -581,7 +678,7 @@ class xov:
         else:
             return [], [], [], [], [], []
 
-    def plot_xov_curves(self, curve_A, curve_B, intersec_x, intersec_y, rough_A=0, rough_B=0):
+    def plot_xov_curves(self, curve_A, curve_B, intersec_x, intersec_y, rough_A=0, rough_B=0, param = ''):
 
         if debug:
             print('ladata_ind', curve_A, curve_B)
@@ -589,16 +686,16 @@ class xov:
             print('lonlat', unproject_stereographic(intersec_x, intersec_y, 0, 90, 2440))
 
         fig, ax = plt.subplots()
-        ax.plot(curve_A[:, 0], curve_A[:, 1], 'x-')
+        ax.plot(curve_A[:, 0], curve_A[:, 1], 'x-r')
         ax.plot(curve_B[:, 0], curve_B[:, 1], 'x-')
 
         if all(rough_A != 0):
             xr = curve_A[rough_A, 0]
             yr = curve_A[rough_A, 1]
-            ax.plot(xr, yr, '*r', label='rough xov A')
+            ax.plot(xr, yr, '*g', label='rough xov A')
             xr = curve_B[rough_B - len(curve_A), 0]
             yr = curve_B[rough_B - len(curve_A), 1]
-            ax.plot(xr, yr, '*g', label='rough xov B')
+            ax.plot(xr, yr, '*r', label='rough xov B')
 
         ax.plot(intersec_x, intersec_y, '*k', label='fine xov')
 
@@ -607,23 +704,23 @@ class xov:
         ax.set_ylabel('y (distance from NP, km)')
         ax.legend()
 
-        delta = 5.
+        delta = 1.
         if abs(np.amin(np.absolute(intersec_x))) > delta:
             xmin = np.amin(np.hstack(intersec_x)) - delta
             xmax = np.amax(np.hstack(intersec_x)) + delta
         else:
-            xmax = 200
-            xmin = -200
+            xmax = 2
+            xmin = -2
         plt.xlim(xmin, xmax)
         if abs(np.amin(np.absolute(intersec_y))) > delta:
             ymin = np.amin(np.array(intersec_y)) - delta
             ymax = np.amax(np.array(intersec_y)) + delta
         else:
-            ymax = 200
-            ymin = -200
+            ymax = 2
+            ymin = -2
         plt.ylim(ymin, ymax)
 
-        plt.savefig('tmp/img/intersect_' + self.tracks[0] + '_' + self.tracks[1] + '.png')
+        plt.savefig('tmp/img/intersect_' + self.tracks[0] + '_' + self.tracks[1] + '_' + param + '.png')
         plt.clf()
         plt.close()
         # exit()
@@ -672,12 +769,15 @@ class xov:
             # try:
             x, y, subldA, subldB, ldA, ldB = self.get_xOver_fine(rough_indA, rough_indB, '')
             if len(x) > 0:
-                # print("pre-elev")
-                # print(subldA, subldB, ldA, ldB)
+                if debug:
+                    print("pre-elev (no partial)")
+                    print(subldA, subldB, ldA, ldB)
+
                 ldA, ldB, R_A, R_B = self.get_elev(arg, subldA, subldB, ldA, ldB, x=x, y=y)
 
-                # print(arg, x, y, ldA, ldB, R_A, R_B)
-                # print(arg, x, y, R_A, R_B)
+                if debug:
+                    print(arg, x, y, ldA, ldB, R_A, R_B)
+                    print(arg, x, y, R_A, R_B)
                 # exit()
                 return np.vstack((x, y, ldA, ldB, R_A, R_B)).T
             # except:
@@ -894,7 +994,7 @@ class xov:
 
         if len(xovers_df.index) == max_xov_part and nxov_part_all_equal and no_nan_part:
 
-            if (len(xovers_df.index) > 1):
+            if len(xovers_df.index) > 1:
                 # print("len(xovers_df.index) > 1 ")
                 # print(out_elev)
                 DelR = (np.diff(np.diff(np.hstack(np.squeeze(out_elev, axis=1)))[:, ::2])[:, ::2])[:len(xovers_df)]
@@ -914,7 +1014,7 @@ class xov:
                 )
             else:
 
-                if (debug):
+                if debug:
                     print('check ders')
                     print(np.hstack(np.squeeze(out_elev, axis=1)),
                           [np.linalg.norm(x) for x in list(param.values())[1:]])

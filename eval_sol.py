@@ -5,7 +5,9 @@
 # Author: Stefano Bertone
 # Created: 16-May-2019
 #
-#from mpl_toolkits.basemap import Basemap
+import glob
+
+from mpl_toolkits.basemap import Basemap
 
 import AccumXov as xovacc
 import numpy as np
@@ -21,8 +23,8 @@ from xov_setup import xov
 from Amat import Amat
 from prOpt import outdir, tmpdir, local, pert_cloop_glo
 
-remove_max_dist = True
-remove_3sigma_median = True
+remove_max_dist = False
+remove_3sigma_median = False
 
 def xovnum_plot():
 
@@ -73,8 +75,8 @@ def xovnum_plot():
                 xov_sim.xovers['orbA'].str.contains(epo)].reset_index().x0).abs()
             dy0 = (xov_real.xovers[xov_real.xovers['orbA'].str.contains(epo)].reset_index().y0 - xov_sim.xovers[
                 xov_sim.xovers['orbA'].str.contains(epo)].reset_index().y0).abs()
-            a = xov_real.xovers[xov_real.xovers['orbA'].str.contains(epo)].reset_index().filter(regex='^dist_.*$')[:]
-            b = xov_sim.xovers[xov_sim.xovers['orbA'].str.contains(epo)].reset_index().filter(regex='^dist_.*$')[:]
+            a = xov_real.xovers[xov_real.xovers['orbA'].str.contains(epo)].reset_index().filter(regex='^dist_[A,B].*$')[:]
+            b = xov_sim.xovers[xov_sim.xovers['orbA'].str.contains(epo)].reset_index().filter(regex='^dist_[A,B].*$')[:]
             # print(a)
             # print(b)
             print(epo,'distMax.mean',(a-b).max().values.max())
@@ -216,16 +218,12 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     if ref_sol != '':
         ref = Amat(vecopts)
         ref = ref.load(outdir+'sim/'+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
-
         # if correlation matrix wanted (long, only prints >0.95)
         # print(ref.corr_mat())
 
     if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
 
-        tmp.xov.xovers['dist_max'] = tmp.xov.xovers.filter(regex='^dist_.*$').max(axis=1)
-        tmp.xov.xovers['dist_minA'] = tmp.xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
-        tmp.xov.xovers['dist_minB'] = tmp.xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
-        tmp.xov.xovers['dist_min_mean'] = tmp.xov.xovers.filter(regex='^dist_min.*$').mean(axis=1)
+        add_xov_separation(tmp)
         xovacc.analyze_dist_vs_dR(tmp.xov)
 
         if remove_max_dist:
@@ -237,8 +235,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     # Remove huge outliers
     mean_dR, std_dR, worst_tracks = tmp.xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
     tmp.xov.xovers['dR_abs'] = tmp.xov.xovers.dR.abs()
-    print("Largest dR ( # above 400m", len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 400])," or ",
-          (len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 400])/len(tmp.xov.xovers)*100.),'%)')
+    print("Largest dR ( # above 200m", len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 200])," or ",
+          (len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 200])/len(tmp.xov.xovers)*100.),'%)')
     print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nlargest(10,'dR_abs'))
     print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nsmallest(10,'dR_abs'))
 
@@ -247,7 +245,85 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     _ = tmp.xov.xovers.dR.values ** 2
     print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
 
-    print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
+    # Check convergence over iterations
+    if True:
+        sol_iters = sol.split('_')[:-1][0]
+        prev_sols = np.sort(glob.glob(outdir+'sim/'+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+
+        iters_rms = []
+        iters_orbcorr = []
+        iters_glocorr = []
+        for isol in prev_sols:
+            prev = Amat(vecopts)
+            prev = prev.load(isol)
+            add_xov_separation(prev)
+            prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
+            prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
+            mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
+            _ = prev.xov.xovers.dR.values ** 2
+            tst = isol.split('/')[-3].split('_')[1]
+            tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
+            iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
+
+            #print(prev.sol_dict['sol'])
+            #exit()
+            filter_string_orb = ["/dA","/dC","/dR"]
+            sol_rms = []
+            for filt in filter_string_orb:
+                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k if k not in ['dR/dRA']}
+                filtered_dict = list(filtered_dict.values())
+                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+
+            iters_orbcorr.append(np.hstack([tst_id,sol_rms]))
+
+            filter_string_glo = ["/dRA","/dDEC","/dPM","/dL","/dh2"]
+            sol_rms = []
+            for filt in filter_string_glo:
+                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
+                filtered_dict = list(filtered_dict.values())
+                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+
+            iters_glocorr.append(np.hstack([tst_id,sol_rms]))
+
+        print("Total RMS for iters: ")
+        iters_rms = np.array(iters_rms)
+        iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
+        print(iters_rms)
+
+        print("Total RMS for solutions (orbpar): ")
+        iters_orbcorr = pd.DataFrame(iters_orbcorr,columns=np.hstack(['tst_id',filter_string_orb]))
+        iters_orbcorr = iters_orbcorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+        print(iters_orbcorr.diff())
+
+        print("Total RMS for solutions (glopar): ")
+        iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
+        iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+        print(iters_glocorr)
+
+        fig, [ax1,ax2,ax3] = plt.subplots(nrows=3,sharex=True)
+        ax1.plot(iters_rms[:,1].astype('float'),'-r')
+        ax1.set_ylabel('rms (m)')
+        ax1a = ax1.twinx()
+        ax1a.plot(iters_rms[:,2].astype('float'),'.k')
+        ax1a.set_ylabel('num of obs (post-screening)')
+
+        iters_orbcorr.diff().plot(ax=ax2)
+        ax2.set_ylabel('rms (orb sol-prev iter)')
+
+        iters_glocorr.plot(ax=ax3)
+        ax3.set_ylabel('rms (glo sol)')
+
+        print(pert_cloop_glo)
+        # ax2.set_ylabel('rms (m)')
+        # ax1a = ax1.twinx()
+        # ax1a.plot(iters_rms[:, 2].astype('float'), '.k')
+        # ax1a.set_ylabel('num of obs (post-screening)')
+        #
+        plt.savefig(tmpdir + 'rms_iters_' + sol + '.png')
+        plt.close()
+
+        # exit()
+    #print_corrmat(tmp,tmpdir+"corrmat.png")
 
     if True:
         sol_iters = sol.split('_')[:-1][0]
@@ -331,36 +407,39 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
         print(mlacount.sort_values(['LON']))
 
-#        fig = plt.figure(figsize=(8, 6), edgecolor='w')
-#        m = Basemap(projection='moll', resolution=None,
-#                    lat_0=0, lon_0=0)
-#        x, y = m(mlacount.LON.values, mlacount.LAT.values)
-#        m.scatter(x, y, marker=',') #,c=piv.count(), s=3**piv.count(),cmap='Reds')
-#        draw_map(m)
-#        fig.savefig(tmpdir+'mla_count_moll_'+sol+'_'+subexp+'.png')
-#        plt.clf()
-#        plt.close()
+        fig = plt.figure(figsize=(8, 6), edgecolor='w')
+        # m = Basemap(projection='moll', resolution=None,
+        #             lat_0=0, lon_0=0)
+        m = Basemap(projection='npstere',boundinglat=10,lon_0=0,resolution='l')
+        x, y = m(mlacount.LON.values, mlacount.LAT.values)
+        map = m.scatter(x, y,c=np.log(mlacount['count'].values), cmap='afmhot') # , marker=',', s=3**piv.count(),
+        plt.colorbar(map)
+        draw_map(m)
+        fig.savefig(tmpdir+'mla_count_nps_'+sol+'_'+subexp+'.png')
+        plt.clf()
+        plt.close()
+        print("npstere printed")
 
         empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
                             columns = np.arange(-180, 181))
-
-        fig, ax1 = plt.subplots(nrows=1)
-        # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
-        # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
-        # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
-        # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
-        # Draw the heatmap with the mask and correct aspect ratio
-        # plot pivot table as heatmap using seaborn
-        piv = pd.pivot_table(mlacount, values="count", index=["LAT"], columns=["LON"], fill_value=0)
-        piv = (piv+empty_geomap_df).fillna(0)
-
-        sns.heatmap(piv, xticklabels=10, yticklabels=10)
-        plt.tight_layout()
-        ax1.invert_yaxis()
-        #         ylabel='Topog ampl rms (1st octave, m)')
-        fig.savefig(tmpdir+'mla_count_'+sol+'_'+subexp+'.png')
-        plt.clf()
-        plt.close()
+        #
+        # fig, ax1 = plt.subplots(nrows=1)
+        # # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
+        # # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
+        # # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
+        # # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
+        # # Draw the heatmap with the mask and correct aspect ratio
+        # # plot pivot table as heatmap using seaborn
+        # piv = pd.pivot_table(mlacount, values="count", index=["LAT"], columns=["LON"], fill_value=0)
+        # piv = (piv+empty_geomap_df).fillna(0)
+        #
+        # sns.heatmap(piv, xticklabels=10, yticklabels=10)
+        # plt.tight_layout()
+        # ax1.invert_yaxis()
+        # #         ylabel='Topog ampl rms (1st octave, m)')
+        # fig.savefig(tmpdir+'mla_count_'+sol+'_'+subexp+'.png')
+        # plt.clf()
+        # plt.close()
 
         orb_sol, glb_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
         xovacc.print_sol(orb_sol, glb_sol, tmp.xov, tmp)
@@ -394,19 +473,18 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.savefig(tmpdir + 'orbcorr_tseries_' + sol + '.png')
         plt.close()
 
-        num_bins = 'auto'
-        for idx, col in enumerate(cols):
-                 ax.set_prop_cycle(color=colors)
-                 n, bins, patches = plt.hist(orb_sol[col], bins=num_bins, density=True, facecolor=colors[idx], label=col, alpha=0.7)
+        # num_bins = 'auto'
+        # for idx, col in enumerate(cols):
+        #     ax.set_prop_cycle(color=colors)
+        #     n, bins, patches = plt.hist(orb_sol[col], bins=num_bins, density=True, facecolor=colors[idx], label=col, alpha=0.7)
+        #
+        # plt.legend()
+        # plt.xlabel('delta (m)')
+        # plt.ylabel('Probability')
+        # plt.title(r'Histogram of par corr') #: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+        # plt.savefig(tmpdir + '/histo_corr_' + sol + "_" + str(idx) + '.png')
+        # plt.clf()
 
-        plt.legend()
-        plt.xlabel('delta (m)')
-        plt.ylabel('Probability')
-        plt.title(r'Histogram of par corr') #: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
-        plt.savefig(tmpdir + '/histo_corr_' + sol + "_" + str(idx) + '.png')
-        plt.clf()
-
-        
         if pd.Series(['dA', 'dC','dR$']).isin(tmp.pert_cloop.columns).any():
 
             # print residuals (original cloop perturbation - latest cumulated solution)
@@ -453,7 +531,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
             ax.set_xlabel('orbit #')
             ax.set_ylabel('sol (m)')
-            #ax.set_ylim(-500,500)
+            # ax.set_ylim(-500,500)
             plt.savefig(tmpdir+'residuals_tseries_'+sol+'_'+subexp+'.png')
             plt.close()
 
@@ -466,7 +544,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                     n, bins, patches = plt.hist(np.abs(ref.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
                                                 facecolor=colors[idx], label=col.split('/')[-1],
                                             alpha=0.3)
-                print(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)))
+                # print(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)))
                 n, bins, patches = plt.hist(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
                                             facecolor=colors[idx], label=col.split('/')[-1],
                                             alpha=0.7)
@@ -478,7 +556,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             plt.savefig(tmpdir + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
             plt.clf()
 
-
         if ref_sol != '':
             xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
                             tmp.xov.xovers,xov_ref=ref.xov.xovers)
@@ -487,14 +564,46 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                             tmp.xov.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
 
         xovacc.plt_geo_dR(empty_geomap_df, sol+subexp, tmp.xov)
-        exit()
+        # exit()
 
     if False:
         tmp_plot = tmp.xov.xovers.copy()
         fig, ax1 = plt.subplots(nrows=1)
         tmp_plot[['xOvID', 'dR/dL']].plot(x='xOvID',y=['dR/dL'], ax=ax1)
-        ax1.set_ylim(-30,30)
+        # ax1.set_ylim(-30,30)
         fig.savefig(tmpdir+'mla_dR_dL_'+sol+'.png')
+        plt.clf()
+        plt.close()
+
+        pd.set_option('display.max_columns', 500)
+        print(tmp_plot.loc[np.abs(tmp_plot['dR/dL'].values)>0.])
+        exit()
+
+        # print(tmp_plot.dtypes)
+        tmp_plot = tmp_plot[["dR/dL","LAT","LON"]].round(0)
+
+        _ = tmp_plot[["dR/dL","LAT","LON"]].round(0).groupby(["LAT","LON"])["dR/dL"].apply(lambda x: rmse(x)).fillna(0).reset_index()
+        piv = pd.pivot_table(_, values="dR/dL", index=["LAT"], columns=["LON"], fill_value=0)
+        piv = (piv+empty_geomap_df).fillna(0)
+
+        sns.heatmap(piv, xticklabels=10, yticklabels=10)
+        plt.tight_layout()
+        ax1.invert_yaxis()
+        #         ylabel='Topog ampl rms (1st octave, m)')
+        fig.savefig(tmpdir+'mla_dR_dL_piv_'+sol+'_'+subexp+'.png')
+        plt.clf()
+        plt.close()
+        # exit()
+
+        fig = plt.figure(figsize=(8, 6), edgecolor='w')
+        # m = Basemap(projection='moll', resolution=None,
+        #             lat_0=0, lon_0=0)
+        m = Basemap(projection='npstere',boundinglat=10,lon_0=0,resolution='l')
+        x, y = m(_.LON.values, _.LAT.values)
+        map = m.scatter(x, y,c=_['dR/dL'].values, s=_['dR/dL'].values, cmap='Reds') # afmhot') # , marker=',', s=3**piv.count(),
+        plt.colorbar(map)
+        draw_map(m)
+        fig.savefig(tmpdir+'mla_dR_dL_npstere_'+sol+'_'+subexp+'.png')
         plt.clf()
         plt.close()
 
@@ -533,9 +642,10 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.savefig('/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/dRdC_dA_'+sol+'.png')
         plt.close()
 
+    if False:
+
         # plot dR/dL and dR/dh2
         tmp.xov.xovers['dR/dL'] = tmp.xov.xovers.loc[:,['dR/dL']].abs()
-        tmp.xov.xovers['dR/dh2'] = tmp.xov.xovers.loc[:,['dR/dh2']].abs()
 
         mladRdL = tmp.xov.xovers.round({'LON': 0, 'LAT': 0, 'dR': 3}).groupby(['LON', 'LAT']).median().reset_index()
         print(mladRdL)
@@ -559,24 +669,27 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.clf()
         plt.close()
 
-        fig, ax1 = plt.subplots(nrows=1)
-        # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
-        # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
-        # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
-        # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
-        # Draw the heatmap with the mask and correct aspect ratio
-        piv = pd.pivot_table(mladRdL, values="dR/dh2", index=["LAT"], columns=["LON"], fill_value=0)
-        # plot pivot table as heatmap using seaborn
-        piv = (piv+empty_geomap_df).fillna(0)
-        print(piv)
-        # exit()
-        sns.heatmap(piv, xticklabels=10, yticklabels=10, vmax=0.8)
-        plt.tight_layout()
-        ax1.invert_yaxis()
-        #         ylabel='Topog ampl rms (1st octave, m)')
-        fig.savefig(tmpdir+'mla_dh2_'+sol+'.png')
-        plt.clf()
-        plt.close()
+        if False:
+            tmp.xov.xovers['dR/dh2'] = tmp.xov.xovers.loc[:,['dR/dh2']].abs()
+
+            fig, ax1 = plt.subplots(nrows=1)
+            # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
+            # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
+            # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
+            # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
+            # Draw the heatmap with the mask and correct aspect ratio
+            piv = pd.pivot_table(mladRdL, values="dR/dh2", index=["LAT"], columns=["LON"], fill_value=0)
+            # plot pivot table as heatmap using seaborn
+            piv = (piv+empty_geomap_df).fillna(0)
+            print(piv)
+            # exit()
+            sns.heatmap(piv, xticklabels=10, yticklabels=10, vmax=0.8)
+            plt.tight_layout()
+            ax1.invert_yaxis()
+            #         ylabel='Topog ampl rms (1st octave, m)')
+            fig.savefig(tmpdir+'mla_dh2_'+sol+'.png')
+            plt.clf()
+            plt.close()
 
 def add_xov_separation(tmp):
     tmp.xov.xovers['dist_max'] = tmp.xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
@@ -585,7 +698,7 @@ def add_xov_separation(tmp):
     tmp.xov.xovers['dist_minB'] = tmp.xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
     tmp.xov.xovers['dist_min_mean'] = tmp.xov.xovers.filter(regex='^dist_min.*$').mean(axis=1)
 
+
 if __name__ == '__main__':
 
-    analyze_sol(sol='KX1r_14', ref_sol='KX1r_0', subexp = '0res_1amp')
-
+    analyze_sol(sol='tp6_19', ref_sol='tp6_0', subexp = '3res_20amp')
