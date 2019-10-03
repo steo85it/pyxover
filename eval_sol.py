@@ -13,12 +13,13 @@ import itertools as itert
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import glob
 
 from AccumXov import plt_geo_dR
 from ground_track import gtrack
 from xov_setup import xov
 from Amat import Amat
-from prOpt import outdir, tmpdir, local
+from prOpt import outdir, tmpdir, local, pert_cloop_glo
 
 remove_max_dist = True
 remove_3sigma_median = True
@@ -246,9 +247,87 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     _ = tmp.xov.xovers.dR.values ** 2
     print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
 
-    #print_corrmat(tmp,tmpdir+"corrmat.png")
+    print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
 
     if True:
+        sol_iters = sol.split('_')[:-1][0]
+        prev_sols = np.sort(glob.glob(outdir+'sim/'+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+
+        iters_rms = []
+        iters_orbcorr = []
+        iters_glocorr = []
+        for isol in prev_sols:
+            prev = Amat(vecopts)
+            prev = prev.load(isol)
+            add_xov_separation(prev)
+            prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
+            prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
+            mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
+            _ = prev.xov.xovers.dR.values ** 2
+            tst = isol.split('/')[-3].split('_')[1]
+            tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
+            iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
+
+            #print(prev.sol_dict['sol'])
+            #exit()
+            filter_string_orb = ["/dA","/dC","/dR"]
+            sol_rms = []
+            for filt in filter_string_orb:
+                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k if k not in ['dR/dRA']}
+                filtered_dict = list(filtered_dict.values())
+                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+
+            iters_orbcorr.append(np.hstack([tst_id,sol_rms]))
+
+            filter_string_glo = ["/dRA","/dDEC","/dPM","/dL","/dh2"]
+            sol_rms = []
+            for filt in filter_string_glo:
+                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
+                filtered_dict = list(filtered_dict.values())
+                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+
+            iters_glocorr.append(np.hstack([tst_id,sol_rms]))
+
+        print("Total RMS for iters: ")
+        iters_rms = np.array(iters_rms)
+        iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
+        print(iters_rms)
+
+        print("Total RMS for solutions (orbpar): ")
+        iters_orbcorr = pd.DataFrame(iters_orbcorr,columns=np.hstack(['tst_id',filter_string_orb]))
+        iters_orbcorr = iters_orbcorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+        print(iters_orbcorr.diff())
+
+        print("Total RMS for solutions (glopar): ")
+        iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
+        iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+        print(iters_glocorr.diff())
+
+        fig, [ax1,ax2,ax3] = plt.subplots(nrows=3,sharex=True)
+        ax1.plot(iters_rms[:,1].astype('float'),'-r')
+        ax1.set_ylabel('rms (m)')
+        ax1a = ax1.twinx()
+        ax1a.plot(iters_rms[:,2].astype('float'),'.k')
+        ax1a.set_ylabel('num of obs (post-screening)')
+
+        iters_orbcorr.diff().plot(ax=ax2)
+        ax2.set_ylabel('rms (orb sol, diff)')
+
+        iters_glocorr.diff().plot(ax=ax3,logy=True)
+        ax3.set_ylabel('rms (glo sol, diff)')
+
+        print(pert_cloop_glo)
+        # ax2.set_ylabel('rms (m)')
+        # ax1a = ax1.twinx()
+        # ax1a.plot(iters_rms[:, 2].astype('float'), '.k')
+        # ax1a.set_ylabel('num of obs (post-screening)')
+        #
+        plt.savefig(tmpdir + 'rms_iters_' + sol + '.png')
+        plt.close()
+
+    #print_corrmat(tmp,tmpdir+"corrmat.png")
+
+    if False:
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
         print(mlacount.sort_values(['LON']))
 
@@ -499,7 +578,14 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.clf()
         plt.close()
 
+def add_xov_separation(tmp):
+    tmp.xov.xovers['dist_max'] = tmp.xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
+    tmp.xov.xovers['dist_min'] = tmp.xov.xovers.filter(regex='^dist_[A,B].*$').min(axis=1)
+    tmp.xov.xovers['dist_minA'] = tmp.xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
+    tmp.xov.xovers['dist_minB'] = tmp.xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
+    tmp.xov.xovers['dist_min_mean'] = tmp.xov.xovers.filter(regex='^dist_min.*$').mean(axis=1)
+
 if __name__ == '__main__':
 
-    analyze_sol(sol='KX1_0', ref_sol='KX1_0', subexp = '0res_1amp')
+    analyze_sol(sol='KX1r_14', ref_sol='KX1r_0', subexp = '0res_1amp')
 

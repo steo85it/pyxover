@@ -399,8 +399,8 @@ def solve(xovi_amat,dataset,previous_iter=None):
     # val /= np.max(np.abs(val))
     row = col = regbas_weights.index.values
 
-    # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
-    obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    #obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
 
     # Cholesky decomposition of diagonal matrix == square root of diagonal
     L = obs_weights
@@ -593,6 +593,9 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
 
 
 def main(arg):
+
+    startT = time.time()
+
     print(arg)
     datasets = arg[0]  # ['sim_mlatimes/0res_35amp']
     data_sim = arg[1]
@@ -678,7 +681,12 @@ def main(arg):
 
     print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
 
-    get_stats(xov_cmb_lst,resval,amplval)
+    if local:
+        get_stats(xov_cmb_lst,resval,amplval)
+
+    endT = time.time()
+    print('----- Runtime Amat = ' + str(endT - startT) + ' sec -----' + str(
+        (endT - startT) / 60.) + ' min -----')
 
 if __name__ == '__main__':
 

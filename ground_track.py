@@ -503,7 +503,8 @@ class gtrack:
             corr_orb = self.sol_prev_iter['orb'].filter(regex='sol.*$', axis=1).apply(pd.to_numeric, errors='ignore',
                                                                                       downcast='float'
                                                                                       ).to_dict('records')[0]
-            corr_orb = {key.split('_')[1].split('/')[1]: corr_orb[key] for key in corr_orb.keys()}
+            #corr_orb = {key.split('_')[1].split('/')[1]: corr_orb[key] for key in corr_orb.keys()}
+            corr_orb = {key[1].split('/')[1]: corr_orb[key] for key in corr_orb.keys()}
             tmp_pertcloop = mergsum(tmp_pertcloop, corr_orb)
 
         if len(self.sol_prev_iter['glo']) > 0:
