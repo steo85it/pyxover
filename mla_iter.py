@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for i in np.arange(1, 5 ):
+        for i in np.arange(0, 1 ):
     
             if local:
                 start = time.time()
@@ -25,7 +25,7 @@ if __name__ == '__main__':
                         iostat = s.call(["python3", "launch_test.py", str(rt), ym, "1", str(i)])
                         if iostat != 0:
                             print("*** PyGeoloc failed on iter", i)
-                            # exit(iostat)
+                            exit(iostat)
                 # stop clock and print runtime
                 # -----------------------------
                 end = time.time()

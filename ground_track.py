@@ -126,10 +126,10 @@ class gtrack:
     def check_coverage(self):
         cover = spice.utils.support_types.SPICEDOUBLE_CELL(2000)
         if local == 0:
-             spice.spkcov(auxdir+'spk/MSGR_HGM008_INTGCB.bsp', -236, cover)
+            spice.spkcov(auxdir + 'spk/MSGR_HGM008_INTGCB.bsp', -236, cover)
         else:
-             spice.spkcov('/home/sberton2/Works/NASA/Mercury_tides/spktst/MSGR_HGM008_INTGCB.bsp', -236, cover)
-        
+            spice.spkcov('/home/sberton2/Works/NASA/Mercury_tides/spktst/MSGR_HGM008_INTGCB.bsp', -236, cover)
+
         twind = [spice.wnfetd(cover, i) for i in range(spice.wncard(cover))]
         epo_in = np.sort(self.ladata_df.ET_TX.values)
         self.ladata_df['in_spk'] = np.array([np.sum([t[0] <= val <= t[1] for t in twind]) for val in epo_in]) > 0
@@ -175,7 +175,7 @@ class gtrack:
             pklfile.close()
         else:
             if debug:
-                print("No "+filnam+" found")
+                print("No " + filnam + " found")
             self = None
         # print('Groundtrack loaded from '+filnam)
         # print(self.ladata_df)
@@ -198,23 +198,24 @@ class gtrack:
         # only select the required data (column)
         self.df_input = df.copy()
         if (debug):
-            df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
+            df = df.loc[:,
+                 ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
         else:
             df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid']]
 
-        #pd.set_option('display.max_columns', 500)
-        #pd.set_option('display.max_rows', 500)
+        # pd.set_option('display.max_columns', 500)
+        # pd.set_option('display.max_rows', 500)
         df.chn = pd.to_numeric(df.chn, errors='coerce').fillna(8).astype(np.int64)
 
         # remove bad data (chn > 4)
         # TODO: correct back to
         df = df[df['chn'] < 5]
         # df = df[df['frm'] == 1]
-        df.drop('frm',axis=1,inplace=True)
+        df.drop('frm', axis=1, inplace=True)
         # to compare to Mike's selection (chn >= 5 only ... )
         # df = df[df['EphemerisTime']>415023259.3]
 
-        #df = df.drop(['chn'], axis=1)  # .set_index('seqid')
+        # df = df.drop(['chn'], axis=1)  # .set_index('seqid')
 
         # Reorder columns and reindex
         if debug:
@@ -222,7 +223,7 @@ class gtrack:
         else:
             df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']
 
-        #df = df.reset_index(drop=True)
+        # df = df.reset_index(drop=True)
         # print(df.index.is_unique)
 
         # Drop doublons from df, keeping the best chn for each observation
@@ -335,7 +336,7 @@ class gtrack:
 
     def geoloc(self, get_partials=partials):
 
-        #vecopts = self.vecopts.copy()
+        # vecopts = self.vecopts.copy()
 
         #################### end -------
 
@@ -367,11 +368,11 @@ class gtrack:
             self.pert_cloop = {}
 
         # randomize and assign pert for closed loop sim IF orbit in pert_tracks
-        if self.name in pert_tracks or pert_tracks==[]:
+        if self.name in pert_tracks or pert_tracks == []:
 
             np.random.seed(int(self.name))
             rand_pert_orb = np.random.randn(len(pert_cloop_orb))
-            self.pert_cloop = dict(zip(self.pert_cloop.keys(),list(pert_cloop_orb.values()) * rand_pert_orb))
+            self.pert_cloop = dict(zip(self.pert_cloop.keys(), list(pert_cloop_orb.values()) * rand_pert_orb))
             if debug:
                 print("random pert_cloop", self.pert_cloop)
 
@@ -428,13 +429,13 @@ class gtrack:
         elif (self.vecopts['OUTPUTTYPE'] == 1):
             ladata_df['LON'] = results[0][:, 0]
             ladata_df['LAT'] = results[0][:, 1]
-            #print(len(results[0]))
+            # print(len(results[0]))
             Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
             ladata_df['R'] = results[0][:, 2] - Rbase
 
         if debug:
-          print(ladata_df)
-          print(results[0][0,:],list(param)[0],len(param))
+            print(ladata_df)
+            print(results[0][0, :], list(param)[0], len(param))
 
         if (len(param) > 1 and list(param)[0] == ''):
             if (self.vecopts['OUTPUTTYPE'] == 0):
@@ -448,12 +449,14 @@ class gtrack:
                 ladata_df['dLON/dh2'] = 0
                 ladata_df['dLAT/dh2'] = 0
 
-                if self.sol_prev_iter != None :
-                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
-                                                      ladata_df['ET_TX'] + 0.5 * ladata_df['TOF'], SpObj, self.sol_prev_iter['glo'])[0]
+                if self.sol_prev_iter != None:
+                    ladata_df['dR/dh2'] = \
+                    tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
+                                ladata_df['ET_BC'], SpObj, self.sol_prev_iter['glo'])[0]
                 else:
-                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
-                                                      ladata_df['ET_TX'] + 0.5 * ladata_df['TOF'], SpObj)[0]
+                    ladata_df['dR/dh2'] = \
+                    tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
+                                ladata_df['ET_BC'], SpObj)[0]
 
             elif (self.vecopts['OUTPUTTYPE'] == 1):
                 for i in range(1, len(param)):
@@ -462,25 +465,25 @@ class gtrack:
                     ladata_df['dR/' + list(param)[i]] = results[i][:, 2]
 
                 # Add partials w.r.t. tidal h2
-                parGlo['dh2'] = 1
-                param['dh2'] = 1
                 self.vecopts['PARTDER'] = ''
                 ladata_df['dLON/dh2'] = 0
                 ladata_df['dLAT/dh2'] = 0
 
-                if self.sol_prev_iter != None :
-                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, \
-                                                  np.transpose(astr.sph2cart(
-                                                      ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                                                      ladata_df['LAT'].values, ladata_df['LON'].values)), \
-                                                  ladata_df['ET_TX'].values + 0.5 * ladata_df['TOF'].values, SpObj,
-                                                  self.sol_prev_iter['glo'])[0]
+                if self.sol_prev_iter != None:
+                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.transpose(astr.sph2cart(
+                                                          ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                                                          ladata_df['LAT'].values, ladata_df['LON'].values)),
+                                                      ladata_df['ET_BC'].values, SpObj,
+                                                      self.sol_prev_iter['glo'])[0]
                 else:
-                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, \
-                                                  np.transpose(astr.sph2cart(
-                                                      ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                                                      ladata_df['LAT'].values, ladata_df['LON'].values)), \
-                                                  ladata_df['ET_TX'].values + 0.5 * ladata_df['TOF'].values, SpObj)[0]
+                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts,
+                                                      np.transpose(astr.sph2cart(
+                                                          ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                                                          ladata_df['LAT'].values, ladata_df['LON'].values)),
+                                                   ladata_df['ET_BC'].values, SpObj)[0]
+
+                # print("ladata_df['dR/dh2']",ladata_df['dR/dh2'].values)
+                # print("dh2", (ladata_df['R_p_dh2']-ladata_df['R_m_dh2']).values/0.2)
 
         # update object attribute df
         self.ladata_df = ladata_df.copy()
@@ -489,7 +492,7 @@ class gtrack:
             print("print ladata_df")
             ladata_df['ET_TX'] = ladata_df['ET_TX'].astype('int64')
             print(ladata_df)
-            exit()
+            # exit()
 
         endGeoloc = time.time()
         if (debug):
@@ -523,7 +526,7 @@ class gtrack:
             tmp = {}
             for p in ['dDEC', 'dRA']:
                 if p in corr_glo.keys():
-                    tmp = mergsum(tmp,{p:corr_glo[p]*np.array([1,0,0])})
+                    tmp = mergsum(tmp, {p: corr_glo[p] * np.array([1, 0, 0])})
             if 'dPM' in corr_glo.keys():
                 tmp = mergsum(tmp, {'dPM': corr_glo['dPM'] * np.array([0, 1, 0])})
 
@@ -531,20 +534,20 @@ class gtrack:
 
             # combine synth perturbations to corrections from previous
             corr_glo = dict((key, values)
-                    for key, values in corr_glo.items())
+                            for key, values in corr_glo.items())
             tmp_pertcloop = mergsum(tmp_pertcloop, corr_glo)
 
         self.pert_cloop = tmp_pertcloop.copy()
 
         if debug:
-            print("sol prev iter",self.sol_prev_iter)
-            print("postdit values",self.pert_cloop)
+            print("sol prev iter", self.sol_prev_iter)
+            print("postdit values", self.pert_cloop)
 
     # @profile
     def get_geoloc_part(self, par):
 
         tmp_df = self.ladata_df.copy()
-        #vecopts = self.vecopts
+        # vecopts = self.vecopts
         if hasattr(self, 'SpObj'):
             SpObj = self.SpObj
         else:
@@ -571,11 +574,11 @@ class gtrack:
         # tmp_pertPar = {**tmp_pertPar, **self.pert_cloop}
         # print('norm',tmp_pertPar, diff_step)
         # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
-        geoloc_out, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0 = self.t0_orb)
+        geoloc_out, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
 
-        #print(self.ladata_df)
-        tmp_df.loc[:,'ET_BC'] = et_bc
-        tmp_df.loc[:,'dR_tid'] = dr_tidal
+        # print(self.ladata_df)
+        tmp_df.loc[:, 'ET_BC'] = et_bc
+        tmp_df.loc[:, 'dR_tid'] = dr_tidal
 
         # Compute partial derivatives if required
         if self.vecopts['PARTDER'] is not '':
@@ -591,33 +594,36 @@ class gtrack:
             ####################################################################################
             if debug:
                 print("Store perturbed tracks")
-                cols = [x+self.vecopts['PARTDER'] for x in ['LON_p_','LAT_p_','R_p_']]
+                cols = [x + self.vecopts['PARTDER'] for x in ['LON_p_', 'LAT_p_', 'R_p_']]
                 print(geoloc_out[:, 0:3])
-                tmp_df = pd.concat([tmp_df,pd.DataFrame(geoloc_out[:, 0:3],columns=cols)],axis=1)
-                cols = [x+self.vecopts['PARTDER'] for x in ['LON_m_','LAT_m_','R_m_']]
+                tmp_df = pd.concat([tmp_df, pd.DataFrame(geoloc_out[:, 0:3], columns=cols)], axis=1)
+                cols = [x + self.vecopts['PARTDER'] for x in ['LON_m_', 'LAT_m_', 'R_m_']]
                 print(geoloc_min[:, 0:3])
-                tmp_df = pd.concat([tmp_df,pd.DataFrame(geoloc_min[:, 0:3],columns=cols)],axis=1)
+                tmp_df = pd.concat([tmp_df, pd.DataFrame(geoloc_min[:, 0:3], columns=cols)], axis=1)
             ####################################################################################
             # exit()
 
-            tmp_df.loc[:,'ET_BC_'+self.vecopts['PARTDER']] = et_bc
-            #print(self.ladata_df)
-            #exit()
+            tmp_df.loc[:, 'ET_BC_' + self.vecopts['PARTDER']] = et_bc
+            # print(self.ladata_df)
+            # exit()
 
             # print("partder check", geoloc_out[:,0:3], geoloc_min[:,0:3],diff_step)
 
+            # print('partder pre', partder)
+            # print(self.vecopts['PARTDER'])
             if self.vecopts['PARTDER'] in ('dA', 'dC', 'dR', 'dRl', 'dPt'):
                 partder /= (2. * diff_step)  # [0]
             elif self.vecopts['PARTDER'] in ('dL'):
                 # print('partder dL pre', partder)
                 # print('diff step', 2. * diff_step)
-                partder /= (2. * diff_step) # * 'NUT_PREC_PM0'[0]
+                partder /= (2. * diff_step)  # * 'NUT_PREC_PM0'[0]
                 # print('partder dL', partder)
                 # exit()
+            # elif self.vecopts['PARTDER'] in ('dh2'):
+            #     pass
             else:
-                # print('norm_pert', np.linalg.norm(diff_step))
                 partder /= 2. * np.linalg.norm(diff_step)  # [1]
-                # print('partder', partder)
+            # print('partder post', partder)
 
             self.ladata_df = tmp_df
 
@@ -668,12 +674,12 @@ class gtrack:
 
     # Compute stereographic projection of measurements location
     # and feed it to ladata_df
-    def project(self,lon0=0,lat0=90,inplace=True):
+    def project(self, lon0=0, lat0=90, inplace=True):
 
         ladata_df = self.ladata_df.copy()
         param = self.param
 
-        if partials==0:
+        if partials == 0:
             param = dict([next(iter(param.items()))])
 
         startProj = time.time()
@@ -696,7 +702,7 @@ class gtrack:
             pool.close()
             pool.join()
         else:
-            results = [self.launch_stereoproj(i,lon0,lat0) for i in param.items()]  # seq
+            results = [self.launch_stereoproj(i, lon0, lat0) for i in param.items()]  # seq
 
         # print(results)
 
@@ -723,7 +729,7 @@ class gtrack:
     # @profile
     #################
     # Correct for perturbations by using partials (if needed) and launch projection
-    def launch_stereoproj(self, par_d, lon0 = 0, lat0 = 90):
+    def launch_stereoproj(self, par_d, lon0=0, lat0=90):
 
         ladata_df = self.ladata_df
         vecopts = self.vecopts
@@ -751,11 +757,13 @@ class gtrack:
             if (debug):
                 print('corr: diff_step', diff_step)
                 print('corr: lon lat', lon_tmp[:][:], lat_tmp[:][:])
-                print('corr: partials add (lon, lat)', ladata_df['dLON/' + par].values * diff_step, ladata_df['dLAT/' + par].values * diff_step)
+                print('corr: partials add (lon, lat)', ladata_df['dLON/' + par].values * diff_step,
+                      ladata_df['dLAT/' + par].values * diff_step)
 
         # project latlon to xy from North Pole in stereo projection
-        proj = np.vstack([project_stereographic(lon_tmp[:][k], lat_tmp[:][k], lon0, lat0, vecopts['PLANETRADIUS']) for k in
-                          range(0, np.shape(lon_tmp)[0])]).T
+        proj = np.vstack(
+            [project_stereographic(lon_tmp[:][k], lat_tmp[:][k], lon0, lat0, vecopts['PLANETRADIUS']) for k in
+             range(0, np.shape(lon_tmp)[0])]).T
 
         # stg_proj_cols = {}
 

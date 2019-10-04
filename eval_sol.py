@@ -623,4 +623,4 @@ def add_xov_separation(tmp):
 
 if __name__ == '__main__':
 
-    analyze_sol(sol='tp6_19', ref_sol='tp6_0', subexp = '3res_20amp')
+    analyze_sol(sol='tp6_0', ref_sol='tp6_0', subexp = '3res_20amp')

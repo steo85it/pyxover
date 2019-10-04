@@ -382,7 +382,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     if len(sol4_pars)<50 and debug:
 
-        seuil_dRdL = 1.e6
+        seuil_dRdL = 2
         print('dense A', spA_sol4.todense())
         print('B', xovi_amat.b)
         print('maxB', np.abs(xovi_amat.b).max(),np.abs(xovi_amat.b).mean())
@@ -394,8 +394,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # print("Their values are ", spA_sol4.todense()[np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]].T)
         # print("Their values are ", xovi_amat.b[np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]].T)
         exclude = np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]
+        if len(exclude) > 0:
+            print("Partials screened by ", seuil_dRdL, "remove ", np.round(len(exclude)/len(xovi_amat.b)*100,2), "% of obs")
         spAdense = np.delete(spA_sol4.todense(), exclude, 0)
         bvec = np.delete(xovi_amat.b, exclude, 0)
+
         #
         # keep = list(set(spA_sol4.nonzero()[0].tolist())^set(exclude))
         # spA_sol4 = spA_sol4[keep,:]
@@ -425,7 +428,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         #             -0.00002364, \
         #             -0.00000532])
         print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
-        print('to_be_recovered', -0.5*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]))
+        print('to_be_recovered', pert_cloop['glo'])
 
         # exit()
 
