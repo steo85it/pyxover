@@ -440,6 +440,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # A = spA_sol4.transpose()*spA_sol4
     # b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
 
+    xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6)
+
     #set up observation weights (according to local roughness and dist of obs from xover point)
     regbas_weights = run(xovi_amat.xov).reset_index()
     # print(regbas_weights)
@@ -451,7 +453,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     row = col = regbas_weights.index.values
 
     obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
-    # obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # # obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
 
     # Cholesky decomposition of diagonal matrix == square root of diagonal
     L = obs_weights
@@ -502,7 +504,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # print("Pre-sol: len(A,b)=",len(b_penal),spA_sol4_penal.shape)
     print([xovi_amat.parNames[p] for p in sol4_pars])
 
-    b_penal, spA_sol4_penal = clean_partials(b_penal, spA_sol4_penal, threshold = 1.e6)
     # exit()
     # print("Pre-sol-2: len(A,b)=",spA_sol4_penal.shape,len(b_penal))
 
@@ -517,33 +518,65 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
 
 def clean_partials(b, spA, threshold = 1.e6):
+    # spA = spA[:99264,-4:]
 
     if debug:
-        print("## clean_partials - size pre:",len(b), spA.shape)
+        print("## clean_partials - size pre:", len(b), spA.shape)
 
-    # print(sol4_glo)
-    # print(len(sol4_glo))
-    # print(spA[:,2].data)
+        # print(sol4_glo)
+        # print(len(sol4_glo))
+        # print(spA[:,2].data)
+        plt.clf()
+        fig, [ax0, ax1, ax2, ax3] = plt.subplots(4, 1)
+        # ax.plot(spA_sol4.todense()<2000)
+        for idx, i in enumerate([ax0, ax1, ax2, ax3]):
+            i.plot(spA[:, -4 + idx].todense(), label=sol4_glo[idx])
+            i.legend()
+        i.plot(b)
+        plt.savefig(tmpdir + 'b_and_A_pre.png')
 
     for i in range(len(sol4_glo)):
-        data = spA[:,-i-1].data
-        median_residuals = abs(data - np.median(data,axis=0))
+
+        data = spA.tocsc()[:, -i - 1].data
+        median_residuals = np.abs(data - np.median(data, axis=0))
         sorted = np.sort(median_residuals)
         std_median = sorted[round(0.68 * len(sorted))]
 
         exclude = np.argwhere(median_residuals >= 4 * std_median).T[0]
-        keep = list(set(spA.nonzero()[0].tolist()) ^ set(exclude))
+        row2index = dict(zip(range(len(data)),list(set(spA.tocsc()[:, -i - 1].nonzero()[0].tolist()))))
+        exclude = [row2index[i] for i in exclude]
 
-        # print(exclude)
-        # print(keep)
-        # print("bad= ", i, 4 * std_median, len(median_residuals), len(exclude), len(keep), len(exclude)/len(median_residuals)*100.,"% ")
-        print("## clean_partials removed ", i, np.round((len(b)-len(keep))/len(b)*100.,2), "% observations")
+        # spA = spA.tolil()
+        spA[exclude, :] = 1e-20
+        # spA = spA.tocsr()
+        b[exclude] = 1e-20
 
-        b = b[keep]
-        spA = spA[keep, :]
+        # keep = list(set(spA.nonzero()[0].tolist()) ^ set(exclude))
+
+        # print("bad= ", i, np.median(data, axis=0), 4 * std_median, len(median_residuals), np.max(median_residuals),
+        #       len(exclude) / len(median_residuals) * 100., "% ")
+        # print(spA[exclude, -i - 1])
+        # print(np.array(keep))
+        # print("## clean_partials removed ", i, 4 * std_median, np.round((len(b) - len(keep)) / len(b) * 100., 2),
+        #       "% observations")
+
+        # b = b[keep]
+        # spA = spA[keep, :]
+
+        # print("post= ", i, np.max(spA[:, -i - 1].data))
 
     if debug:
-        print("## clean_partials - size post:",spA.shape, len(exclude), len(keep))
+        print("## clean_partials - size post:", spA.shape, len(exclude)) #, len(keep))
+        plt.clf()
+        fig, [ax0, ax1, ax2, ax3] = plt.subplots(4, 1)
+        # ax.plot(spA_sol4.todense()<2000)
+        for idx, i in enumerate([ax0, ax1, ax2, ax3]):
+            i.plot(spA[:, -4 + idx].todense(), label=sol4_glo[idx])
+            i.legend()
+        i.plot(b)
+        plt.savefig(tmpdir + 'b_and_A_post.png')
+
+    # exit()
 
     return b, spA
 
