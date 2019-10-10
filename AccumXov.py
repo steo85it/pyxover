@@ -249,7 +249,8 @@ def plt_geo_dR(empty_geomap_df, sol, xov):
     # Draw the heatmap with the mask and correct aspect ratio
     piv = pd.pivot_table(mladR, values="dR", index=["LAT"], columns=["LON"], fill_value=0)
     # plot pivot table as heatmap using seaborn
-    # piv = (piv + empty_geomap_df).fillna(0)
+
+    #piv = (piv + empty_geomap_df).fillna(0)
     # print(piv)
     # exit()
     sns.heatmap(piv, xticklabels=10, yticklabels=10)
@@ -419,7 +420,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
         bvec = xovi_amat.b
         spAdense = np.delete(spAdense, exclude, 0)
         bvec = np.delete(bvec, exclude, 0)
-
         #
         # keep = list(set(spA_sol4.nonzero()[0].tolist())^set(exclude))
         # spA_sol4 = spA_sol4[keep,:]
@@ -545,8 +545,6 @@ def clean_partials(b, spA, threshold = 1.e6):
 
     if debug:
         print("## clean_partials - size pre:", len(b), spA.shape)
-
-        # print(spA[:, :-4].sum(axis=1).A1)
         # print(sol4_glo)
         # print(len(sol4_glo))
         # print(spA[:,2].data)
@@ -581,14 +579,12 @@ def clean_partials(b, spA, threshold = 1.e6):
         Nexcluded += len(exclude)
 
         # keep = list(set(spA.nonzero()[0].tolist()) ^ set(exclude))
-
         # print("bad= ", i, np.median(data, axis=0), 4 * std_median, len(median_residuals), np.max(median_residuals),
         #       len(exclude) / len(median_residuals) * 100., "% ")
         # print(spA[exclude, -i - 1])
         # print(np.array(keep))
         # print("## clean_partials removed ", i, 4 * std_median, np.round((len(b) - len(keep)) / len(b) * 100., 2),
         #       "% observations")
-
         # b = b[keep]
         # spA = spA[keep, :]
 
@@ -755,9 +751,6 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
 
 
 def main(arg):
-
-    startT = time.time()
-
     print(arg)
     datasets = arg[0]  # ['sim_mlatimes/0res_35amp']
     data_sim = arg[1]
@@ -844,12 +837,7 @@ def main(arg):
 
     print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
 
-    if local:
-        get_stats(xov_cmb_lst,resval,amplval)
-
-    endT = time.time()
-    print('----- Runtime Amat = ' + str(endT - startT) + ' sec -----' + str(
-        (endT - startT) / 60.) + ' min -----')
+    get_stats(xov_cmb_lst,resval,amplval)
 
     print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
 

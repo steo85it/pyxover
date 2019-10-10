@@ -8,8 +8,6 @@
 import glob
 import re
 
-from mpl_toolkits.basemap import Basemap
-
 import AccumXov as xovacc
 import numpy as np
 import itertools as itert
@@ -437,7 +435,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # exit()
     #print_corrmat(tmp,tmpdir+"corrmat.png")
 
-    if False:
+    if False and local:
+        from mpl_toolkits.basemap import Basemap
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
         print(mlacount.sort_values(['LON']))
 
@@ -454,8 +453,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.close()
         print("npstere printed")
 
-        empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
-                            columns = np.arange(-180, 181))
         #
         # fig, ax1 = plt.subplots(nrows=1)
         # # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
@@ -521,7 +518,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # plt.clf()
 
     if False:
-
         if pd.Series(['dA', 'dC','dR$']).isin(tmp.pert_cloop.columns).any() and False:
 
             # print residuals (original cloop perturbation - latest cumulated solution)
@@ -727,7 +723,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             fig.savefig(tmpdir+'mla_dh2_'+sol+'.png')
             plt.clf()
             plt.close()
-
 
 def add_xov_separation(tmp):
     tmp.xov.xovers['dist_max'] = tmp.xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)

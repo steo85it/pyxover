@@ -13,6 +13,7 @@ from prOpt import sim_altdata, local
 #------------
 # tp2: full dataset, simulation, no perturbations (0-test)
 # tp3: full dataset, simulation, h2 = 0, no perturbations
+# tp8: full dataset, simulation, h2 = 0.8, no perturbations (as tp2, but updated code --> eg, 0.5 in tid)
 # KX1: real data, tidal h2=0.8 included 
 
 
