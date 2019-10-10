@@ -755,6 +755,9 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
 
 
 def main(arg):
+
+    startT = time.time()
+
     print(arg)
     datasets = arg[0]  # ['sim_mlatimes/0res_35amp']
     data_sim = arg[1]
@@ -841,7 +844,12 @@ def main(arg):
 
     print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
 
-    get_stats(xov_cmb_lst,resval,amplval)
+    if local:
+        get_stats(xov_cmb_lst,resval,amplval)
+
+    endT = time.time()
+    print('----- Runtime Amat = ' + str(endT - startT) + ' sec -----' + str(
+        (endT - startT) / 60.) + ' min -----')
 
     print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
 
