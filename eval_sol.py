@@ -16,6 +16,7 @@ import itertools as itert
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import glob
 
 from AccumXov import plt_geo_dR
 from ground_track import gtrack
@@ -740,4 +741,4 @@ if __name__ == '__main__':
 
     simulated_data = True
     # analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp6_0', ref_sol='tp6_0', subexp = '3res_20amp')
+    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')

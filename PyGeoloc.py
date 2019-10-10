@@ -167,7 +167,6 @@ def main(args):
         orb_sol, glo_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
         # print(sol_dict)
         # exit()
-    # sol_prev_iter = {'orb':orb_sol, 'glo':glb_sol}
 
     if new_gtrack:
         # epo_in=[]
@@ -184,7 +183,13 @@ def main(args):
 
             if int(iter_in) > 0:
                 if len(orb_sol)>0:
-                    track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.orb==str(track.name)],
+                    
+                    if debug:
+                         print(orb_sol.reset_index().orb.values)
+                         print(str(track.name))
+                         print(orb_sol.loc[orb_sol.reset_index().orb.values==str(track.name)])
+		       
+                    track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.reset_index().orb.values==str(track.name)],
                                        'glo':glo_sol}
                     # remove corrections if "unreasonable" (larger than 500 meters in any direction)
                     if len(track.sol_prev_iter['orb'])>0:
@@ -196,6 +201,8 @@ def main(args):
                                        'glo':glo_sol}
 
             tracks.append(track)
+        #exit()			       
+
         # epo_in = np.array(epo_in)
         # print(epo_in)
         # print(epo_in.shape)
