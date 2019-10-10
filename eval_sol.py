@@ -7,7 +7,7 @@
 #
 import glob
 
-from mpl_toolkits.basemap import Basemap
+#from mpl_toolkits.basemap import Basemap
 
 import AccumXov as xovacc
 import numpy as np
@@ -293,7 +293,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         print("Total RMS for solutions (orbpar): ")
         iters_orbcorr = pd.DataFrame(iters_orbcorr,columns=np.hstack(['tst_id',filter_string_orb]))
         iters_orbcorr = iters_orbcorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-        print(iters_orbcorr.diff())
+        print(iters_orbcorr)
 
         print("Total RMS for solutions (glopar): ")
         iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
@@ -307,7 +307,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         ax1a.plot(iters_rms[:,2].astype('float'),'.k')
         ax1a.set_ylabel('num of obs (post-screening)')
 
-        iters_orbcorr.diff().plot(ax=ax2)
+        iters_orbcorr.plot(ax=ax2)
         ax2.set_ylabel('rms (orb sol-prev iter)')
 
         iters_glocorr.plot(ax=ax3)
@@ -325,85 +325,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # exit()
     #print_corrmat(tmp,tmpdir+"corrmat.png")
 
-    if True:
-        sol_iters = sol.split('_')[:-1][0]
-        prev_sols = np.sort(glob.glob(outdir+'sim/'+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
-
-        iters_rms = []
-        iters_orbcorr = []
-        iters_glocorr = []
-        for isol in prev_sols:
-            prev = Amat(vecopts)
-            prev = prev.load(isol)
-            add_xov_separation(prev)
-            prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
-            prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
-            mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
-            _ = prev.xov.xovers.dR.values ** 2
-            tst = isol.split('/')[-3].split('_')[1]
-            tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
-            iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
-
-            #print(prev.sol_dict['sol'])
-            #exit()
-            filter_string_orb = ["/dA","/dC","/dR"]
-            sol_rms = []
-            for filt in filter_string_orb:
-                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k if k not in ['dR/dRA']}
-                filtered_dict = list(filtered_dict.values())
-                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
-
-            iters_orbcorr.append(np.hstack([tst_id,sol_rms]))
-
-            filter_string_glo = ["/dRA","/dDEC","/dPM","/dL","/dh2"]
-            sol_rms = []
-            for filt in filter_string_glo:
-                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
-                filtered_dict = list(filtered_dict.values())
-                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
-
-            iters_glocorr.append(np.hstack([tst_id,sol_rms]))
-
-        print("Total RMS for iters: ")
-        iters_rms = np.array(iters_rms)
-        iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
-        print(iters_rms)
-
-        print("Total RMS for solutions (orbpar): ")
-        iters_orbcorr = pd.DataFrame(iters_orbcorr,columns=np.hstack(['tst_id',filter_string_orb]))
-        iters_orbcorr = iters_orbcorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-        print(iters_orbcorr.diff())
-
-        print("Total RMS for solutions (glopar): ")
-        iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
-        iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-        print(iters_glocorr.diff())
-
-        fig, [ax1,ax2,ax3] = plt.subplots(nrows=3,sharex=True)
-        ax1.plot(iters_rms[:,1].astype('float'),'-r')
-        ax1.set_ylabel('rms (m)')
-        ax1a = ax1.twinx()
-        ax1a.plot(iters_rms[:,2].astype('float'),'.k')
-        ax1a.set_ylabel('num of obs (post-screening)')
-
-        iters_orbcorr.diff().plot(ax=ax2)
-        ax2.set_ylabel('rms (orb sol, diff)')
-
-        iters_glocorr.diff().plot(ax=ax3,logy=True)
-        ax3.set_ylabel('rms (glo sol, diff)')
-
-        print(pert_cloop_glo)
-        # ax2.set_ylabel('rms (m)')
-        # ax1a = ax1.twinx()
-        # ax1a.plot(iters_rms[:, 2].astype('float'), '.k')
-        # ax1a.set_ylabel('num of obs (post-screening)')
-        #
-        plt.savefig(tmpdir + 'rms_iters_' + sol + '.png')
-        plt.close()
-
-    #print_corrmat(tmp,tmpdir+"corrmat.png")
-
-    if False:
+    if False and local:
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
         print(mlacount.sort_values(['LON']))
 
@@ -420,8 +342,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.close()
         print("npstere printed")
 
-        empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
-                            columns = np.arange(-180, 181))
         #
         # fig, ax1 = plt.subplots(nrows=1)
         # # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
@@ -440,6 +360,11 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # fig.savefig(tmpdir+'mla_count_'+sol+'_'+subexp+'.png')
         # plt.clf()
         # plt.close()
+
+    if True:
+
+        empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
+                            columns = np.arange(-180, 181))
 
         orb_sol, glb_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
         xovacc.print_sol(orb_sol, glb_sol, tmp.xov, tmp)
@@ -485,6 +410,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # plt.savefig(tmpdir + '/histo_corr_' + sol + "_" + str(idx) + '.png')
         # plt.clf()
 
+    if False:
         if pd.Series(['dA', 'dC','dR$']).isin(tmp.pert_cloop.columns).any():
 
             # print residuals (original cloop perturbation - latest cumulated solution)
@@ -701,4 +627,4 @@ def add_xov_separation(tmp):
 
 if __name__ == '__main__':
 
-    analyze_sol(sol='tp6_19', ref_sol='tp6_0', subexp = '3res_20amp')
+    analyze_sol(sol='KX1r_1', ref_sol='KX1r_0', subexp = '0res_1amp')
