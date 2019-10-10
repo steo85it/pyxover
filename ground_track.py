@@ -9,6 +9,7 @@
 # Created: 08-Feb-2019
 import os
 import pickle
+import re
 import time
 
 import numpy as np
@@ -20,7 +21,7 @@ import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
 from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim_altdata, \
-    local, pert_cloop_orb
+    local, pert_cloop_orb, OrbRep
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
@@ -70,9 +71,6 @@ class gtrack:
     # create groundtrack from data and save to file
     def setup(self, filnam):
 
-        # read data and fill ladata_df
-        # self.read_fill(filnam)
-
         if len(self.ladata_df) > 0:
             if not hasattr(self, 'SpObj') and SpInterp == 2:
                 # print(filnam)
@@ -85,6 +83,8 @@ class gtrack:
             if debug:
                 pd.set_option('display.max_columns', 500)
 
+            # set t0
+            self.t0_orb = self.ladata_df.ET_TX.iloc[0]
             # geolocate observations in orbit
             self.geoloc()
             # project observations
@@ -515,6 +515,14 @@ class gtrack:
                                                                                       downcast='float'
                                                                                       ).to_dict('records')[0]
             corr_orb = {key.split('_')[1].split('/')[1]: corr_orb[key] for key in corr_orb.keys()}
+
+            # Check if linear representation and update parameter names to match
+            if OrbRep == 'lin':
+                regex = re.compile(".*d[A,C,R]0$")
+                for old_key in list(filter(regex.match, corr_orb)):
+                    corr_orb[old_key[:-1]] = corr_orb.pop(old_key)
+
+            # also updates corr_orb inplace!!!
             tmp_pertcloop = mergsum(tmp_pertcloop, corr_orb)
 
         if len(self.sol_prev_iter['glo']) > 0:
@@ -588,7 +596,7 @@ class gtrack:
             tmp_pertPar = self.perturb_orbits(diff_step, -1.)
 
             # print('part',tmp_pertPar, diff_step)
-            geoloc_min, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj)
+            geoloc_min, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
             partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
 
             ####################################################################################

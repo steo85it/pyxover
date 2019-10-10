@@ -39,9 +39,11 @@ class xov:
         self.param = {'': 1.}
         self.proj_center = None
         self.pert_cloop = None
-        # self.per_cloop = None
         self.sol_prev_iter = None
-
+        self.gtracks = None
+        self.ladata_df = None
+        self.msrm_sampl = None
+        self.apply_texture = None
 
     def setup(self, gtracks):
 
@@ -1046,8 +1048,10 @@ class xov:
                      ], axis=1
                 )
 
-            if (OrbRep == 'lin' or OrbRep == 'quad'):
-                xovers_df = self.upd_orbrep(ladata_df, xovers_df)
+            xovers_df = pd.concat([xovers_df,pd.DataFrame(np.reshape(self.get_dt(ladata_df, xovers_df),(len(xovers_df),-1)),
+                                  columns=['dtA','dtB'])],axis=1)
+            # if (OrbRep == 'lin' or OrbRep == 'quad'):
+            #     xovers_df = self.upd_orbrep(xovers_df)
 
             self.parOrb_xy = xovers_df.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values  # update partials list
             self.parGlo_xy = parGlo_xy
@@ -1071,19 +1075,16 @@ class xov:
         # Update general df
         # self.xovers = self.xovers.append(xovers_df)
 
-    def upd_orbrep(self, ladata_df, xovers_df):
+    def upd_orbrep(self, xovers_df):
         """
         Project orbit partials to linear or quadratic representation of the orbit
-        :param ladata_df:
+        :param dt:
         :param xovers_df:
         :return: updated xov
         """
         # project d/dACR on linear expansion parameters
         # if A = A0 + A1*dt --> ddR/dA0 = ddR/dA*dA/dA0, with ddR/dA numerically computed and dA/dA0=1, etc...
-        dt = np.squeeze([ladata_df.loc[ladata_df['orbID'] == self.tracks[0]].loc[
-                             map(round, xovers_df.ladata_idA.values)][['ET_TX']].values, \
-                         ladata_df.loc[ladata_df['orbID'] == self.tracks[1]].loc[
-                             map(round, xovers_df.ladata_idB.values)][['ET_TX']].values])
+        dt = xovers_df.loc[:,['dtA','dtB']].values
         xovers_df[[strng.partition('_')[0] + '0_' + strng.partition('_')[2] for strng in
                    xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]] = \
             xovers_df[xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]  # ddR/dA0
@@ -1101,6 +1102,22 @@ class xov:
         xovers_df = xovers_df.drop(columns=xovers_df.filter(regex='^dR/d[A,C,R]_.*$'))  # drop ddR/dA
 
         return xovers_df
+
+    def get_dt(self,ladata_df,xovers_df):
+        dt = np.squeeze([ladata_df.loc[ladata_df['orbID'] == self.tracks[0]].loc[
+                             map(round, xovers_df.ladata_idA.values)][['ET_TX']].values, \
+                         ladata_df.loc[ladata_df['orbID'] == self.tracks[1]].loc[
+                             map(round, xovers_df.ladata_idB.values)][['ET_TX']].values])
+        t0 = np.squeeze([ladata_df.loc[ladata_df['orbID'] == self.tracks[0]].iloc[
+                              0][['ET_TX']].values, \
+                          ladata_df.loc[ladata_df['orbID'] == self.tracks[1]].iloc[
+                              0][['ET_TX']].values])
+        if len(xovers_df)==1:
+            dt = dt - t0
+        else:
+            dt = dt - t0[:, np.newaxis]
+
+        return dt
 
     def get_partials(self, l):
 
