@@ -171,7 +171,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     lattmp += dlat / (vecopts['PLANETRADIUS'] * 1e3)
     lontmp += dlon / (vecopts['PLANETRADIUS'] * 1e3) / np.cos(lattmp)
 
-    # print(dlat / (vecopts['PLANETRADIUS']*1e3) , dlon / (vecopts['PLANETRADIUS']*1e3) / np.cos(lattmp) )
+    # print(dr, dlat / (vecopts['PLANETRADIUS']*1e3) , dlon / (vecopts['PLANETRADIUS']*1e3) / np.cos(lattmp) )
 
     if (vecopts['OUTPUTTYPE'] == 0):
         vmbf = astr.sph2cart(rtmp, lattmp, lontmp)
@@ -247,7 +247,8 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
 
     # Compute and add ACR offset (if corrections != 0)
     # print([tmp_pertPar[k] for k in ['dA','dC','dR']])
-    orb_pert_dict = {k:v for (k,v) in tmp_pertPar.items() for filter_string in ['dA','dC','dR[1,c,s]','dR$'] if re.search(filter_string, k)}
+    orb_pert_dict = {k:v for (k,v) in tmp_pertPar.items() for filter_string in ['dA$','dC$','d[A,C,R][0,1,c,s]','dR$'] if re.search(filter_string, k)}
+
     if any(value != 0 for value in orb_pert_dict.values()):
         # print("got in", orb_pert_dict)
         dirs = ['A', 'C', 'R']

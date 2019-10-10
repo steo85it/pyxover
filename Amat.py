@@ -28,6 +28,7 @@ class Amat:
         self.parNames = None
         self.sol = None
         self.pert_cloop = None
+        self.pert_cloop_glo = None
         self.sol_dict = None
 
     def setup(self, xov):
@@ -37,6 +38,7 @@ class Amat:
         self.xovpart_reorder()
         # print(self.A)
         self.pert_cloop = xov.pert_cloop
+        self.pert_cloop_glo = self.pert_cloop.filter(['dL','dRA', 'dDEC', 'dPM', 'dh2']).iloc[0]
         self.pert_cloop.drop(columns=['dL','dRA', 'dDEC', 'dPM', 'dh2'],errors='ignore',inplace=True)
 
         if len(self.pert_cloop.columns) > 0 or not self.pert_cloop.empty:
@@ -83,7 +85,7 @@ class Amat:
         xovers_df = self.xov.xovers.reset_index(drop=True)
         parOrb_xy = list(set([part.split('_')[0] for part in sorted(self.xov.parOrb_xy)]))
         parOrb_xy = list(set([part for part in sorted(self.xov.parOrb_xy)]))
-        print(parOrb_xy)
+        # print(parOrb_xy)
         parGlo_xy = sorted(self.xov.parGlo_xy)
         xovers_df.fillna(0,inplace=True)
 

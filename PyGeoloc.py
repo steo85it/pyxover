@@ -175,6 +175,7 @@ def main(args):
             track = track_id
             track = gtrack(vecopts)
             # try:
+            # Read and fill
             track.prepro(infil)
             # except:
             #    print('Issue in preprocessing for '+track_id)

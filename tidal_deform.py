@@ -115,7 +115,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     # explicit equation for degree 2 term
     # Vsun = (GMsun/(dSUN)) * np.square(plarad/dSUN) * 0.5*(3*np.square(coszSUN)-1);
     # apply to get vertical displacement of surface due to tides
-    urtot = h2 * 0.5 * (Vsun) / gSurf
+    urtot = h2 * 0.5 * Vsun / gSurf
 
     # lon displacement
     dLO = 1. / 100
