@@ -34,7 +34,7 @@ if __name__ == '__main__':
     if local:
        spk_path = auxdir+'spaux_*.pkl'
        # rem_path = '/home/sberton2/Works/NASA/Mercury_tides/aux/subset_list.pkl'
-       rem_path = auxdir+'bestROItracks200.pkl'
+       rem_path = auxdir+'bestROItracks100.pkl'
 
     else:
        spk_path = auxdir+'spaux_*.pkl'

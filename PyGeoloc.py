@@ -165,8 +165,6 @@ def main(args):
                        '_'+str(iter_in-1)+'/'+
                        outdir_in.split('/')[-2]+'/Abmat_'+('_').join(outdir_in.split('/')[:-1])+'.pkl')
         orb_sol, glo_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
-        # print(sol_dict)
-        # exit()
 
     if new_gtrack:
         # epo_in=[]
@@ -185,9 +183,10 @@ def main(args):
                 if len(orb_sol)>0:
                     
                     if debug:
-                         print(orb_sol.reset_index().orb.values)
-                         print(str(track.name))
-                         print(orb_sol.loc[orb_sol.reset_index().orb.values==str(track.name)])
+                        print("orbsol prev iter")
+                        print(orb_sol.reset_index().orb.values)
+                        print(str(track.name))
+                        print(orb_sol.loc[orb_sol.reset_index().orb.values==str(track.name)])
 		       
                     track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.reset_index().orb.values==str(track.name)],
                                        'glo':glo_sol}
