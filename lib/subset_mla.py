@@ -26,10 +26,10 @@ def read_all_files(path):
 
 if __name__ == '__main__':
 
-    local = 1
-    exp = "tp2"
+    local = 0
+    exp = "tp8"
     use_existing_sel =True
-    ntracks = 200
+    ntracks = 500
 
     if local:
        spk_path = auxdir+'spaux_*.pkl'
@@ -38,8 +38,8 @@ if __name__ == '__main__':
 
     else:
        spk_path = auxdir+'spaux_*.pkl'
-       #rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
-       rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks200.pkl'
+       rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
+       #rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks.pkl'
 
     all_spk = read_all_files(spk_path)
 
@@ -57,13 +57,13 @@ if __name__ == '__main__':
             selected = []
             for f in sel:
                 _ = glob.glob(auxdir + 'spaux_' + f[:-2] + '*.pkl')
+                print(_)
                 if len(_)>0:
                     selected.append(_[0])
 
     print('selected spk: ',len(selected),' out of ',len(all_spk))
     remove_these = list(set(all_spk)^set(selected))
 #    print(remove_these)
-#    exit()
 
     for rmf in remove_these:
         # Probably no need to remove these, sufficient to rename
@@ -71,9 +71,11 @@ if __name__ == '__main__':
             # os.remove(rmf)
             shutil.move(rmf,rmf[:-3]+'bak')
         else:
-            shutil.move(rmf,rmf[:-3]+'bak')
-#            pass
+#            shutil.move(rmf,rmf[:-3]+'bak')
+            pass
 
+    # use if just want to select same orbits as existing spaux
+    selected = glob.glob(auxdir + 'spaux_' + '*.pkl')
     # select same orbits on simulated data
     orbs = [f.split('_')[-1].split('.')[0] for f in selected]
 
@@ -83,7 +85,9 @@ if __name__ == '__main__':
        obsfil = glob.glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/3res_20amp/*.TAB")
        # use if want to rename gtracks instead of data
        #obsfil = glob("/att/nobackup/sberton2/MLA/out/sim/"+exp+"/*res_*amp/gtrack_??/*.pkl")
-      
+    
+    print(obsfil)
+    print(orbs)
     selected = [s for s in obsfil for orb in orbs if orb[:-2] in s]
 
     print('total spk:',len(all_spk))
