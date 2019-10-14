@@ -397,7 +397,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
         print(iters_glocorr)
 
-        if simulated_data:
+        if simulated_data and len(pert_cloop['glo'])>0:
             print("Residual % to be recovered (glopar): ")
             # pert_cloop_glo = {'dRA': np.linalg.norm([0.02, 0.000, 0.000]),
             #                                     'dDEC':np.linalg.norm([-0.01, 0.000, 0.000]),
@@ -417,7 +417,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         iters_glocorr.plot(ax=ax4)
         ax4.set_ylabel('sol (glo sol)')
 
-        if simulated_data:
+        if simulated_data and len(pert_cloop['glo'])>0:
             iters_glores.plot(logy=True,ax=ax5)
             ax5.get_legend().remove()
             ax5.set_ylabel('% NOT recovered')
@@ -495,13 +495,17 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
         for idx, col in enumerate(cols):
             ax.set_prop_cycle(color=colors)
-            orb_sol.reset_index().plot(kind="scatter", x="index", y=col, color=colors[idx], label=col, ax=ax)
+            orb_sol_plot = orb_sol.copy()
+            # print(orb_sol)
+            orb_sol_plot[orb_sol_plot.filter(regex='sol.*d[P,R][l,t]$', axis=1).columns] *= 1.e6
+            # exit()
+            orb_sol_plot.reset_index().plot(kind="scatter", x="index", y=col, color=colors[idx], label=col, ax=ax)
             # plt.errorbar(orb_std.index, orb_std['gas'], yerr=orb_std['std'])
 
         ax.set_xticks(orb_sol.index.values)
         ax.locator_params(nbins=10, axis='x')
         ax.set_ylabel('sol (m)')
-        # ax.set_ylim(-300,300)
+        # ax.set_ylim(-5,5)
         plt.savefig(tmpdir + 'orbcorr_tseries_' + sol + '.png')
         plt.close()
 
@@ -589,6 +593,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             plt.savefig(tmpdir + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
             plt.clf()
 
+    if True:
+
         if ref_sol != '':
             xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
                             tmp.xov.xovers,xov_ref=ref.xov.xovers)
@@ -596,7 +602,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
                             tmp.xov.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
 
-        xovacc.plt_geo_dR(empty_geomap_df, sol+subexp, tmp.xov)
+        xovacc.plt_geo_dR(sol+subexp, tmp.xov)
         # exit()
 
     if False:
@@ -736,4 +742,4 @@ if __name__ == '__main__':
 
     simulated_data = True
     # analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
+    analyze_sol(sol='tp8_4', ref_sol='tp8_0', subexp = '3res_20amp')

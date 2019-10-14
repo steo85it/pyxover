@@ -27,19 +27,19 @@ def read_all_files(path):
 if __name__ == '__main__':
 
     local = 1
-    exp = "tp2"
+    exp = "tp8"
     use_existing_sel =True
-    ntracks = 200
+    ntracks = 100
 
     if local:
        spk_path = auxdir+'spaux_*.pkl'
        # rem_path = '/home/sberton2/Works/NASA/Mercury_tides/aux/subset_list.pkl'
-       rem_path = auxdir+'bestROItracks200.pkl'
+       rem_path = auxdir+'bestROItracks100.pkl'
 
     else:
        spk_path = auxdir+'spaux_*.pkl'
        #rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
-       rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks200.pkl'
+       rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks100.pkl'
 
     all_spk = read_all_files(spk_path)
 

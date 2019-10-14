@@ -43,6 +43,8 @@ sim_altdata = 0
 
 remove_max_dist = True
 remove_3sigma_median = True
+clean_part = True
+remove_dR200 = True
 
 ########################################
 # test space
@@ -218,7 +220,7 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov, xov_ref=''):
 
     # the histogram of the data
     num_bins = 'auto'
-    n, bins, patches = plt.hist(xov.dR.astype(np.float), bins=num_bins, density=True, facecolor='blue', alpha=0.7, range=[-200,200])
+    n, bins, patches = plt.hist(xov.dR.astype(np.float), bins=num_bins, density=True, facecolor='blue', alpha=0.7) #, range=[-200,200])
     # add a 'best fit' line
     # y = stats.norm.pdf(bins, mean_dR, std_dR)
     # plt.plot(bins, y, 'b--')
@@ -233,7 +235,7 @@ def plt_histo_dR(idx, mean_dR, std_dR, xov, xov_ref=''):
     plt.savefig(tmpdir+'/histo_dR_' + str(idx) + '.png')
     plt.clf()
 
-def plt_geo_dR(empty_geomap_df, sol, xov):
+def plt_geo_dR(sol, xov):
     # dR absolute value taken
     xov.xovers['dR_orig'] = xov.xovers.dR
     xov.xovers['dR'] = xov.xovers.dR.abs()
@@ -325,9 +327,10 @@ def clean_xov(xov, par_list=[]):
         mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
         analyze_dist_vs_dR(xov)
 
-        print("REMOVING ALL XOV dR>200m", len(xov.xovers))
-        xov.xovers = xov.xovers[xov.xovers.dR.abs() < 200]
-        print('xovers removed by dR > 200m : ', len(xov.xovers))
+        if remove_dR200:
+            print("REMOVING ALL XOV dR>200m", len(xov.xovers))
+            xov.xovers = xov.xovers[xov.xovers.dR.abs() < 200]
+            print('xovers removed by dR > 200m : ', len(xov.xovers))
 
     # print(xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
     # exit()
@@ -462,7 +465,10 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
 
     # TODO only valid if last 4 columns are global partials (else screening random orbit pars...)
-    xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6)
+    nglbpars = len([i for i in sol4_glo if i])
+    if nglbpars>0 and clean_part:
+        xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6,nglbpars=nglbpars)
+        # pass
 
     #set up observation weights (according to local roughness and dist of obs from xover point)
 
@@ -490,9 +496,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
     csr = []
     for constrain in par_constr.items():
 
-        # print(constrain)
-        # print(constrain[0])
-        # print(len(sol4_pars))
         parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if constrain[0] in p])
 
         # Constrain tightly to 0 those parameters with few observations
@@ -510,9 +513,57 @@ def solve(xovi_amat,dataset, previous_iter=None):
                 csr_matrix((1/val, (row, col)), dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
     penalty_matrix = sum(csr)
 
+    if True:
+        csr_avg = []
+        for constrain in mean_constr.items():
+            regex = re.compile(".*"+constrain[0]+"$")
+            # print(list(filter(regex.match, sol4_pars)))
+            if list(filter(regex.match, sol4_pars)):
+                print(constrain)
+                import itertools
+                parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if constrain[0] in p])
+                # print("matching", list(filter(regex.match, sol4_pars)))
+                # # exit()
+                # # df_sol.columns = [x[:-1] if x in list(filter(regex.match, df_sol.columns)) else x for x in
+                # #                   df_sol.columns.values]
+                # print(parindex)
+                if len(parindex)>0:
+
+                    # Constrain tightly to 0 those parameters with few observations
+                    # nobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
+                    #     ascending=False)
+                    # to_constrain = [idx for idx, p in enumerate(sol4_pars) if
+                    #                 p.split('_')[0] in nobs_tracks[nobs_tracks < 10].index]
+                    # for p in parindex:
+                    #     if p[0] in to_constrain:
+                    #         p[1] *= 1.e10
+
+                    # print(constrain)
+                    # print(parindex)
+
+                    rowcols_nodiag = np.array(list(set(itertools.permutations(parindex[:,0], 2))))
+                    rowcols_diag = np.array(list([(x,x) for x in parindex[:,0]]))
+                    vals = - 1/len(parindex[:,0]) * np.ones(len(parindex[:,0])*len(parindex[:,0])-len(parindex[:,0]))
+                    csr_avg.append(csr_matrix((vals/constrain[1],
+                                               (rowcols_nodiag[:,0],rowcols_nodiag[:,1])),
+                                              dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
+                    vals = (1 - 1/len(parindex[:,0])) * np.ones(len(parindex[:,0]))
+                    csr_avg.append(csr_matrix((vals/constrain[1],
+                                               (rowcols_diag[:,0],rowcols_diag[:,1])),
+                                              dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
+        # print(sum(csr_avg))
+        # exit()
+
+        penalty_matrix = penalty_matrix + sum(csr_avg)
+        # print(penalty_matrix)
+        # exit()
+
     # Add constrain to mean value of parameters
-    # penalty_par_mean = np.identity(len(sol4_pars)) - 1/len(sol4_pars) * np.ones((len(sol4_pars), len(sol4_pars)))
-    # penalty_matrix += 1/mean_constr * csr_matrix(penalty_par_mean)
+    if False:
+        pass
+
+        penalty_par_mean = np.identity(len(sol4_pars)) - 1/len(sol4_pars) * np.ones((len(sol4_pars), len(sol4_pars)))
+        penalty_matrix += 1/mean_constr * csr_matrix(penalty_par_mean)
 
     # Choleski decompose matrix and append to design matrix
     Q = np.linalg.cholesky(penalty_matrix.todense())
@@ -529,7 +580,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # exit()
     # print("Pre-sol-2: len(A,b)=",spA_sol4_penal.shape,len(b_penal))
 
-    xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,show=False,iter_lim=10000,atol=1.e-9,btol=1.e-9,calc_var=True)
+    xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
     print("sol sparse: ",xovi_amat.sol[0])
     print('to_be_recovered', pert_cloop['glo'])
 
@@ -540,8 +591,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # # print(xovi_amat.sol)
     # xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
 
-def clean_partials(b, spA, threshold = 1.e6):
+def clean_partials(b, spA, nglbpars, threshold = 1.e6):
     # spA = spA[:99264,-4:]
+
+    print(sol4_glo)
+    print(nglbpars)
 
     if debug:
         print("## clean_partials - size pre:", len(b), spA.shape)
@@ -549,10 +603,14 @@ def clean_partials(b, spA, threshold = 1.e6):
         # print(len(sol4_glo))
         # print(spA[:,2].data)
         plt.clf()
-        fig, [ax0, ax1, ax2, ax3] = plt.subplots(4, 1)
+        axlst = ['ax'+str(i) for i in range(nglbpars)]
+        print(axlst)
+        fig, axlst = plt.subplots(nglbpars, 1)
+        print(axlst)
+        exit()
         # ax.plot(spA_sol4.todense()<2000)
-        for idx, i in enumerate([ax0, ax1, ax2, ax3]):
-            i.plot(spA[:, -4 + idx].todense(), label=sol4_glo[idx])
+        for idx, i in enumerate(axlst):
+            i.plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
             # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
             i.legend()
         # i.plot(b)
@@ -593,10 +651,12 @@ def clean_partials(b, spA, threshold = 1.e6):
     print("## clean_partials - size post:", Nexcluded, Nexcluded/len(b)*100.,"%") #, len(keep))
     if debug:
         plt.clf()
-        fig, [ax0, ax1, ax2, ax3] = plt.subplots(4, 1)
+        axlst = ['ax'+str(i) for i in range(nglbpars)]
+        fig, axlst = plt.subplots(nglbpars, 1)
         # ax.plot(spA_sol4.todense()<2000)
-        for idx, i in enumerate([ax0, ax1, ax2, ax3]):
-            i.plot(spA[:, -4 + idx].todense(), label=sol4_glo[idx])
+        for idx, i in enumerate(axlst):
+            i.plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+            # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
             i.legend()
         i.plot(b)
         plt.savefig(tmpdir + 'b_and_A_post.png')
@@ -608,16 +668,14 @@ def clean_partials(b, spA, threshold = 1.e6):
 
 def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
-    if sol4_orb == []:
+    if sol4_orb == [] and sol4_orbpar != [None]:
         sol4_orb = set([i.split('_')[0] for i in track_names])
         sol4_orb = [x for x in sol4_orb if x.isdigit()]
-    elif sol4_orb == [None]:
+        if sol4_orbpar == []:
+            sol4_orbpar = list(parOrb.keys())
+        sol4_orb = [x + '_' + 'dR/' + y for x in sol4_orb for y in sol4_orbpar]
+    elif sol4_orb == [None] or sol4_orbpar == [None]:
         sol4_orb = []
-
-    if sol4_orbpar == []:
-        sol4_orbpar = list(parOrb.keys())
-
-    sol4_orb = [x + '_' + 'dR/'+y for x in sol4_orb for y in sol4_orbpar]
 
     if sol4_glo == []:
         sol4_glo = list(parGlo.keys())
@@ -647,20 +705,25 @@ def analyze_sol(xovi_amat,xov):
                    np.reshape(xovi_amat.sol[-1], (-1, 1))))
     sol_dict = {'sol': dict(zip(_[:,0],_[:,1].astype(float))), 'std': dict(zip(_[:,0],_[:,2].astype(float))) }
 
-    print(sol_dict)
+    if debug:
+        print("sol_dict_analyze_sol")
+        print(sol_dict)
     # print(np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape([xovi_amat.parNames[p] for p in xovi_amat.sol4_pars], (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)),
     #                np.reshape(xovi_amat.sol[-1], (-1, 1)))))
     # exit()
 
     # Extract solution for global parameters
     glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(parGlo.keys()) for x in _[:,0]]],columns=['par','sol','std'])
-
     partemplate = set([x.split('/')[1] for x in sol_dict['sol'].keys()])
-    # print(partemplate)
-    # print(xovi_amat.sol4_pars)
+    # regex = re.compile(".*"+str(list(partemplate))+"$")
 
     # Extract solution for orbit parameters
-    if np.sum([x in partemplate for x in xovi_amat.sol4_pars]) > 0:
+    parOrbKeys = list(parOrb.keys())
+    solved4 = list(partemplate)
+    # solved4orb = list(filter(regex.match, list(parOrb.keys())))
+    solved4orb = list(set(parOrbKeys)&set(solved4))
+
+    if len(solved4orb) > 0:
         df_ = pd.DataFrame(_, columns=['key', 'sol', 'std'])
         df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
         df_.drop('key', axis=1, inplace=True)
@@ -801,7 +864,15 @@ def main(arg):
             xovi_amat.sol_dict = sol_dict
             print("Sol for iter ", str(ext_iter))
             print_sol(orb_sol, glb_sol, xov, xovi_amat)
-
+            # print(orb_sol.filter(regex="sol_.*"))
+            print("#####\n Average corrections:")
+            print(orb_sol.filter(regex="sol_.*").astype(float).mean(axis=0))
+            print("#####\n Std corrections:")
+            print(orb_sol.filter(regex="sol_.*").astype(float).std(axis=0))
+            print("#####")
+            print("Max corrections:")
+            print(orb_sol.filter(regex="sol_.*").astype(float).abs().max(axis=0))
+            print("#####")
             # Cumulate with solution from previous iter
             if int(ext_iter) > 0:
                 # sum the values with same keys
@@ -829,7 +900,7 @@ def main(arg):
 
             empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
                                            columns=np.arange(-180, 181))
-            plt_geo_dR(empty_geomap_df, tstname, xov_cmb)
+            plt_geo_dR(tstname, xov_cmb)
 
 
         # append to list for stats
