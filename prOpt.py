@@ -13,11 +13,11 @@ parallel = 1
 # compute partials?
 partials = 1
 # std perturbations for finite differences
-parOrb = {} #'dRl':2e-6, 'dPt':2e-6, 'dA': 20.,'dC': 20.,'dR': 5.} #
+parOrb = {'dA': 20.,'dC': 20.,'dR': 5., 'dRl':2e-6, 'dPt':2e-6} #
 parGlo = {'dRA':[0.0001, 0.000, 0.000], 'dDEC':[0.0001, 0.000, 0.000],'dPM':[0, 1.e-8, 0.000], 'dL':1.e-2*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532])} #,'dh2': 0.1} #
 # parameter constraints for solution
-par_constr = {'dR/dRA': 100., 'dR/dDEC': 100.,'dR/dL':100, 'dR/dPM': 100., 'dR/dA':50, 'dR/dC':50.,'dR/dR':0.01, 'dR/dRl':5.e-13, 'dR/dPt':5.e-13} #, 'dR/dh2': 1} # 'dR/dA0':50., 'dR/dC0':50.,'dR/dR0':20, 'dR/dA1':1.e-2, 'dR/dC1':1.e-2,'dR/dR1':1.e-2} #
-mean_constr = {'dR/dA':0.1, 'dR/dC':1,'dR/dR':0.1, 'dR/dRl':1.e-12, 'dR/dPt':1.e-12}
+par_constr = {'dR/dRA': 100., 'dR/dDEC': 100.,'dR/dL':100, 'dR/dPM': 100., 'dR/dA':50, 'dR/dC':100.,'dR/dR':0.001, 'dR/dRl':1.e-13, 'dR/dPt':1.e-13} #, 'dR/dh2': 1} # 'dR/dA0':50., 'dR/dC0':50.,'dR/dR0':20, 'dR/dA1':1.e-2, 'dR/dC1':1.e-2,'dR/dR1':1.e-2} #
+mean_constr = {'dR/dA':0.1, 'dR/dC':10,'dR/dR':0.1, 'dR/dRl':1.e-13, 'dR/dPt':1.e-13}
 # ... and closed loop sims
 pert_cloop_orb = {'dA':50., 'dC':50., 'dR':20.,'dRl':3e-5, 'dPt':3e-5} #, 'dA1':20.e-3, 'dC1':20.e-3, 'dR1':5.e-3} # {'dA':100., 'dC':100., 'dR':20.} #
 

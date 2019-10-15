@@ -353,7 +353,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         for idx,printout in enumerate(printout_list):
             printout = pd.DataFrame(printout,columns=np.hstack(['tst_id',filter_string_orb]))
             printout = printout.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-            #printout[["/dRl","/dPt"]] *= 1e4
+            # printout[["/dRl","/dPt"]] *= 1e4
             print(printout)
             printout_list[idx] = printout
 
@@ -384,7 +384,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             print("Total RMS for orbpar residuals: ")
             iters_orbres = pd.DataFrame(iters_orbres,columns=np.hstack(['tst_id',filter_string_orb]))
             iters_orbres = iters_orbres.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-            #iters_orbres[["/dRl","/dPt"]] *= 1e5
+            # iters_orbres[["/dRl","/dPt"]] *= 1e5
             print(iters_orbres)
 
         if simulated_data and len(iters_orbres)>0:
