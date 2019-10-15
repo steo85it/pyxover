@@ -329,8 +329,8 @@ def clean_xov(xov, par_list=[]):
 
         if remove_dR200:
             print("REMOVING ALL XOV dR>200m", len(xov.xovers))
-            xov.xovers = xov.xovers[xov.xovers.dR.abs() < 200]
-            print('xovers removed by dR > 200m : ', len(xov.xovers))
+            xov.xovers = xov.xovers[xov.xovers.dR.abs() < 100]
+            print('xovers after cleaning by dR > 200m : ', len(xov.xovers))
 
     # print(xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
     # exit()
@@ -558,17 +558,10 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # print(penalty_matrix)
         # exit()
 
-    # Add constrain to mean value of parameters
-    if False:
-        pass
-
-        penalty_par_mean = np.identity(len(sol4_pars)) - 1/len(sol4_pars) * np.ones((len(sol4_pars), len(sol4_pars)))
-        penalty_matrix += 1/mean_constr * csr_matrix(penalty_par_mean)
-
     # Choleski decompose matrix and append to design matrix
     Q = np.linalg.cholesky(penalty_matrix.todense())
     if previous_iter != None:
-        b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))]) #np.ravel(np.dot(Q,previous_iter.sol[0]))])
+        b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))]) # np.ravel(np.dot(Q,previous_iter.sol[0]))]) #
     else:
         b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))])
     import scipy

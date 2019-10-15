@@ -1,5 +1,6 @@
 import itertools as itert
 import os
+import shutil
 import sys
 
 import AccumXov
@@ -7,7 +8,7 @@ import AccumXov
 import PyAltSim
 import PyXover
 import PyGeoloc
-from prOpt import sim_altdata, local
+from prOpt import sim_altdata, local, outdir
 
 # Experiments
 #------------
@@ -88,6 +89,11 @@ if __name__ == '__main__':
         args_pyxover = [(subarg, k, l, 'MLASCIRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
 
     if sect == 1:
+
+        # save options file to outdir
+        if not os.path.exists(outdir+outdirnams[0]):
+            os.makedirs(outdir+outdirnams[0], exist_ok=True)
+        shutil.copy(os.getcwd()+'/prOpt.py', outdir+outdirnams[0])
 
         # add option to spread over the cluster
         idx_tst = [i for i in range(len(cmb))]
