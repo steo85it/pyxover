@@ -4,7 +4,7 @@ import numpy as np
 ##############################################
 # @profile
 # local or PGDA
-local = 1
+local = 0
 # debug mode
 debug = 0
 # parallel processing?
@@ -13,7 +13,7 @@ parallel = 1
 # compute partials?
 partials = 1
 # std perturbations for finite differences
-parOrb = {'dRl':2e-6, 'dPt':2e-6, 'dA': 20.,'dC': 20.,'dR': 5.} #
+parOrb = {} #'dRl':2e-6, 'dPt':2e-6, 'dA': 20.,'dC': 20.,'dR': 5.} #
 parGlo = {'dRA':[0.0001, 0.000, 0.000], 'dDEC':[0.0001, 0.000, 0.000],'dPM':[0, 1.e-8, 0.000], 'dL':1.e-2*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532])} #,'dh2': 0.1} #
 # parameter constraints for solution
 par_constr = {'dR/dRA': 100., 'dR/dDEC': 100.,'dR/dL':100, 'dR/dPM': 100., 'dR/dA':50, 'dR/dC':50.,'dR/dR':0.01, 'dR/dRl':5.e-13, 'dR/dPt':5.e-13} #, 'dR/dh2': 1} # 'dR/dA0':50., 'dR/dC0':50.,'dR/dR0':20, 'dR/dA1':1.e-2, 'dR/dC1':1.e-2,'dR/dR1':1.e-2} #
@@ -27,7 +27,7 @@ pert_cloop = {'orb': pert_cloop_orb, 'glo': pert_cloop_glo}
 pert_tracks = [] #'1107021838','1210192326','1403281002','1503191143'] #
 # select subset of parameters
 sol4_orb = [] #'1107021838','1210192326','1403281002','1503191143']  #
-sol4_orbpar = ['dA','dC','dR','dRl','dPt'] # ,None] #'dA1','dC1','dR1']  #
+sol4_orbpar = [None] #'dA','dC','dR','dRl','dPt'] # 'dA1','dC1','dR1']  #
 sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'] #, 'dR/dh2'] #,  None]
 
 # orbital representation

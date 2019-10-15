@@ -273,7 +273,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             sol_rms = []
             sol_avg = []
             for filt in filter_string_orb:
-                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'['',0]$',k)} #filt in k if k not in ['dR/dRA']}
+                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'0{0,1}$',k)} #filt in k if k not in ['dR/dRA']}
                 filtered_dict = list(filtered_dict.values())
                 sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
                 sol_avg.append(np.mean(np.array(filtered_dict)))
@@ -353,7 +353,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         for idx,printout in enumerate(printout_list):
             printout = pd.DataFrame(printout,columns=np.hstack(['tst_id',filter_string_orb]))
             printout = printout.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-            printout[["/dRl","/dPt"]] *= 1e4
+            #printout[["/dRl","/dPt"]] *= 1e4
             print(printout)
             printout_list[idx] = printout
 
@@ -384,7 +384,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             print("Total RMS for orbpar residuals: ")
             iters_orbres = pd.DataFrame(iters_orbres,columns=np.hstack(['tst_id',filter_string_orb]))
             iters_orbres = iters_orbres.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-            iters_orbres[["/dRl","/dPt"]] *= 1e5
+            #iters_orbres[["/dRl","/dPt"]] *= 1e5
             print(iters_orbres)
 
         if simulated_data and len(iters_orbres)>0:
@@ -742,4 +742,4 @@ if __name__ == '__main__':
 
     simulated_data = True
     # analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
+    analyze_sol(sol='tp8_1', ref_sol='tp8_0', subexp = '3res_20amp')
