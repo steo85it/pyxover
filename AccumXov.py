@@ -329,7 +329,7 @@ def clean_xov(xov, par_list=[]):
 
         if remove_dR200:
             print("REMOVING ALL XOV dR>200m", len(xov.xovers))
-            xov.xovers = xov.xovers[xov.xovers.dR.abs() < 100]
+            xov.xovers = xov.xovers[xov.xovers.dR.abs() < 200]
             print('xovers after cleaning by dR > 200m : ', len(xov.xovers))
 
     # print(xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
