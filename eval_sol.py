@@ -323,15 +323,16 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                     # print(iters_orbres)
 
             filter_string_glo = ["/dRA","/dDEC","/dPM","/dL","/dh2"]
-            sol_rms = []
+            sol_glb = []
             for filt in filter_string_glo:
                 filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
                 filtered_dict = list(filtered_dict.values())
-                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+                if len(filtered_dict)>0:
+                    sol_glb.append(np.array(filtered_dict)[0])
+                else:
+                    sol_glb.append("0")
+            iters_glocorr.append(np.hstack([tst_id,sol_glb]))
 
-            iters_glocorr.append(np.hstack([tst_id,sol_rms]))
-
-        # exit()
         if simulated_data:
             fig, [ax1,ax2,ax3,ax4,ax5] = plt.subplots(nrows=5,sharex=True)
         else:
@@ -405,14 +406,14 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             #                                     'dL':-0.5*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]),
             #                     'dh2': 0.}
             pert_cloop_glo = pert_cloop['glo']
-            pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
-            iters_glores = iters_glocorr.sub(pert_cloop_glo, axis='columns').abs()
+            # pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
+            pert_cloop_glo = [np.sum(x) for x in list(pert_cloop_glo.values())]
+            iters_glores = iters_glocorr.add(pert_cloop_glo, axis='columns').abs()
             iters_glores = pd.DataFrame(iters_glores,columns=np.hstack(['tst_id',filter_string_glo]))
             iters_glores = iters_glores.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
             iters_glores = iters_glores.divide(pert_cloop_glo,axis='columns')
             iters_glores *= 100
             print(iters_glores)
-        # exit()
 
         iters_glocorr.plot(ax=ax4)
         ax4.set_ylabel('sol (glo sol)')
@@ -742,4 +743,4 @@ if __name__ == '__main__':
 
     simulated_data = True
     # analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp8_1', ref_sol='tp8_0', subexp = '3res_20amp')
+    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
