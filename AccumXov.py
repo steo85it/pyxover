@@ -587,25 +587,24 @@ def solve(xovi_amat,dataset, previous_iter=None):
 def clean_partials(b, spA, nglbpars, threshold = 1.e6):
     # spA = spA[:99264,-4:]
 
-    print(sol4_glo)
-    print(nglbpars)
-
     if debug:
         print("## clean_partials - size pre:", len(b), spA.shape)
         # print(sol4_glo)
         # print(len(sol4_glo))
         # print(spA[:,2].data)
         plt.clf()
-        axlst = ['ax'+str(i) for i in range(nglbpars)]
-        print(axlst)
-        fig, axlst = plt.subplots(nglbpars, 1)
-        print(axlst)
-        exit()
+        fig, axlst = plt.subplots(nglbpars)
+        # exit()
         # ax.plot(spA_sol4.todense()<2000)
-        for idx, i in enumerate(axlst):
-            i.plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+        if nglbpars>1:
+            for idx in range(nglbpars):
+                axlst[idx].plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+                # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
+                axlst[idx].legend()
+        else:
+            axlst.plot(spA[:, -nglbpars + 0].todense(), label=sol4_glo[0])
             # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
-            i.legend()
+            axlst.legend()
         # i.plot(b)
         plt.savefig(tmpdir + 'b_and_A_pre.png')
     # exit()
@@ -644,14 +643,16 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
     print("## clean_partials - size post:", Nexcluded, Nexcluded/len(b)*100.,"%") #, len(keep))
     if debug:
         plt.clf()
-        axlst = ['ax'+str(i) for i in range(nglbpars)]
-        fig, axlst = plt.subplots(nglbpars, 1)
-        # ax.plot(spA_sol4.todense()<2000)
-        for idx, i in enumerate(axlst):
-            i.plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+        fig, axlst = plt.subplots(nglbpars)
+        if nglbpars>1:
+            for idx in range(nglbpars):
+                axlst[idx].plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+                # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
+                axlst[idx].legend()
+        else:
+            axlst.plot(spA[:, -nglbpars + 0].todense(), label=sol4_glo[0])
             # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
-            i.legend()
-        i.plot(b)
+            axlst.legend()
         plt.savefig(tmpdir + 'b_and_A_post.png')
 
     # exit()
