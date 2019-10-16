@@ -26,10 +26,12 @@ class Amat:
 
         self.vecopts = vecopts
         self.parNames = None
-        self.sol = None
         self.pert_cloop = None
         self.pert_cloop_glo = None
+        self.sol = None
         self.sol_dict = None
+        self.sol_iter = None
+        self.sol_dict_iter = None
 
     def setup(self, xov):
 
