@@ -561,7 +561,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # Choleski decompose matrix and append to design matrix
     Q = np.linalg.cholesky(penalty_matrix.todense())
     if previous_iter != None:
-        b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))]) # np.ravel(np.dot(Q,previous_iter.sol[0]))]) #
+        b_penal = np.hstack([L*xovi_amat.b, np.ravel(np.dot(Q,previous_iter.sol_iter[0]))]) #np.zeros(len(sol4_pars))]) #
     else:
         b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))])
     import scipy
@@ -640,7 +640,7 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
 
         # print("post= ", i, np.max(spA[:, -i - 1].data))
 
-    print("## clean_partials - size post:", Nexcluded, Nexcluded/len(b)*100.,"%") #, len(keep))
+    print("## clean_partials - size excluded:", Nexcluded, Nexcluded/len(b)*100.,"%") #, len(keep))
     if debug:
         plt.clf()
         fig, axlst = plt.subplots(nglbpars)
@@ -867,6 +867,11 @@ def main(arg):
             print("Max corrections:")
             print(orb_sol.filter(regex="sol_.*").astype(float).abs().max(axis=0))
             print("#####")
+
+            # store improvments from current iteration
+            xovi_amat.sol_dict_iter = xovi_amat.sol_dict.copy()
+            xovi_amat.sol_iter = xovi_amat.sol
+
             # Cumulate with solution from previous iter
             if int(ext_iter) > 0:
                 # sum the values with same keys
