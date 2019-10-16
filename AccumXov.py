@@ -374,7 +374,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     # Solve
     if not local:
-        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'] #,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
+        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL'] # ,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):

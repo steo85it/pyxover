@@ -393,17 +393,19 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             ax3.get_legend().remove()
             ax3.set_ylabel('rms (orb res)')
 
-        print("Total RMS for solutions (glopar): ")
+        print("Cumulated solution (glopar): ")
         iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
         iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
         print(iters_glocorr)
+        print("Iter improvment (%,glopar): ")
+        print(iters_glocorr.diff().div(iters_glocorr)*100.)
 
         if simulated_data and len(pert_cloop['glo'])>0:
             print("Residual % to be recovered (glopar): ")
-            # pert_cloop_glo = {'dRA': np.linalg.norm([0.02, 0.000, 0.000]),
-            #                                     'dDEC':np.linalg.norm([-0.01, 0.000, 0.000]),
-            #                                     'dPM':np.linalg.norm([0, 2.e-5, 0.000]),
-            #                                     'dL':-0.5*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]),
+            #pert_cloop_glo = {'dRA': np.linalg.norm([0., 0.001, 0.000]),
+            #                                     'dDEC':np.linalg.norm([-0., 0.0013, 0.000]),
+            #                                     'dPM':np.linalg.norm([0, 0.001, 0.000]),
+            #                                     'dL':0.03*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]),
             #                     'dh2': 0.}
             pert_cloop_glo = pert_cloop['glo']
             # pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
@@ -743,4 +745,4 @@ if __name__ == '__main__':
 
     simulated_data = True
     # analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
+    analyze_sol(sol='tp8_9', ref_sol='tp8_0', subexp = '3res_20amp')
