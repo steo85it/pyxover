@@ -52,7 +52,7 @@ def run(proc):
     np.random.seed(proc)
 
     for i in range(1000000):
-        orb_sel = np.random.choice(orbs, 200)
+        orb_sel = np.random.choice(orbs, 100)
 
         s = [(a,b) for a,b in list(
             itert.product(orb_sel, orb_sel))
@@ -67,7 +67,7 @@ def run(proc):
             s_max = s
             nxov_old = nxov
             print("New max = ", nxov_old, " @ sample ",i)
-            save([np.array(s_max),nxov_old],tmpdir+'bestROItracks200.pkl')
+            save([np.array(s_max),nxov_old],tmpdir+'bestROItracks100.pkl')
 
     # print(load(tmpdir+'bestROItracks.pkl'))
 

@@ -129,7 +129,7 @@ def print_corrmat(amat,filename):
     print("corr")
     print(corr)
     # mask to select only parameters with corrs > 0.9
-    m = (corr.mask(np.eye(len(corr), dtype=bool)).abs() > 0.95).any()
+    m = (corr.mask(np.eye(len(corr), dtype=bool)).abs() > 0.).any()
     # exit()
     if len(m)>0:
         corr = corr.loc[m,m]
@@ -143,12 +143,13 @@ def print_corrmat(amat,filename):
     mask = np.zeros_like(corr, dtype=np.bool)
     mask[np.triu_indices_from(mask)] = True
     # Set up the matplotlib figure
-    f, ax = plt.subplots(figsize=(11, 9))
+    f = plt.figure(figsize=(200, 200))
     # Generate a custom diverging colormap
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
     # Draw the heatmap with the mask and correct aspect ratio
     sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1, center=0,
                 square=True, linewidths=.5,annot=False, fmt='.1f', cbar_kws={"shrink": .5})
+    plt.yticks(rotation=0)
     f.savefig(filename)
     plt.close()
 
@@ -425,6 +426,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             ax5.get_legend().remove()
             ax5.set_ylabel('% NOT recovered')
 
+            print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
             print(pert_cloop_glo)
         # exit()
         # ax2.set_ylabel('rms (m)')
@@ -436,7 +438,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.close()
 
         # exit()
-    # print_corrmat(tmp,tmpdir+'corrmat_' + sol + '.png')
+    # print_corrmat(tmp,tmpdir+'corrmat_' + sol + '.pdf')
 
     if False and local:
         from mpl_toolkits.basemap import Basemap
@@ -746,4 +748,4 @@ if __name__ == '__main__':
 
     simulated_data = True
     # analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp8_1', ref_sol='tp8_0', subexp = '3res_20amp')
+    analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')

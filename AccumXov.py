@@ -527,6 +527,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
                 # # df_sol.columns = [x[:-1] if x in list(filter(regex.match, df_sol.columns)) else x for x in
                 # #                   df_sol.columns.values]
                 # print(parindex)
+                # print(len(parindex))
                 if len(parindex)>0:
 
                     # Constrain tightly to 0 those parameters with few observations
@@ -552,6 +553,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
                                                (rowcols_diag[:,0],rowcols_diag[:,1])),
                                               dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
         # print(sum(csr_avg))
+        # print(penalty_matrix)
         # exit()
 
         penalty_matrix = penalty_matrix + sum(csr_avg)
@@ -795,7 +797,9 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
     print(glb_sol)
     print('-- -- -- -- ')
 
-    print('to_be_recovered (sim mode)', pert_cloop['glo'])
+    if len(pert_cloop['glo'])>0:
+        print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
+        print(pert_cloop['glo'])
 
     if debug and False:
         _ = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)

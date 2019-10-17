@@ -11,7 +11,8 @@
 
 import numpy as np
 
-from prOpt import vecopts
+from prOpt import vecopts, debug
+from util import as2deg
 
 
 def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
@@ -43,16 +44,20 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
 
     rotpar['ORIENT0'] = np.vstack([POLE_RA0, POLE_DEC0, PM0])
 
-    POLE_RA = offsetRA + POLE_RA0
-    POLE_DEC = offsetDEC + POLE_DEC0
-    PM = offsetPM + PM0
+    # Convert offsets to degrees or degrees/day and apply them
+    POLE_RA = as2deg(offsetRA) + POLE_RA0
+    POLE_DEC = as2deg(offsetDEC) + POLE_DEC0
+    PM = as2deg(offsetPM)/365.25 + PM0
 
     upd_rotpar = {'ORIENT': '',
-                  'NUT_PREC_PM': rotpar['NUT_PREC_PM0'] + offsetL,
+                  'NUT_PREC_PM': rotpar['NUT_PREC_PM0'] + as2deg(offsetL),
                   'NUT_PREC_ANGLES': rotpar['NUT_PREC_ANGLES0']
                   }
-    #print("librations", rotpar['NUT_PREC_PM0'], offsetL * rotpar['NUT_PREC_PM0'])
-    # exit()
+
+    if debug:
+        print("librations", rotpar['NUT_PREC_PM0'], offsetL * rotpar['NUT_PREC_PM0'])
+        print(as2deg(offsetRA), as2deg(offsetDEC), as2deg(offsetPM)/365.25, as2deg(offsetL))
+        # exit()
 
     upd_rotpar['ORIENT'] = np.vstack([POLE_RA, POLE_DEC, PM])
 

@@ -37,9 +37,11 @@ from tidal_deform import tidal_deform
 
 # from collections import defaultdict
 
-
 ##############################################
 # @profile
+from util import rad2as, as2rad
+
+
 def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     """
 
@@ -108,10 +110,10 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # print(np.array(vmbf).reshape(-1,3))
 
     if ([tmp_pertPar[k] for k in ['dRl', 'dPt']] != [0, 0]):
-        # Apply roll and pitch offsets to zpt
+        # Apply roll and pitch offsets to zpt (converted to radians)
         # print(np.reshape(np.tile([tmp_pertPar[k] for k in ['dRl','dPt']],len(et_tx)),(-1,2)))
-        ang_Rl = np.reshape(np.tile([tmp_pertPar[k] for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 0]
-        ang_Pt = np.reshape(np.tile([tmp_pertPar[k] for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 1]
+        ang_Rl = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 0]
+        ang_Pt = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 1]
 
         zpt = astr.rp_2_xyz(zpt, ang_Rl, ang_Pt)
     #    print("test zpt post dRlPt", np.linalg.norm(zpt, axis=1))

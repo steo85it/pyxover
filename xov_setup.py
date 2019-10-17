@@ -580,15 +580,15 @@ class xov:
             # should be out of the if in case self.ladata is not updated
             tmp = [obj.project(self.proj_center['lon'], self.proj_center['lat'],inplace=False) for obj in self.gtracks]
             ladata_df = pd.concat([tmp[0], tmp[1]]).reset_index(drop=True)
-        # updating self.ladata would keep the updated projection for partials, too, but also create confusion
-        # btw projections w.r.t. different central coordinates (NP for unprocessed tracks and close to previous
-        # intersection for tracks already processed)
-        # TODO could be solved by the following lines, but maybe not needed...
-        # print(tmp.columns)
-        # ladata_df = pd.merge(ladata_df, tmp, how='inner', on='seqid',left_index=True, sort=True,
-        #          suffixes=('', '_loc'),validate='one_to_one')
-        # ladata_df = ladata_df.loc[:,~ladata_df.columns.str.contains('stgprj_.*_loc')]
-        self.ladata_df.update(ladata_df)
+            # updating self.ladata would keep the updated projection for partials, too, but also create confusion
+            # btw projections w.r.t. different central coordinates (NP for unprocessed tracks and close to previous
+            # intersection for tracks already processed)
+            # TODO could be solved by the following lines, but maybe not needed...
+            # print(tmp.columns)
+            # ladata_df = pd.merge(ladata_df, tmp, how='inner', on='seqid',left_index=True, sort=True,
+            #          suffixes=('', '_loc'),validate='one_to_one')
+            # ladata_df = ladata_df.loc[:,~ladata_df.columns.str.contains('stgprj_.*_loc')]
+            self.ladata_df.update(ladata_df)
 
         # exit()
 
