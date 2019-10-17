@@ -26,10 +26,10 @@ def read_all_files(path):
 
 if __name__ == '__main__':
 
-    local = 0
-    exp = "tp8"
+    local = 1
+    exp = "tp9"
     use_existing_sel =True
-    ntracks = 500
+    ntracks = 100
 
     if local:
        spk_path = auxdir+'spaux_*.pkl'
@@ -69,13 +69,14 @@ if __name__ == '__main__':
         # Probably no need to remove these, sufficient to rename
         if local:
             # os.remove(rmf)
-            shutil.move(rmf,rmf[:-3]+'bak')
+            # shutil.move(rmf,rmf[:-3]+'bak')
+            pass
         else:
 #            shutil.move(rmf,rmf[:-3]+'bak')
             pass
 
     # use if just want to select same orbits as existing spaux
-    selected = glob.glob(auxdir + 'spaux_' + '*.pkl')
+    # selected = glob.glob(auxdir + 'spaux_' + '*.pkl')
     # select same orbits on simulated data
     orbs = [f.split('_')[-1].split('.')[0] for f in selected]
 
@@ -92,10 +93,13 @@ if __name__ == '__main__':
 
     print('total spk:',len(all_spk))
     print('obs selected: ',len(selected))
+    print(selected)
 
     remove_these = list(set(obsfil)^set(selected))
+    print(remove_these)
     for rmf in remove_these:
         if local:
+            # print(rmf)
             shutil.move(rmf, rmf[:-3] + 'BAK')
             # os.remove(rmf)
         else:

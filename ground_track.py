@@ -208,7 +208,6 @@ class gtrack:
         df.chn = pd.to_numeric(df.chn, errors='coerce').fillna(8).astype(np.int64)
 
         # remove bad data (chn > 4)
-        # TODO: correct back to
         df = df[df['chn'] < 5]
         # df = df[df['frm'] == 1]
         df.drop('frm', axis=1, inplace=True)
@@ -587,8 +586,11 @@ class gtrack:
         geoloc_out, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
 
         # print(self.ladata_df)
-        tmp_df.loc[:, 'ET_BC'] = et_bc
-        tmp_df.loc[:, 'dR_tid'] = dr_tidal
+        if self.vecopts['PARTDER'] is not '':
+            tmp_df['ET_BC_' + self.vecopts['PARTDER']+'_p'] = et_bc
+        else:
+            tmp_df.loc[:, 'ET_BC'] = et_bc
+            tmp_df.loc[:, 'dR_tid'] = dr_tidal
 
         # Compute partial derivatives if required
         if self.vecopts['PARTDER'] is not '':
@@ -613,10 +615,7 @@ class gtrack:
             ####################################################################################
             # exit()
 
-            tmp_df.loc[:, 'ET_BC_' + self.vecopts['PARTDER']] = et_bc
-            # print(self.ladata_df)
-            # exit()
-
+            tmp_df['ET_BC_' + self.vecopts['PARTDER']+'_m'] = et_bc
             # print("partder check", geoloc_out[:,0:3], geoloc_min[:,0:3],diff_step)
 
             # print('partder pre', partder)
@@ -764,7 +763,7 @@ class gtrack:
             # lon_tmp = [ladata_df['LON_' + k + '_' + par].values for k in ['m', 'p']]
             # lat_tmp = [ladata_df['LAT_' + k + '_' + par].values for k in ['m', 'p']]
 
-            if (debug):
+            if debug:
                 print('corr: diff_step', diff_step)
                 print('corr: lon lat', lon_tmp[:][:], lat_tmp[:][:])
                 print('corr: partials add (lon, lat)', ladata_df['dLON/' + par].values * diff_step,

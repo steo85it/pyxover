@@ -59,8 +59,14 @@ def get_rotmat_xyz_2_rsw(r_vec, v_vec, vec_in):
     return rot_mat
 
 
-# Transform roll and pitch corrections to inertial
 def rp_2_xyz(vec_in, ang_Rl, ang_Pt):
+    """
+    Transform roll and pitch corrections to inertial
+    :param vec_in: input vector to rotate
+    :param ang_Rl: roll angle (rad)
+    :param ang_Pt: pitch angle (rad)
+    :return:
+    """
     rot_Rl = np.column_stack(([1] * len(ang_Rl), [0] * len(ang_Rl), [0] * len(ang_Rl),
                               [0] * len(ang_Rl), np.cos(ang_Rl), -np.sin(ang_Rl),
                               [0] * len(ang_Rl), np.sin(ang_Rl), np.cos(ang_Rl))).reshape(-1, 3, 3)

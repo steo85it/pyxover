@@ -20,7 +20,7 @@ from AccumXov import plt_geo_dR
 from ground_track import gtrack
 from xov_setup import xov
 from Amat import Amat
-from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop
+from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol4_glo
 
 remove_max_dist = False
 remove_3sigma_median = False
@@ -126,12 +126,14 @@ def print_corrmat(amat,filename):
     # Compute the covariance matrix
     # print(np.linalg.pinv((ref.spA.transpose() * ref.spA).todense()))
     corr = amat.corr_mat()
-    print(len(corr))
+    print("corr")
+    print(corr)
     # mask to select only parameters with corrs > 0.9
-    m = (corr.mask(np.eye(len(corr), dtype=bool)).abs() > 0.95).any()
+    m = (corr.mask(np.eye(len(corr), dtype=bool)).abs() > 0.).any()
     # exit()
-    corr = corr.loc[m,m]
-    print(len(corr))
+    if len(m)>0:
+        corr = corr.loc[m,m]
+        print(len(corr))
     # print(corr.columns)
     # print(np.sort(corr.columns))
     # print(corr.index)
@@ -141,12 +143,13 @@ def print_corrmat(amat,filename):
     mask = np.zeros_like(corr, dtype=np.bool)
     mask[np.triu_indices_from(mask)] = True
     # Set up the matplotlib figure
-    f, ax = plt.subplots(figsize=(11, 9))
+    f = plt.figure(figsize=(200, 200))
     # Generate a custom diverging colormap
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
     # Draw the heatmap with the mask and correct aspect ratio
     sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1, center=0,
                 square=True, linewidths=.5,annot=False, fmt='.1f', cbar_kws={"shrink": .5})
+    plt.yticks(rotation=0)
     f.savefig(filename)
     plt.close()
 
@@ -320,9 +323,9 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                     _ = prev.pert_cloop
                     _.columns = ['/'+k for k in _.columns]
                     iters_orbres.append((_ ** 2).mean(axis=0)**0.5)
-                    # print(iters_orbres)
+                    print(iters_orbres)
 
-            filter_string_glo = ["/dRA","/dDEC","/dPM","/dL","/dh2"]
+            filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
             sol_glb = []
             for filt in filter_string_glo:
                 filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
@@ -425,6 +428,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             ax5.get_legend().remove()
             ax5.set_ylabel('% NOT recovered')
 
+            print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
             print(pert_cloop_glo)
         # exit()
         # ax2.set_ylabel('rms (m)')
@@ -436,7 +440,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         plt.close()
 
         # exit()
-    #print_corrmat(tmp,tmpdir+"corrmat.png")
+    # print_corrmat(tmp,tmpdir+'corrmat_' + sol + '.pdf')
 
     if False and local:
         from mpl_toolkits.basemap import Basemap
@@ -687,29 +691,30 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     if False:
 
         # plot dR/dL and dR/dh2
-        tmp.xov.xovers['dR/dL'] = tmp.xov.xovers.loc[:,['dR/dL']].abs()
+        for par in ['dL','dRA','dDEC']:
+            tmp.xov.xovers['dR/'+par] = tmp.xov.xovers.loc[:,['dR/'+par]].abs()
 
-        mladRdL = tmp.xov.xovers.round({'LON': 0, 'LAT': 0, 'dR': 3}).groupby(['LON', 'LAT']).median().reset_index()
-        print(mladRdL)
+            mladRdL = tmp.xov.xovers.round({'LON': 0, 'LAT': 0, 'dR': 3}).groupby(['LON', 'LAT']).median().reset_index()
+            print(mladRdL)
 
-        fig, ax1 = plt.subplots(nrows=1)
-        # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
-        # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
-        # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
-        # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
-        # Draw the heatmap with the mask and correct aspect ratio
-        piv = pd.pivot_table(mladRdL, values="dR/dL", index=["LAT"], columns=["LON"], fill_value=0)
-        # plot pivot table as heatmap using seaborn
-        piv = (piv+empty_geomap_df).fillna(0)
-        print(piv)
-        # exit()
-        sns.heatmap(piv, xticklabels=10, yticklabels=10, vmax=5)
-        plt.tight_layout()
-        ax1.invert_yaxis()
-        #         ylabel='Topog ampl rms (1st octave, m)')
-        fig.savefig(tmpdir+'mla_dL_'+sol+'.png')
-        plt.clf()
-        plt.close()
+            fig, ax1 = plt.subplots(nrows=1)
+            # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
+            # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
+            # ax1 = sns.heatmap(mlacount, square=False, annot=True, robust=True)
+            # cmap = sns.palplot(sns.light_palette("green"), as_cmap=True) #sns.diverging_palette(220, 10, as_cmap=True)
+            # Draw the heatmap with the mask and correct aspect ratio
+            piv = pd.pivot_table(mladRdL, values='dR/'+par, index=["LAT"], columns=["LON"], fill_value=0)
+            # plot pivot table as heatmap using seaborn
+            # piv = (piv+empty_geomap_df).fillna(0)
+            # print(piv)
+            # exit()
+            sns.heatmap(piv, xticklabels=10, yticklabels=10, vmax=10000)
+            plt.tight_layout()
+            ax1.invert_yaxis()
+            #         ylabel='Topog ampl rms (1st octave, m)')
+            fig.savefig(tmpdir+'mla_'+par+'_'+sol+'.png')
+            plt.clf()
+            plt.close()
 
         if False:
             tmp.xov.xovers['dR/dh2'] = tmp.xov.xovers.loc[:,['dR/dh2']].abs()
@@ -745,4 +750,4 @@ if __name__ == '__main__':
 
     simulated_data = True
     # analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
+    analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
