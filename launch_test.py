@@ -22,7 +22,7 @@ from prOpt import sim_altdata, local, outdir
 if __name__ == '__main__':
 
     data_sim = 'sim'  # 'data' #
-    exp = 'tp9' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'tp8' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
 #    res = [3]

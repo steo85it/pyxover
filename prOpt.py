@@ -5,7 +5,7 @@ from util import deg2as
 ##############################################
 # @profile
 # local or PGDA
-local = 1
+local = 0
 # debug mode
 debug = 0
 # parallel processing?
