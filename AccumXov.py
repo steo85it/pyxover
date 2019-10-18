@@ -8,6 +8,7 @@
 import re
 import warnings
 from functools import reduce
+import itertools
 
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -496,8 +497,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
     csr = []
     for constrain in par_constr.items():
 
-        parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if constrain[0] in p])
-
+        regex = re.compile(".*" + constrain[0] + "$")
+        parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if regex.match(p)])
         # Constrain tightly to 0 those parameters with few observations
         nobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
@@ -519,9 +520,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
             regex = re.compile(".*"+constrain[0]+"$")
             # print(list(filter(regex.match, sol4_pars)))
             if list(filter(regex.match, sol4_pars)):
-                print(constrain)
-                import itertools
-                parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if constrain[0] in p])
+                parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if regex.match(p)])
                 # print("matching", list(filter(regex.match, sol4_pars)))
                 # # exit()
                 # # df_sol.columns = [x[:-1] if x in list(filter(regex.match, df_sol.columns)) else x for x in
