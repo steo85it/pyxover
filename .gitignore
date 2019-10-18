@@ -5,3 +5,8 @@ tmp/
 illumNG/
 __pycache__/
 slurm*
+nohup*
+dotmp
+loadPyGeoloc*
+loadPyAltSim*
+loadAcc*

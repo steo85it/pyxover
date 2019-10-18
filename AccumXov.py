@@ -8,6 +8,7 @@
 import re
 import warnings
 from functools import reduce
+import itertools
 
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -329,7 +330,7 @@ def clean_xov(xov, par_list=[]):
 
         if remove_dR200:
             print("REMOVING ALL XOV dR>200m", len(xov.xovers))
-            xov.xovers = xov.xovers[xov.xovers.dR.abs() < 100]
+            xov.xovers = xov.xovers[xov.xovers.dR.abs() < 200]
             print('xovers after cleaning by dR > 200m : ', len(xov.xovers))
 
     # print(xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
@@ -374,7 +375,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     # Solve
     if not local:
-        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'] #,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
+        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL'] # ,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -519,7 +520,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
             regex = re.compile(".*"+constrain[0]+"$")
             # print(list(filter(regex.match, sol4_pars)))
             if list(filter(regex.match, sol4_pars)):
-                import itertools
                 parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if regex.match(p)])
                 # print("matching", list(filter(regex.match, sol4_pars)))
                 # # exit()
