@@ -162,6 +162,9 @@ class gtrack:
         # print(self.MGRx.tck)
 
     def save(self, filnam):
+        # clean up useless columns
+        self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dR_tid$').columns, axis='columns')
+
         pklfile = open(filnam, "wb")
         pickle.dump(self, pklfile)
         pklfile.close()
@@ -770,6 +773,9 @@ class gtrack:
                       ladata_df['dLAT/' + par].values * diff_step)
 
         # project latlon to xy from North Pole in stereo projection
+        # print(lon_tmp)
+        # print(lat_tmp)
+        # exit()
         proj = np.vstack(
             [project_stereographic(lon_tmp[:][k], lat_tmp[:][k], lon0, lat0, vecopts['PLANETRADIUS']) for k in
              range(0, np.shape(lon_tmp)[0])]).T

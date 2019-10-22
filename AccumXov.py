@@ -481,8 +481,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # val /= np.max(np.abs(val))
     row = col = regbas_weights.index.values
 
-    obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
-    # # obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
 
     # Cholesky decomposition of diagonal matrix == square root of diagonal
     L = obs_weights
@@ -506,7 +506,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         for p in parindex:
             if p[0] in to_constrain:
                 p[1] *= 1.e10
-        #print(parindex)
+
         val = parindex[:,1]
         row = col = parindex[:,0]
 
@@ -518,7 +518,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
         csr_avg = []
         for constrain in mean_constr.items():
             regex = re.compile(".*"+constrain[0]+"$")
-            # print(list(filter(regex.match, sol4_pars)))
             if list(filter(regex.match, sol4_pars)):
                 parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if regex.match(p)])
                 # print("matching", list(filter(regex.match, sol4_pars)))

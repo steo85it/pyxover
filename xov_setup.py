@@ -52,14 +52,17 @@ class xov:
 
         self.ladata_df = df.drop('chn', axis=1)
         self.msrm_sampl = 50
-
-        self.tracks = df.orbID.unique()
+        # store involved tracks as dict
+        self.tracks = dict(zip(df.orbID.unique(),list(range(2))))
         # store the imposed perturbation (if closed loop simulation)
-        self.pert_cloop = {self.tracks[0]:gtracks[0].pert_cloop, self.tracks[1]:gtracks[1].pert_cloop}
+        self.pert_cloop = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop, list(self.tracks.keys())[1]:gtracks[1].pert_cloop}
         # store the solution from the previous iteration
-        self.sol_prev_iter = {self.tracks[0]:gtracks[0].sol_prev_iter,self.tracks[1]:gtracks[1].sol_prev_iter}
+        self.sol_prev_iter = {list(self.tracks.keys())[0]:gtracks[0].sol_prev_iter,list(self.tracks.keys())[1]:gtracks[1].sol_prev_iter}
         # print(df.orbID)
         # print(df.orbID.unique())
+        self.ladata_df = df.drop('chn', axis=1)
+        self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
+        # print(self.ladata_df.orbID)
 
         if debug:
             # prepare surface texture "stamp" and assign the interpolated function as class attribute
@@ -75,6 +78,7 @@ class xov:
                                                 noise)
             self.apply_texture = interp_spline
 
+        # Crossover computation (rough+fine+elev)
         nxov = self.get_xov()
 
         if nxov > 0:
@@ -82,9 +86,12 @@ class xov:
             # Compute and store distances between obs and xov coord
             self.set_xov_obs_dist()
 
-            if (partials):
+            if partials:
                 self.set_partials()
 
+            # Remap track names to df
+            self.xovtmp['orbA'] = self.xovtmp['orbA'].map({v: k for k, v in self.tracks.items()})
+            self.xovtmp['orbB'] = self.xovtmp['orbB'].map({v: k for k, v in self.tracks.items()})
             # Update general df
             self.xovers = self.xovers.append(self.xovtmp)
             self.xovers.reset_index(drop=True, inplace=True)
@@ -202,6 +209,7 @@ class xov:
     # Compute elevation R at crossover points by interpolation
     # (should be put in a function and looped over -
     # also, check the higher order interp)
+    # @profile
     def get_elev(self, arg, ii, jj, ind_A, ind_B, par='', x=0, y=0):
 
         ladata_df = self.ladata_df
@@ -223,6 +231,7 @@ class xov:
         if partials:
             param.update(parOrb)
             param.update(parGlo)
+            # define column for update
 
         if (debug):
             print("get_elev", arg, ii, jj, ind_A, ind_B, par)
@@ -244,8 +253,10 @@ class xov:
                 print(ladata_df.filter(
                     regex='^dR/' + par.partition('_')[0] + '$').columns)
 
-            ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][np.hstack([ETBCparpm, 'R', 'genID', ladata_df.filter(
-                regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
+            regex = re.compile(r'^dR/' + par.partition('_')[0] + '$')
+            dRdp = list(filter(regex.search, ladata_df.columns))[0]
+            ldA_ = ladata_df[['orbID',ETBCparpm, 'R', 'genID',dRdp]].values
+            ldA_ = ldA_[ldA_[:,0]==0][:,1:]
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
 
             if debug:
@@ -273,7 +284,8 @@ class xov:
 
         else:
 
-            ldA_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['ET_BC', 'R', 'genID']].values
+            ldA_ = ladata_df[['orbID','ET_BC', 'R', 'genID']].values
+            ldA_ = ldA_[ldA_[:,0]==0][:,1:]
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
             t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
 
@@ -313,8 +325,12 @@ class xov:
             elif bool(re.search('_[p,m]$', par)):
                 ETBCparpm = 'ET_BC_'+ par
 
-            ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][np.hstack([ETBCparpm, 'R', 'genID', ladata_df.filter(
-                regex='^dR/' + par.partition('_')[0] + '$').columns.values])].values
+            # TODO regex not needed twice
+            regex = re.compile(r'^dR/' + par.partition('_')[0] + '$')
+            dRdp = list(filter(regex.search, ladata_df.columns))[0]
+            ldB_ = ladata_df[['orbID',ETBCparpm, 'R', 'genID',dRdp]].values
+            ldB_ = ldB_[ldB_[:,0]==1][:,1:]
+
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
                       k in ind_B_int]
             t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_), 0] for k in range(0, len(ind_B_int))]
@@ -336,7 +352,9 @@ class xov:
                     xyintB[k][1] -= xyintB[k][3] * diff_step
 
         else:
-            ldB_ = ladata_df.loc[ladata_df['orbID'] == arg[1]][['ET_BC', 'R', 'genID']].values
+            ldB_ = ladata_df[['orbID','ET_BC', 'R', 'genID']].values
+            ldB_ = ldB_[ldB_[:,0]==1][:,1:]
+
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
                       k in ind_B_int]
             t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_), 0] for k in range(0, len(ind_B_int))]
@@ -465,6 +483,7 @@ class xov:
         print(self.tracks)
         # exit()
 
+    # @profile
     def get_xover_fine(self, rough_indA, rough_indB, param):
         """
         Fine-tune xover index and coordinates from first rough guess,
@@ -478,10 +497,10 @@ class xov:
         :return: ind_B: xov.obsB index in ladata(orbA+orbB)
         """
 
-        orb_lst = self.tracks.copy()
+        orb_lst = list(self.tracks.values())
 
         msrm_sampl = self.msrm_sampl
-        ladata_df = self.ladata_df.copy()
+        # ladata_df = self.ladata_df.copy()
 
         X_stgA = 'X_stgprj'
         Y_stgA = 'Y_stgprj'
@@ -489,8 +508,8 @@ class xov:
         Y_stgB = 'Y_stgprj'
 
         # when computing partials, update variable names to retrieve column in ladata
-        if (param is not ''):
-            msrm_sampl = 100  # to reduce processing time, just check close to unperturbed xover
+        if param is not '':
+            #msrm_sampl = self.msrm_sampl  # to reduce processing time, just check close to unperturbed xover
             # if orbit related parameter
             if any(key in param for key in ['dA_', 'dC_', 'dR_', 'dRl_', 'dPt_']):
                 if ('pA' in param or 'mA' in param):
@@ -517,80 +536,10 @@ class xov:
                   X_stgB, \
                   Y_stgB)
 
-            pd.set_option('display.max_columns', 500)
-            df = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]]
-            print(df)
+            # pd.set_option('display.max_columns', 500)
+            # df = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]]
+            # print(df)
             # exit()
-
-        # fig, ax1 = plt.subplots(nrows=1)
-        # df[['LON', 'LAT']].plot(x='LON',y=['LAT'], ax=ax1)
-        #
-        # par = 'dL'
-        # diff_step = 1.e-2*0.00999
-        # df.loc[:,'LON_Lp'] = [df['LON'] + df['dLON/' + par].values * k * diff_step for k in [-1, 1]][1]
-        # df.loc[:,'LAT_Lp'] = [df['LAT'] + df['dLAT/' + par].values * k * diff_step for k in [-1, 1]][1]
-        # # ax1.set_ylim(-30,30)
-        # df.loc[:,'LON_Lm'] = [df['LON'] - df['dLON/' + par].values * k * diff_step for k in [-1, 1]][1]
-        # df.loc[:,'LAT_Lm'] = [df['LAT'] - df['dLAT/' + par].values * k * diff_step for k in [-1, 1]][1]
-        # df[['LON_Lp', 'LAT_Lp']].plot(x='LON_Lp',y=['LAT_Lp'], ax=ax1)
-        # # print(df[['LON','LON_Lp', 'LAT','LAT_Lp']])
-        # # print(df[['LON_p_dL','LAT_p_dL']])
-        # # print(df[['LON_m_dL','LAT_m_dL']])
-        # # print("Differences")
-        # # print(np.vstack([df['LON_m_dL'],df['LON_Lm'],df['LON_m_dL']-df['LON_Lm']]))
-        # # print(np.vstack([df['LON_p_dL'],df['LON_Lp'],df['LON_p_dL']-df['LON_Lp']]))
-        # # exit()
-        #
-        # fig.savefig(tmpdir+'mla_track_pert_'+str(orb_lst[0])+'.png')
-        # plt.clf()
-        # plt.close()
-        #
-        # fig, ax1 = plt.subplots(nrows=1)
-        # # df[['X_stgprj', 'Y_stgprj']].plot(x='X_stgprj',y=['Y_stgprj'], ax=ax1)
-        # # df[['X_stgprj_dL_p', 'Y_stgprj_dL_p']].plot(x='X_stgprj_dL_p',y=['Y_stgprj_dL_p'], ax=ax1)
-        # # df[['X_stgprj_dL_m', 'Y_stgprj_dL_m']].plot(x='X_stgprj_dL_m',y=['Y_stgprj_dL_m'], ax=ax1)
-        # # ax1.set_xlim(-1,1)
-        # # ax1.set_ylim(-315,-320)
-        # # param = self.param
-        # # param = dict([next(iter(param.items()))])
-        # # proj = [obj.launch_stereoproj(param,91.42, 75.12) for obj in self.gtracks][0]
-        # # print(proj)
-        # # ax1.plot(proj[:,0],proj[:,1])
-        # # proj = [obj.launch_stereoproj({'':1,'dL': 0.01},91.42, 75.12) for obj in self.gtracks][0]
-        # # print(proj)
-        # # ax1.plot(proj[:,0],proj[:,1])
-        # # fig.savefig(tmpdir+'mla_projtrack_pert_'+str(orb_lst[0])+'.png')
-        #
-        # ax1.plot(df['ET_TX'],df['LON_p_dL']-df['LON_Lp'])
-        # fig.savefig(tmpdir+'mla_checkpart_'+str(orb_lst[0])+'.png')
-        # plt.clf()
-        # plt.close()
-
-        # exit()
-
-        # Recompute stereogr projection around average LON/LAT of track
-        # print("crash for orbits ",self.tracks)
-        if param is '':
-            # compute central lon/lat of trackA (then use it for both, as close to intersection)
-            df_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][['LON', 'LAT']].values
-            lon_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 0].mean()
-            lat_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 1].mean()
-            self.proj_center = {'lon':lon_mean_A,'lat':lat_mean_A}
-            # reproject both A and B intersecting tracks and replace ladata_df (also updates partials)
-            # should be out of the if in case self.ladata is not updated
-            tmp = [obj.project(self.proj_center['lon'], self.proj_center['lat'],inplace=False) for obj in self.gtracks]
-            ladata_df = pd.concat([tmp[0], tmp[1]]).reset_index(drop=True)
-            # updating self.ladata would keep the updated projection for partials, too, but also create confusion
-            # btw projections w.r.t. different central coordinates (NP for unprocessed tracks and close to previous
-            # intersection for tracks already processed)
-            # TODO could be solved by the following lines, but maybe not needed...
-            # print(tmp.columns)
-            # ladata_df = pd.merge(ladata_df, tmp, how='inner', on='seqid',left_index=True, sort=True,
-            #          suffixes=('', '_loc'),validate='one_to_one')
-            # ladata_df = ladata_df.loc[:,~ladata_df.columns.str.contains('stgprj_.*_loc')]
-            self.ladata_df.update(ladata_df)
-
-        # exit()
 
         # compute more accurate location
         # Retrieve ladata_df index of observations involved in the crossover
@@ -600,10 +549,22 @@ class xov:
         # ind0 and ind1 now are the indeces of the points just before the
         # intersection in ladata_df, so that (ind0,ind0+1) and (ind1,ind1+1) are the
         # bracketing points' indeces
+        if set([X_stgA, Y_stgA, X_stgB, Y_stgB]).issubset(self.ladata_df.columns):
+            if X_stgA != X_stgB and Y_stgA != Y_stgB:
+                df_ = self.ladata_df[['orbID', X_stgA, Y_stgA, X_stgB, Y_stgB]].values
+                ldA_ = df_[df_[:, 0] == 0][:,1:]
+                ldB_ = df_[df_[:, 0] == 1][:,3:]
+            else:
+                df_ = self.ladata_df[['orbID', X_stgA, Y_stgA]].values
+                ldA_ = df_[df_[:, 0] == 0][:,1:]
+                ldB_ = df_[df_[:, 0] == 1][:,1:]
 
-        if set([X_stgA, Y_stgA, X_stgB, Y_stgB]).issubset(ladata_df.columns):
-            ldA_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]].values
-            ldB_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB, Y_stgB]].values
+            # # print(df_.loc[df_['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]])
+            # ldA_ = df_.loc[df_['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]].values
+            # ldB_ = df_.loc[df_['orbID'] == orb_lst[1]][[X_stgB, Y_stgB]].values
+
+            # ldA_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]].values
+            # ldB_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB, Y_stgB]].values
 
             if debug:
                 print("Fine", param,self.proj_center)
@@ -650,6 +611,7 @@ class xov:
                 intersec_out = []
                 for i in range(len(tmp[0])):
                     intersec_out.append([x[i] for x in tmp])
+
             elif len(rough_indA) == 1 and len(intersec_out[0][0]) > 1:
                 intersec_out = np.transpose(intersec_out)
 
@@ -774,10 +736,15 @@ class xov:
             # Check if any 2 xovers closer than msrm_sampl, if yes, remove one of them
             # (not doing this would result in a doubling of the xovers)
             f = np.insert((np.diff(rough_indA) > msrm_sampl) & (np.diff(rough_indB) > msrm_sampl), 0, 'True')
-            x = x[f]
-            y = y[f]
+            # x = x[f]
+            # y = y[f]
             rough_indA = rough_indA[f]
             rough_indB = rough_indB[f]
+
+            # Recompute stereogr projection around average LON/LAT of track
+            # (else low latitude xovers badly determined)
+            self.xov_project(ladata_df, msrm_sampl, rough_indA)
+            # exit()
 
             # try:
             x, y, subldA, subldB, ldA, ldB = self.get_xover_fine(rough_indA, rough_indB, '')
@@ -794,6 +761,24 @@ class xov:
                 # exit()
                 return np.vstack((x, y, ldA, ldB, R_A, R_B)).T
             # except:
+    # @profile
+    def xov_project(self, ladata_df, msrm_sampl, rough_indA):
+        # compute central lon/lat of trackA (then use it for both, as close to intersection)
+        df_ = ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[0]][['LON', 'LAT']].values
+        lon_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 0].mean()
+        lat_mean_A = df_[max(0, rough_indA[0] - msrm_sampl):min(rough_indA[0] + msrm_sampl, len(df_)), 1].mean()
+        self.proj_center = {'lon': lon_mean_A, 'lat': lat_mean_A}
+        # reproject both A and B intersecting tracks and replace ladata_df (also updates partials)
+        # should be out of the if in case self.ladata is not updated
+        tmp = [obj.project(self.proj_center['lon'], self.proj_center['lat'], inplace=False) for obj in
+               self.gtracks]
+        ladata_df = pd.concat([tmp[0], tmp[1]]).reset_index(drop=True)
+        # clean up useless columns (speeds up pd.df indexing)
+        self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dL(AT|ON)/d.*').columns,
+                                             axis='columns')
+        # updating self.ladata to keep the updated projection for partials processing
+        self.ladata_df.update(ladata_df)
+        self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
 
     def get_xover_rough(self, arg, ladata_df, msrm_sampl):
         # Decimate data and find rough intersection
@@ -835,9 +820,9 @@ class xov:
         #  pool = mp.Pool(processes = mp.cpu_count() - 1)
         #  results = pool.map(self.get_xOver_elev, comb)  # parallel
         # else:
-        results = self.get_xOver_elev(self.tracks)  # seq
+        results = self.get_xOver_elev(list(self.tracks.values()))  # seq
 
-        if (results is not None):
+        if results is not None:
             xovtmp = pd.DataFrame(np.vstack(x for x in results if x is not None).reshape(-1, np.shape(results)[1]))
             xovtmp.columns = ['x0', 'y0', 'ladata_idA', 'ladata_idB', 'R_A', 'R_B']
 
@@ -850,10 +835,10 @@ class xov:
 
             # Store reference orbit IDs for each xov
             xovtmp['orbA'] = \
-                ladata_df.loc[ladata_df['orbID'] == self.tracks[0]].loc[map(round, xovtmp.ladata_idA.values)][
+                ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[0]].loc[map(round, xovtmp.ladata_idA.values)][
                     ['orbID']].values
             xovtmp['orbB'] = \
-                ladata_df.loc[ladata_df['orbID'] == self.tracks[1]].loc[map(round, xovtmp.ladata_idB.values)][
+                ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[1]].loc[map(round, xovtmp.ladata_idB.values)][
                     ['orbID']].values
             xovtmp['xOvID'] = xovtmp.index
 
@@ -861,7 +846,7 @@ class xov:
             self.xovtmp = xovtmp
 
             if debug:
-                print(str(len(xovtmp)) + " xovers found btw " + self.tracks[0] + " and " + self.tracks[1])
+                print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " + list(self.tracks.keys())[1])
 
             return len(xovtmp)
 
@@ -1127,13 +1112,14 @@ class xov:
         return xovers_df
 
     def get_dt(self,ladata_df,xovers_df):
-        dt = np.squeeze([ladata_df.loc[ladata_df['orbID'] == self.tracks[0]].loc[
+        tracksid = list(self.tracks.values())
+        dt = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].loc[
                              map(round, xovers_df.ladata_idA.values)][['ET_TX']].values, \
-                         ladata_df.loc[ladata_df['orbID'] == self.tracks[1]].loc[
+                         ladata_df.loc[ladata_df['orbID'].values == 1].loc[
                              map(round, xovers_df.ladata_idB.values)][['ET_TX']].values])
-        t0 = np.squeeze([ladata_df.loc[ladata_df['orbID'] == self.tracks[0]].iloc[
+        t0 = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].iloc[
                               0][['ET_TX']].values, \
-                          ladata_df.loc[ladata_df['orbID'] == self.tracks[1]].iloc[
+                          ladata_df.loc[ladata_df['orbID'].values == 1].iloc[
                               0][['ET_TX']].values])
         if len(xovers_df)==1:
             dt = dt - t0
@@ -1161,7 +1147,7 @@ class xov:
                       " - len partials=", len(out_finloc[0]), "for part ", l)
             return np.empty([1, 2])
         else:
-            elev_parder = self.get_elev(self.tracks, out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
+            elev_parder = self.get_elev(list(self.tracks.values()), out_finloc[2], out_finloc[3], out_finloc[4], out_finloc[5], l)
 
             if debug:
                 print("elev_parder")
