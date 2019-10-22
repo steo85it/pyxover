@@ -45,6 +45,7 @@ class Amat:
 
         if len(self.pert_cloop.columns) > 0 or not self.pert_cloop.empty:
             print("Max perturb cloop", self.pert_cloop.abs().max())
+            print("Mean perturb cloop", self.pert_cloop.mean())
 
             self.pert_cloop.drop_duplicates(inplace=True)
             self.pert_cloop.sort_index(inplace=True)
