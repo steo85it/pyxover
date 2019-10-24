@@ -58,6 +58,7 @@ class gtrack:
         # 'dh2': 0. }
         # imposed perts for closed loop sim
         self.pert_cloop = None
+        self.pert_cloop_0 = None
         # parameter solution from previous iterations (cumulated)
         self.sol_prev_iter = None
         # initial epoch of track (useful for cheby interp
@@ -338,14 +339,6 @@ class gtrack:
 
     def geoloc(self, get_partials=partials):
 
-        # vecopts = self.vecopts.copy()
-
-        #################### end -------
-
-        # ------------------------------
-        # Processing
-        # ------------------------------
-
         # Compute geolocalisation and dxyz/dP, where P = (A,C,R,Rl,Pt)
         startGeoloc = time.time()
 
@@ -372,11 +365,15 @@ class gtrack:
         # randomize and assign pert for closed loop sim IF orbit in pert_tracks
         if self.name in pert_tracks or pert_tracks == []:
 
-            np.random.seed(int(self.name))
-            rand_pert_orb = np.random.randn(len(pert_cloop_orb))
-            self.pert_cloop = dict(zip(self.pert_cloop.keys(), list(pert_cloop_orb.values()) * rand_pert_orb))
-            if debug:
-                print("random pert_cloop", self.pert_cloop)
+            # if first iter, generate random perturbations array
+            if self.pert_cloop_0 is None:
+                np.random.seed(int(self.name))
+                rand_pert_orb = np.random.randn(len(pert_cloop_orb))
+                self.pert_cloop_0 = dict(zip(self.pert_cloop.keys(), list(pert_cloop_orb.values()) * rand_pert_orb))
+                if debug:
+                    print("random pert_cloop", self.pert_cloop)
+            # copy to "local" perturbations df
+            self.pert_cloop = self.pert_cloop_0.copy()
 
         # add global parameters (if perturbed)
         self.pert_cloop = mergsum(self.pert_cloop.copy(), pert_cloop['glo'].copy())
@@ -527,6 +524,9 @@ class gtrack:
                     corr_orb[old_key[:-1]] = corr_orb.pop(old_key)
 
             # also updates corr_orb inplace!!!
+            # print(corr_orb)
+            # print({k: v*0.5 for k, v in corr_orb.items()})
+            # exit()
             tmp_pertcloop = mergsum(tmp_pertcloop, corr_orb)
 
         if len(self.sol_prev_iter['glo']) > 0:
@@ -551,9 +551,10 @@ class gtrack:
 
         self.pert_cloop = tmp_pertcloop.copy()
 
-        if debug:
+        if debug and len(self.pert_cloop)>0:
             print("sol prev iter", self.sol_prev_iter)
             print("postdit values", self.pert_cloop)
+            exit()
 
     # @profile
     def get_geoloc_part(self, par):

@@ -158,15 +158,15 @@ def main(args):
     # Prepare list of tracks to geolocalise
     tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles]
 
-    # Import solution at previous iteration
-    if int(iter_in)>0:
-        tmp = Amat(vecopts)
-        tmp = tmp.load(('_').join(((outdir+('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1])+
-                       '_'+str(iter_in-1)+'/'+
-                       outdir_in.split('/')[-2]+'/Abmat_'+('_').join(outdir_in.split('/')[:-1])+'.pkl')
-        orb_sol, glo_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
-
     if new_gtrack:
+
+        # Import solution at previous iteration
+        if int(iter_in) > 0:
+            tmp = Amat(vecopts)
+            tmp = tmp.load(('_').join(((outdir + ('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1]) +
+                           '_' + str(iter_in - 1) + '/' +
+                           outdir_in.split('/')[-2] + '/Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
+            orb_sol, glo_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
         # epo_in=[]
         tracks = []
         for track_id, infil in zip(tracknames, allFiles):
@@ -180,6 +180,12 @@ def main(args):
             # epo_in.extend(track.ladata_df.ET_TX.values)
 
             if int(iter_in) > 0:
+                try:
+                    track.pert_cloop_0 = tmp.pert_cloop_0.loc[str(track.name)].to_dict()
+                except:
+                    print("No pert_cloop_0 for ", track.name)
+                    pass
+
                 if len(orb_sol)>0:
                     
                     if debug:
@@ -193,7 +199,7 @@ def main(args):
                     # remove corrections if "unreasonable" (larger than 500 meters in any direction)
                     if len(track.sol_prev_iter['orb'])>0:
                         max_orb_corr = np.max(track.sol_prev_iter['orb'].values[0][1:4].astype(float))
-                        if max_orb_corr > 500.:
+                        if max_orb_corr > 200.:
                             track.sol_prev_iter['orb'] = pd.DataFrame(columns=track.sol_prev_iter['orb'].columns)
                 else:
                     track.sol_prev_iter = {'orb':orb_sol,

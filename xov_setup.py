@@ -39,6 +39,7 @@ class xov:
         self.param = {'': 1.}
         self.proj_center = None
         self.pert_cloop = None
+        self.pert_cloop_0 = None
         self.sol_prev_iter = None
         self.gtracks = None
         self.ladata_df = None
@@ -56,6 +57,7 @@ class xov:
         self.tracks = dict(zip(df.orbID.unique(),list(range(2))))
         # store the imposed perturbation (if closed loop simulation)
         self.pert_cloop = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop, list(self.tracks.keys())[1]:gtracks[1].pert_cloop}
+        self.pert_cloop_0 = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop_0, list(self.tracks.keys())[1]:gtracks[1].pert_cloop_0}
         # store the solution from the previous iteration
         self.sol_prev_iter = {list(self.tracks.keys())[0]:gtracks[0].sol_prev_iter,list(self.tracks.keys())[1]:gtracks[1].sol_prev_iter}
         # print(df.orbID)
@@ -93,7 +95,7 @@ class xov:
             self.xovtmp['orbA'] = self.xovtmp['orbA'].map({v: k for k, v in self.tracks.items()})
             self.xovtmp['orbB'] = self.xovtmp['orbB'].map({v: k for k, v in self.tracks.items()})
             # Update general df
-            self.xovers = self.xovers.append(self.xovtmp)
+            self.xovers = self.xovers.append(self.xovtmp,sort=True)
             self.xovers.reset_index(drop=True, inplace=True)
             self.xovers['xOvID'] = self.xovers.index
 

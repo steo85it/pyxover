@@ -42,10 +42,16 @@ from Amat import Amat
 
 sim_altdata = 0
 
-remove_max_dist = True
-remove_3sigma_median = True
+remove_max_dist = False
+remove_3sigma_median = False
 clean_part = True
-remove_dR200 = True
+remove_dR200 = False
+huber_threshold = 50
+distmax_threshold = 0.4
+# rescaling factor for weight matrix, based on average error on xovers at Mercury
+# dimension of meters (to get s0/s dimensionless)
+# could be updated by checking chi2 or by VCE
+sigma_0 = 10.
 
 ########################################
 # test space
@@ -116,11 +122,22 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
         xov_cmb.pert_cloop = pd.concat([pd.DataFrame(l) for l in pertdict],axis=1).T
     else:
         xov_cmb.pert_cloop = pd.DataFrame()
-    #print(len(xov_cmb.xovers))
+
+    # save initial cloop perturbations to xov_cmb
+    pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
+    pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
+    # print(pd.DataFrame(pertdict).T)
+    # exit()
+    if pertdict != []:
+        xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
+        #pd.concat([pd.DataFrame(l) for l in pertdict if l is not None],axis=1).T
+    else:
+        xov_cmb.pert_cloop_0 = pd.DataFrame()
+    xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
 
     return xov_cmb
 
-def get_stats(xov_lst,resval,amplval):
+def get_stats(xov_lst,amat,resval,amplval):
     import seaborn.apionly as sns
 
     print('resval,amplval', resval, amplval)
@@ -156,6 +173,10 @@ def get_stats(xov_lst,resval,amplval):
             if sim_altdata == 0:
                 mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
 
+            # weight residuals
+            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                xov.xovers['dR'] *= amat.weights
+            # exit()
             #print(xov.xovers[['dist_max','dist_avg','dist_minA','dist_minB','dist_min_avg','dR']])
             # checks = ['dist_minA','dist_minB','dist_max','dist_min_avg','dist_avg','dR']
             # for c in checks:
@@ -186,12 +207,23 @@ def get_stats(xov_lst,resval,amplval):
             dR_RMS.append(np.sqrt(np.mean(_[~np.isnan(_)], axis=0)))
             # print(np.count_nonzero(np.isnan(xov.xovers.dR.values**2)))
 
-            print("xov_xovers_value_count:")
-            print(xov.xovers['orbA'].value_counts().add(xov.xovers['orbB'].value_counts(), fill_value=0).sort_values(ascending=False))
-            # print(xov.xovers['orbA'].value_counts()[:5])
-            # print(xov.xovers['orbA'].value_counts()[-5:])
-            # print(xov.xovers['orbB'].value_counts()[:5])
-            # print(xov.xovers['orbB'].value_counts()[-5:])
+            if debug:
+                print("xov_xovers_value_count:")
+                # print(xov.xovers['orbA'].value_counts().add(xov.xovers['orbB'].value_counts(), fill_value=0).sort_values(ascending=False))
+                nobs_tracks = xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(
+                    axis=1).sort_values(
+                    ascending=False)
+                # if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                #     xov.xovers['weights'] = amat.weights.diagonal()
+                #     nobs_tracks_good = xov.xovers.loc[xov.xovers.weights > 0.5][['orbA', 'orbB']].apply(
+                #         pd.Series.value_counts).sum(axis=1).sort_values(
+                #         ascending=False).to_frame('counts')
+                #     nobs_tracks = pd.merge(nobs_tracks, nobs_tracks_good, left_index=True, right_index=True)
+                print(nobs_tracks)
+                # print(xov.xovers['orbA'].value_counts()[:5])
+                # print(xov.xovers['orbA'].value_counts()[-5:])
+                # print(xov.xovers['orbB'].value_counts()[:5])
+                # print(xov.xovers['orbB'].value_counts()[-5:])
 
     #print(len(resval),len(amplval),len(dR_RMS))
     df_ = pd.DataFrame(list(zip(resval,amplval,dR_RMS)), columns=['res','ampl','RMS'])
@@ -471,12 +503,53 @@ def solve(xovi_amat,dataset, previous_iter=None):
         xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6,nglbpars=nglbpars)
         # pass
 
+    # WEIGHTING TODO refactor to separate method
+
+    # compute huber weights (1 if x<huber_threshold, (huber_threshold/abs(dR))**2 if abs(dR)>huber_threshold)
+    if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        tmp = xovi_amat.xov.xovers.dR.abs().values
+        huber_weights = np.where(tmp>huber_threshold, (huber_threshold/tmp)**2, 1.)
+
+    if debug and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        print("Apply Huber weights")
+        print(tmp[tmp>huber_threshold])
+        print(huber_weights[huber_weights<1.])
+
+    # same but w.r.t. distance
+    if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        tmp = xovi_amat.xov.xovers.dist_max.values
+        huber_weights_dist = np.where(tmp>distmax_threshold, (distmax_threshold/tmp)**4, 1.)
+
+    if debug and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        print("Apply Huber weights")
+        print(tmp[tmp>distmax_threshold])
+        print(huber_weights_dist[huber_weights_dist<1.])
+
+    if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        tmp=huber_weights*huber_weights_dist
+        huber_penal = tmp
+
+    # TODO why sqrt?? take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
     #set up observation weights (according to local roughness and dist of obs from xover point)
-
     regbas_weights = run(xovi_amat.xov).reset_index()
-
-    # take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
-    val = np.sqrt(1./np.abs(regbas_weights.rough_at_mindist.values))
+    val = sigma_0/np.power(regbas_weights.error.values,1)
+    # val /= np.max(val)
+    if local and debug:
+        fig, ax1 = plt.subplots(nrows=1)
+        ax1.hist(val)
+        fig.savefig(tmpdir+'test_weights.png')
+    # print(val)
+    # print(val[val>1])
+    # print(len(val),len(val[val>1]),len(val[(val<1)*(val>0.5)]),len(val[(val<0.5)*(val>0.1)]),len(val[val<0.1]))
+    # exit()
+    val = 1.
+    # apply huber weights
+    if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        val *= huber_penal
+        # print(val)
+        # val *= huber_weights_dist
+        # print(val)
+        # exit()
     # print(np.max(np.abs(val)))
     # val /= np.max(np.abs(val))
     row = col = regbas_weights.index.values
@@ -484,11 +557,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
     obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
     # obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
 
-    # Cholesky decomposition of diagonal matrix == square root of diagonal
-    L = obs_weights
+    # TODO really needed??? Cholesky decomposition of diagonal matrix == square root of diagonal
+    xovi_amat.weights = obs_weights
 
     # apply weights
-    spA_sol4 = L * spA_sol4
+    spA_sol4 = xovi_amat.weights * spA_sol4
 
     # select constrains for processed parameters (TODO should go in sol4pars)
     mod_par = [your_key.split('_')[1] if len(your_key.split('_'))>1 else your_key for your_key in sol4_pars ]
@@ -499,13 +572,26 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
         regex = re.compile(".*" + constrain[0] + "$")
         parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if regex.match(p)])
-        # Constrain tightly to 0 those parameters with few observations
-        nobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
+        # Constrain tightly to 0 those parameters with few observations (or with few GOOD observations)
+        if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            # should use weights or measurement error threshold, but using huber-threshold-like criteria for now
+            # to mimic what I was doing without weights
+            xovi_amat.xov.xovers['huber'] = huber_penal
+            xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
+            nobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.xov.xovers.huber > 0.5][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
+            ascending=False)
+        else:
+            nobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
         to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in nobs_tracks[nobs_tracks < 10].index]
+        print(to_constrain)
         for p in parindex:
             if p[0] in to_constrain:
-                p[1] *= 1.e-10
+                # else a very loose "general" constraint could free it up
+                if p[1] > 1.:
+                    p[1] = 1.e-4
+                else:
+                    p[1] *= 1.e-4
 
         val = parindex[:,1]
         row = col = parindex[:,0]
@@ -561,9 +647,9 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # Choleski decompose matrix and append to design matrix
     Q = np.linalg.cholesky(penalty_matrix.todense())
     if previous_iter != None:
-        b_penal = np.hstack([L*xovi_amat.b, np.ravel(np.dot(Q,previous_iter.sol_iter[0]))]) #np.zeros(len(sol4_pars))]) #
+        b_penal = np.hstack([xovi_amat.weights*xovi_amat.b, np.ravel(np.dot(Q,previous_iter.sol_iter[0]))]) #np.zeros(len(sol4_pars))]) #
     else:
-        b_penal = np.hstack([L*xovi_amat.b, np.zeros(len(sol4_pars))])
+        b_penal = np.hstack([xovi_amat.weights*xovi_amat.b, np.zeros(len(sol4_pars))])
     import scipy
     spA_sol4_penal = scipy.sparse.vstack([spA_sol4,csr_matrix(Q)])
 
@@ -576,6 +662,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
     xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
     print("sol sparse: ",xovi_amat.sol[0])
     print('to_be_recovered', pert_cloop['glo'])
+
+    if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        print("Downweighted obs: ", len(tmp[tmp==1]), "or ",len(tmp[tmp==1])/len(tmp)*100.,"%")
+        print("Slightly downweighted obs: ", len(tmp[(tmp<1)*(tmp>0.1)]), "or ",len(tmp[(tmp<1)*(tmp>0.1)])/len(tmp)*100.,"%")
+        print("Brutally downweighted obs: ", len(tmp[(tmp<0.01)]), "or ",len(tmp[(tmp<0.01)])/len(tmp)*100.,"%")
 
     # exit()
 
@@ -670,6 +761,8 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
         sol4_orb = [x + '_' + 'dR/' + y for x in sol4_orb for y in sol4_orbpar]
     elif sol4_orb == [None] or sol4_orbpar == [None]:
         sol4_orb = []
+    else:
+        sol4_orb = [x + '_' + 'dR/' + y for x in sol4_orb for y in sol4_orbpar]
 
     if sol4_glo == []:
         sol4_glo = list(parGlo.keys())
@@ -909,7 +1002,7 @@ def main(arg):
 
     print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
 
-    get_stats(xov_cmb_lst,resval,amplval)
+    get_stats(xov_cmb_lst,xovi_amat,resval,amplval)
 
     print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
 

@@ -28,10 +28,12 @@ class Amat:
         self.parNames = None
         self.pert_cloop = None
         self.pert_cloop_glo = None
+        self.pert_cloop_0 = None
         self.sol = None
         self.sol_dict = None
         self.sol_iter = None
         self.sol_dict_iter = None
+        self.weights = None
 
     def setup(self, xov):
 
@@ -39,6 +41,7 @@ class Amat:
         # print(self.xov.tracks)
         self.xovpart_reorder()
         # print(self.A)
+        self.pert_cloop_0 = xov.pert_cloop_0
         self.pert_cloop = xov.pert_cloop
         self.pert_cloop_glo = self.pert_cloop.filter(['dL','dRA', 'dDEC', 'dPM', 'dh2']).iloc[0]
         self.pert_cloop.drop(columns=['dL','dRA', 'dDEC', 'dPM', 'dh2'],errors='ignore',inplace=True)
