@@ -262,14 +262,17 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         for idx,isol in enumerate(prev_sols):
             prev = Amat(vecopts)
             prev = prev.load(isol)
-            add_xov_separation(prev)
 
+            add_xov_separation(prev)
             # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
             # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
             # mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
+            # weigh observations
+            prev.xov.xovers['dR'] *= (prev.weights/prev.weights.max())
             _ = prev.xov.xovers.dR.values ** 2
             tst = isol.split('/')[-3].split('_')[1]
             tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
+            print("tst_id",tst_id)
             iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
 
             filter_string_orb = ["/dA","/dC","/dR","/dRl","/dPt"]
@@ -299,42 +302,53 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
             if simulated_data:
                 df_ = pd.DataFrame.from_dict(prev.sol_dict).reset_index()
-                df_.columns = ['key', 'sol','std']
-                df_ = df_.loc[df_.key.isin(filter_string_orb)]
+                df_.columns = ['key', 'sol', 'std']
+                df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
+                df_.drop('key', axis=1, inplace=True)
+                df_ = df_.loc[df_.par.isin(['dR' + x for x in filter_string_orb])]
                 if len(df_) > 0:
-                    df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
-                    df_.drop('key', axis=1, inplace=True)
-                        # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
+                    # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
                     df_ = df_.replace(to_replace='None', value=np.nan).dropna()
-                    df_sol = pd.pivot_table(df_, values=['sol','std'], index=['orb'], columns=['par'], aggfunc=np.sum).sol
+                    df_sol = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'],
+                                            aggfunc=np.sum).sol
 
                     if OrbRep == 'lin':
                         # print("isol",isol)
                         # print(prev.pert_cloop.columns)
                         # print(df_sol.columns.values)
                         regex = re.compile(".*d[A,C,R]0$")
-                        df_sol.columns = [x[:-1] if x in list(filter(regex.match, df_sol.columns)) else x for x in df_sol.columns.values ]
+                        df_sol.columns = [x[:-1] if x in list(filter(regex.match, df_sol.columns)) else x for x in
+                                          df_sol.columns.values]
                         # if idx == 0:
                         #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
                         # print(df_sol.columns)
-                        # print(prev.pert_cloop)
 
+                    # prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
                     df_sol.columns = prev.pert_cloop.columns
                     _ = prev.pert_cloop
-                    _.columns = ['/'+k for k in _.columns]
-                    iters_orbres.append((_ ** 2).mean(axis=0)**0.5)
-                    print(iters_orbres)
+                    _.columns = ['/' + k for k in _.columns]
+                    #########################
+                    fig, ax1 = plt.subplots(nrows=1)
+                    _.hist(ax=ax1,bins=[-150,-100,-40,-30,-20,-10,0,10,20,30,40,100,150])
+                    fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
+                    ##########################
+                    iters_orbres.append((_ ** 2).mean(axis=0) ** 0.5)
 
-            filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
-            sol_glb = []
-            for filt in filter_string_glo:
-                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
-                filtered_dict = list(filtered_dict.values())
-                if len(filtered_dict)>0:
-                    sol_glb.append(np.array(filtered_dict)[0])
-                else:
-                    sol_glb.append("0")
-            iters_glocorr.append(np.hstack([tst_id,sol_glb]))
+            if sol4_glo!=[None]:
+                filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
+                sol_glb = []
+                std_glb = []
+                for filt in filter_string_glo:
+                    filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
+                    filtered_dict = list(filtered_dict.values())
+                    if len(filtered_dict)>0:
+                        sol_glb.append(np.array(filtered_dict)[0])
+                        filtered_dict_std = {k:v for (k,v) in prev.sol_dict['std'].items() if filt in k}
+                        filtered_dict_std = list(filtered_dict_std.values())
+                        std_glb.append(np.array(filtered_dict_std)[0])
+                    else:
+                        sol_glb.append("0")
+                iters_glocorr.append(np.hstack([tst_id,sol_glb]))
 
         if simulated_data:
             fig, [ax1,ax2,ax3,ax4,ax5] = plt.subplots(nrows=5,sharex=True)
@@ -396,40 +410,48 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             ax3.get_legend().remove()
             ax3.set_ylabel('rms (orb res)')
 
-        print("Cumulated solution (glopar): ")
-        iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
-        iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-        print(iters_glocorr)
-        print("Iter improvment (%,glopar): ")
-        print(iters_glocorr.diff().div(iters_glocorr)*100.)
+        if sol4_glo!=[None]:
 
-        if simulated_data and len(pert_cloop['glo'])>0:
-            print("Residual % to be recovered (glopar): ")
-            #pert_cloop_glo = {'dRA': np.linalg.norm([0., 0.001, 0.000]),
-            #                                     'dDEC':np.linalg.norm([-0., 0.0013, 0.000]),
-            #                                     'dPM':np.linalg.norm([0, 0.001, 0.000]),
-            #                                     'dL':0.03*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]),
-            #                     'dh2': 0.}
-            pert_cloop_glo = pert_cloop['glo']
-            # pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
-            pert_cloop_glo = [np.sum(x) for x in list(pert_cloop_glo.values())]
-            iters_glores = iters_glocorr.add(pert_cloop_glo, axis='columns').abs()
-            iters_glores = pd.DataFrame(iters_glores,columns=np.hstack(['tst_id',filter_string_glo]))
-            iters_glores = iters_glores.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-            iters_glores = iters_glores.divide(pert_cloop_glo,axis='columns')
-            iters_glores *= 100
-            print(iters_glores)
+            print("Cumulated solution (glopar): ")
+            iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
+            iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+            print(iters_glocorr)
+            print("Iter improvment (%,glopar): ")
+            print(iters_glocorr.diff().div(iters_glocorr)*100.)
+            print("Iter improvment (fraction of formal std): ", dict(zip(iters_glocorr.columns,std_glb)))
+            print(iters_glocorr.diff().div(std_glb))
 
-        iters_glocorr.plot(ax=ax4)
-        ax4.set_ylabel('sol (glo sol)')
+            if simulated_data and len(pert_cloop['glo'])>0:
+                print("Residual % to be recovered (glopar): ")
+                #pert_cloop_glo = {'dRA': np.linalg.norm([0., 0.001, 0.000]),
+                #                                     'dDEC':np.linalg.norm([-0., 0.0013, 0.000]),
+                #                                     'dPM':np.linalg.norm([0, 0.001, 0.000]),
+                #                                     'dL':0.03*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]),
+                #                     'dh2': 0.}
+                pert_cloop_glo = pert_cloop['glo']
+                # pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
+                iters_glocorr.columns = [x[1:] for x in iters_glocorr.columns.values]
+                pert_cloop_glo = { key:value for (key,value) in pert_cloop_glo.items() if key in iters_glocorr.columns.values}
+                pert_cloop_glo = [np.sum(x) for x in list(pert_cloop_glo.values())]
+                iters_glores = iters_glocorr.add(pert_cloop_glo, axis='columns').abs()
+                iters_glores.columns = ['/'+x for x in iters_glores.columns.values]
+                iters_glores = pd.DataFrame(iters_glores.reset_index(),columns=np.hstack(['tst_id',filter_string_glo]))
+                iters_glores = iters_glores.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+                # get percentage of total perturbation still to be recovered
+                print(iters_glores.divide(pert_cloop_glo,axis='columns')*100)
+                print("Residual (fraction of formal std): ", dict(zip(iters_glocorr.columns, std_glb)))
+                print(iters_glores.div(std_glb))
 
-        if simulated_data and len(pert_cloop['glo'])>0:
-            iters_glores.plot(logy=True,ax=ax5)
-            ax5.get_legend().remove()
-            ax5.set_ylabel('% NOT recovered')
+            iters_glocorr.plot(ax=ax4)
+            ax4.set_ylabel('sol (glo sol)')
 
-            print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
-            print(pert_cloop_glo)
+            if simulated_data and len(pert_cloop['glo'])>0:
+                iters_glores.plot(logy=True,ax=ax5)
+                ax5.get_legend().remove()
+                ax5.set_ylabel('% NOT recovered')
+
+                print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
+                print(pert_cloop_glo)
         # exit()
         # ax2.set_ylabel('rms (m)')
         # ax1a = ax1.twinx()

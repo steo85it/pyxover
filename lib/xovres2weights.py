@@ -23,15 +23,18 @@ from xov_setup import xov
 
 def run(xov_,tstnam=''):
 
+    regbas_weights = xov_.xovers.copy()
+
     # TODO This screens data and modifies xov!!!!
     if False:
         generate_dR_regions(filnam=tstnam,xov=xov_)
+        exit()
 
     new_lats = np.deg2rad(np.arange(0, 180, 1))
-    new_lons = np.deg2rad(np.arange(-180, 180, 1))
+    new_lons = np.deg2rad(np.arange(0, 360, 1))
     new_lats, new_lons = np.meshgrid(new_lats, new_lons)
 
-    interp_spline = pickleIO.load(tmpdir+"/interp_dem.pkl")
+    interp_spline = pickleIO.load(tmpdir+"interp_dem_KX1r_0.pkl") #/interp_dem.pkl")
 
     ev = interp_spline.ev(new_lats.ravel(),new_lons.ravel()).reshape((360, 180)).T
 
@@ -39,25 +42,27 @@ def run(xov_,tstnam=''):
 
     if local:
         fig, ax1 = plt.subplots(nrows=1)
-        ax1.imshow(ev,origin='lower',vmin=20,vmax=60,cmap="RdBu")
-        fig.savefig(auxdir+'test_interp_'+tstnam+'.png')
+        im = ax1.imshow(ev,origin='lower',vmin=10,vmax=50,cmap="RdBu")
+        fig.colorbar(im, ax=ax1,orientation='horizontal')
+        fig.savefig(tmpdir+'test_interp_'+tstnam+'.png')
 
-    xov_.xovers['region'] = get_demz_at(interp_spline,xov_.xovers['LAT'].values,xov_.xovers['LON'].values)
+    regbas_weights['region'] = get_demz_at(interp_spline,regbas_weights['LAT'].values,regbas_weights['LON'].values)
     step = 10
-    xov_.xovers['region'] = np.floor(xov_.xovers['region'].values / step) * step
-    xov_.xovers['reg_rough_150'] = regrms_to_regrough(xov_.xovers['region'].values)
-    xov_.xovers['meters_dist_min'] = xov_.xovers.filter(regex='dist_[A,B].*').min(axis=1).values
-    xov_.xovers['rough_at_mindist'] = roughness_at_baseline(xov_.xovers['reg_rough_150'].values,
-                                                            xov_.xovers['meters_dist_min'].values)
+    regbas_weights['region'] = np.floor(regbas_weights['region'].values / step) * step
+    regbas_weights['reg_rough_150'] = regrms_to_regrough(regbas_weights['region'].values)
+    regbas_weights['meters_dist_min'] = regbas_weights.filter(regex='dist_[A,B].*').min(axis=1).values
+    regbas_weights['rough_at_mindist'] = roughness_at_baseline(regbas_weights['reg_rough_150'].values,
+                                                            regbas_weights['meters_dist_min'].values)
     # xov_.xovers['rough_at_max'] = roughness_at_baseline(xov_.xovers['reg_rough_150'].values,
     #                                                         xov_.xovers.filter(regex='dist_max').values)
 
-    regbas_weights = xov_.xovers[['region','reg_rough_150','meters_dist_min','rough_at_mindist','dR']] #,
+    regbas_weights = regbas_weights[['region','reg_rough_150','meters_dist_min','rough_at_mindist','dR']]
                        # 'rough_at_max','dR']])
+    regbas_weights['error'] = roughness_to_error(regbas_weights.loc[:,'rough_at_mindist'].values)
 
     if debug:
         print(regbas_weights)
-        print(xov_.xovers[['region','reg_rough_150','meters_dist_min','rough_at_mindist','dR']].corr()) #,
+        print(regbas_weights[['region','reg_rough_150','meters_dist_min','rough_at_mindist','dR']].corr()) #,
                            # 'rough_at_max','dR']].corr())
 
     # exit()
@@ -173,7 +178,13 @@ def roughness_at_baseline(regional_roughness,baseline):
 
 def regrms_to_regrough(rms):
 
-    return (rms - 7.39) / 0.64
+    roughness = (rms - 7.39) / 0.64
+    # fix minimum roughness to 4 meters @ 150 meters (similar to Moon, 0 does not make sense)
+    return np.where(roughness>4, roughness, 4.)
+
+def roughness_to_error(roughness):
+
+    return (0.64 * roughness) + 7.39
 
 def get_demz_at(dem_xarr, lattmp, lontmp):
     # lontmp += 180.
