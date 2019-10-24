@@ -300,11 +300,11 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             if simulated_data:
                 df_ = pd.DataFrame.from_dict(prev.sol_dict).reset_index()
                 df_.columns = ['key', 'sol','std']
-                df_ = df_.loc[df_.key.isin(filter_string_orb)]
+                df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
+                df_.drop('key', axis=1, inplace=True)
+                df_ = df_.loc[df_.par.isin(['dR'+x for x in filter_string_orb])]
                 if len(df_) > 0:
-                    df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
-                    df_.drop('key', axis=1, inplace=True)
-                        # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
+                    # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
                     df_ = df_.replace(to_replace='None', value=np.nan).dropna()
                     df_sol = pd.pivot_table(df_, values=['sol','std'], index=['orb'], columns=['par'], aggfunc=np.sum).sol
 
@@ -317,14 +317,13 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                         # if idx == 0:
                         #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
                         # print(df_sol.columns)
-                        # print(prev.pert_cloop)
-
+                    
+                    #prev.pert_cloop.drop(['dRl','dPt'],axis='columns',inplace=True)
                     df_sol.columns = prev.pert_cloop.columns
                     _ = prev.pert_cloop
                     _.columns = ['/'+k for k in _.columns]
                     iters_orbres.append((_ ** 2).mean(axis=0)**0.5)
-                    print(iters_orbres)
-
+                    
             filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
             sol_glb = []
             for filt in filter_string_glo:

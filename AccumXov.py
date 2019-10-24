@@ -481,8 +481,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # val /= np.max(np.abs(val))
     row = col = regbas_weights.index.values
 
-    # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
-    obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
 
     # Cholesky decomposition of diagonal matrix == square root of diagonal
     L = obs_weights
@@ -505,7 +505,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in nobs_tracks[nobs_tracks < 10].index]
         for p in parindex:
             if p[0] in to_constrain:
-                p[1] *= 1.e10
+                p[1] *= 1.e-10
 
         val = parindex[:,1]
         row = col = parindex[:,0]
