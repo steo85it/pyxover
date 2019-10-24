@@ -34,7 +34,7 @@ def run(xov_,tstnam=''):
     new_lons = np.deg2rad(np.arange(0, 360, 1))
     new_lats, new_lons = np.meshgrid(new_lats, new_lons)
 
-    interp_spline = pickleIO.load(tmpdir+"interp_dem_KX1r_0.pkl") #/interp_dem.pkl")
+    interp_spline = pickleIO.load(auxdir+"interp_dem_KX1r_0.pkl") #/interp_dem.pkl")
 
     ev = interp_spline.ev(new_lats.ravel(),new_lons.ravel()).reshape((360, 180)).T
 

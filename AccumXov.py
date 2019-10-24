@@ -128,12 +128,11 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
     # print(pd.DataFrame(pertdict).T)
     # exit()
-    if pertdict != []:
+    if pertdict != [] and sol4_orbpar != [None]:
         xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
-        #pd.concat([pd.DataFrame(l) for l in pertdict if l is not None],axis=1).T
+        xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
     else:
         xov_cmb.pert_cloop_0 = pd.DataFrame()
-    xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
 
     return xov_cmb
 
