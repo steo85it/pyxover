@@ -126,8 +126,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     # save initial cloop perturbations to xov_cmb
     pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
     pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
-    # print(pd.DataFrame(pertdict).T)
-    # exit()
+
     if pertdict != [] and sol4_orbpar != [None]:
         xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
         xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
