@@ -435,67 +435,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     print("sol4pars:", np.array(sol4_pars))
     # print(spA_sol4)
 
-    if len(sol4_pars)<50 and debug:
-
-        seuil_dRdL = 2000000
-        print('B', xovi_amat.b)
-        print('maxB', np.abs(xovi_amat.b).max(),np.abs(xovi_amat.b).mean())
-        print('maxA',np.abs(spA_sol4.todense()).max(),
-              np.shape(spA_sol4.todense()[np.abs(spA_sol4.todense())>seuil_dRdL]),
-              np.shape(spA_sol4.todense()))
-        # print("values", spA_sol4.todense()[np.abs(spA_sol4.todense())>seuil_dRdL])
-        # print("Their indices are ", len(np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]), np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0])
-        # print("Their values are ", spA_sol4.todense()[np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]].T)
-        # print("Their values are ", xovi_amat.b[np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]].T)
-        exclude = np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]
-        if len(exclude) > 0:
-            print("Partials screened by ", seuil_dRdL, "remove ", np.round(len(exclude)/len(xovi_amat.b)*100,2), "% of obs")
-        spAdense = spA_sol4.todense()
-        bvec = xovi_amat.b
-        spAdense = np.delete(spAdense, exclude, 0)
-        bvec = np.delete(bvec, exclude, 0)
-        #
-        # keep = list(set(spA_sol4.nonzero()[0].tolist())^set(exclude))
-        # spA_sol4 = spA_sol4[keep,:]
-        # xovi_amat.b = bvec
-        print("The new values A are ", spAdense)
-        print("The new values b are ", bvec)
-        # exit()
-        # spAdense = spA_sol4.todense()
-        # spAdense[np.abs(spAdense) > 200] = 1
-
-        plt.clf()
-        fig, ax = plt.subplots()
-        # ax.plot(spA_sol4.todense()<2000)
-        ax.plot(spAdense, label=[xovi_amat.parNames[p] for p in sol4_pars])
-        ax.legend()
-        ax.plot(bvec)
-        plt.savefig(tmpdir+'b_and_A.png')
-
-        # Compute the covariance matrix
-        print("full sparse",np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
-        print("screened dense", np.linalg.pinv(spAdense.transpose()*spAdense))
-        # compute sol
-
-        # factorL = np.linalg.norm([0.00993822, \
-        #             -0.00104581, \
-        #             -0.00010280, \
-        #             -0.00002364, \
-        #             -0.00000532])
-        print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
-        print('to_be_recovered', pert_cloop['glo'])
-
-        # exit()
-
-    # # Compute the covariance matrix
-    # print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
-    # # compute sol
-    # print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
-    #
-    # A = spA_sol4.transpose()*spA_sol4
-    # b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
-
-    # TODO only valid if last 4 columns are global partials (else screening random orbit pars...)
+    # screening of partial derivatives (downweights data)
     nglbpars = len([i for i in sol4_glo if i])
     if nglbpars>0 and clean_part:
         xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6,nglbpars=nglbpars)
@@ -553,9 +493,93 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
     obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
 
-    # TODO really needed??? Cholesky decomposition of diagonal matrix == square root of diagonal
+    # Combine and store weights
     xovi_amat.weights = obs_weights
     xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
+
+    ## DIRECT SOLUTION FOR DEBUG AND SMALL PROBLEMS (e.g., global only)
+    if len(sol4_pars)<50: # and debug:
+
+        print('B', xovi_amat.b)
+        print('maxB', np.abs(xovi_amat.b).max(),np.abs(xovi_amat.b).mean())
+        print('maxA',np.abs(spA_sol4.todense()).max(),
+              # np.shape(spA_sol4.todense()[np.abs(spA_sol4.todense())>seuil_dRdL]),
+              np.shape(spA_sol4.todense()))
+        # print("values", spA_sol4.todense()[np.abs(spA_sol4.todense())>seuil_dRdL])
+        # print("Their indices are ", len(np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]), np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0])
+        # print("Their values are ", spA_sol4.todense()[np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]].T)
+        # print("Their values are ", xovi_amat.b[np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]].T)
+        # exclude = np.nonzero(np.abs(spA_sol4.todense()) > seuil_dRdL)[0]
+        # if len(exclude) > 0:
+        #     print("Partials screened by ", seuil_dRdL, "remove ", np.round(len(exclude)/len(xovi_amat.b)*100,2), "% of obs")
+        spAdense = spA_sol4.todense()
+        bvec = xovi_amat.b
+        # spAdense = np.delete(spAdense, exclude, 0)
+        # bvec = np.delete(bvec, exclude, 0)
+        #
+        # keep = list(set(spA_sol4.nonzero()[0].tolist())^set(exclude))
+        # spA_sol4 = spA_sol4[keep,:]
+        # xovi_amat.b = bvec
+        print("The new values A are ", spAdense)
+        print("The new values b are ", bvec)
+        # exit()
+        # spAdense = spA_sol4.todense()
+        # spAdense[np.abs(spAdense) > 200] = 1
+
+        # plt.clf()
+        # fig, ax = plt.subplots()
+        # # ax.plot(spA_sol4.todense()<2000)
+        # ax.plot(spAdense, label=[xovi_amat.parNames[p] for p in sol4_pars])
+        # ax.legend()
+        # ax.plot(bvec)
+        # plt.savefig(tmpdir+'b_and_A.png')
+
+        # Compute the covariance matrix
+        # print("full sparse",np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
+        # print("screened dense", np.linalg.pinv(spAdense.transpose()*spAdense))
+        # tmp = prev.xov.xovers['dR'].values.reshape(1, -1) @ np.diag(prev.xov.xovers['weights'].values)
+        # m_0 = np.sqrt(
+        #     tmp @ prev.xov.xovers['dR'].values.reshape(-1, 1) / (len(prev.xov.xovers['dR'].values) - len(sol4_glo)))
+        ATP = spAdense.transpose() * obs_weights
+        ATPA = ATP * spAdense
+        PA = obs_weights * spAdense
+        N = ATPA
+        Ninv = np.linalg.pinv(N)
+        ell = csr_matrix(np.diag(np.abs(bvec)))
+        print(ell)
+        posterr = Ninv * ATP * ell * PA * N
+        print(posterr)
+        print(np.sqrt(posterr.diagonal()))
+        posterr = np.linalg.pinv(ATP * ell * PA)
+        posterr = np.sqrt(posterr.diagonal())
+        print(3.4 * posterr)
+        # print(np.linalg.pinv(posterr))
+        # posterr = Ninv * (spAdense.transpose() * (obs_weights * (ell * (obs_weights * (spAdense * N)))))
+        # print(posterr)
+        exit()
+        Ninv = np.linalg.pinv(spAdense.transpose() * spAdense)
+
+        # compute sol
+
+        # factorL = np.linalg.norm([0.00993822, \
+        #             -0.00104581, \
+        #             -0.00010280, \
+        #             -0.00002364, \
+        #             -0.00000532])
+        print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
+        print('to_be_recovered', pert_cloop['glo'])
+
+        # exit()
+
+    # # Compute the covariance matrix
+    # print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
+    # # compute sol
+    # print('sol dense',np.linalg.lstsq(spA_sol4.todense(), xovi_amat.b, rcond=1))
+    #
+    # A = spA_sol4.transpose()*spA_sol4
+    # b = spA_sol4.transpose()*(csr_matrix(xovi_amat.b).transpose())
+
+    #### CONSTRAINS AND SOLUTION
 
     # apply weights
     spA_sol4 = xovi_amat.weights * spA_sol4

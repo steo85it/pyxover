@@ -8,6 +8,9 @@
 import glob
 import re
 
+from scipy import sparse
+from scipy.sparse import csr_matrix, diags
+
 import AccumXov as xovacc
 import numpy as np
 import itertools as itert
@@ -259,6 +262,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         iters_orbcorr_avg_lin = []
         iters_orbres = []
         iters_glocorr = []
+        m_X_iters = []
         for idx,isol in enumerate(prev_sols):
             prev = Amat(vecopts)
             prev = prev.load(isol)
@@ -268,12 +272,58 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
             # mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
             # weigh observations
-            prev.xov.xovers['dR'] *= (prev.weights/prev.weights.max())
-            _ = prev.xov.xovers.dR.values ** 2
+
+            # prev.xov.xovers['dR'] *= (prev.weights/prev.weights.max())
+            # _ = prev.xov.xovers.dR.values ** 2
             tst = isol.split('/')[-3].split('_')[1]
             tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
             print("tst_id",tst_id)
-            iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
+            # iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
+
+            # print(prev.xov.xovers[['dR', 'huber', 'weights']])
+            print("@iter", tst_id)
+            tmp = prev.xov.xovers['dR'].values.reshape(1,-1)@prev.weights
+            lTPl = tmp @ prev.xov.xovers['dR'].values.reshape(-1,1)
+
+            filter_string_glo = ["/" + x.split('/')[-1] for x in sol4_glo]  # ["/dRA","/dDEC","/dPM","/dL","/dh2"]
+            xsol = []
+            xstd = []
+            for filt in filter_string_glo:
+                filtered_dict = {k: v for (k, v) in prev.sol_dict['sol'].items() if filt in k}
+                xsol.append(list(filtered_dict.values())[0])
+                filtered_dict = {k: v for (k, v) in prev.sol_dict['std'].items() if filt in k}
+                xstd.append(list(filtered_dict.values())[0])
+
+            xT = np.array(xsol).reshape(1,-1)
+            ATP = prev.spA.T * prev.weights
+            ATPb = ATP * prev.b
+            print(lTPl, xT@ATPb, lTPl - xT@ATPb)
+            vTPv = lTPl - xT@ATPb
+            degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
+            print("vTPv = ", vTPv, vTPv/degf)
+            print("degf = ", degf)
+            m_0 = np.sqrt(vTPv/degf)[0][0]
+            iters_rms.append([tst_id, np.sqrt(lTPl/degf)[0][0], m_0, degf])
+
+            # ATPA = ATP * prev.spA
+            PA = prev.weights * prev.spA
+            # N = ATPA
+            # Ninv = np.linalg.pinv(N)
+            ell = diags(np.abs(prev.b))
+            posterr = np.linalg.pinv((ATP * ell * PA).todense())
+            posterr = np.sqrt(posterr.diagonal())
+            m_X = dict(zip(prev.sol4_pars,np.ravel(m_0 * posterr[0])))
+            print("a post error on params", m_X)
+            sigma_X = dict(zip(prev.sol4_pars,xstd))
+            print("a priori error on params", sigma_X)
+            print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
+
+            m_X_iters.append(m_X)
+
+            #prev.xov.xovers['dR'].values.T * prev.xov.xovers['weights'].values * prev.xov.xovers['dR'].values)
+            # exit()
+
+            ####################################
 
             filter_string_orb = sol4_orbpar #["/dA","/dC","/dR","/dRl","/dPt"]
             if filter_string_orb != [None]:
@@ -329,9 +379,10 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                         _ = prev.pert_cloop
                         _.columns = ['/' + k for k in _.columns]
                         #########################
-                        fig, ax1 = plt.subplots(nrows=1)
-                        _.hist(ax=ax1,bins=[-150,-100,-40,-30,-20,-10,0,10,20,30,40,100,150])
-                        fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
+                        if local:
+                            fig, ax1 = plt.subplots(nrows=1)
+                            _.hist(ax=ax1,bins=[-150,-100,-40,-30,-20,-10,0,10,20,30,40,100,150])
+                            fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
                         ##########################
                         iters_orbres.append((_ ** 2).mean(axis=0) ** 0.5)
 
@@ -443,7 +494,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                 # get percentage of total perturbation still to be recovered
                 print(iters_glores.divide(pert_cloop_glo,axis='columns')*100)
                 print("Residual (fraction of formal std): ", dict(zip(iters_glocorr.columns, std_glb)))
-                print(iters_glores.div(std_glb))
+                print(iters_glores)
 
             iters_glocorr.plot(ax=ax4)
             ax4.set_ylabel('sol (glo sol)')
@@ -455,6 +506,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
                 print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
                 print(pert_cloop_glo)
+                print(pd.DataFrame.from_dict(m_X_iters))
         # exit()
         # ax2.set_ylabel('rms (m)')
         # ax1a = ax1.twinx()
