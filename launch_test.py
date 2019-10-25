@@ -17,18 +17,19 @@ from prOpt import sim_altdata, local, outdir
 # tp8: full dataset, simulation, h2 = 0.8, no perturbations (as tp2, but updated code --> eg, 0.5 in tid)
 # tp9: full dataset, simulation, h2 = 0.8, no perturbations, noise, PM@J2013.0
 # KX1: real data, tidal h2=0.8 included 
+# KX1r2: real data, same subsel as tp8
 
 
 if __name__ == '__main__':
 
     data_sim = 'sim'  # 'data' #
-    exp = 'tp9' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'KX1r2' # 'tp8' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
 #    res = [3]
 #    ampl = [5,10,20,30,40,60,80]
-    res = [3]
-    ampl = [20]
+    res = [0]
+    ampl = [1]
 
     if len(sys.argv) > 1:
         resampl = sys.argv[1]

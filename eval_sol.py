@@ -8,7 +8,6 @@
 import glob
 import re
 
-from scipy import sparse
 from scipy.sparse import csr_matrix, diags
 
 import AccumXov as xovacc
@@ -472,8 +471,13 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             print(iters_glocorr)
             print("Iter improvment (%,glopar): ")
             print(iters_glocorr.diff().div(iters_glocorr)*100.)
-            print("Iter improvment (fraction of formal std): ", dict(zip(iters_glocorr.columns,std_glb)))
-            print(iters_glocorr.diff().div(std_glb))
+            print("Iter improvment")
+            print(iters_glocorr.diff())
+            print("A posteriori error on global pars")
+            m_X_iters = pd.DataFrame.from_dict(m_X_iters)
+            m_X_iters.columns = sol4_glo
+            print(m_X_iters)
+
 
             if simulated_data and len(pert_cloop['glo'])>0:
                 print("Residual % to be recovered (glopar): ")

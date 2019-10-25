@@ -26,10 +26,11 @@ def read_all_files(path):
 
 if __name__ == '__main__':
 
-    local = 1
-    exp = "tp9"
+    local = 0
+    exp = "KX1r2"
+    kind = "0res_1amp"
     use_existing_sel =True
-    ntracks = 100
+    ntracks = 500
 
     if local:
        spk_path = auxdir+'spaux_*.pkl'
@@ -50,7 +51,8 @@ if __name__ == '__main__':
              pickle.dump(selected, fp)
     else:
         selected = all_spk
-        with open (rem_path, 'rb') as fp:
+        if False:
+          with open (rem_path, 'rb') as fp:
             sel = pickle.load(fp)
             sel = set(np.array(sel[0]).ravel())
 
@@ -81,9 +83,9 @@ if __name__ == '__main__':
     orbs = [f.split('_')[-1].split('.')[0] for f in selected]
 
     if local:
-       obsfil = glob.glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/"+exp+"/3res_20amp/*.TAB")
+       obsfil = glob.glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/"+exp+"/"+kind+"/*.TAB")
     else:
-       obsfil = glob.glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/3res_20amp/*.TAB")
+       obsfil = glob.glob("/att/nobackup/sberton2/MLA/data/SIM_??/"+exp+"/"+kind+"/*.TAB")
        # use if want to rename gtracks instead of data
        #obsfil = glob("/att/nobackup/sberton2/MLA/out/sim/"+exp+"/*res_*amp/gtrack_??/*.pkl")
     
@@ -104,5 +106,6 @@ if __name__ == '__main__':
             # os.remove(rmf)
         else:
             shutil.move(rmf,rmf[:-3]+'BAK')
-#            pass
+            #pass
+            print("Done")
     exit()

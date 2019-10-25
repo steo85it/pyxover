@@ -183,8 +183,8 @@ def roughness_at_baseline(regional_roughness,baseline):
 def regrms_to_regrough(rms):
 
     roughness = (rms - 7.39) / 0.64
-    # fix minimum roughness to 2 meters @ 150 meters (similar to Moon, 0 does not make sense)
-    return np.where(roughness>2, roughness, 2.)
+    # fix minimum roughness to 4 meters @ 150 meters (similar to Moon, 0 does not make sense)
+    return np.where(roughness>4, roughness, 4.)
 
 def roughness_to_error(roughness):
 

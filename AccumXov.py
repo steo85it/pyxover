@@ -51,7 +51,7 @@ distmax_threshold = 0.4
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)
 # could be updated by checking chi2 or by VCE
-sigma_0 = 1
+sigma_0 = 1.
 
 ########################################
 # test space
@@ -125,9 +125,9 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
 
     # save initial cloop perturbations to xov_cmb
     pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
-    pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
 
     if pertdict != [] and sol4_orbpar != [None]:
+        pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
         xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
         xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
     else:
@@ -466,14 +466,14 @@ def solve(xovi_amat,dataset, previous_iter=None):
     if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         tmp=huber_weights*huber_weights_dist
         huber_penal = tmp
+        # should use weights or measurement error threshold, but using huber-threshold-like criteria for now
+        # to mimic what I was doing without weights
         xovi_amat.xov.xovers['huber'] = huber_penal
 
     # TODO why sqrt?? take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
     #set up observation weights (according to local roughness and dist of obs from xover point)
     regbas_weights = run(xovi_amat.xov).reset_index()
     val = sigma_0/np.power(regbas_weights.error.values,1)
-    # val = val
-    # val /= np.max(val)
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
         ax1.hist(val)
