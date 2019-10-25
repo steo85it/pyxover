@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for i in np.arange(0, 10):
+        for i in np.arange(15, 20):
     
             if local:
                 start = time.time()

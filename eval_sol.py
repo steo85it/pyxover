@@ -27,6 +27,8 @@ from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol
 remove_max_dist = False
 remove_3sigma_median = False
 
+subfolder = 'archived/tp8_pertglb_fitglb/'
+
 def xovnum_plot():
 
     vecopts = {}
@@ -217,11 +219,11 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
     vecopts = {}
     tmp = Amat(vecopts)
-    tmp = tmp.load(outdir+'sim/'+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+    tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
 
     if ref_sol != '':
         ref = Amat(vecopts)
-        ref = ref.load(outdir+'sim/'+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+        ref = ref.load(outdir+'sim/'+subfolder+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
         # if correlation matrix wanted (long, only prints >0.95)
         # print(ref.corr_mat())
 
@@ -252,7 +254,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     # Check convergence over iterations
     if True:
         sol_iters = sol.split('_')[:-1][0]
-        prev_sols = np.sort(glob.glob(outdir+'sim/'+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+        prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
 
         iters_rms = []
         iters_orbcorr = []
@@ -276,13 +278,13 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             # _ = prev.xov.xovers.dR.values ** 2
             tst = isol.split('/')[-3].split('_')[1]
             tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
-            print("tst_id",tst_id)
+            #print("tst_id",tst_id)
             # iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
 
             # print(prev.xov.xovers[['dR', 'huber', 'weights']])
-            print("@iter", tst_id)
-            tmp = prev.xov.xovers['dR'].values.reshape(1,-1)@prev.weights
-            lTPl = tmp @ prev.xov.xovers['dR'].values.reshape(-1,1)
+            #print("@iter", tst_id)
+            lTP = prev.xov.xovers['dR'].values.reshape(1,-1)@prev.weights
+            lTPl = lTP @ prev.xov.xovers['dR'].values.reshape(-1,1)
 
             filter_string_glo = ["/" + x.split('/')[-1] for x in sol4_glo]  # ["/dRA","/dDEC","/dPM","/dL","/dh2"]
             xsol = []
@@ -296,11 +298,11 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             xT = np.array(xsol).reshape(1,-1)
             ATP = prev.spA.T * prev.weights
             ATPb = ATP * prev.b
-            print(lTPl, xT@ATPb, lTPl - xT@ATPb)
+            #print(lTPl, xT@ATPb, lTPl - xT@ATPb)
             vTPv = lTPl - xT@ATPb
             degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
-            print("vTPv = ", vTPv, vTPv/degf)
-            print("degf = ", degf)
+            #print("vTPv = ", vTPv, vTPv/degf)
+            #print("degf = ", degf)
             m_0 = np.sqrt(vTPv/degf)[0][0]
             iters_rms.append([tst_id, np.sqrt(lTPl/degf)[0][0], m_0, degf])
 
@@ -312,10 +314,10 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             posterr = np.linalg.pinv((ATP * ell * PA).todense())
             posterr = np.sqrt(posterr.diagonal())
             m_X = dict(zip(prev.sol4_pars,np.ravel(m_0 * posterr[0])))
-            print("a post error on params", m_X)
+            #print("a post error on params", m_X)
             sigma_X = dict(zip(prev.sol4_pars,xstd))
-            print("a priori error on params", sigma_X)
-            print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
+            #print("a priori error on params", sigma_X)
+            #print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
 
             m_X_iters.append(m_X)
 
@@ -414,7 +416,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         ax1.plot(iters_rms[:,1].astype('float'),'-r')
         ax1.set_ylabel('rms (m)')
         ax1a = ax1.twinx()
-        ax1a.plot(iters_rms[:,2].astype('float'),'.k')
+        ax1a.plot(iters_rms[:,3].astype('float'),'.k')
         ax1a.set_ylabel('num of obs (post-screening)')
 
         if filter_string_orb != [None]:
@@ -468,19 +470,20 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             print("Cumulated solution (glopar): ")
             iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
             iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+            iters_glocorr.columns = [x.split('/')[1] for x in iters_glocorr.columns.values]
             print(iters_glocorr)
-            print("Iter improvment (%,glopar): ")
-            print(iters_glocorr.diff().div(iters_glocorr)*100.)
             print("Iter improvment")
             print(iters_glocorr.diff())
             print("A posteriori error on global pars")
             m_X_iters = pd.DataFrame.from_dict(m_X_iters)
-            m_X_iters.columns = sol4_glo
+            m_X_iters.columns = [x.split('/')[1] for x in sol4_glo]
             print(m_X_iters)
+            print("Iter improvment (relative to formal error): ")
+            print((iters_glocorr.diff().abs()).div(m_X_iters))
 
 
             if simulated_data and len(pert_cloop['glo'])>0:
-                print("Residual % to be recovered (glopar): ")
+                print("Real residuals (glopar): ")
                 #pert_cloop_glo = {'dRA': np.linalg.norm([0., 0.001, 0.000]),
                 #                                     'dDEC':np.linalg.norm([-0., 0.0013, 0.000]),
                 #                                     'dPM':np.linalg.norm([0, 0.001, 0.000]),
@@ -488,17 +491,18 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                 #                     'dh2': 0.}
                 pert_cloop_glo = pert_cloop['glo']
                 # pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
-                iters_glocorr.columns = [x[1:] for x in iters_glocorr.columns.values]
+                #iters_glocorr.columns = [x[1:] for x in iters_glocorr.columns.values]
                 pert_cloop_glo = { key:value for (key,value) in pert_cloop_glo.items() if key in iters_glocorr.columns.values}
                 pert_cloop_glo = [np.sum(x) for x in list(pert_cloop_glo.values())]
                 iters_glores = iters_glocorr.add(pert_cloop_glo, axis='columns').abs()
                 iters_glores.columns = ['/'+x for x in iters_glores.columns.values]
                 iters_glores = pd.DataFrame(iters_glores.reset_index(),columns=np.hstack(['tst_id',filter_string_glo]))
                 iters_glores = iters_glores.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+                iters_glores.columns = [x.split('/')[1] for x in iters_glores.columns.values]
                 # get percentage of total perturbation still to be recovered
-                print(iters_glores.divide(pert_cloop_glo,axis='columns')*100)
-                print("Residual (fraction of formal std): ", dict(zip(iters_glocorr.columns, std_glb)))
                 print(iters_glores)
+                print("Residual relative to formal errors")
+                print((iters_glores.abs()).div(m_X_iters))
 
             iters_glocorr.plot(ax=ax4)
             ax4.set_ylabel('sol (glo sol)')
@@ -506,11 +510,24 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             if simulated_data and len(pert_cloop['glo'])>0:
                 iters_glores.plot(logy=True,ax=ax5)
                 ax5.get_legend().remove()
-                ax5.set_ylabel('% NOT recovered')
+                ax5.set_ylabel('resid (as,/day)')
 
                 print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
                 print(pert_cloop_glo)
-                print(pd.DataFrame.from_dict(m_X_iters))
+
+            print("Latest solution:")
+            last_sol = iters_glocorr.iloc[-1]
+            last_std = m_X_iters.iloc[-1]
+            if simulated_data and len(pert_cloop['glo'])>0:
+              last_err = iters_glores.iloc[-1]
+              last_sol = pd.concat([last_sol,last_std, last_err],axis=1)
+              last_sol.columns = ['sol','std','err']
+            else:
+              last_sol = pd.concat([last_sol,last_std],axis=1)
+              last_sol.columns = ['sol','std']
+
+            print(last_sol)
+
         # exit()
         # ax2.set_ylabel('rms (m)')
         # ax1a = ax1.twinx()
@@ -681,7 +698,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             plt.savefig(tmpdir + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
             plt.clf()
 
-    if True:
+    if False:
 
         if ref_sol != '':
             xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
@@ -830,5 +847,5 @@ def add_xov_separation(tmp):
 if __name__ == '__main__':
 
     simulated_data = True
-    # analyze_sol(sol='KX1r_0', ref_sol='KX1r_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
+    #analyze_sol(sol='KX1r2_0', ref_sol='KX1r2_0', subexp = '0res_1amp')
+    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')

@@ -5,7 +5,7 @@ from util import deg2as
 ##############################################
 # @profile
 # local or PGDA
-local = 1
+local = 0
 # debug mode
 debug = 0
 # parallel processing?
@@ -24,7 +24,7 @@ mean_constr = {'dR/dA':5.e0, 'dR/dC':5.e0,'dR/dR':1.e0, 'dR/dRl':1.e1, 'dR/dPt':
 # ... and closed loop sims (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
 pert_cloop_orb = {} # 'dRl':20, 'dPt':20} #'dA':50., 'dC':50., 'dR':20.,'dRl':6, 'dPt':6} #, 'dA1':20.e-3, 'dC1':20.e-3, 'dR1':5.e-3} # {'dA':100., 'dC':100., 'dR':20.} #
 # in deg and deg/day as reminder pert_cloop_glo = {'dRA':[0.001, 0.000, 0.000], 'dDEC':[0.0013, 0.000, 0.000],'dPM':[0, 1.6e-5, 0.000],'dL':0.03*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]), 'dh2':0.} #
-pert_cloop_glo = {'dRA':[3*3.6, 0.000, 0.000], 'dDEC':[3*4.6, 0.000, 0.000],'dPM':[0, 3*21, 0.000],'dL':3*0.03*deg2as(1.)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532])} #, 'dh2':0.} #
+pert_cloop_glo = {} #'dRA':[3*3.6, 0.000, 0.000], 'dDEC':[3*4.6, 0.000, 0.000],'dPM':[0, 3*21, 0.000],'dL':3*0.03*deg2as(1.)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532])} #, 'dh2':0.} #
 pert_cloop = {'orb': pert_cloop_orb, 'glo': pert_cloop_glo}
 pert_tracks = [] #'1107021838','1210192326','1403281002','1503191143'] #
 
