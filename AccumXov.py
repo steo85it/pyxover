@@ -51,7 +51,7 @@ distmax_threshold = 0.4
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)
 # could be updated by checking chi2 or by VCE
-sigma_0 = 10.
+sigma_0 = 1.
 
 ########################################
 # test space
@@ -125,9 +125,9 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
 
     # save initial cloop perturbations to xov_cmb
     pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
-    pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
 
     if pertdict != [] and sol4_orbpar != [None]:
+        pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
         xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
         xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
     else:
@@ -526,12 +526,16 @@ def solve(xovi_amat,dataset, previous_iter=None):
     if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         tmp=huber_weights*huber_weights_dist
         huber_penal = tmp
+        # should use weights or measurement error threshold, but using huber-threshold-like criteria for now
+        # to mimic what I was doing without weights
+        xovi_amat.xov.xovers['huber'] = huber_penal
 
     # TODO why sqrt?? take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
     #set up observation weights (according to local roughness and dist of obs from xover point)
     regbas_weights = run(xovi_amat.xov).reset_index()
     val = sigma_0/np.power(regbas_weights.error.values,1)
-    # val /= np.max(val)
+    val = sigma_0
+
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
         ax1.hist(val)
@@ -540,7 +544,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # print(val[val>1])
     # print(len(val),len(val[val>1]),len(val[(val<1)*(val>0.5)]),len(val[(val<0.5)*(val>0.1)]),len(val[val<0.1]))
     # exit()
-    val = 1.
+
     # apply huber weights
     if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         val *= huber_penal
@@ -552,11 +556,12 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # val /= np.max(np.abs(val))
     row = col = regbas_weights.index.values
 
-    obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
-    # obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
 
-    # TODO really needed??? Cholesky decomposition of diagonal matrix == square root of diagonal
+    # Save to amat
     xovi_amat.weights = obs_weights
+    xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
 
     # apply weights
     spA_sol4 = xovi_amat.weights * spA_sol4
@@ -572,10 +577,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
         parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if regex.match(p)])
         # Constrain tightly to 0 those parameters with few observations (or with few GOOD observations)
         if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            # should use weights or measurement error threshold, but using huber-threshold-like criteria for now
-            # to mimic what I was doing without weights
-            xovi_amat.xov.xovers['huber'] = huber_penal
-            xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
             nobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.xov.xovers.huber > 0.5][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
         else:

@@ -17,7 +17,7 @@ from scipy.interpolate import RectBivariateSpline
 
 import pickleIO
 #from eval_sol import rmse#, draw_map
-from prOpt import tmpdir, auxdir, local, debug
+from prOpt import tmpdir, auxdir, local, debug, outdir
 from util import rms
 from xov_setup import xov
 
@@ -27,14 +27,14 @@ def run(xov_,tstnam=''):
 
     # TODO This screens data and modifies xov!!!!
     if False:
-        generate_dR_regions(filnam=tstnam,xov=xov_)
+        generate_dR_regions(filnam=tstnam,xov=regbas_weights)
         exit()
 
     new_lats = np.deg2rad(np.arange(0, 180, 1))
     new_lons = np.deg2rad(np.arange(0, 360, 1))
     new_lats, new_lons = np.meshgrid(new_lats, new_lons)
 
-    interp_spline = pickleIO.load(auxdir+"interp_dem_KX1r_0.pkl") #/interp_dem.pkl")
+    interp_spline = pickleIO.load(auxdir+"interp_dem_tp8_0.pkl") #/interp_dem.pkl")
 
     ev = interp_spline.ev(new_lats.ravel(),new_lons.ravel()).reshape((360, 180)).T
 
@@ -89,10 +89,10 @@ def run(xov_,tstnam=''):
 
 def generate_dR_regions(filnam,xov):
     # pass
-    xov_ = xov.copy()
+    #xov_ = xov.copy()
     # print(xov_.xov)
     # exit()
-    xovtmp = xov_.xovers.copy()
+    xovtmp = xov.copy()
 
     if len(xovtmp)>0:
         xovtmp['dist_max'] = xovtmp.filter(regex='^dist_.*$').max(axis=1)
@@ -106,17 +106,21 @@ def generate_dR_regions(filnam,xov):
         print(len(xovtmp[xovtmp.dist_max > 0.4]),
               'xovers removed by dist_max from obs > 0.4km')
         # if sim_altdata == 0:
-        mean_dR, std_dR, worse_tracks = xov_.remove_outliers('dR',remove_bad=True)
+        #mean_dR, std_dR, worse_tracks = xov_.remove_outliers('dR',remove_bad=True)
 
     # dR absolute value taken
     xovtmp['dR_orig'] = xovtmp.dR
     xovtmp['dR'] = xovtmp.dR.abs()
+    print(xovtmp['dR'])
+    print(xovtmp['dR'].max(),xovtmp['dR'].min(),xovtmp['dR'].median())
+    xovtmp['dR']*=xovtmp['huber'].values
+    print(xovtmp['dR'].max(),xovtmp['dR'].min(),xovtmp['dR'].median())
 
     step = 3
     to_bin = lambda x: np.floor(x / step) * step
     xovtmp["latbin"] = xovtmp.LAT.map(to_bin)
     xovtmp["lonbin"] = xovtmp.LON.map(to_bin)
-    groups = xovtmp.groupby(("latbin", "lonbin"))
+    groups = xovtmp.groupby(["latbin", "lonbin"])
 
     xov_.save(tmpdir +filnam+"_clean_grp.pkl")
 
@@ -124,7 +128,7 @@ def generate_dR_regions(filnam,xov):
     # exit()
     # mladR = xovtmp.round({'LON': 0, 'LAT': 0, 'dR': 3}).groupby(['LON', 'LAT']).dR.median().reset_index()
     # print(mladR)
-    step = 0.1
+    step = 5
     mladR['dR'] = np.floor(mladR['dR'].values / step) * step
     # print(mladR)
 
@@ -165,7 +169,7 @@ def generate_dR_regions(filnam,xov):
     interp_spline = RectBivariateSpline(lats[:-1],
                                         lons[:-1],
                                         data[:-1, :-1], kx=1, ky=1)
-    pickleIO.save(interp_spline, tmpdir+"interp_dem_"+filnam+".pkl")
+    pickleIO.save(interp_spline, auxdir+"interp_dem_"+filnam+".pkl")
 
     return 0
 
@@ -179,8 +183,8 @@ def roughness_at_baseline(regional_roughness,baseline):
 def regrms_to_regrough(rms):
 
     roughness = (rms - 7.39) / 0.64
-    # fix minimum roughness to 4 meters @ 150 meters (similar to Moon, 0 does not make sense)
-    return np.where(roughness>4, roughness, 4.)
+    # fix minimum roughness to 2 meters @ 150 meters (similar to Moon, 0 does not make sense)
+    return np.where(roughness>2, roughness, 2.)
 
 def roughness_to_error(roughness):
 
@@ -199,16 +203,18 @@ def get_demz_at(dem_xarr, lattmp, lontmp):
 
 if __name__ == '__main__':
 
-    test = 'KX1r'
-    topo = '0res_1amp'
+    test = 'tp8' # 'KX1r'
+    topo = '3res_20amp'
 
-    for i in range(9):
-        filnam = test+'_'+str(i)
+    for i in range(1):
+        filnam = outdir+'/sim/'+test+'_'+str(i)+'/'+topo+'/Abmat_sim_'+test+'_'+str(i+1)+'_'+topo+'.pkl'
+        print(filnam)
         vecopts = {}
         xov_ = xov(vecopts)
-        xov_ = xov_.load('/home/sberton2/Works/NASA/Mercury_tides/out/sim/'+test+'_'+str(i)+'/'+topo+'/Abmat_sim_'+test+'_'+str(i+1)+'_'+topo+'.pkl')
-        xov_ = xov_.xov #tmpdir+"Abmat_sim_"+filnam+"_0res_1amp.pkl")
+        xov_ = xov_.load(filnam)
+        print(xov_.__dict__)
+        #xov_ = xov_.xov #tmpdir+"Abmat_sim_"+filnam+"_0res_1amp.pkl")
         print("Loaded...")
-        print(xov_)
-
-        run(xov_,filnam)
+        print(xov_.xov.xovers)
+        testname = test+'_'+str(i)
+        run(xov_.xov,testname)
