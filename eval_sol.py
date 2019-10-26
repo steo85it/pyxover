@@ -262,6 +262,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         iters_orbcorr_lin = []
         iters_orbcorr_avg_lin = []
         iters_orbres = []
+        iters_orbres_mean = []
         iters_glocorr = []
         m_X_iters = []
         for idx,isol in enumerate(prev_sols):
@@ -373,7 +374,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                             #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
                             # print(df_sol.columns)
 
-                        prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
+                        # prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
                         df_sol.columns = prev.pert_cloop.columns
                         _ = prev.pert_cloop.astype(float)
                         # _.columns = ['/' + k for k in _.columns]
@@ -383,7 +384,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                             _.hist(ax=ax1) #,bins=[-150,-100,-40,-30,-20,-10,0,10,20,30,40,100,150])
                             fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
                         ##########################
-                        iters_orbres.append((_ ** 2).mean(axis=0) ** 0.5)
+                        iters_orbres.append((_ ** 2).median(axis=0) ** 0.5)
+                        iters_orbres_mean.append(_.median(axis=0))
 
             if sol4_glo!=[None]:
                 filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
@@ -457,6 +459,10 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                 iters_orbres = iters_orbres.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
                 # iters_orbres[["/dRl","/dPt"]] *= 1e5
                 print(iters_orbres)
+                iters_orbres_mean = pd.DataFrame(iters_orbres_mean,columns=np.hstack(['tst_id',filter_string_orb]))
+                iters_orbres_mean = iters_orbres_mean.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+                # iters_orbres[["/dRl","/dPt"]] *= 1e5
+                print(iters_orbres_mean)
 
             if simulated_data and len(iters_orbres)>0:
                 iters_orbres.plot(ax=ax3)

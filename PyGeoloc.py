@@ -191,6 +191,7 @@ def main(args):
                     if debug:
                         print("orbsol prev iter")
                         print(orb_sol.reset_index().orb.values)
+                        print(orb_sol.columns)
                         print(str(track.name))
                         print(orb_sol.loc[orb_sol.reset_index().orb.values==str(track.name)])
 		       
@@ -199,7 +200,10 @@ def main(args):
                     # remove corrections if "unreasonable" (larger than 500 meters in any direction)
                     if len(track.sol_prev_iter['orb'])>0:
                         max_orb_corr = np.max(track.sol_prev_iter['orb'].values[0][1:4].astype(float))
-                        if max_orb_corr > 200.:
+                        if (all(x in orb_sol.columns for x in ['dRl','dPt'])):
+                            max_att_corr = np.max(track.sol_prev_iter['orb'].values[0][4:6].astype(float))
+                        # print(track.sol_prev_iter['orb'].values)
+                        if max_orb_corr > 200. and max_att_corr > 50:
                             track.sol_prev_iter['orb'] = pd.DataFrame(columns=track.sol_prev_iter['orb'].columns)
                 else:
                     track.sol_prev_iter = {'orb':orb_sol,
