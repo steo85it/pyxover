@@ -846,5 +846,5 @@ if __name__ == '__main__':
 
     simulated_data = True
 
-    analyze_sol(sol='KX1r2_0', ref_sol='KX1r2_0', subexp = '0res_1amp')
-    #analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
+    #analyze_sol(sol='KX1r2_0', ref_sol='KX1r2_0', subexp = '0res_1amp')
+    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
