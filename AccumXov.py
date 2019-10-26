@@ -474,6 +474,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     #set up observation weights (according to local roughness and dist of obs from xover point)
     regbas_weights = run(xovi_amat.xov).reset_index()
     val = sigma_0 #/np.power(regbas_weights.error.values,1)
+
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
         ax1.hist(val)
@@ -558,7 +559,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # print(posterr)
         #exit()
         Ninv = np.linalg.pinv(spAdense.transpose() * spAdense)
-
         # compute sol
 
         # factorL = np.linalg.norm([0.00993822, \
@@ -593,6 +593,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
         regex = re.compile(".*" + constrain[0] + "$")
         parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if regex.match(p)])
+
         # Constrain tightly to 0 those parameters with few observations (or with few GOOD observations)
         if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
             # should use weights or measurement error threshold, but using huber-threshold-like criteria for now
@@ -603,10 +604,10 @@ def solve(xovi_amat,dataset, previous_iter=None):
             nobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
         to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in nobs_tracks[nobs_tracks < 10].index]
-        print(to_constrain)
         for p in parindex:
             if p[0] in to_constrain:
                 # else a very loose "general" constraint could free it up
+                # (if constraint on p is int, could mess up and give 0 => Nan)
                 if p[1] > 1.:
                     p[1] = 1.e-4
                 else:
@@ -617,6 +618,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
         csr.append(
                 csr_matrix((1/val, (row, col)), dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
+    # combine all constraints
     penalty_matrix = sum(csr)
 
     if True:
@@ -677,8 +679,10 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     # exit()
     # print("Pre-sol-2: len(A,b)=",spA_sol4_penal.shape,len(b_penal))
+    # exit()
 
     xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
+    # xovi_amat.sol = lsqr(xovi_amat.spA, xovi_amat.b,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
     print("sol sparse: ",xovi_amat.sol[0])
     print('to_be_recovered', pert_cloop['glo'])
 

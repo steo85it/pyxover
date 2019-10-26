@@ -27,7 +27,7 @@ from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol
 remove_max_dist = False
 remove_3sigma_median = False
 
-subfolder = '' #'archived/tp8_pertglb_fitglb/'
+subfolder = '' # 'archived/tp8_pertglb_fitglb/'
 
 def xovnum_plot():
 
@@ -286,10 +286,10 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             lTP = prev.xov.xovers['dR'].values.reshape(1,-1)@prev.weights
             lTPl = lTP @ prev.xov.xovers['dR'].values.reshape(-1,1)
 
-            filter_string_glo = ["/" + x.split('/')[-1] for x in sol4_glo]  # ["/dRA","/dDEC","/dPM","/dL","/dh2"]
+            # filter_string_glo = ["/" + x.split('/')[-1] for x in sol4_glo]  # ["/dRA","/dDEC","/dPM","/dL","/dh2"]
             xsol = []
             xstd = []
-            for filt in filter_string_glo:
+            for filt in prev.sol4_pars:
                 filtered_dict = {k: v for (k, v) in prev.sol_dict['sol'].items() if filt in k}
                 xsol.append(list(filtered_dict.values())[0])
                 filtered_dict = {k: v for (k, v) in prev.sol_dict['std'].items() if filt in k}
@@ -298,7 +298,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             xT = np.array(xsol).reshape(1,-1)
             ATP = prev.spA.T * prev.weights
             ATPb = ATP * prev.b
-            #print(lTPl, xT@ATPb, lTPl - xT@ATPb)
             vTPv = lTPl - xT@ATPb
             degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
             #print("vTPv = ", vTPv, vTPv/degf)
@@ -357,13 +356,12 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                     df_.columns = ['key', 'sol', 'std']
                     df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
                     df_.drop('key', axis=1, inplace=True)
-                    df_ = df_.loc[df_.par.isin(['dR' + x for x in filter_string_orb])]
+                    df_ = df_.loc[df_.par.isin(['dR/' + x for x in filter_string_orb])]
                     if len(df_) > 0:
                         # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
                         df_ = df_.replace(to_replace='None', value=np.nan).dropna()
                         df_sol = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'],
                                                 aggfunc=np.sum).sol
-
                         if OrbRep == 'lin':
                             # print("isol",isol)
                             # print(prev.pert_cloop.columns)
@@ -375,14 +373,14 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                             #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
                             # print(df_sol.columns)
 
-                        # prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
+                        prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
                         df_sol.columns = prev.pert_cloop.columns
-                        _ = prev.pert_cloop
-                        _.columns = ['/' + k for k in _.columns]
+                        _ = prev.pert_cloop.astype(float)
+                        # _.columns = ['/' + k for k in _.columns]
                         #########################
                         if local:
                             fig, ax1 = plt.subplots(nrows=1)
-                            _.hist(ax=ax1,bins=[-150,-100,-40,-30,-20,-10,0,10,20,30,40,100,150])
+                            _.hist(ax=ax1) #,bins=[-150,-100,-40,-30,-20,-10,0,10,20,30,40,100,150])
                             fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
                         ##########################
                         iters_orbres.append((_ ** 2).mean(axis=0) ** 0.5)
@@ -472,14 +470,14 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
             iters_glocorr.columns = [x.split('/')[1] for x in iters_glocorr.columns.values]
             print(iters_glocorr)
-            print("Iter improvment")
+            print("Iter improvement")
             print(iters_glocorr.diff())
             print("A posteriori error on global pars")
             m_X_iters = pd.DataFrame.from_dict(m_X_iters)
-            m_X_iters.columns = [x.split('/')[1] for x in sol4_glo]
-            print(m_X_iters)
-            print("Iter improvment (relative to formal error): ")
-            print((iters_glocorr.diff().abs()).div(m_X_iters))
+            m_X_iters.columns = [x.split('/')[1] for x in prev.sol4_pars]
+            print(m_X_iters[iters_glocorr.columns])
+            print("Iter improvement (relative to formal error): ")
+            print((iters_glocorr.diff().abs()).div(m_X_iters[iters_glocorr.columns]))
 
 
             if simulated_data and len(pert_cloop['glo'])>0:
@@ -502,7 +500,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                 # get percentage of total perturbation still to be recovered
                 print(iters_glores)
                 print("Residual relative to formal errors")
-                print((iters_glores.abs()).div(m_X_iters))
+                print((iters_glores.abs()).div(m_X_iters[list(iters_glores.columns.values)]))
 
             iters_glocorr.plot(ax=ax4)
             ax4.set_ylabel('sol (glo sol)')
@@ -516,8 +514,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                 print(pert_cloop_glo)
 
             print("Latest solution:")
-            last_sol = iters_glocorr.iloc[-1]
-            last_std = m_X_iters.iloc[-1]
+            last_sol = iters_glocorr[iters_glocorr.columns].iloc[-1]
+            last_std = m_X_iters[iters_glocorr.columns].iloc[-1]
             if simulated_data and len(pert_cloop['glo'])>0:
               last_err = iters_glores.iloc[-1]
               last_sol = pd.concat([last_sol,last_std, last_err],axis=1)
@@ -847,5 +845,6 @@ def add_xov_separation(tmp):
 if __name__ == '__main__':
 
     simulated_data = True
+
     analyze_sol(sol='KX1r2_0', ref_sol='KX1r2_0', subexp = '0res_1amp')
     #analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
