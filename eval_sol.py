@@ -27,7 +27,7 @@ from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol
 remove_max_dist = False
 remove_3sigma_median = False
 
-subfolder = 'archived/tp8_pertglb_fitglb/'
+subfolder = '' #'archived/tp8_pertglb_fitglb/'
 
 def xovnum_plot():
 
@@ -847,5 +847,5 @@ def add_xov_separation(tmp):
 if __name__ == '__main__':
 
     simulated_data = True
-    #analyze_sol(sol='KX1r2_0', ref_sol='KX1r2_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
+    analyze_sol(sol='KX1r2_0', ref_sol='KX1r2_0', subexp = '0res_1amp')
+    #analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')

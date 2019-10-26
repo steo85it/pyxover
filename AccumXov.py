@@ -473,7 +473,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # TODO why sqrt?? take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
     #set up observation weights (according to local roughness and dist of obs from xover point)
     regbas_weights = run(xovi_amat.xov).reset_index()
-    val = sigma_0/np.power(regbas_weights.error.values,1)
+    val = sigma_0 #/np.power(regbas_weights.error.values,1)
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
         ax1.hist(val)
@@ -498,7 +498,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
 
     ## DIRECT SOLUTION FOR DEBUG AND SMALL PROBLEMS (e.g., global only)
-    if len(sol4_pars)<50: # and debug:
+    if len(sol4_pars)<50 and debug:
 
         print('B', xovi_amat.b)
         print('maxB', np.abs(xovi_amat.b).max(),np.abs(xovi_amat.b).mean())
@@ -545,18 +545,18 @@ def solve(xovi_amat,dataset, previous_iter=None):
         PA = obs_weights * spAdense
         N = ATPA
         Ninv = np.linalg.pinv(N)
-        ell = csr_matrix(np.diag(np.abs(bvec)))
-        print(ell)
-        posterr = Ninv * ATP * ell * PA * N
-        print(posterr)
-        print(np.sqrt(posterr.diagonal()))
-        posterr = np.linalg.pinv(ATP * ell * PA)
-        posterr = np.sqrt(posterr.diagonal())
-        print(3.4 * posterr)
+        #ell = csr_matrix(diags(np.abs(bvec)))
+        #print(ell)
+        #posterr = Ninv * ATP * ell * PA * N
+        #print(posterr)
+        #print(np.sqrt(posterr.diagonal()))
+        #posterr = np.linalg.pinv(ATP * ell * PA)
+        #posterr = np.sqrt(posterr.diagonal())
+        #print(3.4 * posterr)
         # print(np.linalg.pinv(posterr))
         # posterr = Ninv * (spAdense.transpose() * (obs_weights * (ell * (obs_weights * (spAdense * N)))))
         # print(posterr)
-        exit()
+        #exit()
         Ninv = np.linalg.pinv(spAdense.transpose() * spAdense)
 
         # compute sol
