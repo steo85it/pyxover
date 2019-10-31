@@ -612,6 +612,7 @@ def check_iters(sol, subexp=''):
         #print("vTPv = ", vTPv, vTPv/degf)
         #print("degf = ", degf)
         m_0 = np.sqrt(vTPv/degf)[0][0]
+        #print("m_0 = ", m_0,"at iter ", idx)
         iters_rms.append([tst_id, np.sqrt(lTPl/degf)[0][0], m_0, degf])
 
         # ATPA = ATP * prev.spA
@@ -875,9 +876,9 @@ def add_xov_separation(tmp):
 
 if __name__ == '__main__':
 
-    simulated_data = True
+    simulated_data = False
     # analyze_sol(sol='KX1_0', ref_sol='KX1_0', subexp = '0res_1amp')
     # analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp9_0',subexp='3res_20amp')
-    check_iters(sol='KX1_0',subexp='0res_1amp')
+    check_iters(sol='KX1r2_0',subexp='0res_1amp')

@@ -14,12 +14,12 @@ parallel = 1
 partials = 1
 
 # std perturbations for finite differences (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
-parOrb = {} #'dA': 20.,'dC': 20.,'dR': 5.}#,'dRl':0.4, 'dPt':0.4} #
+parOrb = {'dA': 20.,'dC': 20.,'dR': 5.}#,'dRl':0.4, 'dPt':0.4} #
 parGlo = {'dRA':[0.2, 0.000, 0.000], 'dDEC':[0.36, 0.000, 0.000],'dPM':[0, 0.013, 0.000],'dL':1.e-3*deg2as(1.)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532])} #'dh2': 0.1} #
 
 # parameter constraints for solution
-par_constr = {'dR/dRA': 100000., 'dR/dDEC': 100000.,'dR/dL':100000., 'dR/dPM': 100000.} #, 'dR/dA':100., 'dR/dC':100.,'dR/dR':1.e0, 'dR/dRl':1.e0, 'dR/dPt':1.e0} #, 'dR/dh2': 1} # 'dR/dA0':50., 'dR/dC0':50.,'dR/dR0':20, 'dR/dA1':1.e-2, 'dR/dC1':1.e-2,'dR/dR1':1.e-2} #
-mean_constr = {} # 'dR/dA':1.e0, 'dR/dC':1.e0,'dR/dR':1.e0, 'dR/dRl':1.e1, 'dR/dPt':1.e1}
+par_constr = {'dR/dRA': 1000., 'dR/dDEC': 1000.,'dR/dL':1000., 'dR/dPM': 1000., 'dR/dA':100., 'dR/dC':50.,'dR/dR':1.e1} #, 'dR/dRl':1.e0, 'dR/dPt':1.e0} #, 'dR/dh2': 1} # 'dR/dA0':50., 'dR/dC0':50.,'dR/dR0':20, 'dR/dA1':1.e-2, 'dR/dC1':1.e-2,'dR/dR1':1.e-2} #
+mean_constr = {'dR/dA':5.e0, 'dR/dC':1.e0,'dR/dR':5.e0} #, 'dR/dRl':1.e1, 'dR/dPt':1.e1}
 
 # ... and closed loop sims (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
 pert_cloop_orb = {} #'dA':50., 'dC':50., 'dR':20.,'dRl':6, 'dPt':6} #, 'dA1':20.e-3, 'dC1':20.e-3, 'dR1':5.e-3} # {'dA':100., 'dC':100., 'dR':20.} #
@@ -29,8 +29,8 @@ pert_cloop = {'orb': pert_cloop_orb, 'glo': pert_cloop_glo}
 pert_tracks = [] #'1107021838','1210192326','1403281002','1503191143'] #
 
 # select subset of parameters to solve for
-sol4_orb = [None] #'1107021838','1210192326','1403281002','1503191143']  #
-sol4_orbpar = [None] #'dA','dC','dR'] #,'dRl','dPt'] # 'dA1','dC1','dR1']  #
+sol4_orb = [] #'1107021838','1210192326','1403281002','1503191143']  #
+sol4_orbpar = ['dA','dC','dR'] #,'dRl','dPt'] # 'dA1','dC1','dR1']  #
 sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL'] #,  'dR/dh2'] #,  None]
 
 # orbital representation
