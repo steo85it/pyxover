@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for i in np.arange(1, 20):
+        for i in np.arange(0, 10):
     
             if local:
                 start = time.time()
@@ -93,12 +93,12 @@ if __name__ == '__main__':
                     print("*** PyGeol_" + str(rt) + " failed on iter", i)
                     exit(iostat)
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt)+'_'+str(i), '8', '00:30:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt)+'_'+str(i), '8', '06:30:00', '10'])
                 if iostat != 0:
                     print("*** PyXov_" + str(rt) + " failed on iter", i)
                     exit(iostat)
                 iostat = s.call(#["python3", "launch_test.py", str(rt), "0", "3", str(i)])
-                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt)+'_'+str(i), '1', '00:10:00', '1'])
+                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt)+'_'+str(i), '1', '01:10:00', '1'])
                 if iostat != 0:
                     print("*** PyAcc_" + str(rt) + " failed on iter", i)
                     exit(iostat)

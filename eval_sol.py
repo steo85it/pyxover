@@ -262,6 +262,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         iters_orbcorr_lin = []
         iters_orbcorr_avg_lin = []
         iters_orbres = []
+        iters_orbres_mean = []
         iters_glocorr = []
         m_X_iters = []
         for idx,isol in enumerate(prev_sols):
@@ -383,7 +384,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                             _.hist(ax=ax1) #,bins=[-150,-100,-40,-30,-20,-10,0,10,20,30,40,100,150])
                             fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
                         ##########################
-                        iters_orbres.append((_ ** 2).mean(axis=0) ** 0.5)
+                        iters_orbres.append((_ ** 2).median(axis=0) ** 0.5)
+                        iters_orbres_mean.append(_.median(axis=0))
 
             if sol4_glo!=[None]:
                 filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
@@ -457,6 +459,10 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
                 iters_orbres = iters_orbres.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
                 # iters_orbres[["/dRl","/dPt"]] *= 1e5
                 print(iters_orbres)
+                iters_orbres_mean = pd.DataFrame(iters_orbres_mean,columns=np.hstack(['tst_id',filter_string_orb]))
+                iters_orbres_mean = iters_orbres_mean.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+                # iters_orbres[["/dRl","/dPt"]] *= 1e5
+                print(iters_orbres_mean)
 
             if simulated_data and len(iters_orbres)>0:
                 iters_orbres.plot(ax=ax3)
@@ -844,7 +850,7 @@ def add_xov_separation(tmp):
 
 if __name__ == '__main__':
 
-    simulated_data = True
+    simulated_data = False
 
-    #analyze_sol(sol='KX1r2_0', ref_sol='KX1r2_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')
+    analyze_sol(sol='KX1_0', ref_sol='KX1_0', subexp = '0res_1amp')
+    #analyze_sol(sol='tp8_0', ref_sol='tp8_0', subexp = '3res_20amp')

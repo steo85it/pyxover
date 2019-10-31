@@ -126,7 +126,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     # save initial cloop perturbations to xov_cmb
     pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
 
-    if pertdict != [] and sol4_orbpar != [None]:
+    if len([v for x in pertdict for k,v in x.items() if v]) > 0 and sol4_orbpar != [None]:
         pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
         xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
         xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
@@ -473,7 +473,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # TODO why sqrt?? take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
     #set up observation weights (according to local roughness and dist of obs from xover point)
     regbas_weights = run(xovi_amat.xov).reset_index()
-    val = sigma_0 #/np.power(regbas_weights.error.values,1)
+    val = sigma_0 /np.power(regbas_weights.error.values,1)
 
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
@@ -603,7 +603,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         else:
             nobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
-        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in nobs_tracks[nobs_tracks < 10].index]
+        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in nobs_tracks[nobs_tracks < 50].index]
         for p in parindex:
             if p[0] in to_constrain:
                 # else a very loose "general" constraint could free it up
