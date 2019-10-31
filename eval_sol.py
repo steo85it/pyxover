@@ -22,7 +22,7 @@ from AccumXov import plt_geo_dR
 from ground_track import gtrack
 from xov_setup import xov
 from Amat import Amat
-from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol4_glo, sol4_orbpar
+from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts
 
 remove_max_dist = False
 remove_3sigma_median = False
@@ -251,297 +251,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     _ = tmp.xov.xovers.dR.values ** 2
     print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
 
-    # Check convergence over iterations
-    if True:
-        sol_iters = sol.split('_')[:-1][0]
-        prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
-
-        iters_rms = []
-        iters_orbcorr = []
-        iters_orbcorr_avg = []
-        iters_orbcorr_lin = []
-        iters_orbcorr_avg_lin = []
-        iters_orbres = []
-        iters_orbres_mean = []
-        iters_glocorr = []
-        m_X_iters = []
-        for idx,isol in enumerate(prev_sols):
-            prev = Amat(vecopts)
-            prev = prev.load(isol)
-
-            add_xov_separation(prev)
-            # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
-            # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
-            # mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
-            # weigh observations
-
-            # prev.xov.xovers['dR'] *= (prev.weights/prev.weights.max())
-            # _ = prev.xov.xovers.dR.values ** 2
-            tst = isol.split('/')[-3].split('_')[1]
-            tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
-            #print("tst_id",tst_id)
-            # iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
-
-            # print(prev.xov.xovers[['dR', 'huber', 'weights']])
-            #print("@iter", tst_id)
-            lTP = prev.xov.xovers['dR'].values.reshape(1,-1)@prev.weights
-            lTPl = lTP @ prev.xov.xovers['dR'].values.reshape(-1,1)
-
-            # filter_string_glo = ["/" + x.split('/')[-1] for x in sol4_glo]  # ["/dRA","/dDEC","/dPM","/dL","/dh2"]
-            xsol = []
-            xstd = []
-            for filt in prev.sol4_pars:
-                filtered_dict = {k: v for (k, v) in prev.sol_dict['sol'].items() if filt in k}
-                xsol.append(list(filtered_dict.values())[0])
-                filtered_dict = {k: v for (k, v) in prev.sol_dict['std'].items() if filt in k}
-                xstd.append(list(filtered_dict.values())[0])
-
-            xT = np.array(xsol).reshape(1,-1)
-            ATP = prev.spA.T * prev.weights
-            ATPb = ATP * prev.b
-            vTPv = lTPl - xT@ATPb
-            degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
-            #print("vTPv = ", vTPv, vTPv/degf)
-            #print("degf = ", degf)
-            m_0 = np.sqrt(vTPv/degf)[0][0]
-            iters_rms.append([tst_id, np.sqrt(lTPl/degf)[0][0], m_0, degf])
-
-            # ATPA = ATP * prev.spA
-            PA = prev.weights * prev.spA
-            # N = ATPA
-            # Ninv = np.linalg.pinv(N)
-            ell = diags(np.abs(prev.b))
-            posterr = np.linalg.pinv((ATP * ell * PA).todense())
-            posterr = np.sqrt(posterr.diagonal())
-            m_X = dict(zip(prev.sol4_pars,np.ravel(m_0 * posterr[0])))
-            #print("a post error on params", m_X)
-            sigma_X = dict(zip(prev.sol4_pars,xstd))
-            #print("a priori error on params", sigma_X)
-            #print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
-
-            m_X_iters.append(m_X)
-
-            #prev.xov.xovers['dR'].values.T * prev.xov.xovers['weights'].values * prev.xov.xovers['dR'].values)
-            # exit()
-
-            ####################################
-
-            filter_string_orb = sol4_orbpar #["/dA","/dC","/dR","/dRl","/dPt"]
-            if filter_string_orb != [None]:
-                sol_rms = []
-                sol_avg = []
-                for filt in filter_string_orb:
-                    filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'0{0,1}$',k)} #filt in k if k not in ['dR/dRA']}
-                    filtered_dict = list(filtered_dict.values())
-                    sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
-                    sol_avg.append(np.mean(np.array(filtered_dict)))
-
-                iters_orbcorr.append(np.hstack([tst_id,sol_rms]))
-                iters_orbcorr_avg.append(np.hstack([tst_id,sol_avg]))
-
-                if OrbRep == 'lin':
-                    filter_string_orb_lin = ["/dA1","/dC1","/dR1"]
-                    sol_rms = []
-                    sol_avg = []
-                    for filt in filter_string_orb_lin:
-                        filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'$',k)} #filt in k if k not in ['dR/dRA']}
-                        filtered_dict = list(filtered_dict.values())
-                        sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
-                        sol_avg.append(np.mean(np.array(filtered_dict)))
-
-                    iters_orbcorr_lin.append(np.hstack([tst_id,sol_rms]))
-                    iters_orbcorr_avg_lin.append(np.hstack([tst_id,sol_avg]))
-
-                if simulated_data:
-                    df_ = pd.DataFrame.from_dict(prev.sol_dict).reset_index()
-                    df_.columns = ['key', 'sol', 'std']
-                    df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
-                    df_.drop('key', axis=1, inplace=True)
-                    df_ = df_.loc[df_.par.isin(['dR/' + x for x in filter_string_orb])]
-                    if len(df_) > 0:
-                        # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
-                        df_ = df_.replace(to_replace='None', value=np.nan).dropna()
-                        df_sol = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'],
-                                                aggfunc=np.sum).sol
-                        if OrbRep == 'lin':
-                            # print("isol",isol)
-                            # print(prev.pert_cloop.columns)
-                            # print(df_sol.columns.values)
-                            regex = re.compile(".*d[A,C,R]0$")
-                            df_sol.columns = [x[:-1] if x in list(filter(regex.match, df_sol.columns)) else x for x in
-                                              df_sol.columns.values]
-                            # if idx == 0:
-                            #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
-                            # print(df_sol.columns)
-
-                        # prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
-                        df_sol.columns = prev.pert_cloop.columns
-                        _ = prev.pert_cloop.astype(float)
-                        # _.columns = ['/' + k for k in _.columns]
-                        #########################
-                        if local:
-                            fig, ax1 = plt.subplots(nrows=1)
-                            _.hist(ax=ax1) #,bins=[-150,-100,-40,-30,-20,-10,0,10,20,30,40,100,150])
-                            fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
-                        ##########################
-                        iters_orbres.append((_ ** 2).median(axis=0) ** 0.5)
-                        iters_orbres_mean.append(_.median(axis=0))
-
-            if sol4_glo!=[None]:
-                filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
-                sol_glb = []
-                std_glb = []
-                for filt in filter_string_glo:
-                    filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
-                    filtered_dict = list(filtered_dict.values())
-                    if len(filtered_dict)>0:
-                        sol_glb.append(np.array(filtered_dict)[0])
-                        filtered_dict_std = {k:v for (k,v) in prev.sol_dict['std'].items() if filt in k}
-                        filtered_dict_std = list(filtered_dict_std.values())
-                        std_glb.append(np.array(filtered_dict_std)[0])
-                    else:
-                        sol_glb.append("0")
-                iters_glocorr.append(np.hstack([tst_id,sol_glb]))
-
-        if simulated_data:
-            fig, [ax1,ax2,ax3,ax4,ax5] = plt.subplots(nrows=5,sharex=True)
-        else:
-            fig, [ax1,ax2,ax4] = plt.subplots(nrows=3,sharex=True)
-
-        print("Total RMS for iters: ")
-        iters_rms = np.array(iters_rms)
-        iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
-        print(iters_rms)
-
-        ax1.plot(iters_rms[:,1].astype('float'),'-r')
-        ax1.set_ylabel('rms (m)')
-        ax1a = ax1.twinx()
-        ax1a.plot(iters_rms[:,3].astype('float'),'.k')
-        ax1a.set_ylabel('num of obs (post-screening)')
-
-        if filter_string_orb != [None]:
-
-            print("Total RMS/avg for solutions (orbpar): ")
-            printout_list = [iters_orbcorr,iters_orbcorr_avg]
-            for idx,printout in enumerate(printout_list):
-                printout = pd.DataFrame(printout,columns=np.hstack(['tst_id',filter_string_orb]))
-                printout = printout.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-                # printout[["/dRl","/dPt"]] *= 1e4
-                print(printout)
-                printout_list[idx] = printout
-
-                if idx is 0:
-                    printout.plot(ax=ax2)
-                    ax2.set_ylabel('rms (tot orb sol)')
-
-            if OrbRep == 'lin':
-                print("Total RMS/avg for solutions (orbpar, lin): ")
-                printout_list = [iters_orbcorr_lin, iters_orbcorr_avg_lin]
-                for idx, printout in enumerate(printout_list):
-                    printout = pd.DataFrame(printout, columns=np.hstack(['tst_id', filter_string_orb_lin]))
-                    printout = printout.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype(
-                        'float')  # .round(2)
-                    # printout[["/dRl", "/dPt"]] *= 1e4
-                    print(printout)
-                    printout_list[idx] = printout
-
-                if simulated_data:
-                    print("Total RMS for orbpar residuals (lin): ")
-                    filter_string_orb_lin = [x[:-1]+'1' for x in filter_string_orb_lin]
-                    iters_orbres_lin = pd.DataFrame(iters_orbres, columns=np.hstack(['tst_id', filter_string_orb_lin]))
-                    iters_orbres_lin = iters_orbres_lin.sort_values(by='tst_id').reset_index(drop=True).drop(
-                        columns='tst_id').astype('float')  # .round(2)
-                    print(iters_orbres_lin)
-
-            if simulated_data:
-                print("Total RMS for orbpar residuals: ")
-                iters_orbres = pd.DataFrame(iters_orbres,columns=np.hstack(['tst_id',filter_string_orb]))
-                iters_orbres = iters_orbres.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-                # iters_orbres[["/dRl","/dPt"]] *= 1e5
-                print(iters_orbres)
-                iters_orbres_mean = pd.DataFrame(iters_orbres_mean,columns=np.hstack(['tst_id',filter_string_orb]))
-                iters_orbres_mean = iters_orbres_mean.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-                # iters_orbres[["/dRl","/dPt"]] *= 1e5
-                print(iters_orbres_mean)
-
-            if simulated_data and len(iters_orbres)>0:
-                iters_orbres.plot(ax=ax3)
-                ax3.get_legend().remove()
-                ax3.set_ylabel('rms (orb res)')
-
-        if sol4_glo!=[None]:
-
-            print("Cumulated solution (glopar): ")
-            iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
-            iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-            iters_glocorr.columns = [x.split('/')[1] for x in iters_glocorr.columns.values]
-            print(iters_glocorr)
-            print("Iter improvement")
-            print(iters_glocorr.diff())
-            print("A posteriori error on global pars")
-            m_X_iters = pd.DataFrame.from_dict(m_X_iters)
-            m_X_iters.columns = [x.split('/')[1] for x in prev.sol4_pars]
-            print(m_X_iters[iters_glocorr.columns])
-            print("Iter improvement (relative to formal error): ")
-            print((iters_glocorr.diff().abs()).div(m_X_iters[iters_glocorr.columns]))
-
-
-            if simulated_data and len(pert_cloop['glo'])>0:
-                print("Real residuals (glopar): ")
-                #pert_cloop_glo = {'dRA': np.linalg.norm([0., 0.001, 0.000]),
-                #                                     'dDEC':np.linalg.norm([-0., 0.0013, 0.000]),
-                #                                     'dPM':np.linalg.norm([0, 0.001, 0.000]),
-                #                                     'dL':0.03*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]),
-                #                     'dh2': 0.}
-                pert_cloop_glo = pert_cloop['glo']
-                # pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
-                #iters_glocorr.columns = [x[1:] for x in iters_glocorr.columns.values]
-                pert_cloop_glo = { key:value for (key,value) in pert_cloop_glo.items() if key in iters_glocorr.columns.values}
-                pert_cloop_glo = [np.sum(x) for x in list(pert_cloop_glo.values())]
-                iters_glores = iters_glocorr.add(pert_cloop_glo, axis='columns').abs()
-                iters_glores.columns = ['/'+x for x in iters_glores.columns.values]
-                iters_glores = pd.DataFrame(iters_glores.reset_index(),columns=np.hstack(['tst_id',filter_string_glo]))
-                iters_glores = iters_glores.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
-                iters_glores.columns = [x.split('/')[1] for x in iters_glores.columns.values]
-                # get percentage of total perturbation still to be recovered
-                print(iters_glores)
-                print("Residual relative to formal errors")
-                print((iters_glores.abs()).div(m_X_iters[list(iters_glores.columns.values)]))
-
-            iters_glocorr.plot(ax=ax4)
-            ax4.set_ylabel('sol (glo sol)')
-
-            if simulated_data and len(pert_cloop['glo'])>0:
-                iters_glores.plot(logy=True,ax=ax5)
-                ax5.get_legend().remove()
-                ax5.set_ylabel('resid (as,/day)')
-
-                print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
-                print(pert_cloop_glo)
-
-            print("Latest solution:")
-            last_sol = iters_glocorr[iters_glocorr.columns].iloc[-1]
-            last_std = m_X_iters[iters_glocorr.columns].iloc[-1]
-            if simulated_data and len(pert_cloop['glo'])>0:
-              last_err = iters_glores.iloc[-1]
-              last_sol = pd.concat([last_sol,last_std, last_err],axis=1)
-              last_sol.columns = ['sol','std','err']
-            else:
-              last_sol = pd.concat([last_sol,last_std],axis=1)
-              last_sol.columns = ['sol','std']
-
-            print(last_sol)
-
-        # exit()
-        # ax2.set_ylabel('rms (m)')
-        # ax1a = ax1.twinx()
-        # ax1a.plot(iters_rms[:, 2].astype('float'), '.k')
-        # ax1a.set_ylabel('num of obs (post-screening)')
-        #
-        plt.savefig(tmpdir + 'rms_iters_' + sol + '.png')
-        plt.close()
-
-        # exit()
     # print_corrmat(tmp,tmpdir+'corrmat_' + sol + '.pdf')
 
     if False and local:
@@ -840,6 +549,322 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             plt.clf()
             plt.close()
 
+# Check convergence over iterations
+def check_iters(sol, subexp=''):
+    sol_iters = sol.split('_')[:-1][0]
+    prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+
+    iters_rms = []
+    iters_orbcorr = []
+    iters_orbcorr_avg = []
+    iters_orbcorr_it = []
+    iters_orbcorr_avg_it = []
+    iters_orbcorr_lin = []
+    iters_orbcorr_avg_lin = []
+    iters_orbres = []
+    iters_orbres_mean = []
+    iters_glocorr = []
+    m_X_iters = []
+    for idx,isol in enumerate(prev_sols):
+        prev = Amat(vecopts)
+        prev = prev.load(isol)
+
+        add_xov_separation(prev)
+        # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
+        # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
+        # mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
+        # weigh observations
+
+        # prev.xov.xovers['dR'] *= (prev.weights/prev.weights.max())
+        # _ = prev.xov.xovers.dR.values ** 2
+        tst = isol.split('/')[-3].split('_')[1]
+        tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
+        #print("tst_id",tst_id)
+        # iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
+
+        # print(prev.xov.xovers[['dR', 'huber', 'weights']])
+        #print("@iter", tst_id)
+        lTP = prev.xov.xovers['dR'].values.reshape(1,-1)@prev.weights
+        lTPl = lTP @ prev.xov.xovers['dR'].values.reshape(-1,1)
+
+        # filter_string_glo = ["/" + x.split('/')[-1] for x in sol4_glo]  # ["/dRA","/dDEC","/dPM","/dL","/dh2"]
+        xsol = []
+        xstd = []
+        for filt in prev.sol4_pars:
+            filtered_dict = {k: v for (k, v) in prev.sol_dict['sol'].items() if filt in k}
+            xsol.append(list(filtered_dict.values())[0])
+            filtered_dict = {k: v for (k, v) in prev.sol_dict['std'].items() if filt in k}
+            xstd.append(list(filtered_dict.values())[0])
+
+        if prev.sol4_pars != []:
+            # select columns of design matrix corresponding to chosen parameters to solve for
+            # print([xovi_amat.parNames[p] for p in sol4_pars])
+            prev.spA = prev.spA[:, [prev.parNames[p] for p in prev.sol4_pars]]
+            # set b=0 for rows not involving chosen set of parameters
+            nnz_per_row = prev.spA.getnnz(axis=1)
+            prev.b[np.where(nnz_per_row == 0)[0]] = 0
+
+        xT = np.array(xsol).reshape(1,-1)
+        ATP = prev.spA.T * prev.weights
+        ATPb = ATP * prev.b
+        vTPv = lTPl - xT@ATPb
+        degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
+        #print("vTPv = ", vTPv, vTPv/degf)
+        #print("degf = ", degf)
+        m_0 = np.sqrt(vTPv/degf)[0][0]
+        iters_rms.append([tst_id, np.sqrt(lTPl/degf)[0][0], m_0, degf])
+
+        # ATPA = ATP * prev.spA
+        PA = prev.weights * prev.spA
+        # N = ATPA
+        # Ninv = np.linalg.pinv(N)
+        ell = diags(np.abs(prev.b))
+        posterr = np.linalg.pinv((ATP * ell * PA).todense())
+        posterr = np.sqrt(posterr.diagonal())
+        m_X = dict(zip(prev.sol4_pars,np.ravel(m_0 * posterr[0])))
+        #print("a post error on params", m_X)
+        sigma_X = dict(zip(prev.sol4_pars,xstd))
+        #print("a priori error on params", sigma_X)
+        #print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
+
+        m_X_iters.append(m_X)
+
+        #prev.xov.xovers['dR'].values.T * prev.xov.xovers['weights'].values * prev.xov.xovers['dR'].values)
+        # exit()
+
+        ####################################
+
+        filter_string_orb = sol4_orbpar #["/dA","/dC","/dR","/dRl","/dPt"]
+        if OrbRep == 'lin':
+            filter_string_orb = [x+y for x in filter_string_orb for y in ['','0','1'] if x in ['dA','dC','dR']]
+        if filter_string_orb != [None]:
+            sol_rms = []
+            sol_avg = []
+            sol_rms_iter = []
+            sol_avg_iter = []
+            for filt in filter_string_orb:
+                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'0{0,1}$',k)} #filt in k if k not in ['dR/dRA']}
+                filtered_dict = list(filtered_dict.values())
+                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+                sol_avg.append(np.mean(np.array(filtered_dict)))
+                filtered_dict_iter = {k:v for (k,v) in prev.sol_dict_iter['sol'].items() if re.search(filt+'0{0,1}$',k)} #filt in k if k not in ['dR/dRA']}
+                filtered_dict_iter = list(filtered_dict_iter.values())
+                sol_rms_iter.append(np.sqrt(np.mean(np.array(filtered_dict_iter) ** 2)))
+                sol_avg_iter.append(np.mean(np.array(filtered_dict_iter)))
+
+            iters_orbcorr.append(np.hstack([tst_id,sol_rms]))
+            iters_orbcorr_avg.append(np.hstack([tst_id,sol_avg]))
+            iters_orbcorr_it.append(np.hstack([tst_id,sol_rms_iter]))
+            iters_orbcorr_avg_it.append(np.hstack([tst_id,sol_avg_iter]))
+
+            if OrbRep == 'lin':
+                filter_string_orb_lin = ["/dA1","/dC1","/dR1"]
+                sol_rms = []
+                sol_avg = []
+                for filt in filter_string_orb_lin:
+                    filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'$',k)} #filt in k if k not in ['dR/dRA']}
+                    filtered_dict = list(filtered_dict.values())
+                    sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+                    sol_avg.append(np.mean(np.array(filtered_dict)))
+
+                iters_orbcorr_lin.append(np.hstack([tst_id,sol_rms]))
+                iters_orbcorr_avg_lin.append(np.hstack([tst_id,sol_avg]))
+
+            if simulated_data:
+                df_ = pd.DataFrame.from_dict(prev.sol_dict).reset_index()
+                df_.columns = ['key', 'sol', 'std']
+                df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
+                df_.drop('key', axis=1, inplace=True)
+                df_ = df_.loc[df_.par.isin(['dR/' + x for x in filter_string_orb])]
+
+                if len(df_) > 0:
+                    # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
+                    df_ = df_.replace(to_replace='None', value=np.nan).dropna()
+                    df_sol = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'],
+                                            aggfunc=np.sum).sol
+                    if OrbRep == 'lin':
+                        # print("isol",isol)
+                        # print(prev.pert_cloop.columns)
+                        # print(df_sol.columns.values)
+                        regex = re.compile(".*d[A,C,R]0$")
+                        df_sol.columns = [x[:-1] if x in list(filter(regex.match, df_sol.columns)) else x for x in
+                                          df_sol.columns.values]
+                        # if idx == 0:
+                        #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
+                        # print(df_sol.columns)
+
+                    prev.pert_cloop.drop(['dA1', 'dC1', 'dR1'], axis='columns', inplace=True)
+                    prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
+                    df_sol.columns = prev.pert_cloop.columns
+                    _ = prev.pert_cloop.astype(float)
+                    # _.columns = ['/' + k for k in _.columns]
+                    #########################
+                    if local:
+                        fig, ax1 = plt.subplots(nrows=1)
+                        _.hist(ax=ax1,bins=np.arange(-120,120,10))
+                        fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
+                    ##########################
+                    iters_orbres.append((_ ** 2).median(axis=0) ** 0.5)
+                    iters_orbres_mean.append(_.median(axis=0))
+
+        if sol4_glo!=[None]:
+            filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
+            sol_glb = []
+            std_glb = []
+            for filt in filter_string_glo:
+                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if filt in k}
+                filtered_dict = list(filtered_dict.values())
+                if len(filtered_dict)>0:
+                    sol_glb.append(np.array(filtered_dict)[0])
+                    filtered_dict_std = {k:v for (k,v) in prev.sol_dict['std'].items() if filt in k}
+                    filtered_dict_std = list(filtered_dict_std.values())
+                    std_glb.append(np.array(filtered_dict_std)[0])
+                else:
+                    sol_glb.append("0")
+            iters_glocorr.append(np.hstack([tst_id,sol_glb]))
+
+    if simulated_data:
+        fig, [ax1,ax2,ax3,ax4,ax5] = plt.subplots(nrows=5,sharex=True)
+    else:
+        fig, [ax1,ax2,ax4] = plt.subplots(nrows=3,sharex=True)
+
+    print("Total RMS for iters: ")
+    iters_rms = np.array(iters_rms)
+    iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
+    print(iters_rms)
+
+    ax1.plot(iters_rms[:,1].astype('float'),'-r')
+    ax1.set_ylabel('rms (m)')
+    ax1a = ax1.twinx()
+    ax1a.plot(iters_rms[:,3].astype('float'),'.k')
+    ax1a.set_ylabel('num of obs (post-screening)')
+
+    if filter_string_orb != [None]:
+
+        print("Total RMS/avg for solutions (orbpar): ")
+        printout_list = [iters_orbcorr,iters_orbcorr_avg,iters_orbcorr_it,iters_orbcorr_avg_it]
+        for idx,printout in enumerate(printout_list):
+            printout = pd.DataFrame(printout,columns=np.hstack(['tst_id',filter_string_orb]))
+            printout = printout.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+            # printout[["/dRl","/dPt"]] *= 1e4
+            if idx is 2:
+                print("Total RMS/avg for single iter (orbpar): ")
+            print(printout)
+            printout_list[idx] = printout
+
+            if idx is 0:
+                printout.plot(ax=ax2)
+                ax2.set_ylabel('rms (tot orb sol)')
+
+        if OrbRep == 'lin':
+            print("Total RMS/avg for solutions (orbpar, lin): ")
+            printout_list = [iters_orbcorr_lin, iters_orbcorr_avg_lin]
+            for idx, printout in enumerate(printout_list):
+                printout = pd.DataFrame(printout, columns=np.hstack(['tst_id', filter_string_orb_lin]))
+                printout = printout.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype(
+                    'float')  # .round(2)
+                # printout[["/dRl", "/dPt"]] *= 1e4
+                print(printout)
+                printout_list[idx] = printout
+
+            if simulated_data:
+                print("Total RMS for orbpar residuals (lin): ")
+                filter_string_orb_lin = [x[:-1]+'1' for x in filter_string_orb_lin]
+                iters_orbres_lin = pd.DataFrame(iters_orbres, columns=np.hstack(['tst_id', filter_string_orb_lin]))
+                iters_orbres_lin = iters_orbres_lin.sort_values(by='tst_id').reset_index(drop=True).drop(
+                    columns='tst_id').astype('float')  # .round(2)
+                print(iters_orbres_lin)
+
+        if simulated_data:
+            print("Total RMS for orbpar residuals: ")
+            iters_orbres = pd.DataFrame(iters_orbres,columns=np.hstack(['tst_id',filter_string_orb]))
+            iters_orbres = iters_orbres.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+            # iters_orbres[["/dRl","/dPt"]] *= 1e5
+            print(iters_orbres.dropna(axis=1))
+            iters_orbres_mean = pd.DataFrame(iters_orbres_mean,columns=np.hstack(['tst_id',filter_string_orb]))
+            iters_orbres_mean = iters_orbres_mean.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+            # iters_orbres[["/dRl","/dPt"]] *= 1e5
+            print(iters_orbres_mean.dropna(axis=1))
+
+        if simulated_data and len(iters_orbres)>0:
+            iters_orbres.plot(ax=ax3)
+            ax3.get_legend().remove()
+            ax3.set_ylabel('rms (orb res)')
+
+    if sol4_glo!=[None]:
+
+        print("Cumulated solution (glopar): ")
+        iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
+        iters_glocorr = iters_glocorr.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+        iters_glocorr.columns = [x.split('/')[1] for x in iters_glocorr.columns.values]
+        print(iters_glocorr)
+        print("Iter improvement")
+        print(iters_glocorr.diff())
+        print("A posteriori error on global pars")
+        m_X_iters = pd.DataFrame.from_dict(m_X_iters)
+        m_X_iters.columns = [x.split('/')[1] for x in prev.sol4_pars]
+        print(m_X_iters[iters_glocorr.columns])
+        print("Iter improvement (relative to formal error): ")
+        print((iters_glocorr.diff().abs()).div(m_X_iters[iters_glocorr.columns]))
+
+
+        if simulated_data and len(pert_cloop['glo'])>0:
+            print("Real residuals (glopar): ")
+            #pert_cloop_glo = {'dRA': np.linalg.norm([0., 0.001, 0.000]),
+            #                                     'dDEC':np.linalg.norm([-0., 0.0013, 0.000]),
+            #                                     'dPM':np.linalg.norm([0, 0.001, 0.000]),
+            #                                     'dL':0.03*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]),
+            #                     'dh2': 0.}
+            pert_cloop_glo = pert_cloop['glo']
+            # pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
+            #iters_glocorr.columns = [x[1:] for x in iters_glocorr.columns.values]
+            pert_cloop_glo = { key:value for (key,value) in pert_cloop_glo.items() if key in iters_glocorr.columns.values}
+            pert_cloop_glo = [np.sum(x) for x in list(pert_cloop_glo.values())]
+            iters_glores = iters_glocorr.add(pert_cloop_glo, axis='columns').abs()
+            iters_glores.columns = ['/'+x for x in iters_glores.columns.values]
+            iters_glores = pd.DataFrame(iters_glores.reset_index(),columns=np.hstack(['tst_id',filter_string_glo]))
+            iters_glores = iters_glores.sort_values(by='tst_id').reset_index(drop=True).drop(columns='tst_id').astype('float') #.round(2)
+            iters_glores.columns = [x.split('/')[1] for x in iters_glores.columns.values]
+            # get percentage of total perturbation still to be recovered
+            print(iters_glores)
+            print("Residual relative to formal errors")
+            print((iters_glores.abs()).div(m_X_iters[list(iters_glores.columns.values)]))
+
+        iters_glocorr.plot(ax=ax4)
+        ax4.set_ylabel('sol (glo sol)')
+
+        if simulated_data and len(pert_cloop['glo'])>0:
+            iters_glores.plot(logy=True,ax=ax5)
+            ax5.get_legend().remove()
+            ax5.set_ylabel('resid (as,/day)')
+
+            print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
+            print(pert_cloop_glo)
+
+        print("Latest solution:")
+        last_sol = iters_glocorr[iters_glocorr.columns].iloc[-1]
+        last_std = m_X_iters[iters_glocorr.columns].iloc[-1]
+        if simulated_data and len(pert_cloop['glo'])>0:
+          last_err = iters_glores.iloc[-1]
+          last_sol = pd.concat([last_sol,last_std, last_err],axis=1)
+          last_sol.columns = ['sol','std','err']
+        else:
+          last_sol = pd.concat([last_sol,last_std],axis=1)
+          last_sol.columns = ['sol','std']
+
+        print(last_sol)
+
+    # exit()
+    # ax2.set_ylabel('rms (m)')
+    # ax1a = ax1.twinx()
+    # ax1a.plot(iters_rms[:, 2].astype('float'), '.k')
+    # ax1a.set_ylabel('num of obs (post-screening)')
+    #
+    plt.savefig(tmpdir + 'rms_iters_' + sol + '.png')
+    plt.close()
+
+    # exit()
+
 def add_xov_separation(tmp):
     tmp.xov.xovers['dist_max'] = tmp.xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
     tmp.xov.xovers['dist_min'] = tmp.xov.xovers.filter(regex='^dist_[A,B].*$').min(axis=1)
@@ -851,5 +876,7 @@ def add_xov_separation(tmp):
 if __name__ == '__main__':
 
     simulated_data = True
-    #analyze_sol(sol='KX1r2_0', ref_sol='KX1r2_0', subexp = '0res_1amp')
-    analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
+    # analyze_sol(sol='KX1_0', ref_sol='KX1_0', subexp = '0res_1amp')
+    #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
+
+    check_iters(sol='tp9_0',subexp='3res_20amp')

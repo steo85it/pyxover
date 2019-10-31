@@ -5,6 +5,7 @@
 # Author: Stefano Bertone
 # Created: 16-Oct-2018
 #
+import re
 import warnings
 
 import pandas as pd
@@ -31,7 +32,8 @@ import time
 # mylib
 # from mapcount import mapcount
 from ground_track import gtrack
-from prOpt import parallel, SpInterp, new_gtrack, outdir, auxdir, local, vecopts, debug
+from prOpt import parallel, SpInterp, new_gtrack, outdir, auxdir, local, vecopts, debug, OrbRep
+
 
 # from util import lflatten
 ########################################
@@ -186,8 +188,13 @@ def main(args):
                     print("No pert_cloop_0 for ", track.name)
                     pass
 
-                if len(orb_sol)>0:
-                    
+                regex = re.compile(track.name+"_dR/d.*")
+                soltmp = [('sol_'+x.split('_')[1],v) for x, v in tmp.sol_dict['sol'].items() if regex.match(x)]
+
+                if len(soltmp)>0:
+                    stdtmp = [('std_' + x.split('_')[1], v) for x, v in tmp.sol_dict['std'].items() if regex.match(x)]
+                    soltmp = pd.DataFrame(np.vstack([('orb', str(track.name)), soltmp, stdtmp])).set_index(0).T
+
                     if debug:
                         print("orbsol prev iter")
                         print(orb_sol.reset_index().orb.values)
@@ -195,22 +202,13 @@ def main(args):
                         print(str(track.name))
                         print(orb_sol.loc[orb_sol.reset_index().orb.values==str(track.name)])
 		       
-                    track.sol_prev_iter = {'orb':orb_sol.loc[orb_sol.reset_index().orb.values==str(track.name)],
+                    track.sol_prev_iter = {'orb':soltmp,
                                        'glo':glo_sol}
-                    # remove corrections if "unreasonable" (larger than 500 meters in any direction)
-                    if len(track.sol_prev_iter['orb'])>0:
-                        max_orb_corr = np.max(track.sol_prev_iter['orb'].values[0][1:4].astype(float))
-                        if (all(x in orb_sol.columns for x in ['dRl','dPt'])):
-                            max_att_corr = np.max(track.sol_prev_iter['orb'].values[0][4:6].astype(float))
-                        # print(track.sol_prev_iter['orb'].values)
-                        if max_orb_corr > 200. and max_att_corr > 50:
-                            track.sol_prev_iter['orb'] = pd.DataFrame(columns=track.sol_prev_iter['orb'].columns)
                 else:
                     track.sol_prev_iter = {'orb':orb_sol,
                                        'glo':glo_sol}
 
             tracks.append(track)
-        #exit()			       
 
         # epo_in = np.array(epo_in)
         # print(epo_in)
