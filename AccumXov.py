@@ -402,7 +402,7 @@ def analyze_dist_vs_dR(xov):
 
 def solve(xovi_amat,dataset, previous_iter=None):
     from scipy.sparse import csr_matrix
-    from prOpt import par_constr, sol4_orb, sol4_glo
+    from prOpt import par_constr, mean_constr, sol4_orb, sol4_glo
 
     # Solve
     if not local:
@@ -640,11 +640,14 @@ def solve(xovi_amat,dataset, previous_iter=None):
                 csr_matrix((1/val, (row, col)), dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
     # combine all constraints
     penalty_matrix = sum(csr)
+    # print(penalty_matrix)
 
     if True:
+
         csr_avg = []
         for constrain in mean_constr.items():
-            regex = re.compile(".*"+constrain[0]+"$")
+            regex = re.compile(".*"+constrain[0]+"0{0,1}$")
+
             if list(filter(regex.match, sol4_pars)):
                 parindex = np.array([[idx,constrain[1]] for idx,p in enumerate(sol4_pars) if regex.match(p)])
                 # print("matching", list(filter(regex.match, sol4_pars)))
@@ -690,9 +693,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # print(np.shape(xovi_amat.weights))
     # print(len(np.ravel(np.dot(Q,previous_iter.sol_iter[0]))))
     # print(np.shape(xovi_amat.b))
-
     if previous_iter != None:
-        b_penal = np.hstack([xovi_amat.weights*xovi_amat.b, np.ravel(np.dot(Q,previous_iter.sol_iter[0]))]) #np.zeros(len(sol4_pars))]) #
+        # get previous solution reordered as sol4_pars (and hence as Q)
+        prev_sol_ord = [previous_iter.sol_dict_iter['sol'][key] for key in sol4_pars if
+                        key in previous_iter.sol_dict_iter['sol']]
+        b_penal = np.hstack([xovi_amat.weights*xovi_amat.b, np.ravel(np.dot(Q,prev_sol_ord))]) #np.zeros(len(sol4_pars))]) #
     else:
         b_penal = np.hstack([xovi_amat.weights*xovi_amat.b, np.zeros(len(sol4_pars))])
     import scipy
