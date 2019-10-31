@@ -26,7 +26,7 @@ import subprocess
 from unproject_coord import unproject_stereographic
 from intersection import intersection
 from prOpt import debug, partials, OrbRep, parGlo, parOrb, tmpdir, auxdir
-from util import lflatten, rms
+from util import lflatten, rms, sec2day
 
 
 class xov:
@@ -51,7 +51,6 @@ class xov:
         self.gtracks = gtracks
         df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df]).reset_index(drop=True)
 
-        self.ladata_df = df.drop('chn', axis=1)
         self.msrm_sampl = 50
         # store involved tracks as dict
         self.tracks = dict(zip(df.orbID.unique(),list(range(2))))
@@ -87,6 +86,8 @@ class xov:
 
             # Compute and store distances between obs and xov coord
             self.set_xov_obs_dist()
+            # Compute and store offnadir state for obs around xov
+            self.set_xov_offnadir()
 
             if partials:
                 self.set_partials()
@@ -101,6 +102,18 @@ class xov:
 
             # print(self.xovers)
         # exit()
+
+    def set_xov_offnadir(self):
+        obslist = self.xovtmp[['ladata_idA','ladata_idB']].values.astype(int).tolist()
+        obslist = lflatten(obslist)
+        # get offnadir angle for xovering obs
+        offnadir = self.ladata_df.loc[obslist, 'offnadir'].values
+        # reshape for multi-xover tracks combination
+        offnadir = np.reshape(offnadir,(2,-1))
+
+        tmp = pd.DataFrame(np.array(offnadir)).T
+        tmp.columns = ['offnad_A', 'offnad_B']
+        self.xovtmp = pd.concat([self.xovtmp, tmp], axis=1)
 
     def combine(self, xov_list):
 
@@ -185,7 +198,7 @@ class xov:
         # print(bad_xov['orbA'].value_counts().sort_values())
         # print(bad_xov['orbB'].value_counts().sort_values())
         worst_tracks = pd.DataFrame([bad_xov['orbA'].value_counts(),bad_xov['orbB'].value_counts()]).T.fillna(0).sum(axis=1).sort_values(ascending=False)
-        worst_tracks = pd.concat([worst_tracks,total_occ_tracks],axis=1).fillna(0)
+        worst_tracks = pd.concat([worst_tracks,total_occ_tracks],axis=1, sort=True).fillna(0)
         worst_tracks.columns = ['bad','total']
         worst_tracks['percent'] = (worst_tracks.bad/worst_tracks.total*100.).sort_values(ascending=False)
 
@@ -874,19 +887,22 @@ class xov:
         # get coordinates of neighbouring measurements in local projection
         msrmnt_crd = []
 
-        for trk in ['A', 'B']:
-            obslist = xovtmp[['ladata_id' + trk]].values.astype(int).tolist()
-            obslist = lflatten(obslist)
+        #for trk in ['A', 'B']:
+        obslist = xovtmp[['ladata_idA','ladata_idB']].values.astype(int).tolist()
+        obslist = lflatten(obslist)
+        # print(obslist)
 
-            lonlat_bef = self.ladata_df.loc[obslist][['LON', 'LAT']].to_dict('records')
-            lonlat_aft = self.ladata_df.loc[[l + 1 for l in obslist]][['LON', 'LAT']].to_dict('records')
-            for obs in [lonlat_bef,lonlat_aft]:
-                for x in range(len(obs)):
-                    # print(obs[x])
-                    msrmnt_crd.extend(project_stereographic(obs[x]['LON'],obs[x]['LAT'],
-                                                self.proj_center['lon'],
-                                                self.proj_center['lat'],
-                                                self.vecopts['PLANETRADIUS']))
+        lonlat_bef = self.ladata_df[['LON', 'LAT']].loc[obslist].to_dict('records')
+        lonlat_aft = self.ladata_df[['LON', 'LAT']].loc[[l + 1 for l in obslist]].to_dict('records')
+        # print(lonlat_bef)
+        # print(lonlat_aft)
+        for obs in [lonlat_bef,lonlat_aft]:
+            for x in range(len(obs)):
+                # print(obs[x])
+                msrmnt_crd.extend(project_stereographic(obs[x]['LON'],obs[x]['LAT'],
+                                            self.proj_center['lon'],
+                                            self.proj_center['lat'],
+                                            self.vecopts['PLANETRADIUS']))
 
             # msrmnt_crd.extend(
             #     self.ladata_df.loc[obslist][['X_stgprj', 'Y_stgprj']].values)
@@ -1094,7 +1110,7 @@ class xov:
         """
         # project d/dACR on linear expansion parameters
         # if A = A0 + A1*dt --> ddR/dA0 = ddR/dA*dA/dA0, with ddR/dA numerically computed and dA/dA0=1, etc...
-        dt = xovers_df.loc[:,['dtA','dtB']].values
+        dt = sec2day(xovers_df.loc[:,['dtA','dtB']].values)
         xovers_df[[strng.partition('_')[0] + '0_' + strng.partition('_')[2] for strng in
                    xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]] = \
             xovers_df[xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]  # ddR/dA0

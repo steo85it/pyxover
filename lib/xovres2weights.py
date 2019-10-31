@@ -28,21 +28,30 @@ def run(xov_,tstnam='', new_map=False):
     # TODO This screens data and modifies xov!!!!
     if new_map:
         generate_dR_regions(filnam=tstnam,xov=regbas_weights)
-        exit()
+        # exit()
 
     new_lats = np.deg2rad(np.arange(0, 180, 1))
     new_lons = np.deg2rad(np.arange(0, 360, 1))
     new_lats, new_lons = np.meshgrid(new_lats, new_lons)
 
-    interp_spline = pickleIO.load(auxdir+"interp_dem_tp8_0.pkl") #/interp_dem.pkl")
+    if tstnam != '':
+        interp_spline = pickleIO.load(auxdir+"interp_dem_"+tstnam+".pkl") #/interp_dem.pkl")
+    else:
+        interp_spline = pickleIO.load(auxdir+"interp_dem_tp8_0.pkl") #/interp_dem.pkl")
 
     ev = interp_spline.ev(new_lats.ravel(),new_lons.ravel()).reshape((360, 180)).T
+
+    # compare maps
+    if False:
+        interp_spline = pickleIO.load(auxdir + "interp_dem_KX1r2_10.pkl")  # tp8_0.pkl") #/interp_dem.pkl")
+        ev1 = interp_spline.ev(new_lats.ravel(), new_lons.ravel()).reshape((360, 180)).T
+        ev = ev-ev1
 
     # print(ev)
 
     if local:
         fig, ax1 = plt.subplots(nrows=1)
-        im = ax1.imshow(ev,origin='lower',vmin=10,vmax=50,cmap="RdBu")
+        im = ax1.imshow(ev,origin='lower',cmap="RdBu") # vmin=1,vmax=20,cmap="RdBu")
         fig.colorbar(im, ax=ax1,orientation='horizontal')
         fig.savefig(tmpdir+'test_interp_'+tstnam+'.png')
 
@@ -105,7 +114,7 @@ def generate_dR_regions(filnam,xov):
         print("post weighting")
         xovtmp.dR *= xovtmp.huber
         print(xovtmp.dR.abs().max(),xovtmp.dR.abs().min(),xovtmp.dR.median(),rms(xovtmp.dR.values))
-
+        #
         # remove data if xover distance from measurements larger than 0.4km (interpolation error)
         # plus remove outliers with median method
         # xovtmp = xovtmp[xovtmp.dist_max < 0.4]
@@ -117,27 +126,28 @@ def generate_dR_regions(filnam,xov):
     # dR absolute value taken
     xovtmp['dR_orig'] = xovtmp.dR
     xovtmp.dR *= xovtmp.huber
-    print(xovtmp['dR'])
-    print(rms(xovtmp['dR'].values),xovtmp.dR.abs().median())
+    # print(xovtmp['dR'])
+    # print(rms(xovtmp['dR'].values),xovtmp.dR.abs().median())
 
     deg_step = 5
     to_bin = lambda x: np.floor(x / deg_step) * deg_step
     xovtmp["latbin"] = xovtmp.LAT.map(to_bin)
     xovtmp["lonbin"] = xovtmp.LON.map(to_bin)
     groups = xovtmp.groupby(["latbin", "lonbin"])
-    print(groups.size().reset_index())
+    # print(groups.size().reset_index())
 
     xov_.save(tmpdir +filnam+"_clean_grp.pkl")
 
     mladR = groups.dR.apply(lambda x: rms(x)).reset_index() #median().reset_index() #
     mladR['count'] = groups.size().reset_index()[[0]]
-    mladR.loc[mladR['count'] < 50, 'dR'] = rms(xovtmp['dR'].values)
+    mladR.loc[mladR['count'] < 1, 'dR'] = rms(xovtmp['dR'].values)
     # print(mladR)
     # mladR = xovtmp.round({'LON': 0, 'LAT': 0, 'dR': 3}).groupby(['LON', 'LAT']).dR.median().reset_index()
     # print(mladR)
-    dRstep = 1
+    dRstep = 5
     mladR['dR'] = np.floor(mladR['dR'].values / dRstep) * dRstep
-    print(mladR.sort_values(by='count'))
+    # print(mladR.sort_values(by='count'))
+    # exit()
     global_rms = np.floor(rms(xovtmp['dR'].values) / dRstep) * dRstep
 
     fig, ax1 = plt.subplots(nrows=1)
@@ -157,7 +167,8 @@ def generate_dR_regions(filnam,xov):
     plt.close()
 
     lats = np.deg2rad(piv.index.values) + np.pi / 2.
-    lons = np.deg2rad(piv.columns.values)  # -np.pi
+    # TODO not sure why sometimes it has to be rescaled
+    lons = np.deg2rad(piv.columns.values) + np.pi
     data = piv.values
 
     print(data)
@@ -203,11 +214,11 @@ def get_demz_at(dem_xarr, lattmp, lontmp):
 
 if __name__ == '__main__':
 
-    test = 'tp8' # 'KX1r'
-    topo = '3res_20amp'
+    test = 'KX1r2' # 'tp8' #
+    topo = '0res_1amp'
 
-    for i in range(1):
-        filnam = outdir+'/sim/'+test+'_'+str(i)+'/'+topo+'/Abmat_sim_'+test+'_'+str(i+1)+'_'+topo+'_500.pkl'
+    for i in [0,1,5,10]: #range(14):
+        filnam = outdir+'/sim/'+test+'_'+str(i)+'/'+topo+'/Abmat_sim_'+test+'_'+str(i+1)+'_'+topo+'.pkl'
         print(filnam)
         vecopts = {}
         xov_ = xov(vecopts)

@@ -28,8 +28,8 @@ if __name__ == '__main__':
 
 #    res = [3]
 #    ampl = [5,10,20,30,40,60,80]
-    res = [0]
-    ampl = [1]
+    res = [3]
+    ampl = [20]
 
     if len(sys.argv) > 1:
         resampl = sys.argv[1]

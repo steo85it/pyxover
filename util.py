@@ -49,3 +49,9 @@ def deg2as(x):
 
 def as2deg(x):
     return x/3600.
+
+def day2sec(x):
+    return x*86400.
+
+def sec2day(x):
+    return x/86400.

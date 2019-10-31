@@ -525,6 +525,8 @@ class gtrack:
 
             # also updates corr_orb inplace!!!
             # print(corr_orb)
+            # print(tmp_pertcloop)
+            # exit()
             # print({k: v*0.5 for k, v in corr_orb.items()})
             # exit()
             tmp_pertcloop = mergsum(tmp_pertcloop, corr_orb)
@@ -587,7 +589,7 @@ class gtrack:
         # tmp_pertPar = {**tmp_pertPar, **self.pert_cloop}
         # print('norm',tmp_pertPar, diff_step)
         # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
-        geoloc_out, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+        geoloc_out, et_bc, dr_tidal, offndr = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
 
         # print(self.ladata_df)
         if self.vecopts['PARTDER'] is not '':
@@ -595,6 +597,7 @@ class gtrack:
         else:
             tmp_df.loc[:, 'ET_BC'] = et_bc
             tmp_df.loc[:, 'dR_tid'] = dr_tidal
+            tmp_df.loc[:, 'offnadir'] = offndr
 
         # Compute partial derivatives if required
         if self.vecopts['PARTDER'] is not '':
@@ -604,7 +607,7 @@ class gtrack:
             tmp_pertPar = self.perturb_orbits(diff_step, -1.)
 
             # print('part',tmp_pertPar, diff_step)
-            geoloc_min, et_bc, dr_tidal = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+            geoloc_min, et_bc, dr_tidal, dum = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
             partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
 
             ####################################################################################

@@ -52,6 +52,7 @@ class Amat:
 
             self.pert_cloop.drop_duplicates(inplace=True)
             self.pert_cloop.sort_index(inplace=True)
+            print("self.pert_cloop",self.pert_cloop.dropna())
 
     def save(self, filnam):
         pklfile = open(filnam, "wb")

@@ -39,7 +39,7 @@ from tidal_deform import tidal_deform
 
 ##############################################
 # @profile
-from util import rad2as, as2rad
+from util import rad2as, as2rad, sec2day
 
 
 def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
@@ -137,6 +137,9 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # get planet@bc to bounce point vector
     vbore = vprj - plapos_bc
 
+    # compute off-nadir value and pass/save to df
+    offndr = get_offnadir(plapos_bc, scpos_tx, vbore)
+
     # compute inertial to body-fixed frame rotation
     if (1 == 2):
         # (using np.frompyfunc to vectorize pxform)
@@ -177,9 +180,21 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
 
     if (vecopts['OUTPUTTYPE'] == 0):
         vmbf = astr.sph2cart(rtmp, lattmp, lontmp)
-        return np.array(vmbf).reshape(-1, 3), et_bc, dr #2 * oneway / clight.value;
+        return np.array(vmbf).reshape(-1, 3), et_bc, dr, offndr #2 * oneway / clight.value;
     elif (vecopts['OUTPUTTYPE'] == 1):
-        return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr #2 * oneway / clight.value
+        return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr, offndr #2 * oneway / clight.value
+
+
+def get_offnadir(plapos_bc, scpos_tx, vbore):
+    vbore_normed = vbore / np.linalg.norm(vbore, axis=1)[:, np.newaxis]
+    scxyz_tx = (scpos_tx - plapos_bc)
+    scxyz_tx_pbf_normed = np.array(scxyz_tx) / np.linalg.norm(scxyz_tx, axis=1)[:, np.newaxis]
+    offndr = np.arccos(np.einsum('ij,ij->i', vbore_normed, scxyz_tx_pbf_normed))
+    if np.max(np.abs(offndr)) <= 1:
+        offndr = np.rad2deg(offndr)
+    else:
+        offndr = np.zeros(len(offndr))
+    return offndr
 
 
 def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt,itmax=100,tlcbnc = 1.e-3):
@@ -264,7 +279,7 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
                 dACR[:,column] += np.tile(val, len(et))
             elif coeff[:3] in ['dA1', 'dC1', 'dR1'] and val != 0:
                 column = dirs.index(coeff[1])
-                dACR[:, column] += np.tile(val, len(et)) * (et-t0)
+                dACR[:, column] += np.tile(val, len(et)) * sec2day(et-t0)
             elif coeff[:3] in ['dAc', 'dCc', 'dRc'] and val != 0:
                 n_per_orbit = int(coeff[3:])
                 column = dirs.index(coeff[1])
