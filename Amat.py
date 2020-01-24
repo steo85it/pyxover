@@ -158,8 +158,17 @@ class Amat:
             # exit()
 
             csr.append(csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(orb_loc), len(Amat_col))))
+            print("done")
 
         csr = sum(csr)
+	
+        def sparse_memory_usage(mat):
+            try:
+                return mat.data.nbytes + mat.indptr.nbytes + mat.indices.nbytes
+            except AttributeError:
+                return -1
+
+        print("Memory of csr:",sparse_memory_usage(csr))
 
         def sparse_memory_usage(mat):
             try:

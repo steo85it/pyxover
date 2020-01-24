@@ -117,8 +117,12 @@ def main(args):
         # load kernels
         spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
 #                      ,
+#                      '/att/nobackup/emazaric/MESSENGER/data/spk/msgr_20040803_20150328_od380sc_0.bsp',
 #                      '/att/nobackup/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp',
-#                      '/att/nobackup/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp'])
+#                      '/att/nobackup/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp',
+#                      '/att/nobackup/sgoossen/MESSENGER/ORBITS/SPK/MSGR_HGM008_ACCEL2_INTGCB.bsp' # AC acc OD
+#		      '/att/nobackup/sgoossen/MESSENGER/ORBITS/SPK/MSGR_HGM008_ACCEL_INTGCB.bsp' # A acc OD only
+#                     ])
     else:
         data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'
         # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'

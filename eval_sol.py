@@ -24,10 +24,10 @@ from xov_setup import xov
 from Amat import Amat
 from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts
 
-remove_max_dist = False
-remove_3sigma_median = False
+remove_max_dist = True
+remove_3sigma_median = True
 
-subfolder = '' # 'archived/tp8_pertglb_fitglb/'
+subfolder = 'archived/KX1r2_fitall/' # 'archived/tp8_pertglb_fitglb/'
 
 def xovnum_plot():
 
@@ -133,7 +133,7 @@ def print_corrmat(amat,filename):
     print("corr")
     print(corr)
     # mask to select only parameters with corrs > 0.9
-    m = (corr.mask(np.eye(len(corr), dtype=bool)).abs() > 0.).any()
+    m = (corr.mask(np.eye(len(corr), dtype=bool)).abs() > 0.95).any()
     # exit()
     if len(m)>0:
         corr = corr.loc[m,m]
@@ -250,8 +250,6 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     xovacc.analyze_dist_vs_dR(tmp.xov)
     _ = tmp.xov.xovers.dR.values ** 2
     print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
-
-    # print_corrmat(tmp,tmpdir+'corrmat_' + sol + '.pdf')
 
     if False and local:
         from mpl_toolkits.basemap import Basemap
@@ -411,7 +409,7 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             plt.savefig(tmpdir + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
             plt.clf()
 
-    if False:
+    if True:
 
         if ref_sol != '':
             xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
@@ -565,7 +563,7 @@ def check_iters(sol, subexp=''):
     iters_orbres_mean = []
     iters_glocorr = []
     m_X_iters = []
-    for idx,isol in enumerate(prev_sols):
+    for idx,isol in enumerate(prev_sols[:]):
         prev = Amat(vecopts)
         prev = prev.load(isol)
 
@@ -587,6 +585,10 @@ def check_iters(sol, subexp=''):
         lTP = prev.xov.xovers['dR'].values.reshape(1,-1)@prev.weights
         lTPl = lTP @ prev.xov.xovers['dR'].values.reshape(-1,1)
 
+        if idx == len(prev_sols)-1:
+            #print_corrmat(prev, tmpdir + 'corrmat_' + sol + '.png')
+            pass
+
         # filter_string_glo = ["/" + x.split('/')[-1] for x in sol4_glo]  # ["/dRA","/dDEC","/dPM","/dL","/dh2"]
         xsol = []
         xstd = []
@@ -599,7 +601,7 @@ def check_iters(sol, subexp=''):
         if prev.sol4_pars != []:
             # select columns of design matrix corresponding to chosen parameters to solve for
             # print([xovi_amat.parNames[p] for p in sol4_pars])
-            prev.spA = prev.spA[:, [prev.parNames[p] for p in prev.sol4_pars]]
+            prev.spA = prev.spA[:, [prev.parNames[p] for p in prev.parNames.keys()]]
             # set b=0 for rows not involving chosen set of parameters
             nnz_per_row = prev.spA.getnnz(axis=1)
             prev.b[np.where(nnz_per_row == 0)[0]] = 0
@@ -607,11 +609,23 @@ def check_iters(sol, subexp=''):
         xT = np.array(xsol).reshape(1,-1)
         ATP = prev.spA.T * prev.weights
         ATPb = ATP * prev.b
+
+        # when iterations have inconsistent npars, some are imported from previous sols for
+        # consistency reasons. Here we remove these values from the computation of vTPv
+        # else matrix shapes don't match
+        if len(ATPb) != len(xT):
+          missing = [x for x in prev.sol4_pars if x not in prev.parNames]
+          missing = [prev.sol4_pars.index(x) for x in missing]
+          xT = np.delete(xT,missing)
+        #print(prev.sol4_pars)
+        ##################
+        
         vTPv = lTPl - xT@ATPb
         degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
         #print("vTPv = ", vTPv, vTPv/degf)
         #print("degf = ", degf)
         m_0 = np.sqrt(vTPv/degf)[0][0]
+        print(m_0)
         iters_rms.append([tst_id, np.sqrt(lTPl/degf)[0][0], m_0, degf])
 
         # ATPA = ATP * prev.spA
@@ -636,18 +650,18 @@ def check_iters(sol, subexp=''):
 
         filter_string_orb = sol4_orbpar #["/dA","/dC","/dR","/dRl","/dPt"]
         if OrbRep == 'lin':
-            filter_string_orb = [x+y for x in filter_string_orb for y in ['','0','1'] if x in ['dA','dC','dR']]
+            filter_string_orb = list(set([x+y if x in ['dA', 'dC', 'dR'] else x for x in filter_string_orb for y in ['0','1'] ]))
         if filter_string_orb != [None]:
             sol_rms = []
             sol_avg = []
             sol_rms_iter = []
             sol_avg_iter = []
             for filt in filter_string_orb:
-                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'0{0,1}$',k)} #filt in k if k not in ['dR/dRA']}
+                filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'$',k)} #filt in k if k not in ['dR/dRA']}
                 filtered_dict = list(filtered_dict.values())
                 sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
                 sol_avg.append(np.mean(np.array(filtered_dict)))
-                filtered_dict_iter = {k:v for (k,v) in prev.sol_dict_iter['sol'].items() if re.search(filt+'0{0,1}$',k)} #filt in k if k not in ['dR/dRA']}
+                filtered_dict_iter = {k:v for (k,v) in prev.sol_dict_iter['sol'].items() if re.search(filt+'$',k)} #filt in k if k not in ['dR/dRA']}
                 filtered_dict_iter = list(filtered_dict_iter.values())
                 sol_rms_iter.append(np.sqrt(np.mean(np.array(filtered_dict_iter) ** 2)))
                 sol_avg_iter.append(np.mean(np.array(filtered_dict_iter)))
@@ -802,7 +816,7 @@ def check_iters(sol, subexp=''):
         print(iters_glocorr.diff())
         print("A posteriori error on global pars")
         m_X_iters = pd.DataFrame.from_dict(m_X_iters)
-        m_X_iters.columns = [x.split('/')[1] for x in prev.sol4_pars]
+        m_X_iters.columns = [x.split('/')[1] for x in prev.parNames.keys()] #sol4_pars]
         print(m_X_iters[iters_glocorr.columns])
         print("Iter improvement (relative to formal error): ")
         print((iters_glocorr.diff().abs()).div(m_X_iters[iters_glocorr.columns]))
@@ -875,8 +889,10 @@ def add_xov_separation(tmp):
 
 if __name__ == '__main__':
 
-    simulated_data = True
-    # analyze_sol(sol='KX1_0', ref_sol='KX1_0', subexp = '0res_1amp')
+    simulated_data = False
+    analyze_sol(sol='KX1r2_10', ref_sol='KX1r2_0', subexp = '0res_1amp')
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
-    check_iters(sol='tp9_0',subexp='3res_20amp')
+    # check_iters(sol='tp9_0',subexp='3res_20amp')
+    #check_iters(sol='KX1r2_0',subexp='0res_1amp')
+

@@ -30,7 +30,7 @@ from scipy.special import lpmv
 
 import astro_trans as astr
 # mylib
-from prOpt import SpInterp, tmpdir
+from prOpt import SpInterp, tmpdir, debug, local
 
 
 ##############################################
@@ -38,17 +38,13 @@ from prOpt import SpInterp, tmpdir
 def set_const(h2_sol):
     from prOpt import pert_cloop
 
-    h2 = 0.7 # 1.e-8  # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
+    h2 = 0.8  # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
     l2 = 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
     # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
     tau = 0. #84480. # time lag in seconds, corresponding to 4 deg, G. Steinbrugge, 2018
 
     GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
     Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
-
-    # print("pert_cloop['glo']['dh2']", pert_cloop['glo']['dh2'])
-    # print('h2sol', h2_sol)
-    # print('h2tot_pre',h2)
 
     # # check if h2 is perturbed
     if 'dh2' in pert_cloop['glo'].keys():
@@ -97,7 +93,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     frame = vecopts['PLANETFRAME']
 
     # get Sun position and distance from body
-    if (SpInterp > 500):
+    if (SpInterp > 0):
         sunpos = np.transpose(SpObj['SUNx'].eval(ET-tau))
         merpos = np.transpose(SpObj['MERx'].eval(ET-tau))
         sunpos -= merpos
@@ -109,9 +105,6 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     [rSUN, latSUN, lonSUN] = astr.cart2sph(sunpos)
 
     coszSUN = cosz(TH, LO, latSUN, lonSUN)
-    # print("xyz_bf",np.rad2deg(TH), np.rad2deg(LO),R)
-    # print("lat, lon, r Sun",np.rad2deg(latSUN),np.rad2deg(lonSUN),rSUN)
-    # print(coszSUN)
 
     # see, e.g., Van Hoolst, T., and Jacobs, C. ( 2003), Mercury's tides and interior structure,
     # J. Geophys. Res., 108, 5121, doi:10.1029/2003JE002126, E11.
@@ -133,93 +126,94 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     # print(h2)
     # exit()
     ##################################################
-    import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(3)
+    if debug and local:
+        import matplotlib.pyplot as plt
+        fig, axes = plt.subplots(3)
 
-    axes[0].plot(np.rad2deg(LO),np.rad2deg(TH))
-    axes[0].set(xlabel='lon (deg)', ylabel='lat (deg)')
-    axes[0].set_xlim([-180.,180.])
-    axes[0].set_ylim([-90.,90.])
-    axes[0].plot(np.rad2deg(lonSUN),np.rad2deg(latSUN),linewidth=20)
-    axes[1].plot(ET,coszSUN)
-    axes[1].set(xlabel='ET (secJ2000)', ylabel='cosZ (Sun zenith)')
-    axes[2].plot(ET,urtot)
-    axes[2].set(xlabel='ET (secJ2000)', ylabel='ur_tid (m)')
-    # axes[2].plot(ET,(GMsun / (dSUN))*np.power(plarad/dSUN,2))
-    plt.savefig(tmpdir+'test_tid.png')
+        axes[0].plot(np.rad2deg(LO),np.rad2deg(TH))
+        axes[0].set(xlabel='lon (deg)', ylabel='lat (deg)')
+        axes[0].set_xlim([-180.,180.])
+        axes[0].set_ylim([-90.,90.])
+        axes[0].plot(np.rad2deg(lonSUN),np.rad2deg(latSUN),linewidth=20)
+        axes[1].plot(ET,coszSUN)
+        axes[1].set(xlabel='ET (secJ2000)', ylabel='cosZ (Sun zenith)')
+        axes[2].plot(ET,urtot)
+        axes[2].set(xlabel='ET (secJ2000)', ylabel='ur_tid (m)')
+        # axes[2].plot(ET,(GMsun / (dSUN))*np.power(plarad/dSUN,2))
+        plt.savefig(tmpdir+'test_tid.png')
 
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-    import imageio
+        import matplotlib.pyplot as plt
+        from matplotlib import cm
+        import imageio
 
-    plt.clf()
-    fig, axes = plt.subplots(1)
-    x = np.deg2rad(np.arange(-180, 180, 0.1))
-    y = np.deg2rad(np.arange(-90, 90, 0.1))
-    lon, lat = np.meshgrid(x, y)
-    tmp = cosz(lat, lon, 0., 0.)
-    Psun = [lpmv(0, j, tmp) for j in range(2, nmax)]
-    terms = [(plarad / dSUN[0]) ** j * Psun[j - 2] for j in range(2, nmax)]
-    Vsun = (GMsun / (dSUN[0])) * np.sum(terms, 0)
-    Vtot0 = Vsun
-    urtot = h2 * Vsun / gSurf
-    h = plt.contourf(np.rad2deg(lon), np.rad2deg(lat), urtot, cmap=cm.coolwarm)
-    # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
-    cbar = fig.colorbar(h)
-    plt.savefig(tmpdir+'test_tid2.png')
-
-    #loop on all Sun positions (176 Earth days)
-    def plot_tides(d):
-        step = 16
-        sunpos, tmp = spice.spkpos('SUN', ET+step*d*86400., frame, 'NONE', obs)
-        # print(ET,sunpos)
-        sunpos = 1.e3 * np.array(sunpos)
-        dSUN = np.linalg.norm(sunpos, axis=1)
-        [rSUN, latSUN, lonSUN] = astr.cart2sph(sunpos)
-
-        tmp = cosz(lat, lon, latSUN[0], lonSUN[0])
+        plt.clf()
+        fig, axes = plt.subplots(1)
+        x = np.deg2rad(np.arange(-180, 180, 0.1))
+        y = np.deg2rad(np.arange(-90, 90, 0.1))
+        lon, lat = np.meshgrid(x, y)
+        tmp = cosz(lat, lon, 0., 0.)
         Psun = [lpmv(0, j, tmp) for j in range(2, nmax)]
         terms = [(plarad / dSUN[0]) ** j * Psun[j - 2] for j in range(2, nmax)]
         Vsun = (GMsun / (dSUN[0])) * np.sum(terms, 0)
         Vtot0 = Vsun
         urtot = h2 * Vsun / gSurf
-        # print(np.shape(urtot))
-        # exit()
+        h = plt.contourf(np.rad2deg(lon), np.rad2deg(lat), urtot, cmap=cm.coolwarm)
+        # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
+        cbar = fig.colorbar(h)
+        plt.savefig(tmpdir+'test_tid2.png')
 
+        #loop on all Sun positions (176 Earth days)
+        def plot_tides(d):
+            step = 16
+            sunpos, tmp = spice.spkpos('SUN', ET+step*d*86400., frame, 'NONE', obs)
+            # print(ET,sunpos)
+            sunpos = 1.e3 * np.array(sunpos)
+            dSUN = np.linalg.norm(sunpos, axis=1)
+            [rSUN, latSUN, lonSUN] = astr.cart2sph(sunpos)
+
+            tmp = cosz(lat, lon, latSUN[0], lonSUN[0])
+            Psun = [lpmv(0, j, tmp) for j in range(2, nmax)]
+            terms = [(plarad / dSUN[0]) ** j * Psun[j - 2] for j in range(2, nmax)]
+            Vsun = (GMsun / (dSUN[0])) * np.sum(terms, 0)
+            Vtot0 = Vsun
+            urtot = h2 * Vsun / gSurf
+            # print(np.shape(urtot))
+            # exit()
+
+            plt.clf()
+            fig, axes = plt.subplots(1)
+            h = axes.contourf(np.rad2deg(lon), np.rad2deg(lat), urtot, cmap=cm.coolwarm, vmin=-2, vmax=2)
+            axes.plot(np.rad2deg(lonSUN), np.rad2deg(latSUN), linewidth=20)
+            axes.set(xlabel='LON (deg)', ylabel='LAT (deg)',title='Vertical tides over Mercury solar year (day '+str(d*step)+')')
+            # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
+            cbar = fig.colorbar(h,label='ur (meters)')
+            # plt.savefig(tmpdir + 'test_tid3.png')
+            # Used to return the plot as an image rray
+            fig.canvas.draw()  # draw the canvas, cache the renderer
+            image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+            image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            return image, urtot
+
+        kwargs_write = {'fps': 1.0, 'quantizer': 'nq'}
+        tmp = np.array([plot_tides(d) for d in range(11)])
+        urtot = np.stack(tmp[:,1])
+        # print(urtot)
+        urtot_max = np.max(urtot,axis=0)
+        urtot_min = np.min(urtot,axis=0)
+        # print(urtot_max-urtot_min)
         plt.clf()
         fig, axes = plt.subplots(1)
-        h = axes.contourf(np.rad2deg(lon), np.rad2deg(lat), urtot, cmap=cm.coolwarm, vmin=-2, vmax=2)
-        axes.plot(np.rad2deg(lonSUN), np.rad2deg(latSUN), linewidth=20)
-        axes.set(xlabel='LON (deg)', ylabel='LAT (deg)',title='Vertical tides over Mercury solar year (day '+str(d*step)+')')
+        h = axes.contourf(np.rad2deg(lon), np.rad2deg(lat), urtot_max-urtot_min, cmap=cm.coolwarm)
+        axes.set(xlabel='LON (deg)', ylabel='LAT (deg)',
+                 title='Amplitude range of vertical tides over Mercury solar year')
         # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
-        cbar = fig.colorbar(h,label='ur (meters)')
-        # plt.savefig(tmpdir + 'test_tid3.png')
-        # Used to return the plot as an image rray
-        fig.canvas.draw()  # draw the canvas, cache the renderer
-        image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-        image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        return image, urtot
+        cbar = fig.colorbar(h, label='ur (meters)')
+        plt.savefig(tmpdir + 'test_tid3.png')
 
-    kwargs_write = {'fps': 1.0, 'quantizer': 'nq'}
-    tmp = np.array([plot_tides(d) for d in range(11)])
-    urtot = np.stack(tmp[:,1])
-    # print(urtot)
-    urtot_max = np.max(urtot,axis=0)
-    urtot_min = np.min(urtot,axis=0)
-    # print(urtot_max-urtot_min)
-    plt.clf()
-    fig, axes = plt.subplots(1)
-    h = axes.contourf(np.rad2deg(lon), np.rad2deg(lat), urtot_max-urtot_min, cmap=cm.coolwarm)
-    axes.set(xlabel='LON (deg)', ylabel='LAT (deg)',
-             title='Amplitude range of vertical tides over Mercury solar year')
-    # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
-    cbar = fig.colorbar(h, label='ur (meters)')
-    plt.savefig(tmpdir + 'test_tid3.png')
-
-    imageio.mimsave(tmpdir+'powers.gif', tmp[:,0], fps=1)
+        imageio.mimsave(tmpdir+'powers.gif', tmp[:,0], fps=1)
 
 
-    exit()
+        exit()
     ###########################################
 
     # lon displacement
@@ -241,7 +235,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     lotot = l2 * dV / (gSurf * sind(CO))
 
     # lat displacement - do in terms of CO = colatitude
-    dCO = 1. / 100
+    dCO = 1. / 100.
     CO_ = CO0 + dCO
     CO_[CO_ > 180] = -1 * CO_[CO_ > 180]
     CO_ = np.deg2rad(CO_)
@@ -260,7 +254,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     # apply to get latitude displacement at surface
     thtot = l2 * dV / gSurf
 
-    print(urtot,lotot,thtot)
+    # print(urtot,lotot,thtot)
     # exit()
 
     return urtot, lotot, thtot

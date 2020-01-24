@@ -2,6 +2,7 @@
 img/
 mem/
 tmp/
+lib/
 illumNG/
 __pycache__/
 slurm*
@@ -11,3 +12,4 @@ loadPyGeoloc*
 loadPyAltSim*
 loadAcc*
 loadPyXover
+*~

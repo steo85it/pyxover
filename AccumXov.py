@@ -11,8 +11,6 @@ from functools import reduce
 import itertools
 
 import seaborn as sns
-from matplotlib import pyplot as plt
-from scipy.sparse import identity, csr_matrix
 
 from util import mergsum, update_in_alist
 from lib.xovres2weights import run
@@ -24,6 +22,7 @@ import glob
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.sparse import identity, csr_matrix
 
 # from itertools import izip, count
 # from geopy.distance import vincenty
@@ -95,7 +94,6 @@ def prepro(dataset):
                'PARTDER': ''}
     return data_pth, vecopts
 
-# @profile
 def load_combine(xov_pth,vecopts,dataset='sim'):
     # -------------------------------
     # Amat setup
@@ -232,17 +230,18 @@ def get_stats(xov_lst,amat,resval,amplval):
     piv = pd.pivot_table(df_, values="RMS",index=["ampl"], columns=["res"], fill_value=0)
     #plot pivot table as heatmap using seaborn
 
-    fig, ax0 = plt.subplots(nrows=1)
-    # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
-    # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
-    ax0.set_aspect(aspect=0.6)
-    ax0 = sns.heatmap(piv, square=False, annot=True, robust=True,
+    if local == 1 and debug:
+      fig, ax0 = plt.subplots(nrows=1)
+      # ax0.errorbar(range(len(dR_avg)),dR_avg, yerr=dR_std, fmt='-o')
+      # ax0.set(xlabel='Exp', ylabel='dR_avg (m)')
+      ax0.set_aspect(aspect=0.6)
+      ax0 = sns.heatmap(piv, square=False, annot=True, robust=True,
                       cbar_kws={'label': 'RMS (m)','orientation': 'horizontal'}, xticklabels=piv.columns.values.round(2), fmt='.4g')
-    ax0.set(xlabel='Topog scale (1st octave, km)',
+      ax0.set(xlabel='Topog scale (1st octave, km)',
             ylabel='Topog ampl rms (1st octave, m)')
-    fig.savefig(tmpdir+'tst.png')
-    plt.clf()
-    plt.close()
+      fig.savefig(tmpdir+'tst.png')
+      plt.clf()
+      plt.close()
 
     #ax0.set_title('variable, symmetric error')
     #print(dR_avg,dR_std,dR_max,dR_min)
@@ -251,15 +250,20 @@ def get_stats(xov_lst,amat,resval,amplval):
 def plt_histo_dR(idx, mean_dR, std_dR, xov, xov_ref=''):
     import scipy.stats as stats
 
+    xlim = 50
+
+    plt.figure(figsize=(8,3))
+    plt.xlim(-1.*xlim, xlim)
     # the histogram of the data
     num_bins = 200 # 'auto'
-    n, bins, patches = plt.hist(xov.dR.astype(np.float), bins=num_bins, density=True, facecolor='blue', alpha=0.7) #, range=[-200,200])
+    n, bins, patches = plt.hist(xov.dR.astype(np.float), bins=num_bins, density=True, facecolor='blue',
+    alpha=0.7, range=[-1.*xlim, xlim])
     # add a 'best fit' line
     # y = stats.norm.pdf(bins, mean_dR, std_dR)
     # plt.plot(bins, y, 'b--')
     if isinstance(xov_ref, pd.DataFrame):
         n, bins, patches = plt.hist(xov_ref.dR.astype(np.float), bins=num_bins, density=True, facecolor='red',
-                                    alpha=0.3)  # , range=[-100,100])
+                                    alpha=0.3, range=[-1.*xlim, xlim])
     plt.xlabel('dR (m)')
     plt.ylabel('Probability')
     plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
@@ -334,7 +338,7 @@ def prepare_Amat(xov, vecopts, par_list=''):
 
     return xovi_amat
 
-# @profile
+
 def clean_xov(xov, par_list=[]):
     # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
     # plus remove outliers with median method
@@ -372,7 +376,7 @@ def clean_xov(xov, par_list=[]):
 
     return xov
 
-# @profile
+
 def analyze_dist_vs_dR(xov):
     tmp = xov.xovers.copy()
     tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
@@ -409,7 +413,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     # Solve
     if not local:
-        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL'] # ,'dR/dh2'] # [None] # uncomment when on pgda, since prOpt badly read
+        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] # [None] # used on pgda, since prOpt badly read
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -438,7 +442,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     # print("sol4pars:", np.array(sol4_pars))
     # print(spA_sol4)
-    # print(xovi_amat.b)
 
     # screening of partial derivatives (downweights data)
     nglbpars = len([i for i in sol4_glo if i])
@@ -491,6 +494,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     #set up observation weights (according to local roughness and dist of obs from xover point)
     regbas_weights = run(xovi_amat.xov).reset_index()
     val = sigma_0 /np.power(regbas_weights.error.values,1)
+
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
         ax1.hist(val)
@@ -674,7 +678,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
         print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
         print('to_be_recovered', pert_cloop['glo'])
 
-        exit()
+        # exit()
+
     # # Compute the covariance matrix
     # print(np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
     # # compute sol
@@ -686,8 +691,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
     #### CONSTRAINS AND SOLUTION
 
     # apply weights
-    print("len trucs")
-    print(len(sol4_pars))
+    #print("len trucs")
+    #print(len(sol4_pars))
 
     spA_sol4 = xovi_amat.weights * spA_sol4
 
@@ -797,7 +802,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     spA_sol4_penal = scipy.sparse.vstack([spA_sol4,csr_matrix(Q)])
 
     # print("Pre-sol: len(A,b)=",len(b_penal),spA_sol4_penal.shape)
-    print([xovi_amat.parNames[p] for p in sol4_pars])
+    #print([xovi_amat.parNames[p] for p in sol4_pars])
 
     # exit()
     # print("Pre-sol-2: len(A,b)=",spA_sol4_penal.shape,len(b_penal))
@@ -808,6 +813,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # print("sol sparse: ",xovi_amat.sol[0])
     # print('to_be_recovered', pert_cloop['glo'])
     print("Solution iters terminated with ", xovi_amat.sol[1])
+    if xovi_amat.sol[1] != 2:
+       exit(2)
 
     if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         print("Downweighted obs: ", len(tmp[tmp==1]), "or ",len(tmp[tmp==1])/len(tmp)*100.,"%")
@@ -850,13 +857,8 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
     Nexcluded = 0
     for i in range(len(sol4_glo)):
 
-        print(i, len(sol4_glo))
-
         data = spA.tocsc()[:, -i - 1].data
         median_residuals = np.abs(data - np.median(data, axis=0))
-
-        # print(spA)
-
         sorted = np.sort(median_residuals)
         std_median = sorted[round(0.68 * len(sorted))]
 
@@ -864,7 +866,7 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
         row2index = dict(zip(range(len(data)),list(set(spA.tocsc()[:, -i - 1].nonzero()[0].tolist()))))
         exclude = [row2index[i] for i in exclude]
 
-        # remove bad columns
+        # remove bad rows, only non-zero columns to keep sparsity
         J = identity(spA.shape[0], format='csr')
         row = col = exclude
         J = J + csr_matrix((np.ones(len(row))*(-1+1.e-20), (row, col)), dtype=np.float32, shape=(spA.shape[0],spA.shape[0]))
@@ -1072,7 +1074,6 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
             print(orb_sol.reindex(orb_sol.sort_values(by='sol_dR/dR', ascending=False).index)[:10])
             print(orb_sol.loc[orb_sol.orb == '1301022345', :])
 
-# @profile
 def main(arg):
     print(arg)
     datasets = arg[0]  # ['sim_mlatimes/0res_35amp']
@@ -1190,12 +1191,9 @@ def main(arg):
             # Cumulate with solution from previous iter
             if int(ext_iter) > 0:
                 # sum the values with same keys
-                print(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
                 updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
                 updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
                 xovi_amat.sol4_pars = list(updated_sol.keys())
-                # print(xovi_amat.sol4_pars)
-                # exit()
 
                 xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
                 # use dict to update amat.sol, keep std

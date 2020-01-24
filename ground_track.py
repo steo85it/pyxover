@@ -21,7 +21,7 @@ import pickleIO
 from geolocate_altimetry import geoloc
 from interp_obj import interp_obj
 from prOpt import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim_altdata, \
-    local, pert_cloop_orb, OrbRep
+    local, pert_cloop_orb, OrbRep, spauxdir
 # from mapcount import mapcount
 from project_coord import project_stereographic
 from tidal_deform import tidepart_h2
@@ -73,13 +73,13 @@ class gtrack:
     def setup(self, filnam):
 
         if len(self.ladata_df) > 0:
-            if not hasattr(self, 'SpObj') and SpInterp == 2:
+            if self.SpObj == None and SpInterp == 2:
                 # print(filnam)
                 # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
             elif SpInterp > 0:
-                self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
+                self.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
 
             if debug:
                 pd.set_option('display.max_columns', 500)
@@ -113,13 +113,13 @@ class gtrack:
 
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
-            if not hasattr(self, 'SpObj') and SpInterp == 2:
+            if self.SpObj == None and SpInterp == 2:
                 # print(filnam)
                 # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
             elif SpInterp > 0:
-                self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
+                self.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
@@ -151,13 +151,13 @@ class gtrack:
 
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
-            if not hasattr(self, 'SpObj') and SpInterp == 2:
+            if self.SpObj == None and SpInterp == 2:
                 # print(filnam)
                 # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
             else:
-                self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
+                self.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
@@ -330,7 +330,7 @@ class gtrack:
                       'MERv': self.MERv,
                       'SUNx': self.SUNx}
 
-        pickleIO.save(self.SpObj, auxdir + 'spaux_' + self.name + '.pkl')
+        pickleIO.save(self.SpObj, auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
 
         endSpInterp = time.time()
         if (debug):
