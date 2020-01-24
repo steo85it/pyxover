@@ -22,10 +22,10 @@ def cosd(x):
 def project_stereographic(lon, lat, lon0, lat0, R=1):
     """
     project cylindrical coordinates to stereographic xy from central lon0/lat0
-    :param lon: array of input longitudes
-    :param lat: array of input latitudes
-    :param lon0: center longitude for the projection
-    :param lat0: center latitude for the projection
+    :param lon: array of input longitudes (deg)
+    :param lat: array of input latitudes (deg)
+    :param lon0: center longitude for the projection (deg)
+    :param lat0: center latitude for the projection (deg)
     :param R: planetary radius (km)
     :return: stereographic projection xy coord from center (km)
     """

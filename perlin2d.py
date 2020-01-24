@@ -109,7 +109,7 @@ if __name__ == '__main__':
     size_stamp = 0.25
     noise = generate_periodic_fractal_noise_2d(30, (shape_text, shape_text), (res_text, res_text), depth_text, persistence=0.65)
 
-    # noise = hill_shade(noise,terrain=noise * 10)
+    noise = hill_shade(noise,terrain=noise * 10)
     #noise = abs(noise)**2.1/(abs(noise)**2.1).max()*35
     #interp_spline = RectBivariateSpline(np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
     #                                    np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,

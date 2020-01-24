@@ -14,20 +14,25 @@ import numpy as np
 from prOpt import vecopts, debug
 from util import as2deg
 
+AG = False
 
 def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
 
-    # IAU
-    POLE_RA0 = np.array([281.0097, -0.0328, 0.])
-    POLE_DEC0 = np.array([61.4143, -0.0049, 0.])
-    if vecopts['PM_ORIGIN'] == 'J2000':
-        PM0 = np.array([329.5469, 6.1385025, 0.])
-    elif vecopts['PM_ORIGIN'] == 'J2013.0':
-        PM0 = np.array([318.2245, 6.1385025, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
-    # AG
-    #POLE_RA0 = np.array([281.0082, -0.0328, 0.])
-    #POLE_DEC0 = np.array([61.4164, -0.0049, 0.])
-    #PM0 = np.array([329.75, 6.1385054, 0.])
+    if AG:
+        POLE_RA0 = np.array([281.0082, -0.0328, 0.])
+        POLE_DEC0 = np.array([61.4164, -0.0049, 0.])
+        if vecopts['PM_ORIGIN'] == 'J2000':
+            PM0 = np.array([329.75, 6.1385054, 0.])
+        elif vecopts['PM_ORIGIN'] == 'J2013.0':
+            PM0 = np.array([318.4455, 6.1385025, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
+    else:
+        # IAU
+        POLE_RA0 = np.array([281.0097, -0.0328, 0.])
+        POLE_DEC0 = np.array([61.4143, -0.0049, 0.])
+        if vecopts['PM_ORIGIN'] == 'J2000':
+            PM0 = np.array([329.5469, 6.1385025, 0.])
+        elif vecopts['PM_ORIGIN'] == 'J2013.0':
+            PM0 = np.array([318.2245, 6.1385025, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
 
     rotpar = {'ORIENT0': '',
               'NUT_PREC_PM0': np.transpose([0.00993822, \
@@ -53,6 +58,8 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
                   'NUT_PREC_PM': rotpar['NUT_PREC_PM0'] + as2deg(offsetL),
                   'NUT_PREC_ANGLES': rotpar['NUT_PREC_ANGLES0']
                   }
+    if AG:
+        upd_rotpar['NUT_PREC_PM'] += as2deg(1.5)
 
     if debug:
         print("librations", rotpar['NUT_PREC_PM0'], offsetL * rotpar['NUT_PREC_PM0'])

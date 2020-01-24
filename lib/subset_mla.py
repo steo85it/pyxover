@@ -26,11 +26,11 @@ def read_all_files(path):
 
 if __name__ == '__main__':
 
-    local = 0
-    exp = "KX1r2"
+    local = 1
+    exp = "KX1r"
     kind = "0res_1amp"
     use_existing_sel =True
-    ntracks = 500
+    ntracks = 100
 
     if local:
        spk_path = auxdir+'spaux_*.pkl'
@@ -51,7 +51,7 @@ if __name__ == '__main__':
              pickle.dump(selected, fp)
     else:
         selected = all_spk
-        if False:
+        if True:
           with open (rem_path, 'rb') as fp:
             sel = pickle.load(fp)
             sel = set(np.array(sel[0]).ravel())
@@ -104,8 +104,9 @@ if __name__ == '__main__':
             # print(rmf)
             shutil.move(rmf, rmf[:-3] + 'BAK')
             # os.remove(rmf)
+            # pass
         else:
             shutil.move(rmf,rmf[:-3]+'BAK')
             #pass
-            print("Done")
+    print("Done")
     exit()

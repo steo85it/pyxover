@@ -161,6 +161,14 @@ class Amat:
 
         csr = sum(csr)
 
+        def sparse_memory_usage(mat):
+            try:
+                return mat.data.nbytes + mat.indptr.nbytes + mat.indices.nbytes
+            except AttributeError:
+                return -1
+
+        print(sparse_memory_usage(csr))
+
         if debug:
             print(csr)
             print(list([np.array(map({v: k for k, v in dict_.items()}.get, csr.indices)), csr.data]))

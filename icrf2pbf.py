@@ -64,6 +64,7 @@ def icrf2pbf(ET, rotpar):
         W = W0 + W1 * d2013 + W2 * np.square(d2013) / 2 + amplibtmp
     # # Bring PM0 J2000 --> J2013 (+365.25*2.)
     # d= 4748.5 # days 01012013 - J2000 (12h) # 13*365.25
+    # amplibtmp = np.dot(w, np.transpose([np.sin(np.deg2rad(a[:, 0] + a[:, 1] * t)) for t in [d]]))
     # W = W0 + W1 * d + W2 * np.square(d) / 2 + amplibtmp
     # print(W0,d,W,W%360)
     # exit()
