@@ -167,6 +167,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # exit()
 
     # apply tidal deformation (deformation in meters in radial, lon, lat)
+    # print("apply tidal corr geoloc_alt")
     dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar)
 
     # convert xyz to latlon, then apply correction
@@ -177,6 +178,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     lontmp += dlon / (vecopts['PLANETRADIUS'] * 1e3) / np.cos(lattmp)
 
     # print(dr, dlat / (vecopts['PLANETRADIUS']*1e3) , dlon / (vecopts['PLANETRADIUS']*1e3) / np.cos(lattmp) )
+    # exit()
 
     if (vecopts['OUTPUTTYPE'] == 0):
         vmbf = astr.sph2cart(rtmp, lattmp, lontmp)

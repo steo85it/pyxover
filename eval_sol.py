@@ -24,10 +24,10 @@ from xov_setup import xov
 from Amat import Amat
 from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts
 
-remove_max_dist = True
-remove_3sigma_median = True
+remove_max_dist = False
+remove_3sigma_median = False
 
-subfolder = 'archived/KX1r2_fitall/' # 'archived/tp8_pertglb_fitglb/'
+subfolder = 'archived/KX1r2_fitall/' #'archived/tp9_0test_tides/'
 
 def xovnum_plot():
 
@@ -564,6 +564,7 @@ def check_iters(sol, subexp=''):
     iters_glocorr = []
     m_X_iters = []
     for idx,isol in enumerate(prev_sols[:]):
+        print(prev_sols)
         prev = Amat(vecopts)
         prev = prev.load(isol)
 
@@ -586,7 +587,7 @@ def check_iters(sol, subexp=''):
         lTPl = lTP @ prev.xov.xovers['dR'].values.reshape(-1,1)
 
         if idx == len(prev_sols)-1:
-            #print_corrmat(prev, tmpdir + 'corrmat_' + sol + '.png')
+            # print_corrmat(prev, tmpdir + 'corrmat_' + sol + '.pdf')
             pass
 
         # filter_string_glo = ["/" + x.split('/')[-1] for x in sol4_glo]  # ["/dRA","/dDEC","/dPM","/dL","/dh2"]
@@ -814,13 +815,13 @@ def check_iters(sol, subexp=''):
         print(iters_glocorr)
         print("Iter improvement")
         print(iters_glocorr.diff())
-        print("A posteriori error on global pars")
-        m_X_iters = pd.DataFrame.from_dict(m_X_iters)
-        m_X_iters.columns = [x.split('/')[1] for x in prev.parNames.keys()] #sol4_pars]
-        print(m_X_iters[iters_glocorr.columns])
-        print("Iter improvement (relative to formal error): ")
-        print((iters_glocorr.diff().abs()).div(m_X_iters[iters_glocorr.columns]))
-
+        # print("A posteriori error on global pars")
+        # m_X_iters = pd.DataFrame.from_dict(m_X_iters)
+        # m_X_iters.columns = [x.split('/')[1] for x in prev.parNames.keys()] #sol4_pars]
+        # print(m_X_iters[iters_glocorr.columns])
+        # print("Iter improvement (relative to formal error): ")
+        # print((iters_glocorr.diff().abs()).div(m_X_iters[iters_glocorr.columns]))
+        #
 
         if simulated_data and len(pert_cloop['glo'])>0:
             print("Real residuals (glopar): ")
@@ -855,18 +856,18 @@ def check_iters(sol, subexp=''):
             print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
             print(pert_cloop_glo)
 
-        print("Latest solution:")
-        last_sol = iters_glocorr[iters_glocorr.columns].iloc[-1]
-        last_std = m_X_iters[iters_glocorr.columns].iloc[-1]
-        if simulated_data and len(pert_cloop['glo'])>0:
-          last_err = iters_glores.iloc[-1]
-          last_sol = pd.concat([last_sol,last_std, last_err],axis=1)
-          last_sol.columns = ['sol','std','err']
-        else:
-          last_sol = pd.concat([last_sol,last_std],axis=1)
-          last_sol.columns = ['sol','std']
-
-        print(last_sol)
+        # print("Latest solution:")
+        # last_sol = iters_glocorr[iters_glocorr.columns].iloc[-1]
+        # last_std = m_X_iters[iters_glocorr.columns].iloc[-1]
+        # if simulated_data and len(pert_cloop['glo'])>0:
+        #   last_err = iters_glores.iloc[-1]
+        #   last_sol = pd.concat([last_sol,last_std, last_err],axis=1)
+        #   last_sol.columns = ['sol','std','err']
+        # else:
+        #   last_sol = pd.concat([last_sol,last_std],axis=1)
+        #   last_sol.columns = ['sol','std']
+        #
+        # print(last_sol)
 
     # exit()
     # ax2.set_ylabel('rms (m)')

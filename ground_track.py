@@ -456,6 +456,8 @@ class gtrack:
                     ladata_df['dR/dh2'] = \
                     tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
                                 ladata_df['ET_BC'], SpObj)[0]
+                # print(ladata_df['dR/dh2'])
+                # exit()
 
             elif (self.vecopts['OUTPUTTYPE'] == 1):
                 for i in range(1, len(param)):

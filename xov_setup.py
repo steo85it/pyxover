@@ -115,6 +115,7 @@ class xov:
         tmp.columns = ['offnad_A', 'offnad_B']
         self.xovtmp = pd.concat([self.xovtmp, tmp], axis=1)
 
+    # @profile
     def combine(self, xov_list):
 
         # Only select elements with number of xovers > 0
@@ -123,7 +124,7 @@ class xov:
         # concatenate df and reindex
         # print([x.xovers for x in xov_list])
         if len(xov_list) > 0:
-            self.xovers = pd.concat([x.xovers for x in xov_list])  # , sort=True)
+            self.xovers = pd.concat([x.xovers for x in xov_list], sort=True)
             self.xovers = self.xovers.reset_index(drop=True)
             self.xovers['xOvID'] = self.xovers.index
             # print(self.xovers)
@@ -155,6 +156,7 @@ class xov:
         pickle.dump(self, pklfile)
         pklfile.close()
 
+    # @profile
     # load groundtrack from file
     def load(self, filnam):
 
