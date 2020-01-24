@@ -30,7 +30,7 @@ import spiceypy as spice
 import matplotlib.pyplot as plt
 
 # mylib
-from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts, range_noise, SpInterp
+from prOpt import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts, range_noise, SpInterp, spauxdir
 import astro_trans as astr
 from ground_track import gtrack
 from geolocate_altimetry import get_sc_ssb, get_sc_pla
@@ -63,11 +63,11 @@ class sim_gtrack(gtrack):
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
         # retrieve spice data for geoloc
-        if not os.path.exists(auxdir + 'spaux_' + self.name + '.pkl') or SpInterp == 2:
+        if not os.path.exists(auxdir + spauxdir + 'spaux_' + self.name + '.pkl') or SpInterp == 2:
             # create interp for track
             self.interpolate()
         else:
-            self.SpObj = pickleIO.load(auxdir + 'spaux_' + self.name + '.pkl')
+            self.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
 
         # actual processing
         self.lt_topo_corr(df=df_)

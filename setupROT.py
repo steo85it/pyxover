@@ -25,10 +25,14 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
     elif vecopts['PM_ORIGIN'] == 'J2013.0':
         PM0 = np.array([318.2245, 6.1385025, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
     # AG
+    #    PM0 = np.array([318.2245, 6.1385054, 0.])
     #POLE_RA0 = np.array([281.0082, -0.0328, 0.])
     #POLE_DEC0 = np.array([61.4164, -0.0049, 0.])
+    # AV
+    #POLE_RA0 = np.array([281.00975, -0.0328, 0.])
+    #POLE_DEC0 = np.array([61.41828, -0.0049, 0.])
     #PM0 = np.array([329.75, 6.1385054, 0.])
-
+    
     rotpar = {'ORIENT0': '',
               'NUT_PREC_PM0': np.transpose([0.00993822, \
                                             -0.00104581, \
@@ -50,7 +54,7 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
     PM = as2deg(offsetPM)/365.25 + PM0
 
     upd_rotpar = {'ORIENT': '',
-                  'NUT_PREC_PM': rotpar['NUT_PREC_PM0'] + as2deg(offsetL),
+                  'NUT_PREC_PM': rotpar['NUT_PREC_PM0']+ as2deg(offsetL), #  + as2deg(1.5) for AG
                   'NUT_PREC_ANGLES': rotpar['NUT_PREC_ANGLES0']
                   }
 

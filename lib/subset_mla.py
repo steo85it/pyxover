@@ -6,8 +6,8 @@
 # Created: 24-Jul-2019
 #
 # if main PyXover in other folder, first launch "export PYTHONPATH="$PWD:$PYTHONPATH" from PyXover dir
-# note: revert with **for f in data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${i%..BAK}.TAB";done**
-#       check with **for f in data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
+# note: revert with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${i%..BAK}.TAB";done**
+#       check with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
 
 import os
 import shutil
@@ -27,8 +27,8 @@ def read_all_files(path):
 if __name__ == '__main__':
 
     local = 0
-    exp = "KX1r2"
-    kind = "0res_1amp"
+    exp = "tpAp"
+    kind = "3res_20amp"
     use_existing_sel =True
     ntracks = 500
 
@@ -38,8 +38,10 @@ if __name__ == '__main__':
        rem_path = auxdir+'bestROItracks100.pkl'
 
     else:
-       spk_path = auxdir+'spaux_*.pkl'
-       rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl'
+#       spk_path = auxdir+'spaux_*.pkl'
+# mod to select usual 500 orbits
+       spk_path = auxdir+'spaux_500/spaux_*.pkl'
+       rem_path = '/att/nobackup/sberton2/MLA/aux/subset_list.pkl' # list of 1000 orbits
        #rem_path = '/att/nobackup/sberton2/MLA/tmp/bestRoI_tracks.pkl'
 
     all_spk = read_all_files(spk_path)
@@ -51,19 +53,20 @@ if __name__ == '__main__':
              pickle.dump(selected, fp)
     else:
         selected = all_spk
-        if False:
+        if False: # to be rechecked
           with open (rem_path, 'rb') as fp:
             sel = pickle.load(fp)
-            sel = set(np.array(sel[0]).ravel())
-
+            sel = set(np.array(sel).ravel())
+            print("bestROI len = ",len(sel))
             selected = []
             for f in sel:
-                _ = glob.glob(auxdir + 'spaux_' + f[:-2] + '*.pkl')
-                print(_)
+                #print(f[:-6] + '*pkl')
+                _ = glob.glob(f[:-6] + '*pkl')
+                #print(_[0])
                 if len(_)>0:
                     selected.append(_[0])
 
-    print('selected spk: ',len(selected),' out of ',len(all_spk))
+    print('selected spk: ',len(list(set(selected))),' out of ',len(all_spk))
     remove_these = list(set(all_spk)^set(selected))
 #    print(remove_these)
 
@@ -89,16 +92,16 @@ if __name__ == '__main__':
        # use if want to rename gtracks instead of data
        #obsfil = glob("/att/nobackup/sberton2/MLA/out/sim/"+exp+"/*res_*amp/gtrack_??/*.pkl")
     
-    print(obsfil)
-    print(orbs)
+    #print(np.array(obsfil))
+    #print(np.array(orbs))
     selected = [s for s in obsfil for orb in orbs if orb[:-2] in s]
 
     print('total spk:',len(all_spk))
     print('obs selected: ',len(selected))
-    print(selected)
+    #print(selected)
 
     remove_these = list(set(obsfil)^set(selected))
-    print(remove_these)
+    print("removing:",np.array(remove_these))
     for rmf in remove_these:
         if local:
             # print(rmf)
@@ -107,5 +110,5 @@ if __name__ == '__main__':
         else:
             shutil.move(rmf,rmf[:-3]+'BAK')
             #pass
-            print("Done")
+    print("Done")
     exit()

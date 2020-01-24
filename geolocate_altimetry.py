@@ -264,7 +264,7 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
 
     # Compute and add ACR offset (if corrections != 0)
     # print([tmp_pertPar[k] for k in ['dA','dC','dR']])
-    orb_pert_dict = {k:v for (k,v) in tmp_pertPar.items() for filter_string in ['dA$','dC$','d[A,C,R][0,1,c,s]','dR$'] if re.search(filter_string, k)}
+    orb_pert_dict = {k:v for (k,v) in tmp_pertPar.items() for filter_string in ['dA$','dC$','d[A,C,R][0,1,2,c,s]','dR$'] if re.search(filter_string, k)}
 
     if any(value != 0 for value in orb_pert_dict.values()):
         # print("got in", orb_pert_dict)
@@ -280,6 +280,9 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
             elif coeff[:3] in ['dA1', 'dC1', 'dR1'] and val != 0:
                 column = dirs.index(coeff[1])
                 dACR[:, column] += np.tile(val, len(et)) * sec2day(et-t0)
+            elif coeff[:3] in ['dA2', 'dC2', 'dR2'] and val != 0:
+                column = dirs.index(coeff[1])
+                dACR[:, column] += 0.5 * np.tile(val, len(et)) * np.square(sec2day(et-t0))
             elif coeff[:3] in ['dAc', 'dCc', 'dRc'] and val != 0:
                 n_per_orbit = int(coeff[3:])
                 column = dirs.index(coeff[1])

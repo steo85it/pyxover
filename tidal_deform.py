@@ -48,7 +48,7 @@ def set_const(h2_sol):
     # # check if h2 is perturbed
     if 'dh2' in pert_cloop['glo'].keys():
         h2 += pert_cloop['glo']['dh2']
-        h2 += h2_sol
+    h2 += h2_sol
 
     return h2, l2, GMsun, Gm
 
@@ -118,7 +118,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     urtot = h2 * 0.5 * Vsun / gSurf
 
     # lon displacement
-    dLO = 1. / 100
+    dLO = 1. / 100.
     LO_ = LO0 + dLO
 
     coszSUN = cosz(TH, LO_, latSUN, lonSUN)
@@ -135,7 +135,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     lotot = l2 * dV / (gSurf * sind(CO))
 
     # lat displacement - do in terms of CO = colatitude
-    dCO = 1. / 100
+    dCO = 1. / 100.
     CO_ = CO0 + dCO
     CO_[CO_ > 180] = -1 * CO_[CO_ > 180]
 
@@ -161,7 +161,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
 def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0):
     # print(  'vecopts check',  vecopts['PARTDER'])
 
-    dh2 = 0
+    dh2 = 0.
     if isinstance(delta_par, pd.DataFrame) and 'dR/dh2' in delta_par.par.values:
         dh2 = delta_par.set_index('par').apply(pd.to_numeric, errors='ignore',
                                               downcast='float'
