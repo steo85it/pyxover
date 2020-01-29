@@ -12,12 +12,12 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for i in np.arange(0, 5):
+        for i in np.arange(0, 2):
     
             if local:
                 start = time.time()
                 print("Processing PyXover series at external iteration",i)
-                for y in np.append([8],np.arange(11, 16, 1)):
+                for y in np.arange(11, 16, 1): #np.append([8],np.arange(11, 16, 1)):
                     for m in np.arange(1, 13, 1):
                         # print(["python3", "launch_test.py", str(rough_test), ' ', str(y), f'{m:02}', "1", str(i)])
                         # exit()

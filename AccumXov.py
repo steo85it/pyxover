@@ -32,6 +32,7 @@ from scipy.sparse import identity, csr_matrix
 
 import time
 from scipy.sparse.linalg import lsqr, lsmr
+import scipy.sparse.linalg as spla
 
 # mylib
 # from mapcount import mapcount
@@ -44,8 +45,9 @@ sim_altdata = 0
 
 remove_max_dist = False
 remove_3sigma_median = False
-clean_part = True
 remove_dR200 = False
+# especially useful if the above ones are false
+clean_part = True
 huber_threshold = 50
 distmax_threshold = 0.4
 offnad_threshold = 2
@@ -554,8 +556,39 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # ax.legend()
         # ax.plot(bvec)
         # plt.savefig(tmpdir+'b_and_A.png')
+    # analysis of partial derivatives to check power in obs & param
+    if False:
 
-    if True: #len(sol4_pars) < 50 and debug:
+        tmp = spla.norm(spA_sol4,axis=0)
+        print("partials analysis",tmp.shape)
+        print(sol4_pars)
+        print(tmp[-5:])
+
+        dw_dh2 = spA_sol4[:,-1].toarray()
+        dw_dra = spA_sol4[:,-2].toarray()
+        dw_dpm = spA_sol4[:,-4].toarray()
+        dw_dl = spA_sol4[:,-3].toarray()
+        dw_ddec = spA_sol4[:,-5].toarray()
+
+        plt.figure() #figsize=(8, 3))
+        xlim = 1.
+        # plt.xlim(-1. * xlim, xlim)
+        # the histogram of the data
+        num_bins = 200  #'auto' #
+
+        parnam = ['PM','L','DEC','RA','h2']
+        for idx,par in enumerate([dw_dpm,dw_dl,dw_ddec,dw_dra,dw_dh2]):
+            tmp = np.abs(par)
+            n, bins, patches = plt.hist(tmp[tmp>0], bins=num_bins, density=True, alpha=0.8,label=parnam[idx])
+        plt.semilogy()
+        plt.legend()
+        plt.ylabel('# of obs')
+        plt.xlabel('meters/[par]')
+        plt.savefig(tmpdir+"partials_histo.png")
+        # exit()
+
+    # svd analysis of parameters (eigenvalues and eigenvectors)
+    if False: #len(sol4_pars) < 50 and debug:
 
         # Compute the covariance matrix
         # print("full sparse",np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
@@ -567,7 +600,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # ATPA = ATP * spAdense
         # PA = obs_weights * spAdense
         N = (spA_sol4.transpose()*obs_weights*spA_sol4).todense() #ATPA
-        print("N",N)
+        # print("N",N)
         print(sol4_pars)
 
         # project arc par on global pars
@@ -577,7 +610,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
         BTA = csr_matrix(N[-5:,:-5])
         BTB = csr_matrix(N[-5:,-5:])
 
-        import scipy.sparse.linalg as spla
 
         tmp = np.linalg.pinv(ATA.todense())*ATB
         # tmp = spla.spsolve(ATA,ATB)
@@ -620,6 +652,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # plt.semilogy(np.abs(np.diag(R)))
         # plt.savefig(tmpdir+"test_lambda.png")
 
+        # check eigenvector and values in the problem
         for idx,mat in enumerate([BTB.todense(),N_proj]):
             M = la.cholesky(mat)
             U, S, Vh = la.svd(M)
@@ -651,7 +684,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
             print("Pars:",list(xovi_amat.parNames.keys())[-5:])
             for i in range(5):
                 print("Norm of Vh",np.round(np.linalg.norm(Vh.T[:,:i+1],axis=1)*100.,1),"% up to lambda= ",S[i])
-        exit()
+        # exit()
 
         if False:
             ell = csr_matrix(np.diag(np.abs(bvec)))
@@ -675,8 +708,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
         #             -0.00010280, \
         #             -0.00002364, \
         #             -0.00000532])
-        print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
-        print('to_be_recovered', pert_cloop['glo'])
+            print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
+            print('to_be_recovered', pert_cloop['glo'])
 
         # exit()
 
@@ -855,6 +888,8 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
     # exit()
 
     Nexcluded = 0
+    # print(sol4_glo)
+    # print(spla.norm(spA[:,-5:],axis=0))
     for i in range(len(sol4_glo)):
 
         data = spA.tocsc()[:, -i - 1].data
@@ -862,7 +897,11 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
         sorted = np.sort(median_residuals)
         std_median = sorted[round(0.68 * len(sorted))]
 
-        exclude = np.argwhere(median_residuals >= 10 * std_median).T[0]
+        std_mean = np.std(data, axis=0)
+        if std_mean>10:
+            print("## Check partials for outliers", i, std_median, std_mean, std_median/std_mean)
+
+        exclude = np.argwhere(median_residuals >= 10 * std_mean).T[0]
         row2index = dict(zip(range(len(data)),list(set(spA.tocsc()[:, -i - 1].nonzero()[0].tolist()))))
         exclude = [row2index[i] for i in exclude]
 
@@ -902,6 +941,7 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
             axlst.legend()
         plt.savefig(tmpdir + 'b_and_A_post.png')
 
+    # print(spla.norm(spA[:,-5:],axis=0))
     # exit()
 
     return b, spA

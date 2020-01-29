@@ -54,8 +54,8 @@ class gtrack:
                         'dRA': [0., 0., 0.],
                         'dDEC': [0., 0., 0.],
                         'dPM': [0., 0., 0.],
-                        'dL': 0.}  # ,
-        # 'dh2': 0. }
+                        'dL': 0.,
+                        'dh2': 0. }
         # imposed perts for closed loop sim
         self.pert_cloop = None
         self.pert_cloop_0 = None
@@ -471,24 +471,24 @@ class gtrack:
                 ladata_df['dLAT/dh2'] = 0
 
                 # print(self.sol_prev_iter['glo'])
-                # print(self.pertPar)
+                # print(self.pertPar,parGlo['h2'])
                 # exit()
 
                 # print("ladata_df['dR/dh2']",ladata_df['dR/dh2'].values)
 
 
-                # if self.pertPar != None: #self.sol_prev_iter != None:
-                #     ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.transpose(astr.sph2cart(
-                #                                           ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                #                                           ladata_df['LAT'].values, ladata_df['LON'].values)),
-                #                                       ladata_df['ET_BC'].values, SpObj,
-                #                                       self.pertPar)[0]
-                # else:
-                #     ladata_df['dR/dh2'] = tidepart_h2(self.vecopts,
-                #                                       np.transpose(astr.sph2cart(
-                #                                           ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                #                                           ladata_df['LAT'].values, ladata_df['LON'].values)),
-                #                                    ladata_df['ET_BC'].values, SpObj)[0]
+                if self.pertPar != None: #self.sol_prev_iter != None:
+                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.transpose(astr.sph2cart(
+                                                          ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                                                          ladata_df['LAT'].values, ladata_df['LON'].values)),
+                                                      ladata_df['ET_BC'].values, SpObj,
+                                                      self.pertPar)[0]
+                else:
+                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts,
+                                                      np.transpose(astr.sph2cart(
+                                                          ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                                                          ladata_df['LAT'].values, ladata_df['LON'].values)),
+                                                   ladata_df['ET_BC'].values, SpObj)[0]
 
                 # print("ladata_df['dR/dh2']",ladata_df['dR/dh2'].values)
                 # # print("dh2", (ladata_df['R_p_dh2']-ladata_df['R_m_dh2']).values/0.2)
