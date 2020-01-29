@@ -555,7 +555,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # ax.plot(bvec)
         # plt.savefig(tmpdir+'b_and_A.png')
 
-    if True: #len(sol4_pars) < 50 and debug:
+    if False: #len(sol4_pars) < 50 and debug:
 
         # Compute the covariance matrix
         # print("full sparse",np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
@@ -651,7 +651,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
             print("Pars:",list(xovi_amat.parNames.keys())[-5:])
             for i in range(5):
                 print("Norm of Vh",np.round(np.linalg.norm(Vh.T[:,:i+1],axis=1)*100.,1),"% up to lambda= ",S[i])
-        exit()
+        # exit()
 
         if False:
             ell = csr_matrix(np.diag(np.abs(bvec)))
@@ -675,8 +675,8 @@ def solve(xovi_amat,dataset, previous_iter=None):
         #             -0.00010280, \
         #             -0.00002364, \
         #             -0.00000532])
-        print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
-        print('to_be_recovered', pert_cloop['glo'])
+            print('sol dense',np.linalg.lstsq(spAdense[:], bvec[:], rcond=1)[0])#/factorL)
+            print('to_be_recovered', pert_cloop['glo'])
 
         # exit()
 

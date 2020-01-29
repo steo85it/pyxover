@@ -86,6 +86,10 @@ def launch_gtrack(args):
                 print("max diff LAT", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
                 print("max elev sim", abs(track.df_input.loc[:,'altitude']).max())
             #exit()
+            # pd.set_option('display.max_columns', None)
+
+            # print(track.ladata_df)
+            # exit()
             track.save(gtrack_out)
             print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
         # except:

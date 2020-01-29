@@ -15,11 +15,11 @@ partials = 1
 
 # std perturbations for finite differences (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
 parOrb = {'dA': 20.,'dC': 20.,'dR': 5.} #,'dRl':0.4, 'dPt':0.4} #
-parGlo = {'dRA':[0.2, 0.000, 0.000], 'dDEC':[0.36, 0.000, 0.000],'dPM':[0, 0.013, 0.000],'dL':1.e-3*deg2as(1.)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]), 'dh2': np.sqrt(0.1)}
+parGlo = {'dRA':[0.2, 0.000, 0.000], 'dDEC':[0.36, 0.000, 0.000],'dPM':[0, 0.013, 0.000],'dL':1.e-3*deg2as(1.)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]), 'dh2': 0.1}
 
 # parameter constraints for solution
-par_constr = {'dR/dRA': 100., 'dR/dDEC': 100.,'dR/dL':100., 'dR/dPM': 100., 'dR/dA':100., 'dR/dC':100.,'dR/dR':100., 'dR/dh2':10} #'dR/dA1':1.e-4, 'dR/dC1':1.e-4,'dR/dR1':1.e-2, 'dR/dA2':1.e-4, 'dR/dC2':1.e-4,'dR/dR2':1.e-2} # 'dR/dA':100., 'dR/dC':100.,'dR/dR':100.} #, 'dR/dRl':1.e0, 'dR/dPt':1.e0} #, 'dR/dh2': 1} #
-mean_constr = {'dR/dA':1.e-1, 'dR/dC':1.e-1,'dR/dR':1.e0} #, 'dR/dRl':1.e1, 'dR/dPt':1.e1}
+par_constr = {'dR/dRA': 100., 'dR/dDEC': 100.,'dR/dL':100., 'dR/dPM': 100., 'dR/dA':100., 'dR/dC':100.,'dR/dR':1000., 'dR/dh2':0.001} #, 'dR/dA1':1.e-4, 'dR/dC1':1.e-4,'dR/dR1':1.e-2} #, 'dR/dA2':1.e-4, 'dR/dC2':1.e-4,'dR/dR2':1.e-2} # 'dR/dA':100., 'dR/dC':100.,'dR/dR':100.} #, 'dR/dRl':1.e0, 'dR/dPt':1.e0} #, 'dR/dh2': 1} #
+mean_constr = {'dR/dA':1.e-1, 'dR/dC':1.e-1,'dR/dR':1.e3} #, 'dR/dRl':1.e1, 'dR/dPt':1.e1}
 
 # ... and closed loop sims (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
 pert_cloop_orb = {} #'dA':200., 'dC':200., 'dR':200.} #, 'dA1':20., 'dC1':20., 'dR1':5.,'dRl':6, 'dPt':6} #
@@ -34,13 +34,13 @@ sol4_orbpar = ['dA','dC','dR'] #,'dA1','dC1','dR1','dA2','dC2','dR2']  #] #,'dRl
 sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] #,  None]
 
 # orbital representation
-OrbRep = 'cnt' # 'lin' # 'cnt' #
+OrbRep = 'cnt' #'lin' # 
 # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
 SpInterp = 1
 # create new gtrack (0:no, 1:yes, check if present, 2: yes, create)
-new_gtrack = 1
+new_gtrack = 2
 # create new xov (0:no, 1:yes, check if present, 2: yes, create)
-new_xov = 1
+new_xov = 2
 
 # PyAltSim stuff
 # simulation mode

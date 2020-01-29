@@ -24,10 +24,10 @@ from xov_setup import xov
 from Amat import Amat
 from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts
 
-remove_max_dist = False
-remove_3sigma_median = False
+remove_max_dist = True
+remove_3sigma_median = True
 
-subfolder = 'archived/KX1r2_fitall/' #'archived/tp9_0test_tides/'
+subfolder = '' # 'archived/KX1r2_fitall/' #'archived/tp9_0test_tides/'
 
 def xovnum_plot():
 
@@ -891,9 +891,9 @@ def add_xov_separation(tmp):
 if __name__ == '__main__':
 
     simulated_data = False
-    analyze_sol(sol='KX1r2_10', ref_sol='KX1r2_0', subexp = '0res_1amp')
+    #analyze_sol(sol='KX1r2_9', ref_sol='KX1r2_0', subexp = '0res_1amp')
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp9_0',subexp='3res_20amp')
-    #check_iters(sol='KX1r2_0',subexp='0res_1amp')
+    check_iters(sol='KX1r2_0',subexp='0res_1amp')
 

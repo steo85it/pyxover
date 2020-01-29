@@ -118,6 +118,9 @@ def launch_xov(
                     xov_tmp.save(outdir + 'xov/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
                     # print(xov_tmp.xovers)
                     # trackxov_list.append(gtrackA)
+                    # pd.set_option('display.max_columns', None)
+                    # print(xov_tmp.xovers)
+                    # exit()
                     print('Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
                           misycmb[par][1] + '.pkl !')
                     return gtrackA
