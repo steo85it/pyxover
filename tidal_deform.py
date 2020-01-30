@@ -38,8 +38,8 @@ from prOpt import SpInterp, tmpdir, debug, local
 def set_const(h2_sol):
     from prOpt import pert_cloop
 
-    h2 = 0.8  # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
-    l2 = 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
+    h2 = 1. # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
+    l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
     # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
     tau = 0. #84480. # time lag in seconds, corresponding to 4 deg, G. Steinbrugge, 2018
 
@@ -50,7 +50,7 @@ def set_const(h2_sol):
     if 'dh2' in pert_cloop['glo'].keys():
         h2 += pert_cloop['glo']['dh2']
     h2 += h2_sol
-    # print('h2tot',h2)
+    #print('h2tot',h2)
 
     return h2, l2, tau, GMsun, Gm
 
@@ -70,6 +70,8 @@ def cosz(TH, LO, latSUN, lonSUN):
 
 # @profile
 def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
+
+    # print("dpar",delta_par)
 
     if isinstance(delta_par, dict) and 'dh2' in delta_par.keys():
         h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'])
@@ -276,6 +278,6 @@ def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0):
         h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'])
     else:
         h2, l2, tau, GMsun, Gm = set_const(0)
-    # print("dh2", dh2)
+    #print("dh2 partcall", dh2)
 
     return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par={'dh2':dh2})[0]) / h2, 0., 0.

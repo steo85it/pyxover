@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# /usr/bin/env python3
 # ----------------------------------
 # ground_track.py
 #
@@ -397,7 +397,6 @@ class gtrack:
                      'MERv': self.MERv,
                      'SUNx': self.SUNx}
         #########################
-
         if (
                 parallel and SpInterp > 0 and 1 == 2):  # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
             # the orbit (single initial call) with an appropriate accuracy.
@@ -469,30 +468,32 @@ class gtrack:
                 self.vecopts['PARTDER'] = ''
                 ladata_df['dLON/dh2'] = 0
                 ladata_df['dLAT/dh2'] = 0
+                ladata_df['dR/dh2'] = 0
 
                 # print(self.sol_prev_iter['glo'])
                 # print(self.pertPar,parGlo['h2'])
+                #print("check",self.pertPar,parGlo['dh2'],self.pertPar+parGlo)
                 # exit()
 
                 # print("ladata_df['dR/dh2']",ladata_df['dR/dh2'].values)
-
-
                 if self.pertPar != None: #self.sol_prev_iter != None:
+                    # correcting for the perturbation applied for numerical partials
+                    # getting current value of h2 (no effect since we divide by h2)
+                    self.pertPar['dh2'] += parGlo['dh2']
                     ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.transpose(astr.sph2cart(
-                                                          ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                                                          ladata_df['LAT'].values, ladata_df['LON'].values)),
-                                                      ladata_df['ET_BC'].values, SpObj,
-                                                      self.pertPar)[0]
+                					  ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                					  ladata_df['LAT'].values, ladata_df['LON'].values)),
+                				      ladata_df['ET_BC'].values, SpObj,
+                				      self.pertPar)[0]
                 else:
                     ladata_df['dR/dh2'] = tidepart_h2(self.vecopts,
-                                                      np.transpose(astr.sph2cart(
-                                                          ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                                                          ladata_df['LAT'].values, ladata_df['LON'].values)),
-                                                   ladata_df['ET_BC'].values, SpObj)[0]
+                				      np.transpose(astr.sph2cart(
+                					  ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                					  ladata_df['LAT'].values, ladata_df['LON'].values)),
+                				   ladata_df['ET_BC'].values, SpObj)[0]
 
-                # print("ladata_df['dR/dh2']",ladata_df['dR/dh2'].values)
-                # # print("dh2", (ladata_df['R_p_dh2']-ladata_df['R_m_dh2']).values/0.2)
-                # exit()
+                #print("ladata_df['dR/dh2']",ladata_df['dR/dh2'].values)
+                #exit()
 
         # update object attribute df
         self.ladata_df = ladata_df.copy()
@@ -649,7 +650,6 @@ class gtrack:
             #     pass
             else:
                 partder /= 2. * np.linalg.norm(diff_step)  # [1]
-            # print('partder post', partder)
 
             self.ladata_df = tmp_df
 

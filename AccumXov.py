@@ -610,7 +610,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
         BTA = csr_matrix(N[-5:,:-5])
         BTB = csr_matrix(N[-5:,-5:])
 
-
         tmp = np.linalg.pinv(ATA.todense())*ATB
         # tmp = spla.spsolve(ATA,ATB)
         N_proj = BTB - BTA*tmp
