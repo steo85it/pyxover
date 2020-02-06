@@ -12,8 +12,10 @@ import itertools
 
 import seaborn as sns
 
-from util import mergsum, update_in_alist
+from accum_utils import get_xov_cov_tracks
+from util import mergsum, update_in_alist, rms
 from lib.xovres2weights import run
+from xov_utils import get_tracks_rms
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -22,7 +24,7 @@ import glob
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.sparse import identity, csr_matrix
+from scipy.sparse import identity, csr_matrix, diags
 
 # from itertools import izip, count
 # from geopy.distance import vincenty
@@ -46,7 +48,7 @@ sim_altdata = 0
 remove_max_dist = False
 remove_3sigma_median = False
 remove_dR200 = False
-# especially useful if the above ones are false
+# only applied if the above ones are false
 clean_part = True
 huber_threshold = 50
 distmax_threshold = 0.4
@@ -485,6 +487,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         print(len(huber_weights_offnad[huber_weights_offnad<1.]),len(huber_weights_offnad))
         print(huber_weights_offnad[huber_weights_offnad<1.])
 
+    # combine weights
     if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         tmp=huber_weights*huber_weights_dist*huber_weights_offnad
         huber_penal = tmp
@@ -492,10 +495,43 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # to mimic what I was doing without weights
         xovi_amat.xov.xovers['huber'] = huber_penal
 
+    # get quality of tracks and apply huber weights
+    if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        tmp = xovi_amat.xov.xovers.copy()
+        weights_xov_tracks = get_xov_cov_tracks(df=tmp,plot_stuff=True)
+
+        # the histogram of weight distribution
+        if True: #False and local and debug:
+            tmp = weights_xov_tracks.diagonal()
+
+            plt.figure(figsize=(8, 3))
+            num_bins = 'auto'  # 40  # v
+            n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins)
+            plt.xlabel('dR (m)')
+            plt.ylabel('# tracks')
+            plt.savefig(tmpdir + '/histo_tracks_eval.png')
+            plt.clf()
+
+        # xovi_amat.xov.xovers['huber'] *= huber_weights_track
+
+        if debug:
+            tmp['track_weights'] = weights_xov_tracks.diagonal()
+            tmp = tmp[['orbA', 'orbB', 'dR', 'track_weights']]
+            print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
+
+        # additional for h2 tests
+        limit_h2 = 10
+        tmp = xovi_amat.xov.xovers.dR.abs().values
+        tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 2, 1.)
+        huber_penal *= tmp
+
+#######
+
     # TODO why sqrt?? take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
-    #set up observation weights (according to local roughness and dist of obs from xover point)
+    #set up observation weights (according to local roughness and dist of obs from xover point) - don't trust
     regbas_weights = run(xovi_amat.xov).reset_index()
-    val = sigma_0 /np.power(regbas_weights.error.values,1)
+    val = sigma_0 * np.ones(len(regbas_weights.error.values)) #/np.power(regbas_weights.error.values,1) # deactivated until check
+    print("roughness values", np.sort(val))
 
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
@@ -515,6 +551,30 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
     obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # combine with off-diag terms from tracks
+
+    # print(obs_weights)
+    print(weights_xov_tracks)
+    # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights)
+    obs_weights = weights_xov_tracks.multiply(obs_weights)
+
+    if True:
+        # plot histo
+        plt.figure(figsize=(8,3))
+        # plt.xlim(-1.*xlim, xlim)
+        # the histogram of the data
+        num_bins = 40 # 'auto'
+        n, bins, patches = plt.hist(weights_xov_tracks.diagonal()*obs_weights, bins=num_bins) #, density=True, facecolor='blue',
+        # alpha=0.7, range=[-1.*xlim, xlim])
+        plt.xlabel('weight (1/m)')
+        plt.ylabel('# tracks')
+        # plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+        # # Tweak spacing to prevent clipping of ylabel
+        plt.subplots_adjust(left=0.15)
+        plt.savefig(tmpdir+'/weights_data.png')
+        plt.clf()
+        # exit()
+
 
     # Combine and store weights
     xovi_amat.weights = obs_weights
@@ -556,6 +616,39 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # ax.legend()
         # ax.plot(bvec)
         # plt.savefig(tmpdir+'b_and_A.png')
+
+    # analysis of residuals vs h2 partials
+    if True:
+        print(xovi_amat.xov.xovers.columns)
+        tmp = xovi_amat.xov.xovers[['dR','dR/dh2','LON','LAT','huber']]
+        print("truc0",tmp)
+        tmp = tmp.loc[(tmp.dR.abs() < limit_h2) & (tmp['dR/dh2'].abs() > 0.3) & (tmp['huber'].abs() > 0.5)]
+        print("truc",tmp)
+        w = np.abs(tmp[['dR']].values)
+        dw_dh2 = np.abs(tmp[['dR/dh2']].values) #np.abs(spA_sol4[:,-1].toarray())
+        # import statsmodels.api as sm
+        # result = sm.OLS(dw_dh2, w).fit()
+        print("lenw",len(tmp))
+
+        fig, ax = plt.subplots(1)
+        ax.scatter(x=w, y=dw_dh2) #, color = rgb)
+        # ax.set_xlim(0,2.5)
+        # n, bins, patches = plt.plot(x=w,y=dw_dh2)
+        # plt.semilogy()
+        # plt.legend()
+        # plt.ylabel('# of obs')
+        # plt.xlabel('meters/[par]')
+        plt.savefig(tmpdir+"discr_vs_dwdh2.png")
+
+        plt.clf()
+        piv = pd.pivot_table(tmp.round({'LON':0,'LAT':0}), values="dR/dh2", index=["LAT"], columns=["LON"],
+                             fill_value=None, aggfunc=rms)
+        ax = sns.heatmap(piv, xticklabels=10, yticklabels=10, cmap="YlGnBu") #, square=False, annot=True)
+        plt.tight_layout()
+        ax.invert_yaxis()
+        plt.savefig(tmpdir+"geo_dwdh2.png")
+        # exit()
+
     # analysis of partial derivatives to check power in obs & param
     if False:
 

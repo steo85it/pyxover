@@ -49,7 +49,7 @@ def run(xov_,tstnam='', new_map=False):
 
     # print(ev)
 
-    if local:
+    if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
         im = ax1.imshow(ev,origin='lower',cmap="RdBu") # vmin=1,vmax=20,cmap="RdBu")
         fig.colorbar(im, ax=ax1,orientation='horizontal')
