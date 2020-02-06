@@ -29,7 +29,7 @@ Processing
 
 Closed-loop simulation
 ----------------------
-
+== SIM ==
 1. prOpt: set sim_altdata = 1, partials = 0, parallel = 0, topo and range_noise as desired
    launch_test: see above, set data_sim = 'sim'
 --> creates simulated altimetry data file (based on illumng results, imported or locally computed - see prOpt)
@@ -37,10 +37,12 @@ Closed-loop simulation
    select new_illumNG = 1 to create tmp/epo_mla_YYMM.in
    cd /home/sberton2/projects/Mercury_tides/_MLA_Stefano; rm tmp; modify doSLURM to process the desired dates and launch
    creates /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_YYMM/boresightxxx, which is used as input for sim run
+2. Select tracks: 
 
-2. set the perturbation you want to apply to a-priori orbits or geophysical parameters
+== PROC ==
+3. set the perturbation you want to apply to a-priori orbits or geophysical parameters
 
-3. launch mla_iter, automatically looping over 3 steps:
+4. launch mla_iter, automatically looping over 3 steps:
 	3a. PyGeoloc: reads the (simulated) data, perturbs what needs to be and geolocalises data
 	    on the surface. If iter > 0, then the solution from the previous iteration is 
 	    summed to the data.
