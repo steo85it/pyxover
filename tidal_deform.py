@@ -38,7 +38,7 @@ from prOpt import SpInterp, tmpdir, debug, local
 def set_const(h2_sol):
     from prOpt import pert_cloop
 
-    h2 = 1. # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
+    h2 = 1.e-6 # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
     l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
     # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
     tau = 0. #84480. # time lag in seconds, corresponding to 4 deg, G. Steinbrugge, 2018

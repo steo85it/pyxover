@@ -6,7 +6,7 @@
 # Created: 16-Mar-2019
 #
 
-#import numpy as np
+import numpy as np
 
 def lflatten(l):
     l = [item for sublist in l for item in sublist]
