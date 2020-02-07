@@ -509,7 +509,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
             n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins)
             plt.xlabel('dR (m)')
             plt.ylabel('# tracks')
-            plt.savefig(tmpdir + '/histo_tracks_eval.png')
+            plt.savefig(tmpdir + '/histo_tracks_weights.png')
             plt.clf()
 
         # xovi_amat.xov.xovers['huber'] *= huber_weights_track
@@ -521,7 +521,9 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
         # additional for h2 tests
         if False:
-            limit_h2 = 10
+
+            limit_h2 = 5
+
             tmp = xovi_amat.xov.xovers.dR.abs().values
             tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 2, 1.)
             huber_penal *= tmp

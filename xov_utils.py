@@ -13,12 +13,14 @@ import pandas as pd
 
 from statsmodels.tools.eval_measures import rmse
 
-from prOpt import tmpdir, vecopts, local
+from prOpt import tmpdir, vecopts, local, debug
 from project_coord import project_stereographic
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 def get_tracks_rms(xovers_df,plot_xov_tseries=False):
+
+    print("Checking tracks rms @ iter ...")
 
     xovers_df = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]
     total_occ_tracks = pd.DataFrame([xovers_df['orbA'].value_counts(), xovers_df['orbB'].value_counts()]).T.fillna(0).sum \
@@ -62,7 +64,7 @@ def get_tracks_rms(xovers_df,plot_xov_tseries=False):
         except:
             print(tr,y)
 
-        if False:
+        if False and debug:
             print(rlm_results.summary())
             print(rlm_results.params)
 
@@ -94,6 +96,7 @@ def get_tracks_rms(xovers_df,plot_xov_tseries=False):
     postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, rmslist]).T,
                            columns=['track', 'pre', 'bias', 'minus-Rbias']).astype(float).astype({'track': int})
 
+<<<<<<< HEAD
     if False and local:
         # plot histo
         plt.figure(figsize=(8,3))
@@ -111,3 +114,30 @@ def get_tracks_rms(xovers_df,plot_xov_tseries=False):
         plt.clf()
 
     return postfit
+=======
+    if plot_xov_tseries:
+        plot_tracks_histo([postfit])
+
+    return postfit
+
+
+def plot_tracks_histo(postfit_list, filename=tmpdir + '/histo_tracks_eval.png'):
+    # plot histo
+    plt.figure(figsize=(8, 3))
+    # plt.xlim(-1.*xlim, xlim)
+    # the histogram of the data
+    num_bins = 40  # 'auto'
+    for idx, postfit in enumerate(postfit_list):
+        n, bins, patches = plt.hist(postfit.pre.astype(np.float), bins=num_bins, alpha=0.7,
+                                    label="iter "+str(idx))  # , density=True) #, facecolor='blue',
+    # alpha=0.7, range=[-1.*xlim, xlim])
+    plt.xlabel('dR (m)')
+    plt.ylabel('# tracks')
+    plt.legend()
+    plt.title('Histogram of track RMS at iters')
+    plt.semilogx()
+    # # Tweak spacing to prevent clipping of ylabel
+    plt.subplots_adjust(left=0.15)
+    plt.savefig(filename)
+    plt.clf()
+>>>>>>> 364b55675bbcbf9f01fbfe807175ab26c053d57f
