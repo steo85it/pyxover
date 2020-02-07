@@ -621,7 +621,7 @@ def check_iters(sol, subexp=''):
         #print(prev.sol4_pars)
         ##################
         
-        vTPv = lTPl - xT@ATPb
+        vTPv = lTPl # - xT@ATPb
         degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
         #print("vTPv = ", vTPv, vTPv/degf)
         #print("degf = ", degf)

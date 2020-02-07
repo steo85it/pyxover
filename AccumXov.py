@@ -501,7 +501,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         weights_xov_tracks = get_xov_cov_tracks(df=tmp,plot_stuff=True)
 
         # the histogram of weight distribution
-        if True: #False and local and debug:
+        if False and local and debug:
             tmp = weights_xov_tracks.diagonal()
 
             plt.figure(figsize=(8, 3))
@@ -520,10 +520,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
             print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
 
         # additional for h2 tests
-        limit_h2 = 10
-        tmp = xovi_amat.xov.xovers.dR.abs().values
-        tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 2, 1.)
-        huber_penal *= tmp
+        if False:
+            limit_h2 = 10
+            tmp = xovi_amat.xov.xovers.dR.abs().values
+            tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 2, 1.)
+            huber_penal *= tmp
 
 #######
 
@@ -558,7 +559,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights)
     obs_weights = weights_xov_tracks.multiply(obs_weights)
 
-    if True:
+    if False:
         # plot histo
         plt.figure(figsize=(8,3))
         # plt.xlim(-1.*xlim, xlim)
@@ -618,7 +619,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # plt.savefig(tmpdir+'b_and_A.png')
 
     # analysis of residuals vs h2 partials
-    if True:
+    if False:
         print(xovi_amat.xov.xovers.columns)
         tmp = xovi_amat.xov.xovers[['dR','dR/dh2','LON','LAT','huber']]
         print("truc0",tmp)
@@ -941,9 +942,9 @@ def solve(xovi_amat,dataset, previous_iter=None):
     if xovi_amat.sol[1] != 2:
        exit(2)
 
-    if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+    if False and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         print("Downweighted obs: ", len(tmp[tmp==1]), "or ",len(tmp[tmp==1])/len(tmp)*100.,"%")
-        print("Slightly downweighted obs: ", len(tmp[(tmp<1)*(tmp>0.1)]), "or ",len(tmp[(tmp<1)*(tmp>0.1)])/len(tmp)*100.,"%")
+        print("Slightly downweighted obs: ", len(tmp[(tmp<1.)*(tmp>0.1)]), "or ",len(tmp[(tmp<1.)*(tmp>0.1)])/len(tmp)*100.,"%")
         print("Brutally downweighted obs: ", len(tmp[(tmp<0.01)]), "or ",len(tmp[(tmp<0.01)])/len(tmp)*100.,"%")
 
     # exit()

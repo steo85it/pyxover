@@ -13,7 +13,7 @@ import pandas as pd
 
 from statsmodels.tools.eval_measures import rmse
 
-from prOpt import tmpdir, vecopts
+from prOpt import tmpdir, vecopts, local
 from project_coord import project_stereographic
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
@@ -71,7 +71,7 @@ def get_tracks_rms(xovers_df,plot_xov_tseries=False):
         X = X[..., np.newaxis]
         rmspost = rmse(y, X.dot(rlm_results.params))
 
-        if plot_xov_tseries and rmspre > 100.:
+        if local and plot_xov_tseries and rmspre > 100.:
             fig = plt.figure(figsize=(12, 8))
             plt.style.use('seaborn-poster')
             ax = fig.add_subplot(111)
@@ -94,19 +94,20 @@ def get_tracks_rms(xovers_df,plot_xov_tseries=False):
     postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, rmslist]).T,
                            columns=['track', 'pre', 'bias', 'minus-Rbias']).astype(float).astype({'track': int})
 
-    # plot histo
-    plt.figure(figsize=(8,3))
-    # plt.xlim(-1.*xlim, xlim)
-    # the histogram of the data
-    num_bins = 40 # 'auto'
-    n, bins, patches = plt.hist(postfit.pre.astype(np.float), bins=num_bins) #, density=True, facecolor='blue',
-    # alpha=0.7, range=[-1.*xlim, xlim])
-    plt.xlabel('dR (m)')
-    plt.ylabel('# tracks')
-    # plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
-    # # Tweak spacing to prevent clipping of ylabel
-    plt.subplots_adjust(left=0.15)
-    plt.savefig(tmpdir+'/histo_tracks_eval.png')
-    plt.clf()
+    if False and local:
+        # plot histo
+        plt.figure(figsize=(8,3))
+        # plt.xlim(-1.*xlim, xlim)
+        # the histogram of the data
+        num_bins = 40 # 'auto'
+        n, bins, patches = plt.hist(postfit.pre.astype(np.float), bins=num_bins) #, density=True, facecolor='blue',
+        # alpha=0.7, range=[-1.*xlim, xlim])
+        plt.xlabel('dR (m)')
+        plt.ylabel('# tracks')
+        # plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+        # # Tweak spacing to prevent clipping of ylabel
+        plt.subplots_adjust(left=0.15)
+        plt.savefig(tmpdir+'/histo_tracks_eval.png')
+        plt.clf()
 
     return postfit

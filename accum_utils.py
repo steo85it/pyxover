@@ -12,12 +12,12 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix, diags
 
-from statsmodels.tools.eval_measures import rmse
+#from statsmodels.tools.eval_measures import rmse
 
 from prOpt import tmpdir, vecopts
 from project_coord import project_stereographic
 import matplotlib.pyplot as plt
-import statsmodels.api as sm
+#import statsmodels.api as sm
 
 from xov_utils import get_tracks_rms
 
