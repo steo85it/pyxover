@@ -509,7 +509,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
             n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins)
             plt.xlabel('dR (m)')
             plt.ylabel('# tracks')
-            plt.savefig(tmpdir + '/histo_tracks_eval.png')
+            plt.savefig(tmpdir + '/histo_tracks_weights.png')
             plt.clf()
 
         # xovi_amat.xov.xovers['huber'] *= huber_weights_track
@@ -520,10 +520,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
             print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
 
         # additional for h2 tests
-        limit_h2 = 10
-        tmp = xovi_amat.xov.xovers.dR.abs().values
-        tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 2, 1.)
-        huber_penal *= tmp
+        if False:
+            limit_h2 = 5
+            tmp = xovi_amat.xov.xovers.dR.abs().values
+            tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 2, 1.)
+            huber_penal *= tmp
 
 #######
 
@@ -618,7 +619,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # plt.savefig(tmpdir+'b_and_A.png')
 
     # analysis of residuals vs h2 partials
-    if True:
+    if False:
         print(xovi_amat.xov.xovers.columns)
         tmp = xovi_amat.xov.xovers[['dR','dR/dh2','LON','LAT','huber']]
         print("truc0",tmp)

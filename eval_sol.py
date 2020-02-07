@@ -23,6 +23,7 @@ from ground_track import gtrack
 from xov_setup import xov
 from Amat import Amat
 from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts
+from xov_utils import get_tracks_rms, plot_tracks_histo
 
 remove_max_dist = True
 remove_3sigma_median = True
@@ -563,10 +564,14 @@ def check_iters(sol, subexp=''):
     iters_orbres_mean = []
     iters_glocorr = []
     m_X_iters = []
+    iters_track_rms = []
+
     for idx,isol in enumerate(prev_sols[:]):
         print(prev_sols)
         prev = Amat(vecopts)
         prev = prev.load(isol)
+
+        iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
 
         add_xov_separation(prev)
         # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
@@ -620,8 +625,9 @@ def check_iters(sol, subexp=''):
           xT = np.delete(xT,missing)
         #print(prev.sol4_pars)
         ##################
-        
-        vTPv = lTPl - xT@ATPb
+        # print(ATPb.shape)
+        # print(xT.shape)
+        vTPv = lTPl # - xT@ATPb # TODO CORRECT THIS!!!!
         degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
         #print("vTPv = ", vTPv, vTPv/degf)
         #print("degf = ", degf)
@@ -877,6 +883,9 @@ def check_iters(sol, subexp=''):
     #
     plt.savefig(tmpdir + 'rms_iters_' + sol + '.png')
     plt.close()
+
+    # print(iters_track_rms)
+    plot_tracks_histo(iters_track_rms,filename=tmpdir + '/histo_tracks_eval' + sol +'.png')
 
     # exit()
 
