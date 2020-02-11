@@ -33,7 +33,7 @@ def project_stereographic(lon, lat, lon0, lat0, R=1):
     cosd_lon_lon0 = cosd(lon - lon0)
     sind_lat = sind(lat)
 
-    k = (2 * R) / (1 + sind(lat0) * sind_lat + cosd(lat0) * cosd_lat * cosd_lon_lon0)
+    k = (2. * R) / (1. + sind(lat0) * sind_lat + cosd(lat0) * cosd_lat * cosd_lon_lon0)
     x = k * cosd_lat * sind(lon - lon0)
     y = k * (cosd(lat0) * sind_lat - sind(lat0) * cosd_lat * cosd_lon_lon0)
 
