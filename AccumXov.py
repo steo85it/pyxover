@@ -112,7 +112,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.pkl'))
 
     # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
-    xov_list = [xov_.load(x) for x in allFiles]
+    xov_list = [xov_.load(x) for x in allFiles[:]]
 
     # orb_unique = [x.xovers['orbA'].tolist() for x in xov_list if len(x.xovers) > 0]
     # orb_unique.extend([x.xovers['orbB'].tolist() for x in xov_list if len(x.xovers) > 0])
@@ -534,7 +534,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     #set up observation weights (according to local roughness and dist of obs from xover point) - don't trust
     regbas_weights = run(xovi_amat.xov).reset_index()
     val = sigma_0 * np.ones(len(regbas_weights.error.values)) #/np.power(regbas_weights.error.values,1) # deactivated until check
-    print("roughness values", np.sort(val))
+    # print("roughness values", np.sort(val))
 
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
