@@ -18,13 +18,12 @@ from project_coord import project_stereographic
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
-
 def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     print("Checking tracks rms @ iter ...")
 
-    xovers_df = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]
-    total_occ_tracks = pd.DataFrame([xovers_df['orbA'].value_counts(), xovers_df['orbB'].value_counts()]).T.fillna(
-        0).sum \
+    xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']].copy()
+    xovtmp = xovtmp.astype({'orbA': 'int32', 'orbB': 'int32'})
+    total_occ_tracks = pd.DataFrame([xovtmp['orbA'].value_counts(), xovtmp['orbB'].value_counts()]).T.fillna(0).sum \
         (axis=1).sort_values(ascending=False)
     tracks = list(total_occ_tracks.index.values)[:]  # ['1403130156'] #
 
@@ -34,25 +33,28 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     biaslist = []
     trlist = []
     for tr in tracks:
-
         try:
-            df = xovers_df.loc[
-                ((xovers_df.orbA == tr) | (xovers_df.orbB == tr)) & (xovers_df.huber > 0.01)].sort_values(by='dtA',
-                                                                                                          ascending=True)
+
+            df = xovtmp.loc[((xovtmp.orbA == int(tr)) | (xovtmp.orbB == int(tr))) & (xovtmp.huber > 0.01)].sort_values(by='dtA',
+                                                                                                             ascending=True)
             tmp = pd.DataFrame(
-                np.vstack(project_stereographic(df.LON.values, df.LAT.values, 0, 90, vecopts['PLANETRADIUS'])).T,
-                columns=['x0', 'y0'])
+        	np.vstack(project_stereographic(df.LON.values, df.LAT.values, 0, 90, vecopts['PLANETRADIUS'])).T,
+        	columns=['x0', 'y0'])
             tmp['dist'] = np.linalg.norm(tmp.diff().values, axis=1)
-            df = pd.concat([df.reset_index(drop=True), tmp.reset_index(drop=True)], axis=1).dropna()
+            df = pd.concat([df.reset_index(drop=True), tmp], axis=1).dropna()
 
             y = df.dR.values
             x = df.dtA.values
 
+            # print(np.column_stack((np.ones(len(x)))))
+            # print(np.array(np.ones(len(x))))
+            # exit()
+
             parametrizations = [
-                np.column_stack((np.ones(len(x)))),
-                # np.column_stack((x, np.ones(len(x)))),
-                # np.column_stack((x**2, x, np.ones(len(x)))),
-                # np.column_stack((x**3, x**2, x, np.ones(len(x))))
+        	[np.ones(len(x))],
+        	# np.column_stack((x, np.ones(len(x)))),
+        	# np.column_stack((x**2, x, np.ones(len(x)))),
+        	# np.column_stack((x**3, x**2, x, np.ones(len(x))))
             ]
             X = parametrizations[0]
             # only if param with bias only
@@ -61,11 +63,8 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             result = sm.OLS(y, X).fit()
 
             # Fit model and print summary
-            try:
-                rlm_model = sm.RLM(y, X, M=sm.robust.norms.HuberT())
-                rlm_results = rlm_model.fit()
-            except:
-                print(tr, y)
+            rlm_model = sm.RLM(y, X, M=sm.robust.norms.HuberT())
+            rlm_results = rlm_model.fit()
 
             if False and debug:
                 print(rlm_results.summary())
@@ -103,11 +102,12 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             biaslist.append(1.e-6)
             rmsprelist.append(1.e-6)
             rmslist.append(1.e-6)
+            print(tr,y)
 
     postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, rmslist]).T,
                            columns=['track', 'pre', 'bias', 'minus-Rbias']).astype(float).astype({'track': int})
 
-    if plot_xov_tseries and local:
+    if local and plot_xov_tseries:
         plot_tracks_histo([postfit])
 
     return postfit
