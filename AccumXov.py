@@ -521,7 +521,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
 #######
         # additional for h2 tests
-        if True:
+        if False:
             # cut based on residuals
             limit_h2 = 50.
             tmp = xovi_amat.xov.xovers.dR.abs().values
@@ -569,7 +569,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights) # to apply only the diagonal
     obs_weights = weights_xov_tracks.multiply(obs_weights)
 
-    if True and local:
+    if False and local:
         # plot histo
         plt.figure(figsize=(8,3))
         # plt.xlim(-1.*xlim, xlim)
@@ -629,12 +629,12 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # plt.savefig(tmpdir+'b_and_A.png')
 
     # analysis of residuals vs h2 partials
-    if True and local:
+    if False and local:
         print(xovi_amat.xov.xovers.columns)
         tmp = xovi_amat.xov.xovers[['dR','dR/dh2','LON','LAT','huber']]
-        print("truc0",tmp)
+        # print("truc0",tmp)
         tmp = tmp.loc[(tmp.dR.abs() < limit_h2) & (tmp['dR/dh2'].abs() > 0.3) & (tmp['huber'].abs() > 0.5)]
-        print("truc",tmp)
+        # print("truc",tmp)
         w = np.abs(tmp[['dR']].values)
         dw_dh2 = np.abs(tmp[['dR/dh2']].values) #np.abs(spA_sol4[:,-1].toarray())
         # import statsmodels.api as sm
