@@ -7,15 +7,15 @@
 #
 import re
 import warnings
-from functools import reduce
+# from functools import reduce
 import itertools
 
 import seaborn as sns
 
 from accum_utils import get_xov_cov_tracks
 from util import mergsum, update_in_alist, rms
-from lib.xovres2weights import run
-from xov_utils import get_tracks_rms
+from lib.xovres2weights import get_interpolation_weight
+# from xov_utils import get_tracks_rms
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -519,22 +519,31 @@ def solve(xovi_amat,dataset, previous_iter=None):
             tmp = tmp[['orbA', 'orbB', 'dR', 'track_weights']]
             print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
 
+#######
         # additional for h2 tests
         if False:
-
-            limit_h2 = 5
+            # cut based on residuals
+            limit_h2 = 50.
 
             tmp = xovi_amat.xov.xovers.dR.abs().values
             tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 2, 1.)
             huber_penal *= tmp
-
+            # cut based on mean min separation
+            limit_h2 = 100.*1.e-3 # km based
+            tmp = xovi_amat.xov.xovers.dist_min_mean.values
+            n, bins, patches = plt.hist(np.where(tmp < 1., tmp, 1.).astype(np.float), bins=num_bins)
+            plt.xlabel('distance (m)')
+            plt.savefig(tmpdir + '/histo_interp_dist1.png')
+            plt.clf()
+            tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 2, 1.)
+            huber_penal *= tmp
 #######
-
-    # TODO why sqrt?? take sqrt of inverse of roughness value at min dist of xover from neighb obs as weight
-    #set up observation weights (according to local roughness and dist of obs from xover point) - don't trust
-    regbas_weights = run(xovi_amat.xov).reset_index()
-    val = sigma_0 * np.ones(len(regbas_weights.error.values)) #/np.power(regbas_weights.error.values,1) # deactivated until check
-    # print("roughness values", np.sort(val))
+    # interp_weights = get_weight_regrough(xovi_amat.xov).reset_index()  ### old way using residuals to extract roughness
+    #
+    # get interpolation error based on roughness map (if available at given latitude) + minimal distance
+    interp_weights = get_interpolation_weight(xovi_amat.xov).reset_index()
+    val = interp_weights['weight'].values # np.ones(len(interp_weights['weight'].values)) #
+    # print("interp error values", np.sort(val))
 
     if local and debug:
         fig, ax1 = plt.subplots(nrows=1)
@@ -550,18 +559,17 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # exit()
     # print(np.max(np.abs(val)))
     # val /= np.max(np.abs(val))
-    row = col = regbas_weights.index.values
+    row = col = interp_weights.index.values
 
-    # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
-    obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(regbas_weights), len(regbas_weights)))
+    # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(interp_weights), len(interp_weights)))
+    obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(interp_weights), len(interp_weights)))
+
     # combine with off-diag terms from tracks
-
-    # print(obs_weights)
-    print(weights_xov_tracks)
-    # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights)
+    #========================================
+    # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights) # to apply only the diagonal
     obs_weights = weights_xov_tracks.multiply(obs_weights)
 
-    if False:
+    if debug and local:
         # plot histo
         plt.figure(figsize=(8,3))
         # plt.xlim(-1.*xlim, xlim)
@@ -577,7 +585,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
         plt.savefig(tmpdir+'/weights_data.png')
         plt.clf()
         # exit()
-
 
     # Combine and store weights
     xovi_amat.weights = obs_weights
@@ -621,7 +628,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # plt.savefig(tmpdir+'b_and_A.png')
 
     # analysis of residuals vs h2 partials
-    if False:
+    if True and local:
         print(xovi_amat.xov.xovers.columns)
         tmp = xovi_amat.xov.xovers[['dR','dR/dh2','LON','LAT','huber']]
         print("truc0",tmp)

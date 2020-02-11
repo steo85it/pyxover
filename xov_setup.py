@@ -9,6 +9,8 @@
 # Created: 18-Feb-2019
 import warnings
 
+from click import pause
+
 import perlin2d
 from scipy.interpolate import RectBivariateSpline
 
@@ -25,7 +27,7 @@ import subprocess
 # from mapcount import mapcount
 from unproject_coord import unproject_stereographic
 from intersection import intersection
-from prOpt import debug, partials, OrbRep, parGlo, parOrb, tmpdir, auxdir
+from prOpt import debug, partials, OrbRep, parGlo, parOrb, tmpdir, auxdir, local, multi_xov
 from util import lflatten, rms, sec2day
 
 
@@ -49,7 +51,7 @@ class xov:
     def setup(self, gtracks):
 
         self.gtracks = gtracks
-        df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df]).reset_index(drop=True)
+        df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df],sort=True).reset_index(drop=True)
 
         self.msrm_sampl = 50
         # store involved tracks as dict
@@ -82,7 +84,14 @@ class xov:
         # Crossover computation (rough+fine+elev)
         nxov = self.get_xov()
 
-        if nxov > 0:
+        # Depending on prOpt, ignore pairs where more than 1 xov has been found
+        if multi_xov:
+            multi_xov_check = nxov > 0
+        else:
+            multi_xov_check = nxov == 1
+        # print(nxov,multi_xov_check)
+
+        if multi_xov_check:
 
             # Compute and store distances between obs and xov coord
             self.set_xov_obs_dist()
@@ -306,10 +315,11 @@ class xov:
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
             t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
 
-        fA_interp = [interpolate.interp1d(t_ldA[k], xyintA[k][1], kind='cubic') for k in range(0, len(ind_A_int))]
-        tA_interp = [interpolate.interp1d(xyintA[k][2], t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
+        fA_interp = [interpolate.interp1d(x=t_ldA[k], y=xyintA[k][1], kind='cubic') for k in range(0, len(ind_A_int))]
+        tA_interp = [interpolate.interp1d(x=xyintA[k][2], y=t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
 
         R_A = [fA_interp[k](tA_interp[k](ind_A.item(k))) for k in range(0, ind_A.size)]
+        # exit()
 
         if debug and False:
             ldA2_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj', 'Y_stgprj', 'R']].values
@@ -394,10 +404,12 @@ class xov:
         # if np.abs([a-b for a in R_A for b in R_B])>50:
             exit()
 
-        if debug and len(ind_B_int) == 1: # and False:
-            self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0],
-                               ladata_df, ldA_, ldB_,
-                               tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0], param=par)
+        if debug and len(ind_B_int) == 1 and local: # and False:
+            # self.plot_xov_elev(arg, fA_interp[0], fB_interp[0], ind_A[0], ind_A_int[0], ind_B[0], ind_B_int[0],
+            #                    ladata_df, ldA_, ldB_,
+            #                    tA_interp[0], tB_interp[0], t_ldA[0], t_ldB[0], param=par)
+            self.plot_xov_elev2(R_A, R_B, fA_interp, fB_interp, ind_A, ind_A_int, ind_B, ldA_, tA_interp, tB_interp, t_ldA,
+                            t_ldB, xyintA, xyintB)
         # exit()
 
         # xyintA = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ladata_df.shape[0])].T for k in ind_B_int]
@@ -414,26 +426,6 @@ class xov:
         # R_B = interpolate.bisplev(x, y, tck)
         # print("zB", R_B)
 
-        # exit()
-
-        # #print(ldB_.shape)
-        # dist = np.linalg.norm(ldB_[:,:2]-np.hstack([x,y]),axis=1)
-        # sign = np.dot(ldB_[:,:2],np.hstack([x,y]))/(np.linalg.norm(ldB_[:,:2],axis=1)*np.linalg.norm(np.hstack([x,y])))
-        # print(sign)
-        # exit()
-        # #print(len(dist))
-        # plt.plot(dist, ldB_[:,2])
-        # plt.savefig('tmp/test_elev_prof.png')
-        # plt.clf()
-        # plt.close()
-        # #print(ldB_[0,1]-y)
-        # #exit()
-        # f_interp = interpolate.interp2d(ldB_[:,0],ldB_[:,1],ldB_[:,2],kind='linear')
-        # print(x,y)
-        # print('R_B_2d',f_interp(x,y))
-        # #exit()
-        # #interpolate.RectBivariateSpline
-
         if debug and False:
             print(xyintA[0][0], np.array(xyintA[0][0]))
             print(ldA_)
@@ -449,6 +441,40 @@ class xov:
             # exit()
 
         return ind_A, ind_B, R_A, R_B
+
+    def plot_xov_elev2(self, R_A, R_B, fA_interp, fB_interp, ind_A, ind_A_int, ind_B, ldA_, tA_interp, tB_interp, t_ldA,
+                       t_ldB, xyintA, xyintB):
+
+        diffA = ldA_[ind_A_int + 1][0, 1] - ldA_[ind_A_int][0, 1]
+        if diffA > 50:
+            print(diffA)
+            tmp = np.array([[t_ldA[k], xyintA[k][1]] for k in range(0, 1)])[0].T
+            # print(tmp)
+            fig = plt.figure(figsize=(12, 8))
+            plt.style.use('seaborn-poster')
+            ax = fig.add_subplot(111)
+            ax.plot(tmp[:, 0], tmp[:, 1], 'k.', label="dR #" + str(0))
+            ax.plot(tA_interp[0](ind_A.item(0)), R_A[0], 'ro')
+            xtmp = np.linspace(np.min(t_ldA[0]), np.max(t_ldA[0]), 10000)
+            ax.plot(xtmp, fA_interp[0](xtmp), 'b--')
+
+            tmp = np.array([[t_ldB[k], xyintB[k][1]] for k in range(0, 1)])[0].T
+            ax.plot(tmp[:, 0], tmp[:, 1], 'k.', label="dR #" + str(0))
+            ax.plot(tB_interp[0](ind_B.item(0)), R_B[0], 'ro')
+            xtmp = np.linspace(np.min(t_ldB[0]), np.max(t_ldB[0]), 10000)
+            ax.plot(xtmp, fB_interp[0](xtmp), 'b--')
+
+            # ax.legend(loc="best")
+            ax.set_xlim((-1, 1))
+            ax.set_xlabel('ET_bounce (s)')
+            ax.set_ylabel('elevation (m)')
+            # title = "res R bias : " + str(rlm_results.params.round(1)[0]) + " m -- RMSE : " + str(
+            #     rmspre.round(1)) + " m"  # / "+ str(rmspost.round(1)) + "m"
+            # ax.set_title(title)
+            plt.savefig(tmpdir+'test_elev_prof_.png')
+
+            if R_B[0] - R_A[0] > 100:
+                exit()
 
     def plot_xov_elev(self, arg, fA_interp, fB_interp, ind_A, ind_A_int, ind_B, ind_B_int, ladata_df, ldA_, ldB_,
                       tA_interp, tB_interp, t_ldA, t_ldB,param=''):
@@ -789,7 +815,7 @@ class xov:
         # should be out of the if in case self.ladata is not updated
         tmp = [obj.project(self.proj_center['lon'], self.proj_center['lat'], inplace=False) for obj in
                self.gtracks]
-        ladata_df = pd.concat([tmp[0], tmp[1]]).reset_index(drop=True)
+        ladata_df = pd.concat([tmp[0], tmp[1]],sort=True).reset_index(drop=True)
         # clean up useless columns (speeds up pd.df indexing)
         self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dL(AT|ON)/d.*').columns,
                                              axis='columns')
