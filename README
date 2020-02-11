@@ -77,3 +77,9 @@ plt_altres.py : change name of input and output to generate concat_ladata
 plot_res.sh: launches gmt reading and processing to grd (change input/output in ladata2grd.sh)
 plot_netcdf.py: change input, plots grd and differences
 
+Profiling
+---------
+Decorate routines with @profile; then launch with, e.g.,
+kernprof -v -l launch_test.py 0 0 3 0   # for time profiling
+python3 -m memory_profiler launch_test.py 0 0 3 0   # for memory profiling
+N.B.: does not work when launching from within pycharm (or would need config)

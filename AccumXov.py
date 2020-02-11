@@ -1374,7 +1374,8 @@ def main(arg):
 
     print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
 
-    get_stats(xov_cmb_lst,xovi_amat,resval,amplval)
+    if partials:
+        get_stats(xov_cmb_lst,xovi_amat,resval,amplval)
 
     print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
 
