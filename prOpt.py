@@ -42,6 +42,10 @@ new_gtrack = 2
 # create new xov (0:no, 1:yes, check if present, 2: yes, create)
 new_xov = 2
 
+# PyXover options
+# analyze multi-xov pairs
+multi_xov = False
+
 # PyAltSim stuff
 # simulation mode
 sim_altdata = 0
