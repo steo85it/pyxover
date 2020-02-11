@@ -9,8 +9,6 @@
 # Created: 18-Feb-2019
 import warnings
 
-from click import pause
-
 import perlin2d
 from scipy.interpolate import RectBivariateSpline
 

@@ -397,16 +397,18 @@ class gtrack:
                      'MERv': self.MERv,
                      'SUNx': self.SUNx}
         #########################
+        # don't compute numerical partials for h2, analytical one is computed below
+        param_tmp = {k:v for k,v in param.items() if k not in ['dh2']}
         if (
                 parallel and SpInterp > 0 and 1 == 2):  # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
             # the orbit (single initial call) with an appropriate accuracy.
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count() - 1)
-            results = pool.map(self.get_geoloc_part, param.items())  # parallel
+            results = pool.map(self.get_geoloc_part, param_tmp.items())  # parallel
             pool.close()
             pool.join()
         else:
-            results = [self.get_geoloc_part(i) for i in param.items()]  # seq
+            results = [self.get_geoloc_part(i) for i in param_tmp.items()]  # seq
 
         # exit()
 
@@ -437,7 +439,7 @@ class gtrack:
 
         if (len(param) > 1 and list(param)[0] == ''):
             if (self.vecopts['OUTPUTTYPE'] == 0):
-                for i in range(1, len(param)):
+                for i in range(1, len(param_tmp)):
                     ladata_df['dX/' + list(param)[i]] = results[i][:, 0]
                     ladata_df['dY/' + list(param)[i]] = results[i][:, 1]
                     ladata_df['dZ/' + list(param)[i]] = results[i][:, 2]
@@ -459,7 +461,7 @@ class gtrack:
                 # exit()
 
             elif (self.vecopts['OUTPUTTYPE'] == 1):
-                for i in range(1, len(param)):
+                for i in range(1, len(param_tmp)):
                     ladata_df['dLON/' + list(param)[i]] = results[i][:, 0]
                     ladata_df['dLAT/' + list(param)[i]] = results[i][:, 1]
                     ladata_df['dR/' + list(param)[i]] = results[i][:, 2]
