@@ -18,7 +18,7 @@ from prOpt import sim_altdata, local, outdir
 # tp8: full dataset, simulation, h2 = 0.8, no perturbations (as tp2, but updated code --> eg, 0.5 in tid)
 # tp9: full dataset, simulation, h2 = 0.8, no perturbations, noise, PM@J2013.0
 # KX1: real data, tidal h2=0.8 included (=1 after 27-Jan)
-# KX1r2: real data, same subsel as tp8 (apriori h2=1 after 27-Jan)
+# KX1r2: real data, same subsel as tp8 (apriori h2=0 after 05-Feb)
 # tpAp: full simu, KX orbits, AG a priori
 
 if __name__ == '__main__':

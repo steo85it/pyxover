@@ -50,25 +50,25 @@ def get_interpolation_weight(xov_):
 
     # plot some histos for debug
     if debug:
-        plt.figure(figsize=(8, 3))
+        plt.figure() #figsize=(8, 3))
         num_bins = 'auto' # 40  # v
 
         tmp = interp_weights['rough_700m'].values
-        n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins)
-        plt.xlabel('roughness@baseline (m/m)')
-        plt.savefig(tmpdir + '/histo_interp_weights0.png')
+        n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins, cumulative=True)
+        plt.xlabel('roughness@baseline700 (m/m)')
+        plt.savefig(tmpdir + '/histo_roughn_at_700.png')
         plt.clf()
 
         tmp = interp_weights['meters_dist_min'].values
-        n, bins, patches = plt.hist(np.where(tmp < 500., tmp, 500.).astype(np.float), bins=num_bins)
+        n, bins, patches = plt.hist(np.where(tmp < 500., tmp, 500.).astype(np.float), bins=num_bins, cumulative=True)
         plt.xlabel('distance (m)')
         plt.savefig(tmpdir + '/histo_interp_dist0.png')
         plt.clf()
 
         tmp = interp_weights['rough_at_mindist'].values
-        n, bins, patches = plt.hist(np.where(tmp<255,tmp,255).astype(np.float), bins=num_bins)
-        plt.xlabel('roughness@baseline (m/m)')
-        plt.savefig(tmpdir + '/histo_interp_weights.png')
+        n, bins, patches = plt.hist(np.where(tmp<255,tmp,255).astype(np.float), bins=num_bins, cumulative=True)
+        plt.xlabel('roughness@separation (m/m)')
+        plt.savefig(tmpdir + '/histo_roughn_at_sep.png')
         plt.clf()
 
     return interp_weights
@@ -249,7 +249,7 @@ def get_roughness_at_coord(lon,lat,roughness_map):
     """
     da = xr.open_rasterio(roughness_map)
 
-    if debug:
+    if False and debug and local:
         fig = plt.figure(figsize=(12, 8))
         da.plot.imshow()
         plt.savefig(tmpdir + 'test_roughness.png')
@@ -271,12 +271,12 @@ def get_roughness_at_coord(lon,lat,roughness_map):
     roughness_df.columns = ['x_laea', 'y_laea', 'rough_700m', 'LON', 'LAT']
 
     # set standard roughness for rest of planet ()
-    roughness_df.loc[(roughness_df['LAT'] < 65) | (roughness_df['LAT'] > 84), 'rough_700m'] = 125.
+    roughness_df.loc[(roughness_df['LAT'] < 65) | (roughness_df['LAT'] > 84), 'rough_700m'] = 25.
     roughness_df['rough_700m'] += 1.e-1
     # roughness = roughness.round({'LAT':0,'LON':0, 'rough_700m':0})
 
     # check if interp and axes are aligned
-    if debug:
+    if debug and local:
         # in lambert azimutal equal area projection
         fig = plt.figure() #figsize=(12, 8))
         plt.xlim((-1.e6, 1.e6))

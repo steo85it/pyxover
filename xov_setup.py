@@ -864,7 +864,7 @@ class xov:
         results = self.get_xOver_elev(list(self.tracks.values()))  # seq
 
         if results is not None:
-            xovtmp = pd.DataFrame(np.vstack(x for x in results if x is not None).reshape(-1, np.shape(results)[1]))
+            xovtmp = pd.DataFrame(np.vstack([x for x in results if x is not None]).reshape(-1, np.shape(results)[1]))
             xovtmp.columns = ['x0', 'y0', 'ladata_idA', 'ladata_idB', 'R_A', 'R_B']
 
             # if(parallel):
