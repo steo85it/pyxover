@@ -986,7 +986,7 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
         if std_mean>10:
             print("## Check partials for outliers", i, std_median, std_mean, std_median/std_mean)
 
-        exclude = np.argwhere(median_residuals >= 10 * std_mean).T[0]
+        exclude = np.argwhere(median_residuals >= 20 * std_mean).T[0]
         row2index = dict(zip(range(len(data)),list(set(spA.tocsc()[:, -i - 1].nonzero()[0].tolist()))))
         exclude = [row2index[i] for i in exclude]
 
