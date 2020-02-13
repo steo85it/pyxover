@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 
 from xov_utils import get_tracks_rms
 
-
+# @profile
 def get_xov_cov_tracks(df, plot_stuff=False):
 
     tracks_rms_df = get_tracks_rms(df, plot_xov_tseries=plot_stuff)
@@ -30,15 +30,31 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     # pd.reset_option("display.max_rows")
 
     # print(xovi_amat.xov.xovers)
-    tmp = df[['xOvID', 'orbA', 'orbB']]
-    tmp_orbA = tmp.pivot_table(index='xOvID', columns='orbA', aggfunc='count', fill_value=0)
-    tmp_orbB = tmp.pivot_table(index='xOvID', columns='orbB', aggfunc='count', fill_value=0)
-    tmp_orbA.columns = tmp_orbA.columns.droplevel(0)
-    tmp_orbB.columns = tmp_orbB.columns.droplevel(0)
-    A_tracks = tmp_orbA.combine(tmp_orbB, np.subtract).fillna(0)
+    tmp = df[['xOvID', 'orbA', 'orbB']].astype('int32')
+    # get unique tracksID in dataset
+    unique_orb = np.sort((tmp['orbA'].append(tmp['orbB'])).unique())
+    # map to pseudo-pivot csr indexes
+    tracks_map = dict(zip(unique_orb,range(len(unique_orb))))
+    tmp['mapA'] = tmp['orbA'].map(tracks_map)
+    tmp['mapB'] = tmp['orbB'].map(tracks_map)
+    # generate sparse matrix of ones for each track, then sum to have 2 "ones-elements" for each xov
+    csrA = csr_matrix((np.ones(len(tmp['xOvID'].values)), (tmp['xOvID'].values, tmp['mapA'].values)),
+                   dtype=np.float32, shape=(len(tmp['xOvID'].values), len(unique_orb)))
+    csrB = csr_matrix((np.ones(len(tmp['xOvID'].values)), (tmp['xOvID'].values, tmp['mapB'].values)),
+                   dtype=np.float32, shape=(len(tmp['xOvID'].values), len(unique_orb)))
+    A_tracks = csrA+csrB
+    # print(A_tracks)
+
+    # tmp_orbA = tmp.pivot_table(index='xOvID', columns='orbA', aggfunc='count', fill_value=0)
+    # tmp_orbB = tmp.pivot_table(index='xOvID', columns='orbB', aggfunc='count', fill_value=0)
+    # tmp_orbA.columns = tmp_orbA.columns.droplevel(0)
+    # tmp_orbB.columns = tmp_orbB.columns.droplevel(0)
+    # A_tracks = tmp_orbA.combine(tmp_orbB, np.subtract).fillna(0)
+    # print(A_tracks)
     # print(A_tracks.columns)
     # print(tracks_rms_df.sort_values(by='track'))
-    A_tracks = csr_matrix(A_tracks.values)
+    # A_tracks = csr_matrix(A_tracks.values)
+
     # reorder tracks (!!!) and extract variances
     huber_threshold_track = 20
     tmp = tracks_rms_df.sort_values(by='track').pre.abs().values
@@ -61,7 +77,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
         plt.clf()
         exit()
 
-    cov_tracks = diags(huber_weights_track, 0)
+    cov_tracks = diags(huber_weights_track.round(2).astype('float16'), 0)
 
     # project variance of individual tracks on xovers
     cov_xov_tracks = cov_tracks * A_tracks.transpose()

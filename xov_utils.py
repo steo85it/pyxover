@@ -102,7 +102,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             biaslist.append(1.e-6)
             rmsprelist.append(1.e-6)
             rmslist.append(1.e-6)
-            print(tr,y)
+            # print(tr,y)
 
     postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, rmslist]).T,
                            columns=['track', 'pre', 'bias', 'minus-Rbias']).astype(float).astype({'track': int})
