@@ -34,6 +34,10 @@ class Amat:
         self.sol_iter = None
         self.sol_dict_iter = None
         self.weights = None
+        self.penalty_mat = None
+        self.spA = None
+        self.b = None
+        self.spA_penal = None
 
     def setup(self, xov):
 

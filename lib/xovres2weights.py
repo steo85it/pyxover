@@ -35,7 +35,7 @@ def get_interpolation_weight(xov_):
     ref_baseline = 700.
     lonlat = interp_weights.loc[:,['LON','LAT']].values
     roughness_df = get_roughness_at_coord(lon=lonlat[:,0],lat=lonlat[:,1],
-                                          roughness_map='/home/sberton2/Downloads/MLA_Roughness_composite.tif')
+                                          roughness_map=auxdir+'MLA_Roughness_composite.tif')
     interp_weights['rough_700m'] = roughness_df.loc[:,'rough_700m']
 
     # get min separation between xovers and mla data (meters, mean of minimal sep for each track ... guess it makes sense)
