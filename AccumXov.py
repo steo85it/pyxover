@@ -950,7 +950,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # print(np.shape(xovi_amat.weights))
     # print(len(np.ravel(np.dot(Q,previous_iter.sol_iter[0]))))
     # print(np.shape(xovi_amat.b))
-    if previous_iter != None:
+    if previous_iter.sol_dict_iter != None:
         # get previous solution reordered as sol4_pars (and hence as Q)
         prev_sol_ord = [previous_iter.sol_dict_iter['sol'][key] if
                         key in previous_iter.sol_dict_iter['sol'] else 0. for key in sol4_pars]
@@ -1271,9 +1271,9 @@ def main(arg):
         print(data_pth)
 
         xov_cmb = load_combine(data_pth, vecopts)
-
-        # count occurrences for each orbit ID
-        xov_cmb.nobs_x_track = xov_cmb.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False)
+        #
+        # # count occurrences for each orbit ID
+        # xov_cmb.nobs_x_track = xov_cmb.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False)
         # print(_)
         # print(_.dtypes)
         # exit()
@@ -1288,7 +1288,17 @@ def main(arg):
                                 '_' + str(ext_iter - 1) + '/' +
                                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
             else:
-                previous_iter = None
+                parsk = list(xov_cmb.pert_cloop.to_dict().keys())
+                trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
+
+                fit2dem_sol = np.ravel([list(x.values()) for x in xov_cmb.pert_cloop.to_dict().values()])
+                fit2dem_keys = [tr+'_dR/'+par for par in parsk for tr in trackk]
+                fit2dem_dict = dict(zip(fit2dem_keys,fit2dem_sol))
+
+                previous_iter = Amat(vecopts)
+                previous_iter.sol_dict = {'sol':fit2dem_dict,'std':dict(zip(fit2dem_keys,np.zeros(len(fit2dem_keys))))}
+                # previous_iter.sol_dict_iter = previous_iter.sol_dict
+                # previous_iter = None
 
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
@@ -1365,7 +1375,7 @@ def main(arg):
             xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
 
             # Cumulate with solution from previous iter
-            if int(ext_iter) > 0:
+            if (int(ext_iter) > 0) | (previous_iter != None):
                 # sum the values with same keys
                 updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
                 updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
