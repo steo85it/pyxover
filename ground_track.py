@@ -398,7 +398,8 @@ class gtrack:
                      'SUNx': self.SUNx}
         #########################
         # don't compute numerical partials for h2, analytical one is computed below
-        param_tmp = {k:v for k,v in param.items() if k not in ['dh2']}
+        param_tmp = param
+        # param_tmp = {k:v for k,v in param.items() if k not in ['dh2']} # issue with not having bounce time ET_BC for xov_setup
         if (
                 parallel and SpInterp > 0 and 1 == 2):  # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
             # the orbit (single initial call) with an appropriate accuracy.
