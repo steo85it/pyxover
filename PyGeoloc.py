@@ -166,7 +166,7 @@ def main(args):
     startPrepro = time.time()
 
     # Prepare list of tracks to geolocalise
-    tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles]
+    tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles[:]]
 
     if new_gtrack:
 
@@ -181,6 +181,7 @@ def main(args):
         tracks = []
         for track_id, infil in zip(tracknames, allFiles):
             track = track_id
+
             track = gtrack(vecopts)
             # try:
             # Read and fill
@@ -215,6 +216,17 @@ def main(args):
                 else:
                     track.sol_prev_iter = {'orb':orb_sol,
                                        'glo':glo_sol}
+            # if first iter, check if track has been pre-processed by fit2dem and import corrections
+            else:
+                try:
+                    gtrack_fit2dem = outdir+outdir_in+'/'+track_id+'.pkl'
+                    fit2dem_res = gtrack(vecopts)
+                    fit2dem_res = fit2dem_res.load(gtrack_fit2dem).sol_prev_iter
+                    # if debug:
+                    print("Solution of fit2dem for file",track_id+".pkl imported: \n", fit2dem_res['orb'])
+                    track.sol_prev_iter = fit2dem_res
+                except:
+                    True
 
             tracks.append(track)
 
@@ -224,7 +236,6 @@ def main(args):
         # print(np.sort(epo_in)[0])
         # print(np.sort(epo_in)[-1])
         # np.savetxt("tmp/epo_mla_1301.in", epo_in, fmt="%10.5f")
-        # exit()
 
         if SpInterp == 3:
             print(

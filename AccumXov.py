@@ -58,7 +58,7 @@ h2_limit_on = False
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)
 # could be updated by checking chi2 or by VCE
-sigma_0 = 1.e-2 * 5. # * 0.85 # 0.16 #
+sigma_0 = 1.e-2 * 2. # * 0.85 # 0.16 #
 
 ########################################
 # test space

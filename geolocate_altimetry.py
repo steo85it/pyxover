@@ -57,6 +57,9 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # print('et_tx')
     # print(et_tx)
 
+    # print("geoloc",tmp_pertPar)
+    # exit()
+
     oneway = tof * clight.value / 2.
     twoway = tof * clight.value
 
