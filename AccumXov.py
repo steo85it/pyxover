@@ -1335,7 +1335,7 @@ def main(arg):
                 # print("max_orb_corr,max_orb_drift_corr,max_att_corr")
                 # print(max_orb_corr, max_orb_drift_corr, max_att_corr)
 
-                if max_orb_corr > 2000 or max_orb_drift_corr > 500 or max_att_corr > 20.:
+                if max_orb_corr > 200 or max_orb_drift_corr > 50 or max_att_corr > 2.:
                     print("Solution fixed for track", tr, 'with max_orb_corr,max_orb_drift_corr,max_att_corr:',max_orb_corr, max_orb_drift_corr, max_att_corr)
                     sol_dict_iter_clean.append(dict.fromkeys(soltmp, 0.))
                     bad_count += 1

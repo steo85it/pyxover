@@ -608,7 +608,7 @@ def fit_track_to_dem(df_in):
             # Preliminary data cleaning
             dorb = np.array([0., 0., 0., 0., 0.])  # ,0,0,0]  # range(-10,10,1) #np.array([10.3, 0.7, 10.8, 11.9, 1.2])
             dr, dummy = get_demres_full(dorb, track, df_, dem_xarr)
-            print("pre-clean (len, max, rms): ", len(dr), np.max(dr), np.sqrt(np.mean(dr ** 2)))
+            print(track.name, "pre-clean (len, max, rms): ", len(dr), np.max(dr), np.sqrt(np.mean(dr ** 2)))
 
             df_.loc[:, 'dr_dem'] = dr
             df_ = df_[df_['dr_dem'] < 2.e3]
@@ -619,7 +619,7 @@ def fit_track_to_dem(df_in):
             dt_pre = df_['ET_TX'].values
 
             dr_pre, dummy = get_demres_full(dorb, track, df_, dem_xarr)
-            print("pre-fit (len, max, rms): ", len(dr_pre), np.max(dr_pre), np.sqrt(np.mean(dr_pre ** 2)))
+            print(track.name, "pre-fit (len, max, rms): ", len(dr_pre), np.max(dr_pre), np.sqrt(np.mean(dr_pre ** 2)))
 
             # Fit orbit corrections to DEM
 
@@ -643,8 +643,8 @@ def fit_track_to_dem(df_in):
             df_ = mad_clean(df_, 'altdiff_dem_data')
             dt_post = df_['ET_TX'].values
             dr_post = df_['altdiff_dem_data'].values
-            print("post-fit (len, max, rms): ", len(dr_post), np.max(dr_post), np.sqrt(np.mean(dr_post ** 2)))
-            print("elev - dem rms is", sol.fun, "meters for dACR =", dorb, " meters.")
+            print(track.name, "post-fit (len, max, rms): ", len(dr_post), np.max(dr_post), np.sqrt(np.mean(dr_post ** 2)))
+            print("rms for",track.name,"is", sol.fun, "meters for dACR =", np.round(dorb,2), " meters.")
 
             # compute partials dr/dACR
             # df_ = get_lstsq_partials(dem_xarr, df_, dorb, track)

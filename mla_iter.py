@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for iter in np.arange(0, 5):
+        for iter in np.arange(0, 10):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)
@@ -43,8 +43,8 @@ if __name__ == '__main__':
                         (end - start) / 60.) + ' min -----')
 
                 start = time.time()
-                for y in [12]: #np.arange(11, 16, 1): #np.append([8],np.arange(11, 16, 1)):
-                    for m in [11]: #np.arange(1, 13, 1):
+                for y in np.arange(11, 16, 1): #np.append([8],np.arange(11, 16, 1)):
+                    for m in np.arange(1, 13, 1):
                         # print(["python3", "launch_test.py", str(rough_test), ' ', str(y), f'{m:02}', "1", str(i)])
                         # exit()
                         ym = f'{y:02}'+ f'{m:02}'
@@ -95,7 +95,7 @@ if __name__ == '__main__':
                         #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
                         loadfile.write(('').join(
                             ['python3 launch_test.py ', str(rt), ' ', f'{y:02}', f'{m:02}', ' 1 ', str(iter), '\n']))
-                        loadfile.write(('').join(
+                        load_fit2dem.write(('').join(
                             ['python3 fit2dem.py ', f'{y:02}', f'{m:02}', '\n']))
 
                 loadfile.close()
@@ -129,7 +129,9 @@ if __name__ == '__main__':
 
                 iostat = 0
 
-                if iter == 0:
+                # Preliminary step to fit orbits and pointing to current knowledge of topography (direct altimetry)
+                # (real data only)
+                if iter == 0 and False:
                     iostat = s.call(
                         ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) + '_' + str(-1), '8',
                          '01:30:00', '10'])
@@ -141,7 +143,7 @@ if __name__ == '__main__':
                          '01:30:00', '10'])
                     if iostat != 0:
                         print("*** fit2dem_" + str(rt) + " failed on iter", str(-1))
-                        exit(iostat)
+                        #exit(iostat)
 
                 iostat = s.call(
                     ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '8', '00:30:00', '10'])
@@ -154,7 +156,7 @@ if __name__ == '__main__':
                     print("*** PyXov_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
                 iostat = s.call(#["python3", "launch_test.py", str(rt), "0", "3", str(i)])
-                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '1', '00:20:00', '1'])
+                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '1', '00:30:00', '1'])
                 if iostat != 0:
                     print("*** PyAcc_" + str(rt) + " failed on iter", iter)
                     exit(iostat)

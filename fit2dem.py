@@ -316,7 +316,7 @@ if __name__ == '__main__':
     read_pkl = 0
 
     # epo = '1212'
-    spk = 'KX1r_0'  # 'KX0_0'
+    spk = 'KX1r2_0'  # 'KX0_0'
     rghn = '0res_1amp'
 
     if read_pkl:
@@ -386,7 +386,7 @@ if __name__ == '__main__':
         if parallel:
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count())
-            tid_df, ACRcorr = pool.map(extract_dRvsLAT, allFiles)  # parallel
+            tid_df = pool.map(extract_dRvsLAT, allFiles)  # parallel
             pool.close()
             pool.join()
         else:
@@ -398,32 +398,33 @@ if __name__ == '__main__':
                 #     print("Issue with:", fil)
                 #     pass
 
-        tid_df = pd.concat(tid_df)
-        # tid_df.columns = tid_df.columns.map(''.join)
-        tid_df = tid_df.fillna(0).sort_values(by=['ET_TX'])  # .reset_index()
+        if False:
+           tid_df = pd.concat(tid_df)
+           # tid_df.columns = tid_df.columns.map(''.join)
+           tid_df = tid_df.fillna(0).sort_values(by=['ET_TX'])  # .reset_index()
 
-        print(tid_df.columns)
+           print(tid_df.columns)
 
-        # amat = tid_df[['altdiff_dem_data', 'dr/dA',
-        #    'dr/dC', 'dr/dR', 'dr/dh2']]
+           # amat = tid_df[['altdiff_dem_data', 'dr/dA',
+           #    'dr/dC', 'dr/dR', 'dr/dh2']]
 
-        # create_amat_csr(tid_df)
+           # create_amat_csr(tid_df)
 
-        tid_df.to_pickle(tmpdir + "tid_" + str(spk) + "_" + str(ym) + ".pkl")
+           tid_df.to_pickle(tmpdir + "tid_" + str(spk) + "_" + str(ym) + ".pkl")
 
-        fig, ax1 = plt.subplots(nrows=1)
+           fig, ax1 = plt.subplots(nrows=1)
 
-        # create data
-        x = tid_df.dR_tid  # altdiff_dem
-        # if y = sim with tides and no errors -> horiz line,
-        # else if tides not included in model, and no other errors, 1:1 bisec
-        y = tid_df.altdiff_dem_data * -1.
+           # create data
+           x = tid_df.dR_tid  # altdiff_dem
+           # if y = sim with tides and no errors -> horiz line,
+           # else if tides not included in model, and no other errors, 1:1 bisec
+           y = tid_df.altdiff_dem_data * -1.
 
-        # Big bins
-        plt.hist2d(x, y, bins=(50, 50), cmap=plt.cm.jet)
-        fig.savefig(
-            tmpdir + 'tid_histo_' + spk + '_' + str(
-                ym) + '.png')  # '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/tid_median_df.png')
+           # Big bins
+           plt.hist2d(x, y, bins=(50, 50), cmap=plt.cm.jet)
+           fig.savefig(
+               tmpdir + 'tid_histo_' + spk + '_' + str(
+                   ym) + '.png')  # '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/tid_median_df.png')
 
     end = time.time()
     print('----- Runtime TidTest tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
