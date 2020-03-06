@@ -217,7 +217,7 @@ def main(args):
                     track.sol_prev_iter = {'orb':orb_sol,
                                        'glo':glo_sol}
             # if first iter, check if track has been pre-processed by fit2dem and import corrections
-            else:
+            elif int(iter_in) == 0:
                 try:
                     gtrack_fit2dem = outdir+outdir_in+'/'+track_id+'.pkl'
                     fit2dem_res = gtrack(vecopts)

@@ -38,6 +38,8 @@ class Amat:
         self.spA = None
         self.b = None
         self.spA_penal = None
+        self.converged = False
+        self.resid_wrmse = None
 
     def setup(self, xov):
 

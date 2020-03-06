@@ -12,13 +12,13 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for iter in np.arange(0, 1):
+        for iter in np.arange(1, 3):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)
 
                 # Preliminary step to fit orbits and pointing to current knowledge of topography (direct altimetry)
-                if iter == 0:
+                if iter == 0 and False:
                     start = time.time()
                     for y in np.arange(11, 16, 1): #np.append([8],np.arange(11, 16, 1)):
                         for m in np.arange(1, 13, 1):
@@ -43,8 +43,8 @@ if __name__ == '__main__':
                         (end - start) / 60.) + ' min -----')
 
                 start = time.time()
-                for y in [12]: #np.arange(11, 16, 1): #np.append([8],np.arange(11, 16, 1)):
-                    for m in [11]: #np.arange(1, 13, 1):
+                for y in np.arange(11, 16, 1): #np.append([8],np.arange(11, 16, 1)):
+                    for m in np.arange(1, 13, 1):
                         # print(["python3", "launch_test.py", str(rough_test), ' ', str(y), f'{m:02}', "1", str(i)])
                         # exit()
                         ym = f'{y:02}'+ f'{m:02}'
@@ -57,8 +57,6 @@ if __name__ == '__main__':
                 end = time.time()
 
                 print('----- Runtime PyGeoloc tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
-
-                exit()
 
                 start = time.time()
     
@@ -95,7 +93,7 @@ if __name__ == '__main__':
                         #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
                         loadfile.write(('').join(
                             ['python3 launch_test.py ', str(rt), ' ', f'{y:02}', f'{m:02}', ' 1 ', str(iter), '\n']))
-                        loadfile.write(('').join(
+                        load_fit2dem.write(('').join(
                             ['python3 fit2dem.py ', f'{y:02}', f'{m:02}', '\n']))
 
                 loadfile.close()

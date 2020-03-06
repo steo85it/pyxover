@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# ----------------------------------
+# Select uniform orbit subset for simulation purposes and apply to dataset
+# ----------------------------------
+# Author: Stefano Bertone
+# Created: 24-Jul-2019
+#
+# if main PyXover in other folder, first launch "export PYTHONPATH="$PWD:$PYTHONPATH" from PyXover dir
+
 import glob
 import itertools as itert
 import shutil
@@ -43,6 +52,8 @@ def compare_subsets():
 
     return intersect_percent
 
+# note: revert with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${f%.BAK}.TAB";done**
+#       check with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
 def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
 
     subs = load(tracklist)

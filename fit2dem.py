@@ -254,7 +254,7 @@ def create_amat_csr(tid_df):
     ax1.hist(sol[0][:-1], density=False, bins=200, label="post-fit")
     ax1.set_xlim(-500, 500)  # (min(sol[0][:-1]), max(sol[0][:-1])))
     plt.legend()
-    plt.savefig(tmpdir + "dem_lsqfit_" + spk + ".png")
+    plt.savefig(tmpdir + "dem_lsqfit_" + exp + ".png")
 
     print("h2 solution is 0.8 (a priori)+", sol[0][-1], "with error ", sol[-1][-1])
 
@@ -316,19 +316,19 @@ if __name__ == '__main__':
     read_pkl = 0
 
     # epo = '1212'
-    spk = 'KX1r_0'  # 'KX0_0'
+    exp = 'KX1r_0'  # 'KX0_0'
     rghn = '0res_1amp'
 
     if read_pkl:
 
         tid_df = pd.DataFrame()
         if local:
-            for f in glob.glob(tmpdir + "tid_" + str(spk) + "_????.pkl"):
+            for f in glob.glob(tmpdir + "tid_" + str(exp) + "_????.pkl"):
                 # print(f)
                 # print(pd.read_pickle(f))
                 tid_df = tid_df.append(pd.read_pickle(f), ignore_index=True)
         else:
-            for f in glob.glob(tmpdir + "tid_" + str(spk) + "_12??.pkl"):
+            for f in glob.glob(tmpdir + "tid_" + str(exp) + "_12??.pkl"):
                 print("Processing", f)
                 tid_df = tid_df.append(pd.read_pickle(f), ignore_index=True)
 
@@ -364,9 +364,9 @@ if __name__ == '__main__':
             # '/att/nobackup/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp'])
 
         if local:
-            path = outdir + 'sim/' + spk + '/' + rghn + '/gtrack_' + str(ym)[:2] + '/gtrack_' + str(ym) + '*.pkl'
+            path = outdir + 'sim/' + exp + '/' + rghn + '/gtrack_' + str(ym)[:2] + '/gtrack_' + str(ym) + '*.pkl'
         else:
-            path = outdir + 'sim/' + spk + '/' + rghn + '/gtrack_' + str(ym)[:2] + '/gtrack_' + str(ym) + '*.pkl'
+            path = outdir + 'sim/' + exp + '/' + rghn + '/gtrack_' + str(ym)[:2] + '/gtrack_' + str(ym) + '*.pkl'
         # path = '/home/sberton2/Works/NASA/Mercury_tides/out/sim/'+ spk + '/3res_20amp/gtrack_*' + '/' + '*.pkl'
 
         allFiles = glob.glob(os.path.join(path))
@@ -386,7 +386,7 @@ if __name__ == '__main__':
         if parallel:
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count())
-            tid_df, ACRcorr = pool.map(extract_dRvsLAT, allFiles)  # parallel
+            tid_df = pool.map(extract_dRvsLAT, allFiles)  # parallel
             pool.close()
             pool.join()
         else:
@@ -398,32 +398,33 @@ if __name__ == '__main__':
                 #     print("Issue with:", fil)
                 #     pass
 
-        tid_df = pd.concat(tid_df)
-        # tid_df.columns = tid_df.columns.map(''.join)
-        tid_df = tid_df.fillna(0).sort_values(by=['ET_TX'])  # .reset_index()
+        if False:
+           tid_df = pd.concat(tid_df)
+           # tid_df.columns = tid_df.columns.map(''.join)
+           tid_df = tid_df.fillna(0).sort_values(by=['ET_TX'])  # .reset_index()
 
-        print(tid_df.columns)
+           print(tid_df.columns)
 
-        # amat = tid_df[['altdiff_dem_data', 'dr/dA',
-        #    'dr/dC', 'dr/dR', 'dr/dh2']]
+           # amat = tid_df[['altdiff_dem_data', 'dr/dA',
+           #    'dr/dC', 'dr/dR', 'dr/dh2']]
 
-        # create_amat_csr(tid_df)
+           # create_amat_csr(tid_df)
 
-        tid_df.to_pickle(tmpdir + "tid_" + str(spk) + "_" + str(ym) + ".pkl")
+           tid_df.to_pickle(tmpdir + "tid_" + str(exp) + "_" + str(ym) + ".pkl")
 
-        fig, ax1 = plt.subplots(nrows=1)
+           fig, ax1 = plt.subplots(nrows=1)
 
-        # create data
-        x = tid_df.dR_tid  # altdiff_dem
-        # if y = sim with tides and no errors -> horiz line,
-        # else if tides not included in model, and no other errors, 1:1 bisec
-        y = tid_df.altdiff_dem_data * -1.
+           # create data
+           x = tid_df.dR_tid  # altdiff_dem
+           # if y = sim with tides and no errors -> horiz line,
+           # else if tides not included in model, and no other errors, 1:1 bisec
+           y = tid_df.altdiff_dem_data * -1.
 
-        # Big bins
-        plt.hist2d(x, y, bins=(50, 50), cmap=plt.cm.jet)
-        fig.savefig(
-            tmpdir + 'tid_histo_' + spk + '_' + str(
-                ym) + '.png')  # '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/tid_median_df.png')
+           # Big bins
+           plt.hist2d(x, y, bins=(50, 50), cmap=plt.cm.jet)
+           fig.savefig(
+               tmpdir + 'tid_histo_' + exp + '_' + str(
+                   ym) + '.png')  # '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/tid_median_df.png')
 
     end = time.time()
     print('----- Runtime TidTest tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')

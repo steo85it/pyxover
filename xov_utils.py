@@ -31,6 +31,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     rmslist = []
     rmsprelist = []
     biaslist = []
+    driftlist = []
     trlist = []
     for tr in tracks:
         try:
@@ -51,14 +52,14 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             # exit()
 
             parametrizations = [
-        	[np.ones(len(x))],
-        	# np.column_stack((x, np.ones(len(x)))),
+        	# [np.ones(len(x))],
+        	np.column_stack((x, np.ones(len(x)))),
         	# np.column_stack((x**2, x, np.ones(len(x)))),
         	# np.column_stack((x**3, x**2, x, np.ones(len(x))))
             ]
             X = parametrizations[0]
             # only if param with bias only
-            X = X[0]
+            # X = X[0]
 
             result = sm.OLS(y, X).fit()
 
@@ -67,15 +68,19 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             rlm_results = rlm_model.fit()
 
             if False and debug:
-                print(rlm_results.summary())
-                print(rlm_results.params)
+                # print("rlm_results")
+                # print(rlm_results.summary())
+                print("rlm_results (x1,const):",np.array(rlm_results.params).round(2))
 
             rmspre = rmse(y, np.zeros(len(y)))
             # only if param with bias only
-            X = X[..., np.newaxis]
+            # X = X[..., np.newaxis]
             rmspost = rmse(y, X.dot(rlm_results.params))
 
-            if local and plot_xov_tseries and rmspre > 100.:
+            Rbias = rlm_results.params.round(1)[1]
+            Rdrift = rlm_results.params.round(1)[1]
+
+            if local and plot_xov_tseries and Rbias > 30.:
                 fig = plt.figure(figsize=(12, 8))
                 plt.style.use('seaborn-poster')
                 ax = fig.add_subplot(111)
@@ -85,27 +90,30 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
                 ax.plot(x, -1. * np.ones(len(result.fittedvalues)) * rmspre, 'r--')
                 ax.legend(loc="best")
                 ax.set_xlim(right=1500)
-                title = "res R bias : " + str(rlm_results.params.round(1)[0]) + " m -- RMSE : " + str(
-                    rmspre.round(1)) + " m"  # / "+ str(rmspost.round(1)) + "m"
+                title = "sol: R bias : " + str(rlm_results.params.round(1)[1]) + \
+                        "m, R drift : " + str(rlm_results.params.round(2)[0]) + " m/s -- RMSE : " + \
+                        str(rmspre.round(1)) + " m"  # / "+ str(rmspost.round(1)) + "m"
                 ax.set_title(title)
-                plt.savefig(tmpdir + 'orb_res_xov_' + tr + '.png')
+                plt.savefig(tmpdir + 'orb_res_xov_' + str(tr) + '.png')
 
             trlist.append(tr)
-            biaslist.append(rlm_results.params.round(1)[0])
+            biaslist.append(Rbias)
+            driftlist.append(Rdrift)
             rmsprelist.append(rmspre.round(1))
             rmslist.append(rmspost.round(1))
 
-            #print(trlist,biaslist,rmsprelist,rmslist)
+            # print(len(trlist),len(biaslist),len(rmsprelist),len(driftlist),len(rmslist))
 
         except:
             trlist.append(tr)
             biaslist.append(1.e-6)
+            driftlist.append(1.e-6)
             rmsprelist.append(1.e-6)
             rmslist.append(1.e-6)
             # print(tr,y)
 
-    postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, rmslist]).T,
-                           columns=['track', 'pre', 'bias', 'minus-Rbias']).astype(float).astype({'track': int})
+    postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, driftlist, rmslist]).T,
+                           columns=['track', 'pre', 'bias', 'drift', 'minus-Rbias']).astype(float).astype({'track': int})
 
     if local and plot_xov_tseries:
         plot_tracks_histo([postfit])

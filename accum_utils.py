@@ -51,18 +51,20 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     # A_tracks = csr_matrix(A_tracks.values)
 
     # reorder tracks (!!!) and extract variances
-    huber_threshold_track = 20
-    tmp = tracks_rms_df.sort_values(by='track').pre.abs().values
+    huber_threshold_track = 5
+    # tmp = tracks_rms_df.sort_values(by='track').pre.abs().values
+    # makes sense to use the bias and not the rms (actually the average value would also be fine...)
+    tmp = tracks_rms_df.sort_values(by='track').bias.abs().values
     huber_weights_track = np.where(tmp > huber_threshold_track, (tmp / huber_threshold_track) ** 1, 1.)
 
-    if plot_stuff and local and debug:
+    if plot_stuff and local: # and debug:
         # plot histo
         plt.figure() #figsize=(8, 3))
         # plt.xlim(-1.*xlim, xlim)
         # the histogram of the data
-        num_bins = 40  # 'auto'
+        num_bins = 'auto'
         n, bins, patches = plt.hist(huber_weights_track.astype(np.float),
-                                    bins=num_bins, cumulative=True)  # , density=True, facecolor='blue',
+                                    bins=num_bins) #, cumulative=True)  # , density=True, facecolor='blue',
         # alpha=0.7, range=[-1.*xlim, xlim])
         plt.xlabel('weight (1/m)')
         plt.ylabel('# tracks')

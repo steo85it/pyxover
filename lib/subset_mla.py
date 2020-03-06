@@ -6,7 +6,7 @@
 # Created: 24-Jul-2019
 #
 # if main PyXover in other folder, first launch "export PYTHONPATH="$PWD:$PYTHONPATH" from PyXover dir
-# note: revert with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${i%..BAK}.TAB";done**
+# note: revert with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${f%.BAK}.TAB";done**
 #       check with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
 
 import os
@@ -27,8 +27,8 @@ def read_all_files(path):
 if __name__ == '__main__':
 
     local = 0
-    exp = "tpAp"
-    kind = "3res_20amp"
+    exp = "tp2"
+    kind = "3res_30amp"
     use_existing_sel =True
     ntracks = 500
 

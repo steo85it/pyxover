@@ -257,7 +257,16 @@ def get_roughness_at_coord(lon,lat,roughness_map):
     # select 0.7 km baseline only
     da = da.loc[dict(band=3)]
 
-    # reproject in roughness dataArray (geotif) projection
+    # ###########################
+    # rough500_map = pd.read_csv('/home/sberton2/Downloads/0.50km_g_for_gmt.xyz',header=None,names=['lon','lat','rough_500m'])
+    # print(rough500_map)
+    # xds = xr.Dataset.from_dataframe(rough500_map)
+    # print(xds)
+    # exit()
+    #
+    # ###########################
+
+    # reproject xovers coords in roughness dataArray (geotif) projection
     p = pyproj.Proj(da.attrs['crs'])
     x, y = p(lon,lat)
 
