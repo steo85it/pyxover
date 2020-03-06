@@ -897,10 +897,10 @@ def add_xov_separation(tmp):
 
 if __name__ == '__main__':
 
-    simulated_data = False
+    simulated_data = True
     #analyze_sol(sol='KX1r2_9', ref_sol='KX1r2_0', subexp = '0res_1amp')
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
-    # check_iters(sol='tp9_0',subexp='3res_20amp')
-    check_iters(sol='KX1r2_0',subexp='0res_1amp')
+    check_iters(sol='tp4_0',subexp='3res_20amp')
+    # check_iters(sol='KX1r2_0',subexp='0res_1amp')
 

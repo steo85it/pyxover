@@ -21,7 +21,7 @@ from prOpt import outdir, tmpdir, auxdir, vecopts
 from project_coord import project_stereographic
 
 subdir = "" # archived/KX1r2_fitglborb/"
-subexp = '0res_1amp'
+subexp = '3res_20amp'
 
 
 def plot_topo(df):
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     ## subtract
     # grdmath
 
-    sols = ['KX1r2_0'] #,'KX1r2_17']
+    sols = ['tp4_0'] #,'KX1r2_17']
     topomaps = []
 
     new_lats = np.deg2rad(np.arange(0, 180, 1))
@@ -159,5 +159,5 @@ if __name__ == '__main__':
             dflist = pd.concat(dflist)
             print("Done read+concat")
 
-            dflist.to_csv(tmpdir+"ladata_concat_AG_AC_"+sol+".txt", sep='\t', index=False,header=False)
+            dflist.to_csv(tmpdir+"ladata_concat_"+sol+".txt", sep='\t', index=False,header=False)
     exit()

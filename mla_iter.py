@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for iter in np.arange(0, 10):
+        for iter in np.arange(0, 20):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)
@@ -151,7 +151,7 @@ if __name__ == '__main__':
                     print("*** PyGeol_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '00:45:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '01:30:00', '10'])
                 if iostat != 0:
                     print("*** PyXov_" + str(rt) + " failed on iter", iter)
                     exit(iostat)

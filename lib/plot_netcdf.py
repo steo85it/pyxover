@@ -103,7 +103,7 @@ if __name__ == '__main__':
     #     universal_newlines=True, cwd='tmp')
     #
     # _ = import_dem('/home/sberton2/tmp/run-DEM-final.grd') #tmpdir+'outfile.grd')
-    dem_A = import_dem('topo_AG_AC_KX1r2_0.grd')
+    dem_A = import_dem('topo_tp4_0.grd')
     exit()
     dem_B = import_dem('topo_AG_AC_KX1r2_0.grd')
 

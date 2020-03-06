@@ -58,7 +58,7 @@ h2_limit_on = False
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)
 # could be updated by checking chi2 or by VCE
-sigma_0 = 1.e-2 * 2. # * 0.85 # 0.16 #
+sigma_0 = 1.8 # 1.e-2 * 2. # * 0.85 # 0.16 #
 
 ########################################
 # test space
@@ -142,70 +142,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     return xov_cmb
 
 def get_stats(amat):
-    # import seaborn.apionly as sns
 
-    # print('resval,amplval', resval, amplval)
-    # #print(xov_cmb.xovers)
-    #
-    # dR_avg = []
-    # dR_std = []
-    # dR_max = []
-    # dR_min = []
-    # dR_RMS = []
-    #
-    # for idx, xov in enumerate(xov_lst):
-    #
-    #     #print(idx, xov)
-    #
-    #     if len(xov.xovers)>0:
-    #         xov.xovers['dist_avg'] = xov.xovers.filter(regex='^dist_[A,B].*$').mean(axis=1)
-    #         xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
-    #         xov.xovers['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
-    #         xov.xovers['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
-    #         xov.xovers['dist_min_avg'] = xov.xovers.filter(regex='^dist_min.*$').mean(axis=1)
-    #
-    #         # remove data if xover distance from measurements larger than 5km (interpolation error)
-    #         # plus remove outliers with median method
-    #         if remove_max_dist:
-    #             if debug:
-    #                 print(xov.xovers.filter(regex='^dist_.*$'))
-    #             print(len(xov.xovers[xov.xovers.dist_max > 0.4]),
-    #                   'xovers removed by dist from obs > 0.4 km out of ',
-    #                   len(xov.xovers),", or ",
-    #                   len(xov.xovers[xov.xovers.dist_max > 0.4])/len(xov.xovers)*100.,'%')
-    #             xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
-    #         if sim_altdata == 0:
-    #             mean_dR, std_dR, worse_tracks = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
-    #
-    #         # weight residuals
-    #         if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-    #             xov.xovers['dR'] *= amat.weights
-    #         # exit()
-    #         #print(xov.xovers[['dist_max','dist_avg','dist_minA','dist_minB','dist_min_avg','dR']])
-    #         # checks = ['dist_minA','dist_minB','dist_max','dist_min_avg','dist_avg','dR']
-    #         # for c in checks:
-    #         #     print(c,xov.xovers[c].mean(axis=0),xov.xovers[c].max(axis=0),xov.xovers[c].min(axis=0))
-    #         # _ = xov.xovers.dR.values**2
-    #         # print('RMS',np.sqrt(np.mean(_[~np.isnan(_)],axis=0)))
-    #
-    #         # print('dR:',xov.xovers['dR'].mean(axis=0),xov.xovers['dR'].max(axis=0),xov.xovers['dR'].min(axis=0))
-    #         # print(xov.xovers[['dist_max','dR']].abs())
-    #         #TODO update, not very useful
-    #         if debug and local and False:
-    #             plt_histo_dR(idx, mean_dR, std_dR, xov.xovers)
-    #
-    #             xov.xovers[['dist_max', 'dR']].abs().plot(kind='scatter', x='dist_max', y='dR')
-    #             plt.savefig('tmp/dR_vs_dist_' + str(idx) + '.png')
-    #             plt.clf()
-    #
-    #             xov.xovers['dist_avg'].plot()
-    #             plt.savefig('tmp/dist_' + str(idx) + '.png')
-    #             plt.close()
-    #
-    #         dR_avg.append(xov.xovers.dR.mean(axis=0))
-    #         dR_std.append(xov.xovers.dR.std(axis=0))
-    #         dR_max.append(xov.xovers.dR.max(axis=0))
-    #         dR_min.append(xov.xovers.dR.min(axis=0))
     # xover residuals
     w = amat.xov.xovers['dR'].values
     nobs = len(w)
@@ -221,8 +158,6 @@ def get_stats(amat):
         xsol.append(list(filtered_dict.values())[0])
         filtered_dict = {k: v for (k, v) in amat.sol_dict['std'].items() if filt in k}
         xstd.append(list(filtered_dict.values())[0])
-
-    print("check sol4pars",amat.parNames,amat.sol4_pars,amat.parNames==amat.sol4_pars)
 
     if amat.sol4_pars != []:
         # select columns of design matrix corresponding to chosen parameters to solve for
@@ -245,8 +180,8 @@ def get_stats(amat):
         missing = [amat.sol4_pars.index(x) for x in missing]
         xT = np.delete(xT, missing)
     ##################
-    print(ATPb.shape)
-    print(xT.shape)
+    #print(ATPb.shape)
+    #print(xT.shape)
     vTPv = lTPl - xT@ATPb
     print("pre-RMS=",np.sqrt(lTPl/(nobs-npar))," post-RMS=",np.sqrt(vTPv/(nobs-npar)))
 
@@ -261,6 +196,7 @@ def get_stats(amat):
     xTlP = xT@amat.penalty_mat
     xTlPx = xTlP@xT.T
     m0 = np.sqrt((vTPv+xTlPx)/nobs)
+    amat.resid_wrmse = m0
 
     print("Weighted a-posteriori RMS is ", m0, " - chi2 = ", m0/sigma_0)
 
@@ -468,7 +404,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     # Solve
     if not local:
-        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL'] #,'dR/dh2'] # [None] # used on pgda, since prOpt badly read
+        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] # [None] # used on pgda, since prOpt badly read
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -1015,10 +951,10 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
     # exit()
 
     Nexcluded = 0
-    # print(sol4_glo)
     # print(spla.norm(spA[:,-5:],axis=0))
     for i in range(len(sol4_glo)):
-
+        # if an error arises, check the hard-coded list of solved for
+        # global parameters
         data = spA.tocsc()[:, -i - 1].data
         median_residuals = np.abs(data - np.median(data, axis=0))
         sorted = np.sort(median_residuals)
@@ -1109,8 +1045,8 @@ def analyze_sol(xovi_amat,xov):
     # print(np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]))
     # exit()
 
-    print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
-                              len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
+    # print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
+    #                          len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
 
     # Ordering is important here, don't use set or other "order changing" functions
     _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)),
@@ -1288,17 +1224,22 @@ def main(arg):
                                 '_' + str(ext_iter - 1) + '/' +
                                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
             else:
-                parsk = list(xov_cmb.pert_cloop.to_dict().keys())
-                trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
+                # TODO!! Check how to activate only if fit2dem used (and not in simulation mode)
+                #pass
+                if False:
+                   parsk = list(xov_cmb.pert_cloop.to_dict().keys())
+                   trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
 
-                fit2dem_sol = np.ravel([list(x.values()) for x in xov_cmb.pert_cloop.to_dict().values()])
-                fit2dem_keys = [tr+'_dR/'+par for par in parsk for tr in trackk]
-                fit2dem_dict = dict(zip(fit2dem_keys,fit2dem_sol))
+                   fit2dem_sol = np.ravel([list(x.values()) for x in xov_cmb.pert_cloop.to_dict().values()])
+                   fit2dem_keys = [tr+'_dR/'+par for par in parsk for tr in trackk]
+                   fit2dem_dict = dict(zip(fit2dem_keys,fit2dem_sol))
 
+                   previous_iter = Amat(vecopts)
+                   previous_iter.sol_dict = {'sol':fit2dem_dict,'std':dict(zip(fit2dem_keys,np.zeros(len(fit2dem_keys))))}
+                   previous_iter.sol_dict_iter = previous_iter.sol_dict
                 previous_iter = Amat(vecopts)
-                previous_iter.sol_dict = {'sol':fit2dem_dict,'std':dict(zip(fit2dem_keys,np.zeros(len(fit2dem_keys))))}
-                # previous_iter.sol_dict_iter = previous_iter.sol_dict
-                # previous_iter = None
+                previous_iter.sol_dict_iter = None
+
 
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
@@ -1375,7 +1316,7 @@ def main(arg):
             xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
 
             # Cumulate with solution from previous iter
-            if (int(ext_iter) > 0) | (previous_iter != None):
+            if (int(ext_iter) > 0) | (previous_iter.sol_dict != None):
                 # sum the values with same keys
                 updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
                 updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
