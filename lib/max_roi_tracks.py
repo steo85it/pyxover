@@ -142,10 +142,10 @@ if __name__ == '__main__':
         print('# Use as python3 max_roi_tracks.py rand_seed')
 
     proc = int(sys.argv[1])
-    run(seed=proc,sub_len=500)
+    #run(seed=proc,sub_len=500)
 
-    intersect_percent = compare_subsets()
-    print(intersect_percent)
+    #intersect_percent = compare_subsets()
+    #print(intersect_percent)
 
     apply_selection(tracklist=tmpdir + 'bestROItracks500_563-464424.pkl',
-                    exp ='tp2', kind ='3res_30amp')
+                    exp ='tp4', kind ='3res_20amp')

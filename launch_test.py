@@ -14,6 +14,7 @@ from prOpt import sim_altdata, local, outdir
 #------------
 # tp2: full dataset, simulation, no perturbations (0-test)
 # tp3: full dataset, simulation, h2 = 0, no perturbations
+# tp4: full dataset, simulation, h2 = 1.0, no perturbations, noise, PM@J2013.0
 # tp8: full dataset, simulation, h2 = 0.8, no perturbations (as tp2, but updated code --> eg, 0.5 in tid)
 # tp9: full dataset, simulation, h2 = 0.8, no perturbations, noise, PM@J2013.0
 # KX1: real data, tidal h2=0.8 included (=1 after 27-Jan)
@@ -23,7 +24,7 @@ from prOpt import sim_altdata, local, outdir
 if __name__ == '__main__':
 
     data_sim = 'sim'  # 'data' #
-    exp = 'tp2' # 'AGS' # 'tp9' #  '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
+    exp = 'tp4' # 'KX1r3' # '1212_KX/' # 'mlatimes/1301' # '' #  '1s' #
     # exp += '_'+str(ext_iter)
 
 #    res = [3]

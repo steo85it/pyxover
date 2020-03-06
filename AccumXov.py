@@ -51,14 +51,14 @@ remove_3sigma_median = False
 remove_dR200 = False
 # only applied if the above ones are false
 clean_part = True
-huber_threshold = 20
+huber_threshold = 30
 distmax_threshold = 0.2
 offnad_threshold = 2
 h2_limit_on = False
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)
 # could be updated by checking chi2 or by VCE
-sigma_0 = 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
+sigma_0 = 1.8 # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
 convergence_criteria = 0.01 # =1%
 
 ########################################
@@ -181,8 +181,8 @@ def get_stats(amat):
         missing = [amat.sol4_pars.index(x) for x in missing]
         xT = np.delete(xT, missing)
     ##################
-    # print(ATPb.shape)
-    # print(xT.shape)
+    #print(ATPb.shape)
+    #print(xT.shape)
     vTPv = lTPl - xT @ ATPb
     print("pre-RMS=", np.sqrt(lTPl / (nobs - npar)), " post-RMS=", np.sqrt(vTPv / (nobs - npar)))
 
@@ -480,7 +480,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
                     plt.clf()
 
     #######
-        #
+
         # interp_weights = get_weight_regrough(xovi_amat.xov).reset_index()  ### old way using residuals to extract roughness
         #
         # get interpolation error based on roughness map (if available at given latitude) + minimal distance
@@ -903,10 +903,10 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
     # exit()
 
     Nexcluded = 0
-    # print(sol4_glo)
     # print(spla.norm(spA[:,-5:],axis=0))
     for i in range(len(sol4_glo)):
-
+        # if an error arises, check the hard-coded list of solved for
+        # global parameters
         data = spA.tocsc()[:, -i - 1].data
         median_residuals = np.abs(data - np.median(data, axis=0))
         sorted = np.sort(median_residuals)
@@ -997,8 +997,8 @@ def analyze_sol(xovi_amat,xov):
     # print(np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]))
     # exit()
 
-    print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
-                              len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
+    # print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
+    #                          len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
 
     # Ordering is important here, don't use set or other "order changing" functions
     _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)),
@@ -1224,7 +1224,7 @@ def main(arg):
                 # print("max_orb_corr,max_orb_drift_corr,max_att_corr")
                 # print(max_orb_corr, max_orb_drift_corr, max_att_corr)
 
-                if max_orb_corr > 2000 or max_orb_drift_corr > 500 or max_att_corr > 20.:
+                if max_orb_corr > 200 or max_orb_drift_corr > 50 or max_att_corr > 2.:
                     print("Solution fixed for track", tr, 'with max_orb_corr,max_orb_drift_corr,max_att_corr:',max_orb_corr, max_orb_drift_corr, max_att_corr)
                     sol_dict_iter_clean.append(dict.fromkeys(soltmp, 0.))
                     bad_count += 1
@@ -1264,7 +1264,8 @@ def main(arg):
             xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
 
             # Cumulate with solution from previous iter
-            if (int(ext_iter) > 0) | (previous_iter != None):
+            if int(ext_iter) > 0 | previous_iter != None | \
+                    previous_iter.sol_dict != None:
                 # sum the values with same keys
                 updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
                 updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
