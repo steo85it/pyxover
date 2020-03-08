@@ -282,6 +282,9 @@ def get_roughness_at_coord(lon,lat,roughness_map):
     # set standard roughness for rest of planet ()
     roughness_df.loc[(roughness_df['LAT'] < 65) | (roughness_df['LAT'] > 84), 'rough_700m'] = 25.
     roughness_df['rough_700m'] += 1.e-1
+    # if simulation with fixed small scale of 20 mt at 600 mt (important thing is that it's the same everywhere)
+    print("ACHTUNG!!!! Roughness fixed at constant value for simulations!!!!!")
+    roughness_df.loc[:,'rough_700m'] = 25.
     # roughness = roughness.round({'LAT':0,'LON':0, 'rough_700m':0})
 
     # check if interp and axes are aligned

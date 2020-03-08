@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for iter in np.arange(0, 20):
+        for iter in np.arange(0, 10):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)

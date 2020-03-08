@@ -58,8 +58,8 @@ h2_limit_on = False
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)
 # could be updated by checking chi2 or by VCE
-sigma_0 = 1.8 # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
-convergence_criteria = 0.01 # =1%
+sigma_0 = 1. # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
+convergence_criteria = 0.05 # =1%
 
 ########################################
 # test space
@@ -1264,22 +1264,25 @@ def main(arg):
             xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
 
             # Cumulate with solution from previous iter
-            if int(ext_iter) > 0 | previous_iter != None | \
-                    previous_iter.sol_dict != None:
-                # sum the values with same keys
-                updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
-                updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
-                xovi_amat.sol4_pars = list(updated_sol.keys())
+            if (int(ext_iter) > 0) and (previous_iter != None):
+                print(previous_iter.sol_dict)
+                if previous_iter.sol_dict != None:
+                    # sum the values with same keys
+                    updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
+                    updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
+                    xovi_amat.sol4_pars = list(updated_sol.keys())
 
-                xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
-                # use dict to update amat.sol, keep std
-                xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
-                # print(xovi_amat.sol)
-                # print(xovi_amat.sol_dict)
-                # exit()
-                orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
-                print("Cumulated solution")
-                print_sol(orb_sol, glb_sol, xov, xovi_amat)
+                    xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
+                    # use dict to update amat.sol, keep std
+                    xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
+                    # print(xovi_amat.sol)
+                    # print(xovi_amat.sol_dict)
+                    # exit()
+                    orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
+                    print("Cumulated solution")
+                    print_sol(orb_sol, glb_sol, xov, xovi_amat)
+                else:
+                    print("previous_iter.sol_dict=",previous_iter.sol_dict)
 
         else:
             # clean only
@@ -1304,15 +1307,21 @@ def main(arg):
     if partials:
         get_stats(amat=xovi_amat)
 
-    print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
+    #print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
 
     # set as converged if relative improvement of residuals RMSE lower than convergence criteria
     if ext_iter > 0:
-        # print(xovi_amat.resid_wrmse,previous_iter.resid_wrmse)
-        relative_improvement = (xovi_amat.resid_wrmse - previous_iter.resid_wrmse)/xovi_amat.resid_wrmse
+        print(xovi_amat.resid_wrmse,previous_iter.resid_wrmse)
+        relative_improvement = np.abs((xovi_amat.resid_wrmse - previous_iter.resid_wrmse)/xovi_amat.resid_wrmse)
         print("Relative improvement at ", (relative_improvement*100.).round(2), "% at iteration", ext_iter)
-        if relative_improvement > convergence_criteria:
-            previous_iter.converged = True
+        if relative_improvement <= convergence_criteria:
+            print("Solution converged at iter",ext_iter)
+            xovi_amat.converged = True
+        elif  previous_iter.converged == True:
+            print("Solution already converged...")
+            xovi_amat.converged = True
+        else:
+            xovi_amat.converged = False
 
     # TODO not sure wether it can also be saved when just computing residuals
     if partials:
@@ -1324,6 +1333,7 @@ def main(arg):
             xovi_amat.save(
                 (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1) + '.pkl')
 
+    print("AccumXov ended succesfully!")
     return True
 
 

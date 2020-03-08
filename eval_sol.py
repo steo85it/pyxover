@@ -566,14 +566,18 @@ def check_iters(sol, subexp=''):
     m_X_iters = []
     iters_track_rms = []
 
+    if len(prev_sols) == 0:
+        print("*** eval_sol: No solutions selected")
+        exit(1)
+
     for idx,isol in enumerate(prev_sols[:]):
-        print(prev_sols)
+        # print(prev_sols)
         prev = Amat(vecopts)
         prev = prev.load(isol)
 
-        iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
+        #iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
 
-        add_xov_separation(prev)
+        #add_xov_separation(prev)
         # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
         # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
         # mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
@@ -612,25 +616,27 @@ def check_iters(sol, subexp=''):
             nnz_per_row = prev.spA.getnnz(axis=1)
             prev.b[np.where(nnz_per_row == 0)[0]] = 0
 
-        xT = np.array(xsol).reshape(1,-1)
+        # xT = np.array(xsol).reshape(1,-1)
         ATP = prev.spA.T * prev.weights
-        ATPb = ATP * prev.b
+        # ATPb = ATP * prev.b
 
         # when iterations have inconsistent npars, some are imported from previous sols for
         # consistency reasons. Here we remove these values from the computation of vTPv
         # else matrix shapes don't match
-        if len(ATPb) != len(xT):
-          missing = [x for x in prev.sol4_pars if x not in prev.parNames]
-          missing = [prev.sol4_pars.index(x) for x in missing]
-          xT = np.delete(xT,missing)
-        #print(prev.sol4_pars)
-        ##################
-        vTPv = lTPl # - xT@ATPb # TODO CORRECT THIS!!!!
+        # if len(ATPb) != len(xT):
+        #   missing = [x for x in prev.sol4_pars if x not in prev.parNames]
+        #   missing = [prev.sol4_pars.index(x) for x in missing]
+        #   xT = np.delete(xT,missing)
+        # #print(prev.sol4_pars)
+        # ##################
+        # vTPv = lTPl # - xT@ATPb # TODO CORRECT THIS!!!!
         degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
         #print("vTPv = ", vTPv, vTPv/degf)
         #print("degf = ", degf)
-        m_0 = np.sqrt(vTPv/degf)[0][0]
-        print(m_0)
+        # m_0 = np.sqrt(vTPv/degf)[0][0]
+
+        m_0 = prev.resid_wrmse
+        # print("m0 = ",m_0)
         iters_rms.append([tst_id, np.sqrt(lTPl/degf)[0][0], m_0, degf])
 
         # ATPA = ATP * prev.spA
@@ -712,7 +718,7 @@ def check_iters(sol, subexp=''):
                         #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
                         # print(df_sol.columns)
 
-                    prev.pert_cloop.drop(['dA1', 'dC1', 'dR1'], axis='columns', inplace=True)
+                        prev.pert_cloop.drop(['dA1', 'dC1', 'dR1'], axis='columns', inplace=True)
                     prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
                     df_sol.columns = prev.pert_cloop.columns
                     _ = prev.pert_cloop.astype(float)
@@ -747,10 +753,12 @@ def check_iters(sol, subexp=''):
     else:
         fig, [ax1,ax2,ax4] = plt.subplots(nrows=3,sharex=True)
 
-    print("Total RMS for iters: ")
+    print("Total RMS for iters (iter,ltpl,m0,degf,%change): ")
     iters_rms = np.array(iters_rms)
     iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
-    print(iters_rms)
+    wrmse = iters_rms[:,2].astype(np.float)
+    perc_rms_change = np.concatenate([[None],np.abs((np.diff(wrmse)/wrmse[1:]*100.)).round(2)])
+    print(np.concatenate([iters_rms,perc_rms_change[:,np.newaxis]],axis=1))
 
     ax1.plot(iters_rms[:,1].astype('float'),'-r')
     ax1.set_ylabel('rms (m)')
@@ -847,7 +855,10 @@ def check_iters(sol, subexp=''):
             # get percentage of total perturbation still to be recovered
             print(iters_glores)
             print("Residual relative to formal errors")
-            print((iters_glores.abs()).div(m_X_iters[list(iters_glores.columns.values)]))
+            # print(iters_glores.abs())
+            # print(m_X_iters)
+            m_X_select = np.reshape([row["dR/"+x] for x in list(iters_glores.columns.values) for row in m_X_iters],(-1,len(m_X_iters))).T
+            print((iters_glores.abs()).div(m_X_select))
 
         iters_glocorr.plot(ax=ax4)
         ax4.set_ylabel('sol (glo sol)')
