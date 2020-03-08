@@ -40,7 +40,7 @@ import scipy.linalg as la
 # mylib
 # from mapcount import mapcount
 from prOpt import debug, outdir, tmpdir, local, sim_altdata, parOrb, parGlo, partials, sol4_glo, sol4_orb, sol4_orbpar, \
-    mean_constr, pert_cloop, OrbRep
+    mean_constr, pert_cloop, OrbRep, pert_cloop_orb
 from xov_setup import xov
 from Amat import Amat
 
@@ -58,7 +58,7 @@ h2_limit_on = False
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)
 # could be updated by checking chi2 or by VCE
-sigma_0 = 1.8 # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
+sigma_0 = 1 # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
 convergence_criteria = 0.01 # =1%
 
 ########################################
@@ -388,9 +388,16 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     # WEIGHTING TODO refactor to separate method
     # after convergence of residuals RMS at 1%, fix weights and bring parameters to convergence
-    if previous_iter != None and previous_iter.converged:
-        print("Weighta are fixed as solution converged to 1%")
-        obs_weights = previous_iter.weights
+    if True: #previous_iter != None and previous_iter.converged:
+        print("Weights are fixed as solution converged to 5%")
+        # associate weights of old solution to corresponding xov of current one (id by tracks, supposing uniqueness)
+        tmp_xov_trk = pd.DataFrame(xovi_amat.xov.xovers['orbA']+xovi_amat.xov.xovers['orbB'],columns = ['trksid'])
+        tmp_prev_trk = pd.DataFrame(previous_iter.xov.xovers['orbA']+previous_iter.xov.xovers['orbB'],columns = ['trksid'])
+        tmp_prev_trk['weights'] = previous_iter.weights.diagonal().T
+        obs_weights = pd.merge(tmp_xov_trk, tmp_prev_trk, how='left', on=['trksid'])
+        obs_weights = diags(obs_weights['weights'].fillna(0).values)
+        # unsafe if list of xov is different or ordered differently
+        # obs_weights = previous_iter.weights
     else:
         # compute huber weights (1 if x<huber_threshold, (huber_threshold/abs(dR))**2 if abs(dR)>huber_threshold)
         if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
@@ -518,7 +525,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
             # plt.xlim(-1.*xlim, xlim)
             # the histogram of the data
             num_bins = 200 #'auto'
-            n, bins, patches = plt.hist(tmp, bins=num_bins, range=[1.e-4,4.e-2], cumulative=-1) #, density=True, facecolor='blue',
+            n, bins, patches = plt.hist(tmp, bins=num_bins, range=[1.e-4,4.e-2]) #, cumulative=-1) #, density=True, facecolor='blue',
             # alpha=0.7, range=[-1.*xlim, xlim])
             plt.xlabel('obs weights')
             plt.ylabel('# tracks')
@@ -759,13 +766,19 @@ def solve(xovi_amat,dataset, previous_iter=None):
             # TODO to mimic what I was doing without weights
             # nobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.xov.xovers.huber > 0.5][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             # ascending=False)
-            n_goodobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.weights.diagonal() > 0.5*sigma_0][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
+            weights_mean = np.mean(xovi_amat.weights.diagonal())
+            # n_goodobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.weights.diagonal() > 0.5*sigma_0][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
+            n_goodobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.weights.diagonal() > 0.1*weights_mean][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
         else:
             n_goodobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
 
-        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 20].index]
+        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index]
+
+        if debug:
+            print("number of constrained pars", len(to_constrain))
+            print(to_constrain)
 
         for p in parindex:
             if p[0] in to_constrain:
@@ -865,9 +878,10 @@ def solve(xovi_amat,dataset, previous_iter=None):
 
     if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         tmp = obs_weights.diagonal()
-        print("Fully weighted obs (>0.5*sigma0): ", len(tmp[tmp>0.5*sigma_0]), "or ",len(tmp[tmp>0.5*sigma_0])/len(tmp)*100.,"%")
-        print("Slightly downweighted obs: ", len(tmp[(tmp<0.5*sigma_0)*(tmp>0.05*sigma_0)]), "or ",len(tmp[(tmp<0.5*sigma_0)*(tmp>0.05*sigma_0)])/len(tmp)*100.,"%")
-        print("Brutally downweighted obs (<0.05*sigma0): ", len(tmp[(tmp<0.05*sigma_0)]), "or ",len(tmp[(tmp<0.05*sigma_0)])/len(tmp)*100.,"%")
+        avg_weight = np.mean(tmp)
+        print("Fully weighted obs (>0.5*mean(weight)): ", len(tmp[tmp>0.5*avg_weight]), "or ",len(tmp[tmp>0.5*avg_weight])/len(tmp)*100.,"%")
+        print("Slightly downweighted obs: ", len(tmp[(tmp<0.5*avg_weight)*(tmp>0.05*avg_weight)]), "or ",len(tmp[(tmp<0.5*avg_weight)*(tmp>0.05*avg_weight)])/len(tmp)*100.,"%")
+        print("Brutally downweighted obs (<0.05*sigma0): ", len(tmp[(tmp<0.05*avg_weight)]), "or ",len(tmp[(tmp<0.05*avg_weight)])/len(tmp)*100.,"%")
 
     # exit()
 
@@ -1179,7 +1193,8 @@ def main(arg):
                 parsk = list(xov_cmb.pert_cloop.to_dict().keys())
                 trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
 
-                fit2dem_sol = np.ravel([list(x.values()) for x in xov_cmb.pert_cloop.to_dict().values()])
+                pertpar_list = list(pert_cloop_orb.keys())
+                fit2dem_sol = np.ravel([list(x.values()) for x in xov_cmb.pert_cloop.filter(pertpar_list).to_dict().values()])
                 fit2dem_keys = [tr+'_dR/'+par for par in parsk for tr in trackk]
                 fit2dem_dict = dict(zip(fit2dem_keys,fit2dem_sol))
 
@@ -1264,22 +1279,24 @@ def main(arg):
             xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
 
             # Cumulate with solution from previous iter
-            if int(ext_iter) > 0 | previous_iter != None | \
-                    previous_iter.sol_dict != None:
-                # sum the values with same keys
-                updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
-                updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
-                xovi_amat.sol4_pars = list(updated_sol.keys())
+            if (int(ext_iter) > 0) and (previous_iter != None):
+                if previous_iter.sol_dict != None:
+                    # sum the values with same keys
+                    updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
+                    updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
+                    xovi_amat.sol4_pars = list(updated_sol.keys())
 
-                xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
-                # use dict to update amat.sol, keep std
-                xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
-                # print(xovi_amat.sol)
-                # print(xovi_amat.sol_dict)
-                # exit()
-                orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
-                print("Cumulated solution")
-                print_sol(orb_sol, glb_sol, xov, xovi_amat)
+                    xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
+                    # use dict to update amat.sol, keep std
+                    xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
+                    # print(xovi_amat.sol)
+                    # print(xovi_amat.sol_dict)
+                    # exit()
+                    orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
+                    print("Cumulated solution")
+                    print_sol(orb_sol, glb_sol, xov, xovi_amat)
+                else:
+                    print("previous_iter.sol_dict=",previous_iter.sol_dict)
 
         else:
             # clean only
@@ -1309,10 +1326,16 @@ def main(arg):
     # set as converged if relative improvement of residuals RMSE lower than convergence criteria
     if ext_iter > 0:
         # print(xovi_amat.resid_wrmse,previous_iter.resid_wrmse)
-        relative_improvement = (xovi_amat.resid_wrmse - previous_iter.resid_wrmse)/xovi_amat.resid_wrmse
+        relative_improvement = np.abs((xovi_amat.resid_wrmse - previous_iter.resid_wrmse)/xovi_amat.resid_wrmse)
         print("Relative improvement at ", (relative_improvement*100.).round(2), "% at iteration", ext_iter)
-        if relative_improvement > convergence_criteria:
-            previous_iter.converged = True
+        if relative_improvement <= convergence_criteria:
+            print("Solution converged at iter",ext_iter)
+            xovi_amat.converged = True
+        elif  previous_iter.converged == True:
+            print("Solution already converged...")
+            xovi_amat.converged = True
+        else:
+            xovi_amat.converged = False
 
     # TODO not sure wether it can also be saved when just computing residuals
     if partials:
@@ -1324,6 +1347,7 @@ def main(arg):
             xovi_amat.save(
                 (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1) + '.pkl')
 
+    print("AccumXov ended succesfully!")
     return True
 
 

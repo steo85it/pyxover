@@ -53,9 +53,9 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     # reorder tracks (!!!) and extract variances
     huber_threshold_track = 5
     # tmp = tracks_rms_df.sort_values(by='track').pre.abs().values
-    # makes sense to use the bias and not the rms (actually the average value would also be fine...)
+    # makes sense to use the bias and not the rms (actually the average value would also be fine...) !! remember ABS!!
     tmp = tracks_rms_df.sort_values(by='track').bias.abs().values
-    huber_weights_track = np.where(tmp > huber_threshold_track, (tmp / huber_threshold_track) ** 1, 1.)
+    huber_weights_track = np.where(tmp > huber_threshold_track, (huber_threshold_track / tmp) ** 1, 1.)
 
     if plot_stuff and local: # and debug:
         # plot histo
