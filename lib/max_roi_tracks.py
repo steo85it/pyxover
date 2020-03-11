@@ -54,6 +54,9 @@ def compare_subsets():
 
 # note: revert with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${f%.BAK}.TAB";done**
 #       check with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
+# to generate soft links from main dataset before subsetting it, e.g.,
+# for f in {08..15}; do cp -rs /att/nobackup/sberton2/MLA/data/SIM_$f/KX1 /att/nobackup/sberton2/MLA/data/SIM_$f/KX1r4 ;done
+
 def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
 
     subs = load(tracklist)
