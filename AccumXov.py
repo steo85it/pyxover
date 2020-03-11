@@ -175,28 +175,38 @@ def get_stats(amat):
     # when iterations have inconsistent npars, some are imported from previous sols for
     # consistency reasons. Here we remove these values from the computation of vTPv
     # else matrix shapes don't match
-    if len(ATPb) != len(xT):
-        print("removing stuff...")
+    if len(ATPb) != xT.shape[1]:
+        print("removing stuff...",len(ATPb),(xT.shape[1]))
         missing = [x for x in amat.sol4_pars if x not in amat.parNames]
         missing = [amat.sol4_pars.index(x) for x in missing]
         xT = np.delete(xT, missing)
+        # remove parameters not in sol4_pars
+        tmp_sol4pars = [amat.parNames[x] for x in amat.sol4_pars if x in amat.parNames.keys()]
+        ATPb = ATPb[tmp_sol4pars]
+        ATP = ATP[tmp_sol4pars,:]
+        spA_tmp = amat.spA[:,tmp_sol4pars]
+    else:
+        spA_tmp = amat.spA
     ##################
-    #print(ATPb.shape)
-    #print(xT.shape)
     vTPv = lTPl - xT @ ATPb
+    print(nobs,npar)
     print("pre-RMS=", np.sqrt(lTPl / (nobs - npar)), " post-RMS=", np.sqrt(vTPv / (nobs - npar)))
 
-    # degrees if freedom in case of constrained least square
-    Atmp = (ATP@amat.spA + amat.penalty_mat)
-    trR = np.diagonal(np.linalg.pinv(Atmp.todense())@ATP@amat.spA).sum()
+    # degrees of freedom in case of constrained least square
+    Atmp = (ATP@spA_tmp + amat.penalty_mat)
+    trR = np.diagonal(np.linalg.pinv(Atmp.todense())@ATP@spA_tmp).sum()
     dof = nobs - trR
-    # # print("check deg of freedom",npar,trR)
     m0 = np.linalg.norm(np.sqrt(vTPv/dof))
+    # print("test-m0", m0)
 
     # alternative method to compute chi2 for constrained least-square (not involving inverse)
-    #xTlP = xT @ amat.penalty_mat
-    #xTlPx = xTlP @ xT.T
-    #m0 = np.linalg.norm(np.sqrt((vTPv + xTlPx) / nobs))
+    # print("xT",xT)
+    # print("pen",amat.penalty_mat)
+    # print("weig",amat.weights)
+    # xTlP = xT @ amat.penalty_mat
+    # xTlPx = xTlP @ xT.T
+    # print("check wrmse", vTPv,xTlPx)
+    # m0 = np.linalg.norm(np.sqrt((vTPv + xTlPx) / nobs))
     amat.resid_wrmse = m0
 
     print("Weighted a-posteriori RMS is ", m0.round(4), " - chi2 = ", (m0 / sigma_0).round(4))
@@ -1191,6 +1201,7 @@ def main(arg):
                                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
             elif xov_cmb.pert_cloop.shape[1]>0: # if pre-processing took place
                 parsk = list(xov_cmb.pert_cloop.to_dict().keys())
+                parsk = ['dA', 'dC', 'dR', 'dRl', 'dPt']
                 trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
 
                 pertpar_list = list(pert_cloop_orb.keys())
@@ -1211,6 +1222,23 @@ def main(arg):
             solve(xovi_amat, dataset=ds, previous_iter=previous_iter)
             # Save to pkl
             orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat,xov_cmb)
+
+            # check std of orbital parameters for systematics
+            if debug:
+                testA = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dA', axis=0).loc[:,'std']
+                testC = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dC', axis=0).loc[:,'std']
+                testR = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dR', axis=0).loc[:,'std']
+                plt.figure(figsize=(8, 3))
+                testA.plot()
+                testC.plot()
+                testR.plot()
+                # plt.xlabel('dR (m)')
+                # plt.ylabel('Probability')
+                # plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+                # # Tweak spacing to prevent clipping of ylabel
+                # plt.subplots_adjust(left=0.15)
+                plt.savefig(tmpdir + '/orbpart_vs_time.png')
+                plt.clf()
 
             # remove corrections OF SINGLE ITER if "unreasonable" (larger than 100 meters in any direction, or 50 meters/day, or 20 arcsec)
             sol_dict_iter = sol_dict
@@ -1262,6 +1290,12 @@ def main(arg):
             xovi_amat.sol_dict = sol_dict_iter_clean
             # exit()
 
+            if debug:
+                pd.set_option('display.max_rows', None)
+                pd.set_option('display.max_columns', None)
+                pd.set_option('display.width', None)
+                pd.set_option('display.max_colwidth', -1)
+
             print("Sol for iter ", str(ext_iter))
             print_sol(orb_sol, glb_sol, xov, xovi_amat)
             # # print(orb_sol.filter(regex="sol_.*"))
@@ -1278,8 +1312,8 @@ def main(arg):
             xovi_amat.sol_dict_iter = xovi_amat.sol_dict.copy()
             xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
 
-            # Cumulate with solution from previous iter
-            if (int(ext_iter) > 0) and (previous_iter != None):
+            # Cumulate with solution from previous iter (or from pre-processing)
+            if previous_iter != None: #(int(ext_iter) > 0) and (previous_iter != None):
                 if previous_iter.sol_dict != None:
                     # sum the values with same keys
                     updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
@@ -1289,14 +1323,16 @@ def main(arg):
                     xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
                     # use dict to update amat.sol, keep std
                     xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
-                    # print(xovi_amat.sol)
-                    # print(xovi_amat.sol_dict)
-                    # exit()
                     orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
                     print("Cumulated solution")
                     print_sol(orb_sol, glb_sol, xov, xovi_amat)
                 else:
                     print("previous_iter.sol_dict=",previous_iter.sol_dict)
+            #
+            # # if pre-processing took place
+            # elif (int(ext_iter) == 0): # and (xov_cmb.pert_cloop.shape[1]>0):
+            #     print("prev_iter_truc= ",previous_iter.sol_dict['sol'])
+            #     exit()
 
         else:
             # clean only
