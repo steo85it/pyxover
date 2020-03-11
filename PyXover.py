@@ -57,7 +57,7 @@ from xov_setup import xov
 # # print(tmp_ser.spA)
 #
 # exit()
-
+#@profile
 def launch_xov(
         args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
     track_id = args[0]

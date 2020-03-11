@@ -68,7 +68,7 @@ def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
     # need tr[:-3] because of min:sec differences between sim and real data
     selected = [s for s in obsfil for tr in tracks if tr[:-3] in s]
 
-    print('obs selected: ', len(selected))
+    print('tracks selected: ', len(selected))
 
     remove_these = list(set(obsfil) ^ set(selected))
     print("removing:", len(remove_these), "out of", len(obsfil))
@@ -148,4 +148,4 @@ if __name__ == '__main__':
     #print(intersect_percent)
 
     apply_selection(tracklist=tmpdir + 'bestROItracks500_563-464424.pkl',
-                    exp ='tp4', kind ='3res_20amp')
+                    exp ='KX1r4', kind ='0res_1amp')

@@ -28,7 +28,7 @@ from xov_utils import get_tracks_rms, plot_tracks_histo
 remove_max_dist = True
 remove_3sigma_median = True
 
-subfolder = '' # 'archived/KX1r2_fitall/' #'archived/tp9_0test_tides/'
+subfolder = '' #'archived/tp4_pertall_fitglborb/' # 'archived/KX1r2_fitall/' #'archived/tp9_0test_tides/'
 
 def xovnum_plot():
 
@@ -550,6 +550,9 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
 # Check convergence over iterations
 def check_iters(sol, subexp=''):
+
+    np.set_printoptions(precision=3)
+
     sol_iters = sol.split('_')[:-1][0]
     prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
 
@@ -575,9 +578,9 @@ def check_iters(sol, subexp=''):
         prev = Amat(vecopts)
         prev = prev.load(isol)
 
-        #iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
-
-        #add_xov_separation(prev)
+        # iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
+        #
+        # add_xov_separation(prev)
         # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
         # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_min_mean < 1]
         # mean_dR, std_dR, worst_tracks = prev.xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
@@ -718,8 +721,8 @@ def check_iters(sol, subexp=''):
                         #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
                         # print(df_sol.columns)
 
-                        prev.pert_cloop.drop(['dA1', 'dC1', 'dR1'], axis='columns', inplace=True)
-                    prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
+                    #prev.pert_cloop.drop(['dA1', 'dC1', 'dR1'], axis='columns', inplace=True)
+                    #prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
                     df_sol.columns = prev.pert_cloop.columns
                     _ = prev.pert_cloop.astype(float)
                     # _.columns = ['/' + k for k in _.columns]
@@ -756,6 +759,7 @@ def check_iters(sol, subexp=''):
     print("Total RMS for iters (iter,ltpl,m0,degf,%change): ")
     iters_rms = np.array(iters_rms)
     iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
+    #iters_rms[:,1:] = iters_rms[:,1:].round(3)
     wrmse = iters_rms[:,2].astype(np.float)
     perc_rms_change = np.concatenate([[None],np.abs((np.diff(wrmse)/wrmse[1:]*100.)).round(2)])
     print(np.concatenate([iters_rms,perc_rms_change[:,np.newaxis]],axis=1))
@@ -908,10 +912,10 @@ def add_xov_separation(tmp):
 
 if __name__ == '__main__':
 
-    simulated_data = True
+    simulated_data = False
     #analyze_sol(sol='KX1r2_9', ref_sol='KX1r2_0', subexp = '0res_1amp')
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
-    check_iters(sol='tp4_0',subexp='3res_20amp')
-    # check_iters(sol='KX1r2_0',subexp='0res_1amp')
+    # check_iters(sol='tp4_0',subexp='3res_20amp')
+    check_iters(sol='KX1r4_0',subexp='0res_1amp')
 

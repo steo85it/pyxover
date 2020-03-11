@@ -122,7 +122,7 @@ class xov:
         tmp.columns = ['offnad_A', 'offnad_B']
         self.xovtmp = pd.concat([self.xovtmp, tmp], axis=1)
 
-    # @profile
+    #@profile
     def combine(self, xov_list):
 
         # Only select elements with number of xovers > 0
@@ -233,7 +233,7 @@ class xov:
     # Compute elevation R at crossover points by interpolation
     # (should be put in a function and looped over -
     # also, check the higher order interp)
-    # @profile
+    #@profile
     def get_elev(self, arg, ii, jj, ind_A, ind_B, par='', x=0, y=0):
 
         ladata_df = self.ladata_df
@@ -524,7 +524,7 @@ class xov:
         print(self.tracks)
         # exit()
 
-    # @profile
+    #@profile
     def get_xover_fine(self, rough_indA, rough_indB, param):
         """
         Fine-tune xover index and coordinates from first rough guess,
@@ -802,7 +802,7 @@ class xov:
                 # exit()
                 return np.vstack((x, y, ldA, ldB, R_A, R_B)).T
             # except:
-    # @profile
+    #@profile
     def xov_project(self, ladata_df, msrm_sampl, rough_indA):
         # compute central lon/lat of trackA (then use it for both, as close to intersection)
         df_ = ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[0]][['LON', 'LAT']].values
@@ -836,7 +836,7 @@ class xov:
     #        outf.write('Issue with: '+str(arg)+'\n')
     #  print('Issue with: '+str(arg)+'\n')
     #  return
-
+    #@profile
     def get_xov(self):
         """
         Read ladata_df and compute all xovers, then updates xovers dataframe

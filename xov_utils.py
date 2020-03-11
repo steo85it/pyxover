@@ -19,7 +19,9 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 def get_tracks_rms(xovers_df, plot_xov_tseries=False):
-    print("Checking tracks rms @ iter ...")
+
+    if debug:
+        print("Checking tracks rms @ iter ...")
 
     xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']].copy()
     xovtmp = xovtmp.astype({'orbA': 'int32', 'orbB': 'int32'})
@@ -52,14 +54,14 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             # exit()
 
             parametrizations = [
-        	# [np.ones(len(x))],
-        	np.column_stack((x, np.ones(len(x)))),
+        	[np.ones(len(x))],
+        	# np.column_stack((x, np.ones(len(x)))),
         	# np.column_stack((x**2, x, np.ones(len(x)))),
         	# np.column_stack((x**3, x**2, x, np.ones(len(x))))
             ]
             X = parametrizations[0]
             # only if param with bias only
-            # X = X[0]
+            X = X[0]
 
             result = sm.OLS(y, X).fit()
 
@@ -74,13 +76,17 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
 
             rmspre = rmse(y, np.zeros(len(y)))
             # only if param with bias only
-            # X = X[..., np.newaxis]
+            X = X[..., np.newaxis]
             rmspost = rmse(y, X.dot(rlm_results.params))
 
-            Rbias = rlm_results.params.round(1)[1]
-            Rdrift = rlm_results.params.round(1)[1]
+            # if bias only
+            Rbias = rlm_results.params.round(1)[0]
+            Rdrift = 0.
+            # if bias+drift
+            # Rbias = rlm_results.params.round(1)[1]
+            # Rdrift = rlm_results.params.round(1)[0]
 
-            if local and plot_xov_tseries and Rbias > 30.:
+            if local and plot_xov_tseries and np.abs(Rbias) > 30.:
                 fig = plt.figure(figsize=(12, 8))
                 plt.style.use('seaborn-poster')
                 ax = fig.add_subplot(111)
@@ -90,8 +96,12 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
                 ax.plot(x, -1. * np.ones(len(result.fittedvalues)) * rmspre, 'r--')
                 ax.legend(loc="best")
                 ax.set_xlim(right=1500)
-                title = "sol: R bias : " + str(rlm_results.params.round(1)[1]) + \
-                        "m, R drift : " + str(rlm_results.params.round(2)[0]) + " m/s -- RMSE : " + \
+                # if bias+drift
+                # title = "sol: R bias : " + str(rlm_results.params.round(1)[1]) + \
+                #         "m, R drift : " + str(rlm_results.params.round(2)[0]) + " m/s -- RMSE : " + \
+                #         str(rmspre.round(1)) + " m"  # / "+ str(rmspost.round(1)) + "m"
+                # if bias only
+                title = "sol: R bias : " + str(rlm_results.params.round(1)[0]) + " m -- RMSE : " + \
                         str(rmspre.round(1)) + " m"  # / "+ str(rmspost.round(1)) + "m"
                 ax.set_title(title)
                 plt.savefig(tmpdir + 'orb_res_xov_' + str(tr) + '.png')
