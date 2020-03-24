@@ -132,8 +132,9 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
         xov_cmb.pert_cloop = pd.DataFrame()
 
     # save initial cloop perturbations to xov_cmb
+    test_pert = len(list(xov_list[0].pert_cloop_0.values())[0])
     pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
-    if len([v for x in pertdict for k,v in x.items() if v]) > 0 and sol4_orbpar != [None]:
+    if test_pert>0 and len([v for x in pertdict for k,v in x.items() if v]) > 0 and sol4_orbpar != [None]:
         pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
         xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
         xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
@@ -193,9 +194,10 @@ def get_stats(amat):
     print("pre-RMS=", np.sqrt(lTPl / (nobs - npar)), " post-RMS=", np.sqrt(vTPv / (nobs - npar)))
 
     # degrees of freedom in case of constrained least square
-    Atmp = (ATP@spA_tmp + amat.penalty_mat)
-    trR = np.diagonal(np.linalg.pinv(Atmp.todense())@ATP@spA_tmp).sum()
-    dof = nobs - trR
+    #Atmp = (ATP@spA_tmp + amat.penalty_mat)
+    #trR = np.diagonal(np.linalg.pinv(Atmp.todense())@ATP@spA_tmp).sum()
+    #dof = nobs - trR
+    dof = nobs - npar
     m0 = np.linalg.norm(np.sqrt(vTPv/dof))
     # print("test-m0", m0)
 
@@ -784,7 +786,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
             n_goodobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
 
-        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index]
+        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
 
         if debug:
             print("number of constrained pars", len(to_constrain))
@@ -889,6 +891,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         tmp = obs_weights.diagonal()
         avg_weight = np.mean(tmp)
+        print("Weights (avg, med, std):", avg_weight, np.median(tmp), np.std(tmp))
         print("Fully weighted obs (>0.5*mean(weight)): ", len(tmp[tmp>0.5*avg_weight]), "or ",len(tmp[tmp>0.5*avg_weight])/len(tmp)*100.,"%")
         print("Slightly downweighted obs: ", len(tmp[(tmp<0.5*avg_weight)*(tmp>0.05*avg_weight)]), "or ",len(tmp[(tmp<0.5*avg_weight)*(tmp>0.05*avg_weight)])/len(tmp)*100.,"%")
         print("Brutally downweighted obs (<0.05*sigma0): ", len(tmp[(tmp<0.05*avg_weight)]), "or ",len(tmp[(tmp<0.05*avg_weight)])/len(tmp)*100.,"%")
@@ -1201,10 +1204,10 @@ def main(arg):
                                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
             elif xov_cmb.pert_cloop.shape[1]>0: # if pre-processing took place
                 parsk = list(xov_cmb.pert_cloop.to_dict().keys())
-                parsk = ['dA', 'dC', 'dR', 'dRl', 'dPt']
                 trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
 
-                pertpar_list = list(pert_cloop_orb.keys())
+                # pertpar_list = list(pert_cloop_orb.keys())
+                pertpar_list = xov_cmb.pert_cloop.columns
                 fit2dem_sol = np.ravel([list(x.values()) for x in xov_cmb.pert_cloop.filter(pertpar_list).to_dict().values()])
                 fit2dem_keys = [tr+'_dR/'+par for par in parsk for tr in trackk]
                 fit2dem_dict = dict(zip(fit2dem_keys,fit2dem_sol))
@@ -1267,7 +1270,7 @@ def main(arg):
                 # print("max_orb_corr,max_orb_drift_corr,max_att_corr")
                 # print(max_orb_corr, max_orb_drift_corr, max_att_corr)
 
-                if max_orb_corr > 200 or max_orb_drift_corr > 50 or max_att_corr > 2.:
+                if max_orb_corr > 250 or max_orb_drift_corr > 50 or max_att_corr > 2.:
                     print("Solution fixed for track", tr, 'with max_orb_corr,max_orb_drift_corr,max_att_corr:',max_orb_corr, max_orb_drift_corr, max_att_corr)
                     sol_dict_iter_clean.append(dict.fromkeys(soltmp, 0.))
                     bad_count += 1

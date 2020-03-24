@@ -68,6 +68,7 @@ def launch_xov(
     outdir = args[4]
 
     if new_xov:  # and track_id=='1301232350':
+
         if not os.path.isfile(outdir + 'xov/xov_' + track_id + '_' + misycmb[par][1] + '.pkl') or new_xov == 2:
 
             # print("Processing " + track_id + " ...")
@@ -88,7 +89,7 @@ def launch_xov(
                 for gtrackA, gtrackB in [s for s in comb if track_id in s[0]]:
 
                     # if debug:
-                    #    print("Processing " + gtrackA + " vs " + gtrackB)
+                    #print("Processing " + gtrackA + " vs " + gtrackB)
 
                     if gtrackB > gtrackA:
                         # try:
@@ -122,7 +123,7 @@ def launch_xov(
                     # print(xov_tmp.xovers)
                     # exit()
                     print('Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
-                          misycmb[par][1] + '.pkl !')
+                          misycmb[par][1] + '.pkl @ '  + time.strftime("%H:%M:%S", time.gmtime()))
                     return gtrackA
 
         # except:
@@ -133,7 +134,7 @@ def launch_xov(
 
             #      track = track.load('out/xov_'+gtrackA+'.pkl')
             print('Xov for ' + track_id + ' already exists in ' + outdir + 'xov_' + track_id + '_' +
-                          misycmb[par][1] + '.pkl !')
+                          misycmb[par][1] + '.pkl @ ' + time.strftime("%H:%M:%S", time.gmtime()))
 
 
 ########################################

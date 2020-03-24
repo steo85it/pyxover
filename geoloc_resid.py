@@ -624,7 +624,7 @@ def fit_track_to_dem(df_in):
             # Fit orbit corrections to DEM
 
             sol = minimize(get_demres, dorb, args=(track,df_,dem_xarr), method='SLSQP', #'L-BFGS-B', #'Nelder-Mead', #
-                          bounds=[(-0.25,0.25),(-0.25,0.25),(-0.1,0.1),(-0.5,0.5),(-0.5,0.5)], #,(-1e-2,1e-2),(-1e-2,1e-2),(-1e-2,1e-2)],
+                          bounds=[(-0.1,0.1),(-0.1,0.1),(-0.05,0.05),(-0.5,0.5),(-0.5,0.5)], #,(-1e-2,1e-2),(-1e-2,1e-2),(-1e-2,1e-2)],
                           jac='2-point',
                           options={'disp': False, 'eps': 0.0005, 'ftol': 1.e-6})
             # print(sol)

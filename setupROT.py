@@ -14,7 +14,8 @@ import numpy as np
 from prOpt import vecopts, debug
 from util import as2deg
 
-AG = False
+AG = False #True
+ZAP = False
 
 def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
 
@@ -25,6 +26,14 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
             PM0 = np.array([329.75, 6.1385054, 0.])
         elif vecopts['PM_ORIGIN'] == 'J2013.0':
             PM0 = np.array([318.4455, 6.1385025, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
+    elif ZAP:
+        # from zero
+        POLE_RA0 = np.array([0., -0.0328, 0.])
+        POLE_DEC0 = np.array([0., -0.0049, 0.])
+        if vecopts['PM_ORIGIN'] == 'J2000':
+            PM0 = np.array([329.5469, 0., 0.])
+        elif vecopts['PM_ORIGIN'] == 'J2013.0':
+            PM0 = np.array([318.2245, 0., 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
     else:
         # IAU
         POLE_RA0 = np.array([281.0097, -0.0328, 0.])
@@ -60,6 +69,9 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
                   }
     if AG:
         upd_rotpar['NUT_PREC_PM'] += as2deg(1.5)
+    elif ZAP:
+        upd_rotpar['NUT_PREC_PM'] = rotpar['NUT_PREC_PM0']
+
 
     if debug:
         print("librations", rotpar['NUT_PREC_PM0'], offsetL * rotpar['NUT_PREC_PM0'])

@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for iter in np.arange(0, 6):
+        for iter in np.arange(4,6):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)
@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
                 # Preliminary step to fit orbits and pointing to current knowledge of topography (direct altimetry)
                 # (real data only)
-                if iter == 0: # and False:
+                if iter == 0 and False:
                     iostat = s.call(
                         ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) + '_' + str(-1), '8',
                          '01:30:00', '10'])
@@ -144,17 +144,17 @@ if __name__ == '__main__':
                         exit(iostat)
 
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '8', '00:30:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '8', '01:30:00', '10'])
                 if iostat != 0:
                     print("*** PyGeol_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '02:30:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '05:45:00', '10'])
                 if iostat != 0:
                     print("*** PyXov_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
                 iostat = s.call(#["python3", "launch_test.py", str(rt), "0", "3", str(i)])
-                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '1', '00:30:00', '1'])
+                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '1', '01:30:00', '1'])
                 if iostat != 0:
                     print("*** PyAcc_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
