@@ -7,6 +7,8 @@
 #
 import warnings
 
+from Amat import Amat
+
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
 import glob
@@ -26,7 +28,7 @@ import spiceypy as spice
 import time
 
 # mylib
-from prOpt import new_xov, vecopts
+from prOpt import new_xov, vecopts, outdir
 # from mapcount import mapcount
 from ground_track import gtrack
 from xov_setup import xov
@@ -122,7 +124,7 @@ def launch_xov(
                     # print(xov_tmp.xovers)
                     # exit()
                     print('Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
-                          misycmb[par][1] + '.pkl !')
+                          misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
                     return gtrackA
 
         # except:
@@ -133,10 +135,9 @@ def launch_xov(
 
             #      track = track.load('out/xov_'+gtrackA+'.pkl')
             print('Xov for ' + track_id + ' already exists in ' + outdir + 'xov_' + track_id + '_' +
-                          misycmb[par][1] + '.pkl !')
+                          misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
-
-########################################
+    ########################################
 def main(args):
     from prOpt import parallel, outdir, auxdir, local, vecopts
 
@@ -257,6 +258,14 @@ def main(args):
         itert.product([fil.split('.')[0][-10:] for fil in allFilesA], [fil.split('.')[0][-10:] for fil in allFilesB]))
     comb = np.array([c for c in comb if c[0] != c[1]])
 
+    # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
+    # TODO, check wether one could safely save time by only considering xovers with a given weight
+    iter = int(outdir_in.split('/')[1].split('_')[-1])
+    if iter>0:
+        comb = select_useful_comb(comb, iter, outdir_in)
+
+    # print(comb)
+
     # load all tracks
     tmp = [gtrack(vecopts) for i in range(len(allFiles))]
 
@@ -291,6 +300,18 @@ def main(args):
     print(
         '----- Runtime Xov2 = ' + str(endXov2 - startXov2) + ' sec -----' + str(
             (endXov2 - startXov2) / 60.) + ' min -----')
+
+
+def select_useful_comb(comb, iter, outdir_in):
+    outdir_old = outdir_in.replace('_' + str(iter) + '/', '_' + str(iter - 1) + '/')
+    print(outdir_old, outdir_in)
+    tmp = Amat(vecopts)
+    tmp = tmp.load(glob.glob(outdir + outdir_old + 'Abmat*.pkl')[0])
+    old_xov_orb = tmp.xov.xovers[['orbA', 'orbB']].values
+    intersetingRows = [(old_xov_orb == irow).all(axis=1).any() for irow in comb]
+    print("Based on previous xovs:", len(comb[intersetingRows]), "tracks combs selected out of", len(comb))
+    comb = comb[intersetingRows]
+    return comb
 
 
 ##############################################

@@ -141,5 +141,9 @@ if __name__ == '__main__':
     else:
     
         print("Wrong sect option ", sect)
+        print("How to call: launch_test.py sim_terrain epoch proc_step iter")
+        print("where:\n sim_terrain indicates roughness terrain for simulations (elements in res/amp list)\n"
+              "epoch is YYMM if proc_step=1, combination of months and year in list of cmb if proc_step==2, whatever if proc_step==3\n"
+              "proc_step can be 1=geolocalise data, 2=locate and process xovers, 3=cumulate and invert")
         exit(2)
 

@@ -125,9 +125,6 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, driftlist, rmslist]).T,
                            columns=['track', 'pre', 'bias', 'drift', 'minus-Rbias']).astype(float).astype({'track': int})
 
-    if local and plot_xov_tseries:
-        plot_tracks_histo([postfit])
-
     return postfit
 
 
