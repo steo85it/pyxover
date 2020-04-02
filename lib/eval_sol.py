@@ -26,7 +26,7 @@ from xov_utils import get_tracks_rms, plot_tracks_histo
 remove_max_dist = True
 remove_3sigma_median = True
 
-subfolder = 'archived/tp4_pertglb_fitglb/' #'archived/tp9_0test_tides/'
+subfolder = '' # 'archived/tp4_pertglb_fitglb/' #'archived/tp9_0test_tides/'
 
 def xovnum_plot():
 
@@ -551,8 +551,8 @@ def check_iters(sol, subexp=''):
     np.set_printoptions(precision=3)
 
     sol_iters = sol.split('_')[:-1][0]
-    # prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
-    prev_sols = np.sort(glob.glob(outdir+'Abmat/KX1r4_AG2/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    #prev_sols = np.sort(glob.glob(outdir+'Abmat/KX1r4_AG2/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
 
     iters_rms = []
     iters_orbcorr = []
@@ -928,5 +928,5 @@ if __name__ == '__main__':
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp4_0',subexp='3res_20amp')
-    check_iters(sol='KX1r4_0',subexp='0res_1amp')
+    check_iters(sol='KX1_0',subexp='0res_1amp')
 

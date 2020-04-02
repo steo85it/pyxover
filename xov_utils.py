@@ -11,6 +11,7 @@
 import numpy as np
 import pandas as pd
 
+# from eval_sol import rmse
 from statsmodels.tools.eval_measures import rmse
 
 from prOpt import tmpdir, vecopts, local, debug
@@ -23,7 +24,8 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     if debug:
         print("Checking tracks rms @ iter ...")
 
-    xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']].copy()
+    # xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']].copy()
+    xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'weights']].copy()
     xovtmp = xovtmp.astype({'orbA': 'int32', 'orbB': 'int32'})
     total_occ_tracks = pd.DataFrame([xovtmp['orbA'].value_counts(), xovtmp['orbB'].value_counts()]).T.fillna(0).sum \
         (axis=1).sort_values(ascending=False)
@@ -37,8 +39,8 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     trlist = []
     for tr in tracks:
         try:
-
-            df = xovtmp.loc[((xovtmp.orbA == int(tr)) | (xovtmp.orbB == int(tr))) & (xovtmp.huber > 0.01)].sort_values(by='dtA',
+            weights_mean = np.mean(xovtmp.weights)
+            df = xovtmp.loc[((xovtmp.orbA == int(tr)) | (xovtmp.orbB == int(tr))) & (xovtmp.weights > 0.1*weights_mean)].sort_values(by='dtA',
                                                                                                              ascending=True)
             tmp = pd.DataFrame(
         	np.vstack(project_stereographic(df.LON.values, df.LAT.values, 0, 90, vecopts['PLANETRADIUS'])).T,
@@ -130,19 +132,23 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
 
 def plot_tracks_histo(postfit_list, filename=tmpdir + '/histo_tracks_eval.png'):
     # plot histo
+    # print(postfit_list)
+    xlim = 1.e2
+    plt.clf()
     plt.figure(figsize=(8, 3))
     # plt.xlim(-1.*xlim, xlim)
     # the histogram of the data
     num_bins = 40  # 'auto'
     for idx, postfit in enumerate(postfit_list):
+        # print(postfit.pre.astype(np.float))
         n, bins, patches = plt.hist(postfit.pre.astype(np.float), bins=num_bins, alpha=0.7,
-                                    label="iter " + str(idx))  # , density=True) #, facecolor='blue',
+                                    label="iter " + str(idx),range=[0., xlim])  # , density=True) #, facecolor='blue',
     # alpha=0.7, range=[-1.*xlim, xlim])
     plt.xlabel('dR (m)')
     plt.ylabel('# tracks')
     plt.legend()
     plt.title('Histogram of track RMS at iters')
-    plt.semilogx()
+    # plt.semilogx()
     # # Tweak spacing to prevent clipping of ylabel
     plt.subplots_adjust(left=0.15)
     plt.savefig(filename)

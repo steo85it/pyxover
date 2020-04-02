@@ -27,10 +27,10 @@ def plt_histo(series, xlim='', filename='test'):
 
 def get_weights(iter):
 
-    sol_list = [outdir + 'Abmat/KX1r4_AG2/0res_1amp/Abmat_sim_KX1r4_'+str(iter+1)+'_0res_1amp.pkl',
+    sol_list = [outdir + 'sim/archived/KX1r4_KX/KX1r4_'+str(iter)+'/0res_1amp/Abmat_sim_KX1r4_'+str(iter+1)+'_0res_1amp.pkl',
         #[outdir + 'Abmat/KX1r4_AG/KX1r4_'+str(iter)+'/0res_1amp/Abmat_sim_KX1r4_'+str(iter+1)+'_0res_1amp.pkl',
                 # outdir + 'Abmat/KX1r4_IAU2/KX1r4_'+str(iter)+'/0res_1amp/Abmat_sim_KX1r4_'+str(iter+1)+'_0res_1amp.pkl']
-                outdir + 'Abmat/KX1r4_AGorb/0res_1amp/Abmat_sim_KX1r4_' + str(iter + 1) + '_0res_1amp.pkl']
+                outdir + 'sim/KX1_'+str(iter)+'/0res_1amp/Abmat_sim_KX1_' + str(iter + 1) + '_0res_1amp.pkl']
 
     # np.sort(glob.glob(outdir+'sim/'+exp+'_'+str(iter)+'/3res_20amp/Abmat_sim_'+exp+'_'+str(iter+1)+'_3res_20amp.pkl'))
     list_exp = []
