@@ -1086,6 +1086,8 @@ class xov:
 
                 # print("len(xovers_df.index) = 1 ", len(xovers_df.index))
                 # print(out_elev)
+                if len(out_elev) == 1:
+                    out_elev = out_elev[0]
 
                 xovers_df = pd.concat(
                     [xovers_df,

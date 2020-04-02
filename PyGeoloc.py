@@ -194,7 +194,8 @@ def main(args):
                 try:
                     track.pert_cloop_0 = tmp.pert_cloop_0.loc[str(track.name)].to_dict()
                 except:
-                    print("No pert_cloop_0 for ", track.name)
+                    if debug:
+                        print("No pert_cloop_0 for ", track.name)
                     pass
 
                 regex = re.compile(track.name+"_dR/d.*")

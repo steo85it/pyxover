@@ -85,3 +85,4 @@ Decorate routines with @profile; then launch with, e.g.,
 kernprof -v -l launch_test.py 0 0 3 0   # for time profiling
 python3 -m memory_profiler launch_test.py 0 0 3 0   # for memory profiling
 N.B.: does not work when launching from within pycharm (or would need config)
+Then plot using "snakeviz program.prof" (https://jiffyclub.github.io/snakeviz/)

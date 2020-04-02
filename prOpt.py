@@ -18,7 +18,7 @@ parOrb = {'dA': 20.,'dC': 20.,'dR': 5.} #,'dRl':0.2, 'dPt':0.2} #
 parGlo = {'dRA':[0.2, 0.000, 0.000], 'dDEC':[0.36, 0.000, 0.000],'dPM':[0, 0.013, 0.000],'dL':1.e-3*deg2as(1.)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]), 'dh2': 0.1}
 
 # parameter constraints for solution
-par_constr = {'dR/dRA': 1.e3, 'dR/dDEC': 1.e3,'dR/dL':1.e3, 'dR/dPM': 1.e3, 'dR/dh2':1.e-2, 'dR/dA':1.e2, 'dR/dC':1.e2,'dR/dR':2.e1} #, 'dR/dRl':5.e0, 'dR/dPt':5.e0} #
+par_constr = {'dR/dRA': 1.e3, 'dR/dDEC': 1.e3,'dR/dL':1.e3, 'dR/dPM': 1.e3, 'dR/dh2':1.e3, 'dR/dA':1.e2, 'dR/dC':1.e2,'dR/dR':2.e1} #, 'dR/dRl':5.e0, 'dR/dPt':5.e0} #
               # 'dR/dA1':1.e-1, 'dR/dC1':1.e-1,'dR/dR1':1.e-1, 'dR/dA2':1.e-2, 'dR/dC2':1.e-2,'dR/dR2':1.e-2} #, 'dR/dA2':1.e-4, 'dR/dC2':1.e-4,'dR/dR2':1.e-2} # 'dR/dA':100., 'dR/dC':100.,'dR/dR':100.} #, 'dR/dh2': 1} #
 mean_constr = {'dR/dA':1.e1, 'dR/dC':1.e1,'dR/dR':1.e1} #, 'dR/dRl':5.e-1, 'dR/dPt':5.e-1}
 
@@ -41,9 +41,9 @@ OrbRep = 'cnt' # 'lin' # 'quad' #
 # interpolation/spice direct call (0: use spice, 1: yes, use interpolation, 2: yes, create interpolation)
 SpInterp = 1
 # create new gtrack (0:no, 1:yes, if not already present, 2: yes, create and replace)
-new_gtrack = 1
+new_gtrack = 2
 # create new xov (0:no, 1:yes, if not already present, 2: yes, create and replace)
-new_xov = 1
+new_xov = 2
 
 # Other options
 # analyze multi-xov pairs
@@ -85,10 +85,10 @@ if (local == 0):
     outdir = '/att/nobackup/sberton2/MLA/out/'
     auxdir = '/att/nobackup/sberton2/MLA/aux/'
     tmpdir = '/att/nobackup/sberton2/MLA/tmp/'
-    spauxdir = 'KX_spk/' # 'AG_AC_spk/' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    spauxdir = 'AG_A_spk/' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
 else:
 #    outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
     outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
     auxdir = '/home/sberton2/Works/NASA/Mercury_tides/aux/'
     tmpdir = '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/'
-    spauxdir = 'KX_spk/' # 'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    spauxdir = 'KX_spk/' #'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
