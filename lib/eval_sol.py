@@ -6,29 +6,27 @@
 # Created: 16-May-2019
 #
 import glob
+import itertools as itert
 import re
 
-from scipy.sparse import csr_matrix, diags
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from scipy.sparse import diags
 
 import AccumXov as xovacc
-import numpy as np
-import itertools as itert
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import glob
-
-from AccumXov import plt_geo_dR
-from ground_track import gtrack
-from xov_setup import xov
 from Amat import Amat
-from prOpt import outdir, tmpdir, local, pert_cloop_glo, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts
+from prOpt import outdir, tmpdir, local, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts
+# from AccumXov import plt_geo_dR
+# from ground_track import gtrack
+from xov_setup import xov
 from xov_utils import get_tracks_rms, plot_tracks_histo
 
 remove_max_dist = True
 remove_3sigma_median = True
 
-subfolder = '' # 'archived/KX1r2_fitall/' #'archived/tp9_0test_tides/'
+subfolder = 'archived/tp4_pertglb_fitglb/' #'archived/tp9_0test_tides/'
 
 def xovnum_plot():
 
@@ -112,7 +110,6 @@ def xovnum_plot():
     #
     # _ = [xov_cmb.xovers.loc[(xov_cmb.xovers.orbA.str.contains('^'+a+'.*$')) & (xov_cmb.xovers.orbB.str.contains('^'+b+'.*$')),'xOvID'].count() for a,b in monyea2]
     # print(len(monyea2),len(monyea))
-
 
 def plt_xovrms(df_):
     # create pivot table, days will be columns, hours will be rows
@@ -551,7 +548,8 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 # Check convergence over iterations
 def check_iters(sol, subexp=''):
     sol_iters = sol.split('_')[:-1][0]
-    prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    # prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    prev_sols = np.sort(glob.glob(outdir+'Abmat/KX1r4_AG2/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
 
     iters_rms = []
     iters_orbcorr = []
@@ -574,8 +572,9 @@ def check_iters(sol, subexp=''):
         # print(prev_sols)
         prev = Amat(vecopts)
         prev = prev.load(isol)
+        # print(prev.xov.xovers.columns)
 
-        # iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
+        iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
         #
         # add_xov_separation(prev)
         # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
@@ -585,9 +584,12 @@ def check_iters(sol, subexp=''):
 
         # prev.xov.xovers['dR'] *= (prev.weights/prev.weights.max())
         # _ = prev.xov.xovers.dR.values ** 2
+
+        # print(isol)
+
         tst = isol.split('/')[-3].split('_')[1]
         tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
-        #print("tst_id",tst_id)
+        # print("tst_id",tst_id)
         # iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
 
         # print(prev.xov.xovers[['dR', 'huber', 'weights']])
@@ -648,9 +650,9 @@ def check_iters(sol, subexp=''):
         posterr = np.sqrt(posterr.diagonal())
         m_X = dict(zip(prev.sol4_pars,np.ravel(m_0 * posterr[0])))
         #print("a post error on params", m_X)
-        sigma_X = dict(zip(prev.sol4_pars,xstd))
-        #print("a priori error on params", sigma_X)
-        #print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
+        # sigma_X = dict(zip(prev.sol4_pars,xstd))
+        # print("a priori error on params", sigma_X)
+        # print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
 
         m_X_iters.append(m_X)
 
@@ -670,7 +672,8 @@ def check_iters(sol, subexp=''):
             for filt in filter_string_orb:
                 filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'$',k)} #filt in k if k not in ['dR/dRA']}
                 filtered_dict = list(filtered_dict.values())
-                sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+                # sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
+                sol_rms.append(np.sqrt(np.median(np.array(filtered_dict) ** 2)))
                 sol_avg.append(np.mean(np.array(filtered_dict)))
                 filtered_dict_iter = {k:v for (k,v) in prev.sol_dict_iter['sol'].items() if re.search(filt+'$',k)} #filt in k if k not in ['dR/dRA']}
                 filtered_dict_iter = list(filtered_dict_iter.values())
@@ -718,8 +721,8 @@ def check_iters(sol, subexp=''):
                         #     df_sol = df_sol.drop(df_sol.filter(regex=".*[A,C,R]1").columns,axis=1)
                         # print(df_sol.columns)
 
-                    prev.pert_cloop.drop(['dA1', 'dC1', 'dR1'], axis='columns', inplace=True)
-                    prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
+                    # prev.pert_cloop.drop(['dA1', 'dC1', 'dR1'], axis='columns', inplace=True)
+                    # prev.pert_cloop.drop(['dRl', 'dPt'], axis='columns', inplace=True)
                     df_sol.columns = prev.pert_cloop.columns
                     _ = prev.pert_cloop.astype(float)
                     # _.columns = ['/' + k for k in _.columns]
@@ -827,10 +830,15 @@ def check_iters(sol, subexp=''):
         print(iters_glocorr)
         print("Iter improvement")
         print(iters_glocorr.diff())
-        # print("A posteriori error on global pars")
-        # m_X_iters = pd.DataFrame.from_dict(m_X_iters)
-        # m_X_iters.columns = [x.split('/')[1] for x in prev.parNames.keys()] #sol4_pars]
-        # print(m_X_iters[iters_glocorr.columns])
+        print("A posteriori error on global pars")
+        m_X_iters = pd.DataFrame.from_dict(m_X_iters)
+        m_X_iters.columns = [x.split('/')[1] for x in prev.parNames.keys()] #sol4_pars]
+        print(m_X_iters[iters_glocorr.columns])
+        tmp = ['dR/'+x for x in list(iters_glocorr.columns)]
+        print("From least squares std:")
+        print(tmp)
+        print(np.array([prev.sol_dict_iter['std'][x] for x in tmp]).astype('float'))
+        # print(prev.sol_dict['std'][iters_glocorr.columns])
         # print("Iter improvement (relative to formal error): ")
         # print((iters_glocorr.diff().abs()).div(m_X_iters[iters_glocorr.columns]))
         #
@@ -908,10 +916,10 @@ def add_xov_separation(tmp):
 
 if __name__ == '__main__':
 
-    simulated_data = True
+    simulated_data = False #True
     #analyze_sol(sol='KX1r2_9', ref_sol='KX1r2_0', subexp = '0res_1amp')
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
-    check_iters(sol='tp2_0',subexp='3res_20amp')
-    # check_iters(sol='KX1r2_0',subexp='0res_1amp')
+    # check_iters(sol='tp4_0',subexp='3res_20amp')
+    check_iters(sol='KX1r4_0',subexp='0res_1amp')
 
