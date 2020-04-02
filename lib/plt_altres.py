@@ -13,11 +13,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 #from mpl_toolkits.basemap import Basemap
-from scipy.interpolate import RectBivariateSpline
 
 import pickleIO
-from eval_sol import draw_map
-from prOpt import outdir, tmpdir, auxdir, vecopts
+from lib.eval_sol import draw_map
+from prOpt import outdir, tmpdir, vecopts
 from project_coord import project_stereographic
 
 subdir = "" # archived/KX1r2_fitglborb/"
