@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for iter in np.arange(7,15):
+        for iter in np.arange(2,5):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)
@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
                 # prepend xov_analysis for years taking longer (to optimize cluster use)
                 tmp = np.arange(0, 21, 1)
-                xovlist = [16, 15, 11, 18, 17]
+                xovlist = [16, 12, 13, 8, 15, 7, 9, 11, 17, 18, 14, 19, 10, 6, 20]
                 for el in tmp:
                     if el not in xovlist:
                         xovlist.append(el)
@@ -144,17 +144,17 @@ if __name__ == '__main__':
                         exit(iostat)
 
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '7', '01:30:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '8', '01:30:00', '10'])
                 if iostat != 0:
                     print("*** PyGeol_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '7', '01:00:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '12:00:00', '10'])
                 if iostat != 0:
                     print("*** PyXov_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
                 iostat = s.call(#["python3", "launch_test.py", str(rt), "0", "3", str(i)])
-                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '1', '01:30:00', '1'])
+                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '8', '01:30:00', '1'])
                 if iostat != 0:
                     print("*** PyAcc_" + str(rt) + " failed on iter", iter)
                     exit(iostat)

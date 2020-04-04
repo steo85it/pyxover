@@ -24,7 +24,7 @@ from prOpt import sim_altdata, local, outdir
 if __name__ == '__main__':
 
     data_sim = 'sim'  # 'data' #
-    exp = 'KX1r4' # 'tp4' # 
+    exp = 'KX1' # 'tp4' # 
     # exp += '_'+str(ext_iter)
 
 #    res = [3]

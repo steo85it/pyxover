@@ -24,8 +24,14 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     if debug:
         print("Checking tracks rms @ iter ...")
 
-    # xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']].copy()
-    xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'weights']].copy()
+    if 'huber' in xovers_df.columns:
+        xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']].copy()
+        acceptif = xovtmp.huber > 0.01
+    else:
+        xovtmp = xovers_df[['LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'weights']].copy()
+        weights_mean = np.mean(xovtmp.weights)
+        acceptif = xovtmp.weights > 0.1*weights_mean
+
     xovtmp = xovtmp.astype({'orbA': 'int32', 'orbB': 'int32'})
     total_occ_tracks = pd.DataFrame([xovtmp['orbA'].value_counts(), xovtmp['orbB'].value_counts()]).T.fillna(0).sum \
         (axis=1).sort_values(ascending=False)
@@ -39,8 +45,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     trlist = []
     for tr in tracks:
         try:
-            weights_mean = np.mean(xovtmp.weights)
-            df = xovtmp.loc[((xovtmp.orbA == int(tr)) | (xovtmp.orbB == int(tr))) & (xovtmp.weights > 0.1*weights_mean)].sort_values(by='dtA',
+            df = xovtmp.loc[((xovtmp.orbA == int(tr)) | (xovtmp.orbB == int(tr))) & acceptif].sort_values(by='dtA',
                                                                                                              ascending=True)
             tmp = pd.DataFrame(
         	np.vstack(project_stereographic(df.LON.values, df.LAT.values, 0, 90, vecopts['PLANETRADIUS'])).T,

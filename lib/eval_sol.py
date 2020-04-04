@@ -26,7 +26,9 @@ from xov_utils import get_tracks_rms, plot_tracks_histo
 remove_max_dist = True
 remove_3sigma_median = True
 
-subfolder = '' # 'archived/tp4_pertglb_fitglb/' #'archived/tp9_0test_tides/'
+plot_all_track_iters = False
+
+subfolder = '' #'archived/KX1r4_KX/' #'archived/tp9_0test_tides/'
 
 def xovnum_plot():
 
@@ -577,7 +579,8 @@ def check_iters(sol, subexp=''):
         prev = prev.load(isol)
         # print(prev.xov.xovers.columns)
 
-        iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
+        if (plot_all_track_iters) or (idx == len(prev_sols)-1) or (idx == 0):
+            iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
         #
         # add_xov_separation(prev)
         # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
@@ -649,15 +652,17 @@ def check_iters(sol, subexp=''):
         # N = ATPA
         # Ninv = np.linalg.pinv(N)
         ell = diags(np.abs(prev.b))
-        posterr = np.linalg.pinv((ATP * ell * PA).todense())
-        posterr = np.sqrt(posterr.diagonal())
-        m_X = dict(zip(prev.sol4_pars,np.ravel(m_0 * posterr[0])))
-        #print("a post error on params", m_X)
-        # sigma_X = dict(zip(prev.sol4_pars,xstd))
-        # print("a priori error on params", sigma_X)
-        # print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
 
-        m_X_iters.append(m_X)
+        if idx == len(prev_sols[:])-1:
+            posterr = np.linalg.pinv((ATP * ell * PA).todense())
+            posterr = np.sqrt(posterr.diagonal())
+            m_X = dict(zip(prev.sol4_pars,np.ravel(m_0 * posterr[0])))
+            #print("a post error on params", m_X)
+            # sigma_X = dict(zip(prev.sol4_pars,xstd))
+            # print("a priori error on params", sigma_X)
+            # print("ratios", {k: m_X[k]/sigma_X[k] for k in m_X.keys() &  sigma_X})
+
+            m_X_iters.append(m_X)
 
         #prev.xov.xovers['dR'].values.T * prev.xov.xovers['weights'].values * prev.xov.xovers['dR'].values)
         # exit()
@@ -928,5 +933,5 @@ if __name__ == '__main__':
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp4_0',subexp='3res_20amp')
-    check_iters(sol='KX1_0',subexp='0res_1amp')
+    check_iters(sol='KX1r4_0',subexp='0res_1amp')
 

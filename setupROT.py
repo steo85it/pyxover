@@ -14,7 +14,7 @@ import numpy as np
 from prOpt import vecopts, debug
 from util import as2deg
 
-AG = True # False
+AG = False
 ZAP = False
 
 def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
