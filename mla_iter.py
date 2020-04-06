@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for iter in np.arange(2,5):
+        for iter in np.arange(3,6):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)
@@ -99,22 +99,25 @@ if __name__ == '__main__':
                 loadfile.close()
                 load_fit2dem.close()
 
-                loadfile = open("loadPyXover", "w")  # write mode
+                for i in range(2):
+                   loadfile = open("loadPyXover_"+str(i), "w")  # write mode
 
-                # prepend xov_analysis for years taking longer (to optimize cluster use)
-                tmp = np.arange(0, 21, 1)
-                xovlist = [16, 12, 13, 8, 15, 7, 9, 11, 17, 18, 14, 19, 10, 6, 20]
-                for el in tmp:
-                    if el not in xovlist:
-                        xovlist.append(el)
-                for ymc in np.array(xovlist):
-                # for ymc in np.arange(0, 21, 1):
-                    # print(('').join(
-                    #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
-                    loadfile.write(('').join(
-                        ['python3 launch_test.py ', str(rt), ' ', str(ymc), ' 2 ', str(iter), '\n']))
+                   # prepend xov_analysis for years taking longer (to optimize cluster use)
+                   # tmp = np.arange(0, 21, 1)
+                   # xovlist = [16, 12, 13, 8, 15, 7, 9, 11, 17, 18, 14, 19, 10, 6, 20]
+                   # for el in tmp:
+                   #    if el not in xovlist:
+                   #        xovlist.append(el)
+                   xovlist = np.arange(i*689,(i+1)*689,1)
+                   
+                   for ymc in np.array(xovlist):
+                   # for ymc in np.arange(0, 21, 1):
+                       # print(('').join(
+                       #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
+                       loadfile.write(('').join(
+                           ['python3 launch_test.py ', str(rt), ' ', str(ymc), ' 2 ', str(iter), '\n']))
 
-                loadfile.close()
+                   loadfile.close()
 
                 loadfile = open("loadAccSol", "w")  # write mode
 
@@ -144,17 +147,20 @@ if __name__ == '__main__':
                         exit(iostat)
 
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '8', '01:30:00', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '8', '01:30:00', '2.5Gb', '10'])
                 if iostat != 0:
                     print("*** PyGeol_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
-                iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '12:00:00', '10'])
-                if iostat != 0:
-                    print("*** PyXov_" + str(rt) + " failed on iter", iter)
-                    exit(iostat)
+
+                for i in range(2):
+                    iostat = s.call(
+                        ['/home/sberton2/launchLISTslurm', 'loadPyXover'+str(i), 'PyXov_' + str(rt) +'_' + str(iter)+'_' + str(i), '8', '12:00:00', '2.5Gb', '10'])
+                    if iostat != 0:
+                        print("*** PyXov_" + str(rt) + " failed on iter", iter)
+                        exit(iostat)
+                        
                 iostat = s.call(#["python3", "launch_test.py", str(rt), "0", "3", str(i)])
-                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '8', '01:30:00', '1'])
+                    ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '8', '01:30:00', '90Gb', '1'])
                 if iostat != 0:
                     print("*** PyAcc_" + str(rt) + " failed on iter", iter)
                     exit(iostat)

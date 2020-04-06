@@ -9,7 +9,7 @@ local = 0
 # debug mode
 debug = 0
 # parallel processing?
-parallel = 1
+parallel = 0
 # compute partials?
 partials = 1
 
@@ -20,7 +20,7 @@ parGlo = {'dRA':[0.2, 0.000, 0.000], 'dDEC':[0.36, 0.000, 0.000],'dPM':[0, 0.013
 # parameter constraints for solution
 par_constr = {'dR/dRA': 1.e3, 'dR/dDEC': 1.e3,'dR/dL':1.e3, 'dR/dPM': 1.e3, 'dR/dh2':1.e-2, 'dR/dA':1.e2, 'dR/dC':1.e2,'dR/dR':2.e1} #, 'dR/dRl':5.e0, 'dR/dPt':5.e0} #
               # 'dR/dA1':1.e-1, 'dR/dC1':1.e-1,'dR/dR1':1.e-1, 'dR/dA2':1.e-2, 'dR/dC2':1.e-2,'dR/dR2':1.e-2} #, 'dR/dA2':1.e-4, 'dR/dC2':1.e-4,'dR/dR2':1.e-2} # 'dR/dA':100., 'dR/dC':100.,'dR/dR':100.} #, 'dR/dh2': 1} #
-mean_constr = {'dR/dA':1.e1, 'dR/dC':1.e1,'dR/dR':1.e1} #, 'dR/dRl':5.e-1, 'dR/dPt':5.e-1}
+mean_constr = {'dR/dA':5.e0, 'dR/dC':5.e0,'dR/dR':5.e0} #, 'dR/dRl':5.e-1, 'dR/dPt':5.e-1}
 
 # perturbations for closed loop sims (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
 pert_cloop_orb = {} #'dA':50., 'dC':50., 'dR':20.,'dRl':0.5, 'dPt':0.5} #} #, 'dA1':20., 'dC1':20., 'dR1':5.

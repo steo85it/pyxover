@@ -11,7 +11,7 @@ dotmp
 loadPyGeoloc*
 loadPyAltSim*
 loadAcc*
-loadPyXover
-loadfit2dem
+loadPyXover*
+loadfit2dem*
 *~
 .idea/

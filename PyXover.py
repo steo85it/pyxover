@@ -28,7 +28,7 @@ import spiceypy as spice
 import time
 
 # mylib
-from prOpt import new_xov, vecopts, outdir
+from prOpt import new_xov, vecopts, outdir, debug
 # from mapcount import mapcount
 from ground_track import gtrack
 from xov_setup import xov
@@ -59,6 +59,7 @@ from xov_setup import xov
 # # print(tmp_ser.spA)
 #
 # exit()
+
 def launch_xov(
         args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
     track_id = args[0]
@@ -69,7 +70,7 @@ def launch_xov(
     outdir = args[4]
 
     if new_xov:  # and track_id=='1301232350':
-
+        # print( "check", track_id, misycmb[par])
         if not os.path.isfile(outdir + 'xov/xov_' + track_id + '_' + misycmb[par][1] + '.pkl') or new_xov == 2:
 
             # print("Processing " + track_id + " ...")
@@ -78,7 +79,7 @@ def launch_xov(
             #    trackA = track_id
             #    trackA = tracklist[str(track_id)]
             trackA = gtrack(vecopts)
-            trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
+            trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_id + '.pkl')
             if not trackA == None and len(trackA.ladata_df) > 0:
 
                 xov_tmp = track_id
@@ -90,14 +91,14 @@ def launch_xov(
                 for gtrackA, gtrackB in [s for s in comb if track_id in s[0]]:
 
                     # if debug:
-                    #print("Processing " + gtrackA + " vs " + gtrackB)
+                    #    print("Processing " + gtrackA + " vs " + gtrackB)
 
                     if gtrackB > gtrackA:
                         # try:
                         #        trackB = track_id
                         #        trackB = tracklist[str(gtrackB)]
                         trackB = gtrack(vecopts)
-                        trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
+                        trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + gtrackB + '.pkl')
                         if not trackB == None and len(trackB.ladata_df) > 0:
 
                             # # TODO remove when recomputing
@@ -205,10 +206,15 @@ def main(args):
 
     # setup all combinations between years
     par = int(cmb_y_in)
-    misy = ['08','11', '12', '13', '14', '15']
+    misy = ['11', '12', '13', '14', '15']
+    months = np.arange(1,13,1)
+    misy = [x+f'{y:02}' for x in misy for y in months]
+    misy = ['0801','0810']+misy[2:-8]
+    
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
     # print(misycmb)
-    print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
+    if debug:
+        print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
     # exit()
 
@@ -225,11 +231,11 @@ def main(args):
     # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
     # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
 
-    # print(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
-    # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*')))
+    # print(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
+    # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*')))
 
-    allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
-    allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
+    allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
+    allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1][:2] + '/gtrack_'+misycmb[par][1]+'*'))
 
     if misycmb[par][0] == misycmb[par][1]:
         allFiles = allFilesA
@@ -261,7 +267,7 @@ def main(args):
     # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
     # TODO, check wether one could safely save time by only considering xovers with a given weight
     iter = int(outdir_in.split('/')[1].split('_')[-1])
-    if iter>0 and len(comb)>0:
+    if iter>0:
         comb = select_useful_comb(comb, iter, outdir_in)
 
     # print(comb)
@@ -279,7 +285,7 @@ def main(args):
     #         except:
     #             print('Failed to load' + outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
 
-    args = ((fil.split('.')[0][-10:], comb, misycmb, par, outdir + outdir_in) for fil in allFiles)
+    args = ((fil.split('.')[0][-10:], comb, misycmb, par, outdir + outdir_in) for fil in allFilesA)
 
     # loop over all gtracks
     # parallel = 1
@@ -301,18 +307,26 @@ def main(args):
         '----- Runtime Xov2 = ' + str(endXov2 - startXov2) + ' sec -----' + str(
             (endXov2 - startXov2) / 60.) + ' min -----')
 
+
 def select_useful_comb(comb, iter, outdir_in):
     outdir_old = outdir_in.replace('_' + str(iter) + '/', '_' + str(iter - 1) + '/')
     print(outdir_old, outdir_in)
     tmp = Amat(vecopts)
     tmp = tmp.load(glob.glob(outdir + outdir_old + 'Abmat*.pkl')[0])
-    #old_xov_orb = tmp.xov.xovers[['orbA', 'orbB']].values
-    #intersetingRows = [(old_xov_orb == irow).all(axis=1).any() for irow in comb]
 
     old_xov_orb = (tmp.xov.xovers['orbA'].map(str) + tmp.xov.xovers['orbB']).values
-    comb_new = np.sum(comb.astype(object),axis=1)
-    common_index = np.intersect1d(comb_new,old_xov_orb,return_indices=True)[1]
-    comb_new = comb[common_index]
+
+    if len(comb)>0:
+        comb_new = np.sum(comb.astype(object),axis=1)
+        common_index = np.intersect1d(comb_new,old_xov_orb,return_indices=True)[1]
+        comb_new = comb[common_index]
+    else:
+        comb_new = np.array([])
+        
+    # slow
+    # old_xov_orb = tmp.xov.xovers[['orbA', 'orbB']].values
+    # intersetingRows = [(old_xov_orb == irow).all(axis=1).any() for irow in comb]
+    # comb = comb[intersetingRows]
 
     print("Based on previous xovs:", len(comb_new), "tracks combs selected out of", len(comb))
 
