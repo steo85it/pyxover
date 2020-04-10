@@ -28,7 +28,7 @@ import spiceypy as spice
 import time
 
 # mylib
-from prOpt import new_xov, vecopts, outdir, debug
+from prOpt import new_xov, vecopts, outdir, debug, monthly_sets
 # from mapcount import mapcount
 from ground_track import gtrack
 from xov_setup import xov
@@ -79,7 +79,13 @@ def launch_xov(
             #    trackA = track_id
             #    trackA = tracklist[str(track_id)]
             trackA = gtrack(vecopts)
-            trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_id + '.pkl')
+
+            if monthly_sets:
+                trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_id + '.pkl')
+            else:
+                trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
+
+
             if not trackA == None and len(trackA.ladata_df) > 0:
 
                 xov_tmp = track_id
@@ -98,7 +104,12 @@ def launch_xov(
                         #        trackB = track_id
                         #        trackB = tracklist[str(gtrackB)]
                         trackB = gtrack(vecopts)
-                        trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + gtrackB + '.pkl')
+
+                        if monthly_sets:
+                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + gtrackB + '.pkl')
+                        else:
+                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')   
+
                         if not trackB == None and len(trackB.ladata_df) > 0:
 
                             # # TODO remove when recomputing
@@ -206,10 +217,14 @@ def main(args):
 
     # setup all combinations between years
     par = int(cmb_y_in)
-    misy = ['11', '12', '13', '14', '15']
-    months = np.arange(1,13,1)
-    misy = [x+f'{y:02}' for x in misy for y in months]
-    misy = ['0801','0810']+misy[2:-8]
+
+    if monthly_sets:
+      misy = ['11', '12', '13', '14', '15']
+      months = np.arange(1,13,1)
+      misy = [x+f'{y:02}' for x in misy for y in months]
+      misy = ['0801','0810']+misy[2:-8]
+    else:
+      misy = ['08','11', '12', '13', '14', '15']
     
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
     # print(misycmb)
@@ -234,8 +249,13 @@ def main(args):
     # print(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
     # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*')))
 
-    allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
-    allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1][:2] + '/gtrack_'+misycmb[par][1]+'*'))
+    if monthly_sets:
+      allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
+      allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1][:2] + '/gtrack_'+misycmb[par][1]+'*'))
+    else:
+      allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
+      allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
+
 
     if misycmb[par][0] == misycmb[par][1]:
         allFiles = allFilesA
