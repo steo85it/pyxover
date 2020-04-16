@@ -59,6 +59,10 @@ h2_limit_on = False
 # dimension of meters (to get s0/s dimensionless)
 # could be updated by checking chi2 or by VCE
 sigma_0 = 1. # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
+# scaling factors for obs and constraints
+weight_obs = 1.
+weight_constr = 10.
+###
 convergence_criteria = 0.05 # =5%
 
 ########################################
@@ -869,12 +873,13 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # should this rather be sol_dict?? Do we want to constrain the correction amplitude at each iter or the full correction?
         prev_sol_ord = [previous_iter.sol_dict_iter['sol'][key] if
                         key in previous_iter.sol_dict_iter['sol'] else 0. for key in sol4_pars]
-        b_penal = np.hstack([xovi_amat.weights*xovi_amat.b, np.ravel(np.dot(Q,prev_sol_ord))]) #np.zeros(len(sol4_pars))]) #
+        b_penal = np.hstack([weight_obs*xovi_amat.weights*xovi_amat.b, weight_constr*np.ravel(np.dot(Q,prev_sol_ord))]) #np.zeros(len(sol4_pars))]) #
     else:
-        b_penal = np.hstack([xovi_amat.weights*xovi_amat.b, np.zeros(len(sol4_pars))])
+        b_penal = np.hstack([weight_obs*xovi_amat.weights*xovi_amat.b, weight_constr*np.zeros(len(sol4_pars))])
     # import scipy
-    spA_sol4_penal = scipy.sparse.vstack([spA_sol4,csr_matrix(Q)])
+    spA_sol4_penal = scipy.sparse.vstack([weight_obs*spA_sol4,weight_constr*csr_matrix(Q)])
     xovi_amat.spA_penal = spA_sol4_penal
+    xovi_amat.vce = [weight_obs,weight_constr]
     # print("Pre-sol: len(A,b)=",len(b_penal),spA_sol4_penal.shape)
     #print([xovi_amat.parNames[p] for p in sol4_pars])
 

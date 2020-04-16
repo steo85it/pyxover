@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 #from mpl_toolkits.basemap import Basemap
 
 import pickleIO
-from lib.eval_sol import draw_map
+from eval_sol import draw_map
 from prOpt import outdir, tmpdir, vecopts
 from project_coord import project_stereographic
 

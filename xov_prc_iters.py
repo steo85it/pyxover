@@ -34,12 +34,23 @@ def fine_xov_proc(args):
 
     xov_tmp.msrm_sampl = msrm_smpl
     xov_tmp.tracks = dict(zip(df.orbID.unique(), list(range(2))))
-    xov_tmp.proj_center = {'lon': proj_df_xovi['LON_proj'].values[0], 'lat': proj_df_xovi['LAT_proj'].values[0]}
+
+    if len(proj_df_xovi)>0:
+        xov_tmp.proj_center = {'lon': proj_df_xovi['LON_proj'].values[0], 'lat': proj_df_xovi['LAT_proj'].values[0]}
+    else:
+        print("### Empty proj_df_xovi on xov #", xovi)
+        print(proj_df_xovi)
+        return  # continue
 
     xov_tmp.ladata_df['orbID'] = xov_tmp.ladata_df['orbID'].map(xov_tmp.tracks)
     # print(xov_tmp.ladata_df)
 
-    x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
+    try:
+        x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
+    except:
+        print("### get_xover_fine issue on xov #", xovi)
+        print(xov_tmp.ladata_df)
+        return  # continue
     # print(x, y, subldA, subldB, ldA, ldB)
 
     ldA, ldB, R_A, R_B = xov_tmp.get_elev('', subldA, subldB, ldA, ldB, x=x, y=y)
@@ -130,7 +141,7 @@ def xov_prc_iters_run(args,cmb):
     # exit()
 
     tracks_in_xovs = np.unique(old_xovs[['orbA', 'orbB']].values)
-    # print(tracks_in_xovs)
+    print("Processing",len(tracks_in_xovs),"tracks, previously resulting in", len(old_xovs),"xovers.")
 
     track = gtrack(vecopts)
 
@@ -138,12 +149,20 @@ def xov_prc_iters_run(args,cmb):
     mla_idx = ['mla_idA', 'mla_idB']
     for track_id in tracks_in_xovs[:]:
         # if track_id in ['1312171723','1312240123']:
-        #   print(track_id)
+        # print(track_id)
 
         for idx, orb in enumerate(['orbA', 'orbB']):
-            # print(outdir + outdir_in + 'gtrack_' + str(cmb[0]) + '/gtrack_' + track_id + '.pkl')
-            track = track.load(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
-            # print(track.ladata_df.columns)
+            # print(idx,orb)
+            # print(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
+
+            # load file if year of track corresponds to folder
+            if track_id[:2]==str(cmb[idx]):
+                track = track.load(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
+            else:
+                # print("### Track ",track_id,"does not exist in",outdir + outdir_in + 'gtrack_' + str(cmb[idx]))
+                # track = gtrack(vecopts) # reinitialize track to avoid error "'NoneType' object has no attribute 'load'"
+                continue
+
             # exit()
             tmp_ladata = track.ladata_df.copy()  # .reset_index()
 
@@ -320,7 +339,6 @@ def xov_prc_iters_run(args,cmb):
     else:
         _ = [fine_xov_proc(arg) for arg in args]  # seq
 
-    # pd.set_option('display.max_columns', 500)
     # print(xov_tmp.xovers)
 
     # update xovers table with LAT and LON
@@ -328,11 +346,12 @@ def xov_prc_iters_run(args,cmb):
 
     xov_tmp.xovers.drop('xovid', axis=1).reset_index(inplace=True, drop=True)
     # print(xov_tmp.xovers.columns)
+    pd.set_option('display.max_columns', 500)
     print(xov_tmp.xovers)
 
     end = time.time()
 
-    print("Fine_xov finished after ", end - start_finexov, "sec!")
+    print("Fine_xov finished after", end - start_finexov, "sec and located", len(xov_tmp.xovers),"out of previous", len(old_xovs),"xovers!")
 
     # Save to file
     if not os.path.exists(outdir + 'xov/'):

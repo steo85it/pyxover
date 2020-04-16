@@ -221,9 +221,9 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
     vecopts = {}
     tmp = Amat(vecopts)
-    # tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
-    print(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')
-    tmp = tmp.load(glob.glob(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')[0])
+    tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+    # print(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')
+    # tmp = tmp.load(glob.glob(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')[0])
 
     if ref_sol != '':
         ref = Amat(vecopts)
@@ -262,18 +262,22 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
     # plt.xlim([0, 1.0])
     # plt.xlabel('roughness@baseline700 (m/m)')
 
-    sns.distplot(check_weights['huber'], kde=False, label='huber')
-    sns.distplot(check_weights['tracks_weights'], kde=False, label='tracks_weights')
-    sns.distplot(check_weights['interp_weights'], kde=False, label='interp_weights')
-    sns.distplot(check_weights['weights'], kde=False, label='weights')
-    plt.xlim([0, 1.0])
+    sns.distplot(check_weights['huber'], kde=True, label='huber', rug=False, bins=500, hist_kws={'range':(0.05,1)})
+    sns.distplot(check_weights['tracks_weights'], kde=True, label='tracks_weights', rug=False, bins=100, hist_kws={'range':(0.1,10)})
+    sns.distplot(check_weights['interp_weights'], kde=True, label='interp_weights', rug=False, hist_kws={'range':(0.1,40)})
+    sns.distplot(check_weights['weights'], kde=True, label='weights', rug=False, bins=500, hist_kws={'range':(0.05,10)})
+    plt.xlim([0.05, 40.0])
+    plt.semilogx()
     plt.legend()
     plt.savefig(tmpdir + '/weights.png')
     plt.clf()
 
     print(check_weights)
 
-    print(check_weights.max(),check_weights.min(),check_weights.mean(),check_weights.median())
+    print("max:",check_weights.max())
+    print("min:",check_weights.min())
+    print("mean:",check_weights.mean())
+    print("median:",check_weights.median())
 
     exit()
 
