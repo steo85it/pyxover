@@ -34,6 +34,7 @@ class Amat:
         self.sol_iter = None
         self.sol_dict_iter = None
         self.weights = None
+        self.vce = None
         self.penalty_mat = None
         self.spA = None
         self.b = None

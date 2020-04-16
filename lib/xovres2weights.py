@@ -50,6 +50,9 @@ def get_interpolation_weight(xov_):
     # get weight as inverse of roughness (relative, 0:1) value - could use factors given in ref + sim results to rescale
     interp_weights['weight'] = 1./interp_weights['rough_at_mindist'].values
 
+    print(interp_weights)
+    print(interp_weights['weight'].mean(),interp_weights['weight'].median(),interp_weights['weight'].max(),interp_weights['weight'].min())
+
     # plot some histos for debug
     if debug:
         plt.figure() #figsize=(8, 3))
