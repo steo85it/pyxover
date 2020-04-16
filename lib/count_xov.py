@@ -41,7 +41,7 @@ def get_weights(iter):
         solmat = prev.load(sol)
 
         tmp = solmat.xov.xovers[['orbA', 'orbB', 'weights']].copy()
-        # print("nb of xovers:", idx, len(tmp))
+        print("nb of xovers:", idx, len(tmp))
         tmp['orbs'] = tmp['orbA'].map(str) + '-' + tmp['orbB']
         tmp.drop(['orbA','orbB'],axis=1,inplace=True)
 

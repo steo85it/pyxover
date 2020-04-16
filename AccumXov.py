@@ -133,6 +133,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
 
     # save initial cloop perturbations to xov_cmb
     test_pert = len(list(xov_list[0].pert_cloop_0.values())[0])
+
     pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
     if test_pert>0 and len([v for x in pertdict for k,v in x.items() if v]) > 0 and sol4_orbpar != [None]:
         pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
@@ -865,6 +866,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # print(np.shape(xovi_amat.b))
     if previous_iter != None and previous_iter.sol_dict_iter != None:
         # get previous solution reordered as sol4_pars (and hence as Q)
+        # should this rather be sol_dict?? Do we want to constrain the correction amplitude at each iter or the full correction?
         prev_sol_ord = [previous_iter.sol_dict_iter['sol'][key] if
                         key in previous_iter.sol_dict_iter['sol'] else 0. for key in sol4_pars]
         b_penal = np.hstack([xovi_amat.weights*xovi_amat.b, np.ravel(np.dot(Q,prev_sol_ord))]) #np.zeros(len(sol4_pars))]) #
@@ -1202,7 +1204,8 @@ def main(arg):
                 previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
                                 '_' + str(ext_iter - 1) + '/' +
                                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
-            elif xov_cmb.pert_cloop.shape[1]>0: # if pre-processing took place
+            # if pre-processing took place (else, if perturbing simulation, also pert_cloop_orb should contain something)
+            elif xov_cmb.pert_cloop.shape[1]>0: # and len(pert_cloop_orb) == 0:
                 parsk = list(xov_cmb.pert_cloop.to_dict().keys())
                 trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
 
@@ -1214,6 +1217,7 @@ def main(arg):
 
                 previous_iter = Amat(vecopts)
                 previous_iter.sol_dict = {'sol':fit2dem_dict,'std':dict(zip(fit2dem_keys,np.zeros(len(fit2dem_keys))))}
+            # not first iter, nor pre-processing
             else:
                 previous_iter = None #Amat(vecopts)
                 # previous_iter.sol_dict_iter = previous_iter.sol_dict

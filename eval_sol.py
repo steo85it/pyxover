@@ -17,7 +17,9 @@ from scipy.sparse import diags
 
 import AccumXov as xovacc
 from Amat import Amat
-from prOpt import outdir, tmpdir, local, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts
+from accum_utils import get_xov_cov_tracks
+from lib.xovres2weights import get_roughness_at_coord, get_interpolation_weight
+from prOpt import outdir, tmpdir, local, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts, auxdir
 # from AccumXov import plt_geo_dR
 # from ground_track import gtrack
 from xov_setup import xov
@@ -219,7 +221,9 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
 
     vecopts = {}
     tmp = Amat(vecopts)
-    tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+    # tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+    print(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')
+    tmp = tmp.load(glob.glob(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')[0])
 
     if ref_sol != '':
         ref = Amat(vecopts)
@@ -227,31 +231,74 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
         # if correlation matrix wanted (long, only prints >0.95)
         # print(ref.corr_mat())
 
-    if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
+    # if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
+    #
+    #     add_xov_separation(tmp)
+    #     xovacc.analyze_dist_vs_dR(tmp.xov)
+    #
+    #     if remove_max_dist:
+    #         print(len(tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]),
+    #               'xovers removed by dist from obs > 1km')
+    #         tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]
+    #         tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_min_mean < 1]
 
-        add_xov_separation(tmp)
-        xovacc.analyze_dist_vs_dR(tmp.xov)
+    # interp_weights = tmp.xov.xovers.copy()
 
-        if remove_max_dist:
-            print(len(tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]),
-                  'xovers removed by dist from obs > 1km')
-            tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]
-            tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_min_mean < 1]
+    check_weights = pd.DataFrame()
+    check_weights['interp_weights'] = get_interpolation_weight(tmp.xov).weight
+
+    tmp_trkw = tmp.xov.xovers.copy()[
+        ['xOvID', 'LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]  # .astype('float16')
+    print("pre xovcov types", tmp_trkw.dtypes)
+    check_weights['tracks_weights'] = get_xov_cov_tracks(df=tmp_trkw, plot_stuff=True).diagonal()
+
+    check_weights['huber'] = tmp.xov.xovers.copy().huber
+    check_weights['weights'] = check_weights['tracks_weights']*check_weights['interp_weights']*check_weights['huber']
+
+    plt.figure()  # figsize=(8, 3))
+    num_bins = 'auto'  # 40  # v
+
+    # check_weights.hist(bins=num_bins) #, cumulative=True)
+    # plt.xlim([0, 1.0])
+    # plt.xlabel('roughness@baseline700 (m/m)')
+
+    sns.distplot(check_weights['huber'], kde=False, label='huber')
+    sns.distplot(check_weights['tracks_weights'], kde=False, label='tracks_weights')
+    sns.distplot(check_weights['interp_weights'], kde=False, label='interp_weights')
+    sns.distplot(check_weights['weights'], kde=False, label='weights')
+    plt.xlim([0, 1.0])
+    plt.legend()
+    plt.savefig(tmpdir + '/weights.png')
+    plt.clf()
+
+    print(check_weights)
+
+    print(check_weights.max(),check_weights.min(),check_weights.mean(),check_weights.median())
+
+    exit()
+
+    # get roughness at 700 meters from http://www.planetary.brown.edu/html_pages/mercury_roughness-maps.html
+    # ref baseline in meters (depending on input map)
+    # ref_baseline = 700.
+    # lonlat = interp_weights.loc[:,['LON','LAT']].values
+    # roughness_df = get_roughness_at_coord(lon=lonlat[:,0],lat=lonlat[:,1],
+    #                                       roughness_map=auxdir+'MLA_Roughness_composite.tif')
+
 
     # Remove huge outliers
-    mean_dR, std_dR, worst_tracks = tmp.xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
-    tmp.xov.xovers['dR_abs'] = tmp.xov.xovers.dR.abs()
-    print("Largest dR ( # above 200m", len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 200])," or ",
-          (len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 200])/len(tmp.xov.xovers)*100.),'%)')
-    print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nlargest(10,'dR_abs'))
-    print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nsmallest(10,'dR_abs'))
+    # mean_dR, std_dR, worst_tracks = tmp.xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
+    # tmp.xov.xovers['dR_abs'] = tmp.xov.xovers.dR.abs()
+    # print("Largest dR ( # above 200m", len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 200])," or ",
+    #       (len(tmp.xov.xovers[tmp.xov.xovers.dR_abs > 200])/len(tmp.xov.xovers)*100.),'%)')
+    # print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nlargest(10,'dR_abs'))
+    # print(tmp.xov.xovers[['orbA','orbB','dist_max','dist_min_mean','dR_abs']].nsmallest(10,'dR_abs'))
+    #
+    # # Recheck distance after cleaning
+    # xovacc.analyze_dist_vs_dR(tmp.xov)
+    # _ = tmp.xov.xovers.dR.values ** 2
+    # print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
 
-    # Recheck distance after cleaning
-    xovacc.analyze_dist_vs_dR(tmp.xov)
-    _ = tmp.xov.xovers.dR.values ** 2
-    print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
-
-    if False and local:
+    if local and False:
         from mpl_toolkits.basemap import Basemap
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
         print(mlacount.sort_values(['LON']))
@@ -548,13 +595,14 @@ def analyze_sol(sol, ref_sol = '', subexp = ''):
             plt.close()
 
 # Check convergence over iterations
+# @profile
 def check_iters(sol, subexp=''):
 
     np.set_printoptions(precision=3)
 
     sol_iters = sol.split('_')[:-1][0]
-    prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
-    #prev_sols = np.sort(glob.glob(outdir+'Abmat/KX1r4_AG2/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    # prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    prev_sols = np.sort(glob.glob(outdir+'Abmat/KX1r4_AG2/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
 
     iters_rms = []
     iters_orbcorr = []
@@ -577,7 +625,6 @@ def check_iters(sol, subexp=''):
         # print(prev_sols)
         prev = Amat(vecopts)
         prev = prev.load(isol)
-        # print(prev.xov.xovers.columns)
 
         if (plot_all_track_iters) or (idx == len(prev_sols)-1) or (idx == 0):
             iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
@@ -597,6 +644,21 @@ def check_iters(sol, subexp=''):
         tst_id = isol.split('/')[-3].split('_')[0]+tst.zfill(2)
         # print("tst_id",tst_id)
         # iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
+
+        ################ print histo ###############
+        if (idx == 0) or (idx == len(prev_sols) - 1):
+            if idx == 0 :
+                fig = plt.figure("resid_iters")
+            else:
+                plt.figure("resid_iters")
+            plt.hist(prev.xov.xovers['dR'].values, label=str(idx),bins=50, range=[-100, 100])
+            # plt.title('Mean')
+            # plt.xlabel("value")
+            # plt.ylabel("Frequency")
+            plt.legend()
+            if idx == len(prev_sols) - 1 :
+                plt.savefig(tmpdir + "histo_resid_iters.png")
+        ############################################
 
         # print(prev.xov.xovers[['dR', 'huber', 'weights']])
         #print("@iter", tst_id)
@@ -677,15 +739,32 @@ def check_iters(sol, subexp=''):
             sol_avg = []
             sol_rms_iter = []
             sol_avg_iter = []
-            for filt in filter_string_orb:
+            for idx_filt, filt in enumerate(filter_string_orb):
                 filtered_dict = {k:v for (k,v) in prev.sol_dict['sol'].items() if re.search(filt+'$',k)} #filt in k if k not in ['dR/dRA']}
                 filtered_dict = list(filtered_dict.values())
+
                 # sol_rms.append(np.sqrt(np.mean(np.array(filtered_dict) ** 2)))
-                sol_rms.append(np.sqrt(np.median(np.array(filtered_dict) ** 2)))
+                sol_rms.append(np.median(filtered_dict))
                 sol_avg.append(np.mean(np.array(filtered_dict)))
                 filtered_dict_iter = {k:v for (k,v) in prev.sol_dict_iter['sol'].items() if re.search(filt+'$',k)} #filt in k if k not in ['dR/dRA']}
                 filtered_dict_iter = list(filtered_dict_iter.values())
-                sol_rms_iter.append(np.sqrt(np.mean(np.array(filtered_dict_iter) ** 2)))
+
+                ################ print histo ###############
+                if (idx == 0) or (idx == len(prev_sols) - 1):
+                    if idx == 0 and idx_filt==0:
+                        fig1, ax = plt.subplots(len(filter_string_orb),num="orbcorr")
+                    else:
+                        plt.subplots(len(filter_string_orb),num="orbcorr")
+                    ax[idx_filt].hist(filtered_dict_iter,label=str(idx),bins=50,range=[-20,20])
+                    # plt.title('Mean')
+                    # plt.xlabel("value")
+                    # plt.ylabel("Frequency")
+                    plt.legend()
+                    if idx == len(prev_sols) - 1 and idx_filt==len(filter_string_orb)-1:
+                        plt.savefig(tmpdir+"histo_orbcorr_iters.png")
+                ############################################
+
+                sol_rms_iter.append(np.median(filtered_dict_iter))
                 sol_avg_iter.append(np.mean(np.array(filtered_dict_iter)))
 
             iters_orbcorr.append(np.hstack([tst_id,sol_rms]))
@@ -929,9 +1008,9 @@ if __name__ == '__main__':
 
     simulated_data = False #True
 
-    #analyze_sol(sol='KX1r2_9', ref_sol='KX1r2_0', subexp = '0res_1amp')
+    analyze_sol(sol='KX1r4_0', ref_sol='', subexp = '0res_1amp')
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp4_0',subexp='3res_20amp')
-    check_iters(sol='KX1r4_0',subexp='0res_1amp')
+    # check_iters(sol='KX1_0',subexp='0res_1amp')
 

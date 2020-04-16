@@ -19,6 +19,7 @@ from project_coord import project_stereographic
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
+# @profile
 def get_tracks_rms(xovers_df, plot_xov_tseries=False):
 
     if debug:

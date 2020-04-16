@@ -9,7 +9,7 @@
 import pickle
 
 import seaborn as sns
-from prOpt import tmpdir, auxdir, local, debug, outdir, vecopts
+from prOpt import tmpdir, auxdir, local, debug, outdir, vecopts, roughn_map
 from util import rms
 
 import pyproj
@@ -29,6 +29,7 @@ import pandas as pd
 def get_interpolation_weight(xov_):
 
     interp_weights = xov_.xovers.copy()
+    interp_weights = interp_weights[['LON','LAT','dist_min_mean']]
 
     # get roughness at 700 meters from http://www.planetary.brown.edu/html_pages/mercury_roughness-maps.html
     # ref baseline in meters (depending on input map)
@@ -45,7 +46,8 @@ def get_interpolation_weight(xov_):
     interp_weights['rough_at_mindist'] = roughness_at_baseline(interp_weights['rough_700m'].values,
                                                             interp_weights['meters_dist_min'].values,
                                                                ref_baseline=ref_baseline)
-    # get weight as inverse of roughness (relative, 0:255) value - could use factors given in ref + sim results to rescale
+
+    # get weight as inverse of roughness (relative, 0:1) value - could use factors given in ref + sim results to rescale
     interp_weights['weight'] = 1./interp_weights['rough_at_mindist'].values
 
     # plot some histos for debug
@@ -68,7 +70,14 @@ def get_interpolation_weight(xov_):
         tmp = interp_weights['rough_at_mindist'].values
         n, bins, patches = plt.hist(np.where(tmp<255,tmp,255).astype(np.float), bins=num_bins, cumulative=True)
         plt.xlabel('roughness@separation (m/m)')
+        plt.xlim([0,10])
         plt.savefig(tmpdir + '/histo_roughn_at_sep.png')
+        plt.clf()
+
+        tmp = interp_weights['weight'].values
+        n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins, cumulative=False)
+        plt.xlabel('weight')
+        plt.savefig(tmpdir + '/histo_roughn_weight.png')
         plt.clf()
 
         tmp = interp_weights['weight'].values
@@ -76,7 +85,7 @@ def get_interpolation_weight(xov_):
         plt.xlabel('roughness@separation (m/m)')
         plt.savefig(tmpdir + '/histo_roughn_weights.png')
         plt.clf()
-        
+
     return interp_weights
 
 
@@ -286,11 +295,14 @@ def get_roughness_at_coord(lon,lat,roughness_map):
     roughness_df.columns = ['x_laea', 'y_laea', 'rough_700m', 'LON', 'LAT']
 
     # set standard roughness for rest of planet ()
-    roughness_df.loc[(roughness_df['LAT'] < 65) | (roughness_df['LAT'] > 84), 'rough_700m'] = 25.
-    roughness_df.loc[roughness_df['rough_700m'] < 5.e0] = 5.e0
+    if roughn_map:
+        roughness_df['rough_700m'] /= 255.
+        roughness_df.loc[(roughness_df['LAT'] < 65) | (roughness_df['LAT'] > 84), 'rough_700m'] = 0.1
+        roughness_df.loc[roughness_df['rough_700m']<1.e-2] = 1.e-2
+    else:
     # if simulation with fixed small scale of 20 mt at 600 mt (important thing is that it's the same everywhere)
-    # print("ACHTUNG!!!! Roughness fixed at constant value for simulations!!!!!")
-    # roughness_df.loc[:,'rough_700m'] = 25.
+        print("ACHTUNG!!!! Roughness fixed at constant value for simulations!!!!!")
+        roughness_df.loc[:,'rough_700m'] = 0.1
     # roughness = roughness.round({'LAT':0,'LON':0, 'rough_700m':0})
 
     # check if interp and axes are aligned
