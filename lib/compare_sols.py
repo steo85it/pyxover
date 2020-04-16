@@ -24,81 +24,136 @@ if __name__ == '__main__':
     ############################
     if consist_check:
         cols = np.array([#'Stark (2015)', 'Margot (2012)', 'Mazarico (2014)', 'Barker (2016)', 'Genova (2019)', 'Verma (2016)',
-            'ap0', 'ap1','orb0/ap0', 'orb0/ap1',
-                         'orb1/ap1'])  # orb: 0=KX, 2=AG, 1=AG2/SG, ap: 0=IAU, 1=AG
+            'ap0', 'ap1','orb0/ap0', 'orb0/ap0/rgh', 'orb0/ap1',
+                         'orb1/ap1','orb1/ap0','orb0/ap1/par1','orb0/ap0/FM'])  # orb: 0=KX, 2=AG, 1=AG2/SG, ap: 0=IAU, 1=AG, par:-: orb+glb, 1:orb+pnt+glb
 
         IAU = {'sol':{'RA':281.00975,'DEC':61.4143,'PM':6.1385025,'L':38.5},
-              'std':{'RA':0.,'DEC':0.,'PM':0.,'L':0.}}
+              'std':{'RA':0.0048,'DEC':0.0028,'PM':0.0000013,'L':1.6}}
         AG = {'sol':{'RA':281.0082,'DEC':61.4164,'PM':6.1385054,'L':40.},
-              'std':{'RA':0.,'DEC':0.,'PM':0.,'L':0.}}
+              'std':{'RA':9.e-4,'DEC':3.e-4,'PM':0.,'L':8.7}}
+
         # first digit is orb, second gives apriori values
         # old
         # test00 = {'sol':{'RA':-0.621,'DEC':- 0.173,'PM':0.152,'L':- 1.152, 'h2':1.983},
         #       'std':{'RA':0.,'DEC':0.,'PM':0.,'L':0., 'h2':0.}}
         # new
-        test00 = {'sol':{'RA':0.36,'DEC':- 0.098,'PM':0.610,'L':- 0.866, 'h2':1.3},
-              'std':{'RA':0.21,'DEC':0.06,'PM':0.19,'L':0.14, 'h2':0.54}}
+        # test00 = {'sol':{'RA':0.36,'DEC':- 0.098,'PM':0.610,'L':- 0.866, 'h2':1.3},
+        #       'std':{'RA':0.21,'DEC':0.06,'PM':0.19,'L':0.14, 'h2':0.54}}
+        test00 = {'sol':{'RA':0.008,'DEC':- 0.137,'PM':0.35,'L':- 1.02, 'h2':1.42},
+              'std':{'RA':0.8,'DEC':0.98,'PM':0.26,'L':0.23, 'h2':1.42}}
+        test002 = {'sol':{'RA':-1.6,'DEC':-0.04,'PM':2.9,'L':- 0.72, 'h2':2.92},
+              'std':{'RA':0.8,'DEC':0.89,'PM':0.24,'L':0.22, 'h2':1.47}}
         # test01 = {'sol':{'RA':4.849,'DEC':-4.007,'PM':1.502,'L':- 0.641, 'h2':3.227},
         #       'std':{'RA':0.454,'DEC':0.097,'PM':0.197,'L':0.205,'h2':0.823}}
         test01 = {'sol':{'RA':4.94,'DEC':-3.37,'PM':1.35,'L':- 0.29, 'h2':1.09},
-              'std':{'RA':0.454,'DEC':0.097,'PM':0.197,'L':0.205,'h2':0.823}}
-        test11 = {'sol':{'RA':6.48,'DEC':-3.88,'PM':3.62,'L': 0.39, 'h2':0.09},
-              'std':{'RA':0.58,'DEC':0.15,'PM':0.3,'L':0.305,'h2':0.}}
+              'std':{'RA':0.78,'DEC':0.95,'PM':0.26,'L':0.24,'h2':1.4}}
+        test11 = {'sol':{'RA':6.53,'DEC':-4.73,'PM':4.50,'L': 0.67, 'h2':1.13},
+              'std':{'RA':1.05,'DEC':1.28,'PM':0.38,'L':0.34,'h2':1.95}}
+        test011 = {'sol':{'RA':4.74,'DEC':-3.64,'PM':1.13,'L': -0.31, 'h2':2.78},
+              'std':{'RA':1.3,'DEC':1.57,'PM':0.61,'L':0.31,'h2':2.16}}
+        test10 = {'sol':{'RA':1.32,'DEC':0.35,'PM':1.09,'L': -0.59, 'h2':0.68},
+              'std':{'RA':1.19,'DEC':1.48,'PM':0.37,'L':0.35,'h2':2.0}}
+        test00f = {'sol':{'RA':-0.94,'DEC':-0.25,'PM':0.99,'L': -0.32, 'h2':1.34},
+              'std':{'RA':0.10,'DEC':0.13,'PM':0.036,'L':0.03,'h2':0.24}}
+        # test00f = {'sol':{'RA':-0.67,'DEC':-0.29,'PM':1.73,'L': -0.47, 'h2':2.21},
+        #       'std':{'RA':0.17,'DEC':0.21,'PM':0.05,'L':0.05,'h2':0.36}}
         # test21 = {'sol':{'RA':281.00975,'DEC':61.4143,'PM':6.1385025,'L':38.5},
         #       'std':{'RA':0.,'DEC':0.,'PM':0.,'L':0.}}
         # test10 = {'sol':{'RA':281.00975,'DEC':61.4143,'PM':6.1385025,'L':38.5},
         #       'std':{'RA':0.,'DEC':0.,'PM':0.,'L':0.}}
 
+############### PREPARE ##################################################
+
         RA = np.array([#281.00980,281.0103, 281.00480, 281.0097+1.5e-3, 281.0082,
             IAU['sol']['RA'], AG['sol']['RA'], # IAU, AG
             IAU['sol']['RA'] + as2deg(test00['sol']['RA']),
+            IAU['sol']['RA'] + as2deg(test002['sol']['RA']),
             AG['sol']['RA'] + as2deg(test01['sol']['RA']),
-            AG['sol']['RA'] + as2deg(test11['sol']['RA'])])
+            AG['sol']['RA'] + as2deg(test11['sol']['RA']),
+            IAU['sol']['RA'] + as2deg(test10['sol']['RA']),
+            AG['sol']['RA'] + as2deg(test011['sol']['RA']),
+            IAU['sol']['RA'] + as2deg(test00f['sol']['RA'])])
         err_RA = np.array([#8.8e-4, 1.4e-3, 0.0054, 0, 9.e-4, 0.0048,
-            0., 0.,
+            1* (IAU['std']['RA']), 1* (AG['std']['RA']),
             1* as2deg(test00['std']['RA']),
+            1 * as2deg(test002['std']['RA']),
             1* as2deg(test01['std']['RA']),
-            1* as2deg(test11['std']['RA'])])
+            1* as2deg(test11['std']['RA']),
+            1 * as2deg(test10['std']['RA']),
+            1* as2deg(test011['std']['RA']),
+            1* as2deg(test00f['std']['RA'])])
         DEC = np.array([#61.4156,61.4155, 61.41436, 61.4143 + 0, 61.4164,
             IAU['sol']['DEC'], AG['sol']['DEC'],
             IAU['sol']['DEC'] + as2deg(test00['sol']['DEC']),
+            IAU['sol']['DEC'] + as2deg(test002['sol']['DEC']),
             AG['sol']['DEC'] + as2deg(test01['sol']['DEC']),
-            AG['sol']['DEC'] + as2deg(test11['sol']['DEC'])])
+            AG['sol']['DEC'] + as2deg(test11['sol']['DEC']),
+            IAU['sol']['DEC'] + as2deg(test10['sol']['DEC']),
+            AG['sol']['DEC'] + as2deg(test011['sol']['DEC']),
+            IAU['sol']['DEC'] + as2deg(test00f['sol']['DEC'])])
         err_DEC = np.array([#1.6e-3, 1.4e-3, 0.0021, 0, 3.e-4, 0.0028,
-            0., 0.,
+            1* (IAU['std']['DEC']), 1* (AG['std']['DEC']),
             1* as2deg(test00['std']['DEC']),
+            1 * as2deg(test002['std']['DEC']),
             1* as2deg(test01['std']['DEC']),
-            1* as2deg(test11['std']['DEC'])])
+            1* as2deg(test11['std']['DEC']),
+            1 * as2deg(test10['std']['DEC']),
+            1* as2deg(test011['std']['DEC']),
+            1* as2deg(test00f['std']['DEC'])])
         PM = np.array([#6.13851804, 6.1385025, 6.138511, 6.1385025-0.2e-5, 6.1385054, 0,
             IAU['sol']['PM'], AG['sol']['PM'],
             IAU['sol']['PM'] + as2deg(test00['sol']['PM'])/365.25,
+            IAU['sol']['PM'] + as2deg(test002['sol']['PM']) / 365.25,
             AG['sol']['PM'] + as2deg(test01['sol']['PM'])/365.25,
-            AG['sol']['PM'] + as2deg(test11['sol']['PM']) / 365.25])
+            AG['sol']['PM'] + as2deg(test11['sol']['PM']) / 365.25,
+            IAU['sol']['PM'] + as2deg(test10['sol']['PM']) / 365.25,
+            AG['sol']['PM'] + as2deg(test011['sol']['PM']) / 365.25,
+            IAU['sol']['PM'] + as2deg(test00f['sol']['PM']) / 365.25])
         err_PM = np.array([#9.4e-7, 0, 1.15e-6, 0, 0.0000013, 0,
-            0.,0.,
+            (IAU['std']['PM']), (AG['std']['PM']),
             1* as2deg(test00['std']['PM']) / 365.25,
+            1 * as2deg(test002['std']['PM']) / 365.25,
             1* as2deg(test01['std']['PM']) / 365.25,
-            1* as2deg(test11['std']['PM']) / 365.25])
+            1* as2deg(test11['std']['PM']) / 365.25,
+            1 * as2deg(test10['std']['PM']) / 365.25,
+            1* as2deg(test011['std']['PM']) / 365.25,
+            1* as2deg(test00f['std']['PM']) / 365.25])
         L = np.array([#38.9, 38.5, 0, 38.5-0.05, 40.0, 0,
             IAU['sol']['L'], AG['sol']['L'],
             IAU['sol']['L'] + test00['sol']['L'],
+            IAU['sol']['L'] + test002['sol']['L'],
             AG['sol']['L'] + test01['sol']['L'],
-            AG['sol']['L'] + test11['sol']['L']])
+            AG['sol']['L'] + test11['sol']['L'],
+            IAU['sol']['L'] + test10['sol']['L'],
+            AG['sol']['L'] + test011['sol']['L'],
+            IAU['sol']['L'] + test00f['sol']['L']])
         err_L = np.array([#1.3, 1.6, 0, 0, 8.7, 0,
-            0.,0.,
+            1* IAU['std']['L'],1* AG['std']['L'],
             1* test00['std']['L'],
+            1 * test002['std']['L'],
             1* test01['std']['L'],
-            1* test11['std']['L']])
+            1* test11['std']['L'],
+            1 * test10['std']['L'],
+            1* test011['std']['L'],
+            1* test00f['std']['L']])
         h2 = np.array([#38.9, 38.5, 0, 38.5-0.05, 40.0, 0,
-            0.,0.,
+            1.02,0.,
             0. + test00['sol']['h2'],
+            0. + test002['sol']['h2'],
             0. + test01['sol']['h2'],
-            0. + test11['sol']['h2']])
+            0. + test11['sol']['h2'],
+            0. + test10['sol']['h2'],
+            0. + test011['sol']['h2'],
+            0. + test00f['sol']['h2']])
         err_h2 = np.array([#1.3, 1.6, 0, 0, 8.7, 0,
-            0.,0.,
+            0.7,0.,
             1* test00['std']['h2'],
+            1 * test002['std']['h2'],
             1* test01['std']['h2'],
-            1* test11['std']['h2']])
+            1* test11['std']['h2'],
+            1 * test10['std']['h2'],
+            1* test011['std']['h2'],
+            1* test00f['std']['h2']])
 
         df = pd.DataFrame(np.vstack([RA, DEC, PM, L, h2]), columns=cols, index=ind)
         print(df.T)
@@ -115,7 +170,7 @@ if __name__ == '__main__':
         # xerr = np.random.random_sample(10)
         # yerr = np.random.random_sample(10)
 
-        my_colors = ['r', 'g', 'b', 'k', 'y'] #, 'm']  # ,
+        my_colors = ['r', 'g', 'b', 'k', 'y', 'm', 'c', 'tab:brown','tab:pink']  # ,
         # 'c', 'tab:brown',
         #          'tab:pink', 'tab:purple']
 
@@ -198,10 +253,13 @@ if __name__ == '__main__':
 
                 if idx in [0, 1]:
                     fmtkey = 'v'
+                    ax.errorbar(idx, h2[idx],
+                            yerr=err_h2[idx],
+                            fmt=fmtkey, color=color, label=["inter_model_SG","-"][idx])
                 else:
                     fmtkey = 'o'
 
-                ax.errorbar(idx, h2[idx],
+                    ax.errorbar(idx, h2[idx],
                             yerr=err_h2[idx],
                             fmt=fmtkey, color=color, label=cols[idx])
         ax.legend()

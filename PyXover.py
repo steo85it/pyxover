@@ -8,6 +8,7 @@
 import warnings
 
 from Amat import Amat
+from xov_prc_iters import xov_prc_iters_run
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -108,7 +109,7 @@ def launch_xov(
                         if monthly_sets:
                            trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + gtrackB + '.pkl')
                         else:
-                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')   
+                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
 
                         if not trackB == None and len(trackB.ladata_df) > 0:
 
@@ -117,6 +118,8 @@ def launch_xov(
                             # trackB.ladata_df[['X_NPstgprj', 'Y_NPstgprj']] = trackB.ladata_df[['X_stgprj', 'Y_stgprj']]
                             # trackA.ladata_df[] = trackA.ladata_df.rename(index=str, columns={"X_stgprj": "X_NPstgprj", "Y_stgprj": "Y_NPstgprj"})
                             # trackB.ladata_df = trackB.ladata_df.rename(index=str, columns={"X_stgprj": "X_NPstgprj", "Y_stgprj": "Y_NPstgprj"})
+
+                            # looping over all track combinations and updating the general df xov_tmp.xovers
                             xov_tmp.setup([trackA,trackB])
 
                     # except:
@@ -126,7 +129,12 @@ def launch_xov(
                 # for each gtrackA, write
                 # print([s for s in comb if track_id in s[0]])
                 if [s for s in comb if track_id in s[0]] and len(xov_tmp.xovers) > 0:
+                    # get xover LAT and LON
                     xov_tmp.get_xov_latlon(trackA)
+                    # Drop useless columns (can be useful for fractional part of xov location)
+                    # xov_tmp.xovers.drop(['cmb_idA', 'cmb_idB'],axis=1,inplace=True)
+
+                    # Save to file
                     if not os.path.exists(outdir + 'xov/'):
                         os.mkdir(outdir + 'xov/')
                     xov_tmp.save(outdir + 'xov/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
@@ -225,12 +233,19 @@ def main(args):
       misy = ['0801','0810']+misy[2:-8]
     else:
       misy = ['08','11', '12', '13', '14', '15']
-    
+
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
     # print(misycmb)
     if debug:
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
+
+    print(args)
+    if args[-1] > 0:
+        print("Calling another awesome routine")
+        xov_prc_iters_run(args, misycmb[par])
+        exit()
+
     # exit()
 
     # -------------------------------
@@ -342,7 +357,7 @@ def select_useful_comb(comb, iter, outdir_in):
         comb_new = comb[common_index]
     else:
         comb_new = np.array([])
-        
+
     # slow
     # old_xov_orb = tmp.xov.xovers[['orbA', 'orbB']].values
     # intersetingRows = [(old_xov_orb == irow).all(axis=1).any() for irow in comb]

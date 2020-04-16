@@ -713,14 +713,6 @@ class gtrack:
 
         startProj = time.time()
 
-        #     # TODO Remove if not needed (NOT GOOD IF ESTIMATING h2)
-        #     self.ladata_df['R_m_dh2'] = ladata_df[['R_m_dL']].values
-        #     self.ladata_df['LON_m_dh2'] = ladata_df[['LON_m_dL']].values
-        #     self.ladata_df['LAT_m_dh2'] = ladata_df[['LAT_m_dL']].values
-        #     self.ladata_df['R_p_dh2'] = ladata_df[['R_p_dL']].values
-        #     self.ladata_df['LON_p_dh2'] = ladata_df[['LON_p_dL']].values
-        #     self.ladata_df['LAT_p_dh2'] = ladata_df[['LAT_p_dL']].values
-
         if (parallel and False):  # not convenient for small datasets (<5 orbits)
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count() - 1)

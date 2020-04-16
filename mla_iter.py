@@ -12,7 +12,7 @@ if __name__ == '__main__':
     rough_test = np.array([0]) #np.arange(1,6,1)
 
     for rt in rough_test:
-        for iter in np.arange(5,10):
+        for iter in np.arange(0, 1):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)
@@ -103,8 +103,8 @@ if __name__ == '__main__':
                  for i in range(2):
                    loadfile = open("loadPyXover_"+str(i), "w")  # write mode
                    xovlist = np.arange(i*689,(i+1)*689,1)
-                   
-                else:   
+
+                else:
                    loadfile = open("loadPyXover", "w")  # write mode
                    # prepend xov_analysis for years taking longer (to optimize cluster use)
                    tmp = np.arange(0, 21, 1)
@@ -112,7 +112,7 @@ if __name__ == '__main__':
                    for el in tmp:
                           if el not in xovlist:
                             xovlist.append(el)
-		   
+
                 for ymc in np.array(xovlist):
                        loadfile.write(('').join(
                            ['python3 launch_test.py ', str(rt), ' ', str(ymc), ' 2 ', str(iter), '\n']))
@@ -159,14 +159,14 @@ if __name__ == '__main__':
                     if iostat != 0:
                         print("*** PyXov_" + str(rt) + " failed on iter", iter)
                         exit(iostat)
-                else:			
+                else:
                   iostat = s.call(
                       ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '7', '06:00:00', '5Gb', '100'])
                   if iostat != 0:
                       print("*** PyXov_" + str(rt) + " failed on iter", iter)
-                      exit(iostat)		
+                      exit(iostat)
 
-                        
+
                 iostat = s.call(#["python3", "launch_test.py", str(rt), "0", "3", str(i)])
                     ['/home/sberton2/launchLISTslurm', 'loadAccSol', 'PyAcc_' + str(rt) +'_' + str(iter), '8', '01:30:00', '90Gb', '1'])
                 if iostat != 0:
