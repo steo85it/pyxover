@@ -60,8 +60,8 @@ h2_limit_on = False
 # could be updated by checking chi2 or by VCE
 sigma_0 = 1. # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
 # scaling factors for obs and constraints
-weight_obs = 1.
-weight_constr = 10.
+weight_obs = 0.1
+weight_constr = 2.5
 ###
 convergence_criteria = 0.05 # =5%
 
