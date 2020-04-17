@@ -41,7 +41,7 @@ OrbRep = 'cnt' # 'lin' # 'quad' #
 # interpolation/spice direct call (0: use spice, 1: yes, use interpolation, 2: yes, create interpolation)
 SpInterp = 1
 # create new gtrack (0:no, 1:yes, if not already present, 2: yes, create and replace)
-new_gtrack = 2
+new_gtrack = 1
 # create new xov (0:no, 1:yes, if not already present, 2: yes, create and replace)
 new_xov = 2
 

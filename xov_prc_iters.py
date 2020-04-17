@@ -367,8 +367,9 @@ def xov_prc_iters_run(args,cmb):
     print('Xov for ' + str(cmb) + ' processed and written to ' + outdir + outdir_in + 'xov/xov_' + str(cmb[0]) + '_' + str(
         cmb[1]) + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
+    print("Process finished after ", end-start, "sec!")
+    
     return xov_tmp
-    # print("Process finished after ", end-start, "sec!")
 
 
 if __name__ == '__main__':
