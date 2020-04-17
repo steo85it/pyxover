@@ -45,6 +45,9 @@ class xov:
         self.ladata_df = None
         self.msrm_sampl = None
         self.apply_texture = None
+        self.parOrb_xy = None
+        self.parGlo_xy = None
+        self.par_xy = None
 
     def setup(self, gtracks):
 

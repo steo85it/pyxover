@@ -340,6 +340,11 @@ def xov_prc_iters_run(args,cmb):
         _ = [fine_xov_proc(arg) for arg in args]  # seq
 
     # print(xov_tmp.xovers)
+    # assign parOrb to xov
+    xov_tmp.parOrb_xy = [x.split('_')[0] for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values]  # update partials list
+    xov_tmp.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(parGlo.keys())]
+    xov_tmp.par_xy = xov_tmp.parOrb_xy+xov_tmp.parGlo_xy  # update partials list
+    print("Parameters:",xov_tmp.parOrb_xy,xov_tmp.parGlo_xy,xov_tmp.par_xy)
 
     # update xovers table with LAT and LON
     xov_tmp = get_xov_latlon(xov_tmp, proj_df.loc[proj_df.partid == 'none'])
@@ -354,12 +359,12 @@ def xov_prc_iters_run(args,cmb):
     print("Fine_xov finished after", end - start_finexov, "sec and located", len(xov_tmp.xovers),"out of previous", len(old_xovs),"xovers!")
 
     # Save to file
-    if not os.path.exists(outdir + 'xov/'):
-        os.mkdir(outdir + 'xov/')
-    xov_tmp.save(outdir + 'xov/xov_' + str(cmb[0]) + '_' + str(
+    if not os.path.exists(outdir + outdir_in + 'xov/'):
+        os.mkdir(outdir + outdir_in + 'xov/')
+    xov_tmp.save(outdir + outdir_in + 'xov/xov_' + str(cmb[0]) + '_' + str(
         cmb[1]) + '.pkl')  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
 
-    print('Xov for ' + str(cmb) + ' processed and written to ' + outdir + 'xov/xov_' + str(cmb[0]) + '_' + str(
+    print('Xov for ' + str(cmb) + ' processed and written to ' + outdir + outdir_in + 'xov/xov_' + str(cmb[0]) + '_' + str(
         cmb[1]) + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
     return xov_tmp
