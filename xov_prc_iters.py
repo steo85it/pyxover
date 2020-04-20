@@ -117,6 +117,18 @@ def get_xov_latlon(xov, df):
 
     return xov
 
+def project_chunk(proc_chunk):
+
+    chunk_res = project_stereographic(proc_chunk['LON'],
+                                      proc_chunk['LAT'],
+                                      proc_chunk['LON_proj'],
+                                      proc_chunk['LAT_proj'],
+                                      R=vecopts['PLANETRADIUS'])
+
+    proc_chunk[['x','y']] = pd.DataFrame(chunk_res).T
+    # chunk_res.index = proc_chunk.index
+
+    return proc_chunk
 
 def xov_prc_iters_run(args,cmb):
     start = time.time()
@@ -276,11 +288,45 @@ def xov_prc_iters_run(args,cmb):
     start_proj = time.time()
 
     proj_df = pd.concat(proj_input, sort=False)
+
     proj_df.rename(columns={"seqid_x": "seqid_xov", "seqid_y": "seqid_mla"}, inplace=True)
 
-    proj_df['x'], proj_df['y'] = zip(*proj_df.apply(
-        lambda x: project_stereographic(x['LON'], x['LAT'], x['LON_proj'], x['LAT_proj'], R=vecopts['PLANETRADIUS']),
-        axis=1))  # (lon, lat, lon0, lat0, R=1)
+    if parallel:
+        n_proc = mp.cpu_count()-1
+
+        proj_df.reset_index(inplace=True,drop=True)
+        # this often can't be devided evenly (handle this in the for-loop below)
+        chunksize = len(proj_df) // n_proc
+
+        # devide into chunks
+        proc_chunks = []
+        for i_proc in range(n_proc):
+            chunkstart = i_proc * chunksize
+            # make sure to include the division remainder for the last process
+            chunkend = (i_proc + 1) * chunksize if i_proc < n_proc - 1 else None
+
+            proc_chunks.append(proj_df.iloc[slice(chunkstart, chunkend)])
+
+        assert sum(map(len, proc_chunks)) == len(proj_df)   # make sure all data is in the chunks
+
+        # distribute work to the worker processes
+        with mp.Pool(processes=n_proc) as pool:
+            # starts the sub-processes without blocking
+            # pass the chunk to each worker process
+            proc_results = [pool.apply_async(project_chunk, args=(chunk,)) for chunk in proc_chunks]
+
+            # blocks until all results are fetched
+            result_chunks = [r.get() for r in proc_results]
+            # print(result_chunks)
+
+        # concatenate results from worker processes
+        proj_df = pd.concat(result_chunks)
+    else:
+        proj_df['x'], proj_df['y'] = zip(*proj_df.apply(
+            lambda x: project_stereographic(x['LON'], x['LAT'], x['LON_proj'], x['LAT_proj'],
+                                            R=vecopts['PLANETRADIUS']),
+            axis=1))  # (lon, lat, lon0, lat0, R=1)
+
     print("len proj_df:", len(proj_df))
 
     # split rows related to main observable
@@ -368,7 +414,7 @@ def xov_prc_iters_run(args,cmb):
         cmb[1]) + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
     print("Process finished after ", end-start, "sec!")
-    
+
     return xov_tmp
 
 

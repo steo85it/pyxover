@@ -1195,8 +1195,8 @@ class xov:
             print("xov fin")
             print(xovers_df[['cmb_idA']].values.astype(int).flatten(), l)
 
-        out_finloc = np.vstack(self.get_xover_fine(xovers_df[['cmb_idA']].values.astype(int).flatten(),
-                                                   xovers_df[['cmb_idB']].values.astype(int).flatten(), l))  # seq
+        out_finloc = np.vstack(self.get_xover_fine(xovers_df['cmb_idA'].values.astype(int).flatten(),
+                                                   xovers_df['cmb_idB'].values.astype(int).flatten(), l))  # seq
 
         if len(xovers_df) != len(out_finloc[0]):
             if debug:
