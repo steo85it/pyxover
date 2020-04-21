@@ -302,27 +302,35 @@ def prepare_Amat(xov, vecopts, par_list=''):
 
     xovtmp = xov.xovers.copy()
 
-    # simplify and downsize
-    if par_list == '':
-        par_list = xov.xovers.columns.filter(regex='^dR.*$')
-    df_orig = xov.xovers[par_list]
-    df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore') #, downcast='float')
-    xov.xovers = pd.concat([df_orig, df_float], axis=1)
-    xov.xovers.info(memory_usage='deep')
-    if debug:
-        pd.set_option('display.max_columns', 500)
-        print(xov.xovers)
+    if partials:
+        # simplify and downsize
+        if par_list == '':
+            par_list = xov.xovers.columns.filter(regex='^dR.*$')
+        df_orig = xov.xovers[par_list]
+        df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore') #, downcast='float')
+        xov.xovers = pd.concat([df_orig, df_float], axis=1)
+        xov.xovers.info(memory_usage='deep')
+        if debug:
+            pd.set_option('display.max_columns', 500)
+            print(xov.xovers)
 
-    if OrbRep in ['lin','quad']:
-        xovtmp = xov.upd_orbrep(xovtmp)
-        # print(xovi_amat.xov.xovers)
-        xov.parOrb_xy = xovtmp.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values
+        if OrbRep in ['lin','quad']:
+            xovtmp = xov.upd_orbrep(xovtmp)
+            # print(xovi_amat.xov.xovers)
+            xov.parOrb_xy = xovtmp.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values
 
-    xovi_amat = Amat(vecopts)
+        xovi_amat = Amat(vecopts)
 
-    xov.xovers = xovtmp.copy()
+        xov.xovers = xovtmp.copy()
 
-    xovi_amat.setup(xov)
+        xovi_amat.setup(xov)
+
+    else:
+
+        xovi_amat = Amat(vecopts)
+
+        xovi_amat.xov = xov
+        xovi_amat.xov.xovers = xovtmp.copy()
 
     return xovi_amat
 
@@ -1200,7 +1208,7 @@ def main(arg):
         # print(_.dtypes)
         # exit()
 
-        if partials == 1:
+        if partials:
 
             # retrieve old solution
             if int(ext_iter) > 0:
@@ -1347,18 +1355,22 @@ def main(arg):
             #     exit()
 
         else:
-            # clean only
-            clean_xov(xov_cmb, '')
-            # plot histo and geo_dist
-            tstname = [x.split('/')[-3] for x in datasets][0]
-            mean_dR, std_dR, worst_tracks = xov_cmb.remove_outliers('dR',remove_bad=remove_3sigma_median)
-            if debug:
-                plt_histo_dR(tstname, mean_dR, std_dR,
-                             xov_cmb.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
+            # TODO also compute weights and store them (no reason not to do so w/o partials)
+            # create Amat
+            xovi_amat = prepare_Amat(xov_cmb, vecopts)
 
-                empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
-                                               columns=np.arange(-180, 181))
-                plt_geo_dR(tstname, xov_cmb)
+            # clean only
+            # clean_xov(xov_cmb, '')
+            # # plot histo and geo_dist
+            # tstname = [x.split('/')[-3] for x in datasets][0]
+            # mean_dR, std_dR, worst_tracks = xov_cmb.remove_outliers('dR',remove_bad=remove_3sigma_median)
+            # if debug:
+            #     plt_histo_dR(tstname, mean_dR, std_dR,
+            #                  xov_cmb.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
+            #
+            #     empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
+            #                                    columns=np.arange(-180, 181))
+            #     plt_geo_dR(tstname, xov_cmb)
 
 
         # append to list for stats
@@ -1372,7 +1384,7 @@ def main(arg):
     #print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
 
     # set as converged if relative improvement of residuals RMSE lower than convergence criteria
-    if ext_iter > 0:
+    if ext_iter > 0 and partials:
         # print(xovi_amat.resid_wrmse,previous_iter.resid_wrmse)
         relative_improvement = np.abs((xovi_amat.resid_wrmse - previous_iter.resid_wrmse)/xovi_amat.resid_wrmse)
         print("Relative improvement at ", (relative_improvement*100.).round(2), "% at iteration", ext_iter)
@@ -1386,14 +1398,16 @@ def main(arg):
             xovi_amat.converged = False
 
     # TODO not sure wether it can also be saved when just computing residuals
-    if partials:
-        if len(ds.split('/')) > 2:
-            xovi_amat.save(('_').join((data_pth + 'Abmat_' + ds.split('/')[0] + '_' +
-                                       ds.split('/')[1]).split('_')[:-1]) + '_' + str(ext_iter + 1) +
-                           '_' + ds.split('/')[2] + '.pkl')
-        else:
-            xovi_amat.save(
-                (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1) + '.pkl')
+    # if partials:
+    if len(ds.split('/')) > 2:
+        xovi_amat.save(('_').join((data_pth + 'Abmat_' + ds.split('/')[0] + '_' +
+                                   ds.split('/')[1]).split('_')[:-1]) + '_' + str(ext_iter + 1) +
+                       '_' + ds.split('/')[2] + '.pkl')
+    else:
+        xovi_amat.save(
+            (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1) + '.pkl')
+
+    # print(xovi_amat.xov.xovers)
 
     print("AccumXov ended succesfully!")
     return True

@@ -293,17 +293,18 @@ def xov_prc_iters_run(args,cmb):
 
     if parallel:
         n_proc = mp.cpu_count()-1
+        n_chunks = 10*n_proc
 
         proj_df.reset_index(inplace=True,drop=True)
         # this often can't be devided evenly (handle this in the for-loop below)
-        chunksize = len(proj_df) // n_proc
+        chunksize = len(proj_df) // n_chunks
 
         # devide into chunks
         proc_chunks = []
-        for i_proc in range(n_proc):
+        for i_proc in range(n_chunks):
             chunkstart = i_proc * chunksize
             # make sure to include the division remainder for the last process
-            chunkend = (i_proc + 1) * chunksize if i_proc < n_proc - 1 else None
+            chunkend = (i_proc + 1) * chunksize if i_proc < n_chunks - 1 else None
 
             proc_chunks.append(proj_df.iloc[slice(chunkstart, chunkend)])
 
@@ -373,7 +374,7 @@ def xov_prc_iters_run(args,cmb):
 
     if parallel:
         ncores = mp.cpu_count() - 1  # 8
-        pool = mp.Pool(processes=ncores)  # mp.cpu_count())
+        pool = mp.Pool(processes=ncores,maxtasksperchild=50)  # mp.cpu_count())
         xov_list = pool.map(fine_xov_proc, args)  # parallel
         pool.close()
         pool.join()
