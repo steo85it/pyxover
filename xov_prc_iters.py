@@ -10,40 +10,44 @@ import time
 from project_coord import project_stereographic
 from xov_setup import xov
 import multiprocessing as mp
+# from memory_profiler import profile
 
 msrm_smpl = 4  # should be even...
 
-def fine_xov_proc(args):
-    xovi = args[0]
-    proj_df_xovi = args[1]
-    xov_tmp = args[2]
+#@profile
+def fine_xov_proc(xovi,df,xov_tmp): #args):
+    # xovi = args[0]
+    # df = args[1]
+    # xov_tmp = args[2]
+
+    # print(proj_df_xovi.columns)
+    # print(len(proj_df_xovi))
+    # exit()
 
     # if (idx / len(xovs_list) * 100.) % 5 == 0:
     #     print("Working... ", (idx / len(xovs_list) * 100.), "% done ...")
 
     # try:
-    cols_to_keep = proj_df_xovi.loc[:,
-                   proj_df_xovi.columns.str.startswith('ET_BC') + proj_df_xovi.columns.str.startswith('X_stgprj') +
-                   proj_df_xovi.columns.str.startswith('Y_stgprj') + proj_df_xovi.columns.str.startswith(
-                       'dR/')].columns  # ,'X_stgprj','Y_stgprj'))
-    df = proj_df_xovi[['orbID', 'seqid_mla', 'ET_TX', 'LON', 'LAT', 'R', 'offnadir'] + list(cols_to_keep)].reset_index(
+
+    df = df.reset_index(
         drop=True).reset_index()
     df.rename(columns={'index': 'genID', 'seqid_mla': 'seqid'}, inplace=True)
 
-    xov_tmp.ladata_df = df
+    if len(df)>0: # and {'LON_proj','LAT_proj'}.issubset(df.columns):
+        xov_tmp.proj_center = {'lon': df['LON_proj'].values[0], 'lat': df['LAT_proj'].values[0]}
+        df.drop(columns=['LON_proj','LAT_proj'],inplace=True)
+    else:
+        print("### Empty proj_df_xovi on xov #", xovi)
+        print(df)
+        return  # continue
+
+    xov_tmp.ladata_df = df.copy()
 
     xov_tmp.msrm_sampl = msrm_smpl
     xov_tmp.tracks = dict(zip(df.orbID.unique(), list(range(2))))
 
-    if len(proj_df_xovi)>0:
-        xov_tmp.proj_center = {'lon': proj_df_xovi['LON_proj'].values[0], 'lat': proj_df_xovi['LAT_proj'].values[0]}
-    else:
-        print("### Empty proj_df_xovi on xov #", xovi)
-        print(proj_df_xovi)
-        return  # continue
 
     xov_tmp.ladata_df['orbID'] = xov_tmp.ladata_df['orbID'].map(xov_tmp.tracks)
-    # print(xov_tmp.ladata_df)
 
     try:
         x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
@@ -63,7 +67,7 @@ def fine_xov_proc(args):
         return  # continue
 
     # post-processing
-    xovtmp = xov_tmp.postpro_xov_elev(df, out)
+    xovtmp = xov_tmp.postpro_xov_elev(xov_tmp.ladata_df, out)
 
     if len(xovtmp) > 1:
         print("### Bad multi-xov at xov#", xovi)
@@ -93,6 +97,22 @@ def fine_xov_proc(args):
     # Update general df (serial only, does not work in parallel since not a shared object)
     if not parallel:
         xov_tmp.xovers = xov_tmp.xovers.append(xov_tmp.xovtmp, sort=True)
+
+    # import sys
+    # def sizeof_fmt(num, suffix='B'):
+    #     ''' by Fred Cirera,  https://stackoverflow.com/a/1094933/1870254, modified'''
+    #     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+    #         if abs(num) < 1024.0:
+    #             return "%3.1f %s%s" % (num, unit, suffix)
+    #         num /= 1024.0
+    #     return "%.1f %s%s" % (num, 'Yi', suffix)
+    #
+    # print("iter over xov:",xovi)
+    # for name, size in sorted(((name, sys.getsizeof(value)) for name, value in locals().items()),
+    #                          key=lambda x: -x[1])[:10]:
+    #     print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
+
+    # exit()
 
     return xov_tmp.xovtmp
 
@@ -130,6 +150,7 @@ def project_chunk(proc_chunk):
 
     return proc_chunk
 
+#@profile
 def xov_prc_iters_run(args,cmb):
     start = time.time()
 
@@ -310,11 +331,12 @@ def xov_prc_iters_run(args,cmb):
         assert sum(map(len, proc_chunks)) == len(proj_df)   # make sure all data is in the chunks
 
         # distribute work to the worker processes
-        with mp.Pool(processes=n_proc) as pool:
+        with mp.get_context("spawn").Pool(processes=n_proc) as pool:
             # starts the sub-processes without blocking
             # pass the chunk to each worker process
             proc_results = [pool.apply_async(project_chunk, args=(chunk,)) for chunk in proc_chunks]
-
+            pool.close()
+            pool.join()
             # blocks until all results are fetched
             result_chunks = [r.get() for r in proc_results]
             # print(result_chunks)
@@ -367,23 +389,67 @@ def xov_prc_iters_run(args,cmb):
     # store the solution from the previous iteration
     xov_tmp.sol_prev_iter = {'0': track.sol_prev_iter}
 
-    args = ((xovi, proj_df.loc[proj_df['xovid'] == xovi], xov_tmp) for xovi in xovs_list)  # range(50)) #
+    # select what to keep
+    cols_to_keep = proj_df.loc[:,
+                   proj_df.columns.str.startswith('ET_BC') + proj_df.columns.str.startswith('X_stgprj') +
+                   proj_df.columns.str.startswith('Y_stgprj') + proj_df.columns.str.startswith(
+                       'dR/')].columns  # ,'X_stgprj','Y_stgprj'))
+    proj_df_tmp = proj_df[['orbID', 'seqid_mla', 'ET_TX', 'LON', 'LAT', 'R', 'offnadir','xovid','LON_proj','LAT_proj'] + list(cols_to_keep)]
+    # print(proj_df_tmp.columns)
+
+    dfl = []
+    for xovi in xovs_list:
+        dfl.append(proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi].copy())
+
+    # args = ((xovi, dfl[idx], xov_tmp) for idx in range(len(xovs_list)))  # range(50)) #
+
     # print(args)
     # exit()
 
+    import sys
+    def sizeof_fmt(num, suffix='B'):
+        ''' by Fred Cirera,  https://stackoverflow.com/a/1094933/1870254, modified'''
+        for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+            if abs(num) < 1024.0:
+                return "%3.1f %s%s" % (num, unit, suffix)
+            num /= 1024.0
+        return "%.1f %s%s" % (num, 'Yi', suffix)
+
+    # for name, size in sorted(((name, sys.getsizeof(value)) for name, value in locals().items()),
+    #                          key=lambda x: -x[1])[:10]:
+    #     print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
+
     if parallel:
         ncores = mp.cpu_count() - 1  # 8
-        pool = mp.Pool(processes=ncores)  # mp.cpu_count())
-        xov_list = pool.map(fine_xov_proc, args)  # parallel
-        pool.close()
-        pool.join()
+        # pool = mp.Pool(processes=ncores)  # mp.cpu_count())
+        # xov_list = pool.map(fine_xov_proc, args)  # parallel
+        with mp.get_context("spawn").Pool(processes=ncores) as pool:
+
+            xov_list = [pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], xov_tmp)) for idx in range(len(xovs_list))]
+            pool.close()
+            pool.join()
+
+        # blocks until all results are fetched
+        xov_list = [r.get() for r in xov_list]
+        # print(xov_list)
+        # exit()
+
         # launch once in serial mode to get ancillary values
-        fine_xov_proc((0, proj_df.loc[proj_df['xovid'] == 0], xov_tmp))
+        fine_xov_proc(0, dfl[0], xov_tmp)
         # assign xovers to the new xov_tmp containing ancillary values
         xov_tmp.xovers = pd.concat(xov_list, axis=0)
 
     else:
-        _ = [fine_xov_proc(arg) for arg in args]  # seq
+        for idx in range(len(xovs_list)):
+            fine_xov_proc((xovs_list[idx], dfl[idx], xov_tmp))
+            # print(idx)
+            # xov_tmp.xovers.info(memory_usage='deep')
+
+        # _ = [fine_xov_proc(arg) for arg in args]  # seq
+
+    # for name, size in sorted(((name, sys.getsizeof(value)) for name, value in locals().items()),
+    #                          key=lambda x: -x[1])[:10]:
+    #     print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
 
     # print(xov_tmp.xovers)
     # assign parOrb to xov
@@ -421,7 +487,7 @@ def xov_prc_iters_run(args,cmb):
 if __name__ == '__main__':
     start = time.time()
 
-    cmb = [13, 13]
+    cmb = [13, 14]
 
     xov_tmp = xov_prc_iters_run()
 
