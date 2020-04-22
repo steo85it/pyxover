@@ -3,11 +3,6 @@ import os
 import shutil
 import sys
 
-import AccumXov
-# own libs
-import PyAltSim
-import PyXover
-import PyGeoloc
 from prOpt import sim_altdata, local, outdir
 
 # Experiments
@@ -21,7 +16,8 @@ from prOpt import sim_altdata, local, outdir
 # KX1r2: real data, same subsel as tp8 (apriori h2=0 after 05-Feb)
 # tpAp: full simu, KX orbits, AG a priori
 
-if __name__ == '__main__':
+#@profile
+def main():
 
     data_sim = 'sim'  # 'data' #
     exp = 'KX1r4' # 'tp4' #
@@ -92,6 +88,8 @@ if __name__ == '__main__':
         args_pyxover = [(subarg, k, l, 'MLASCIRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
 
     if sect == 1:
+        import PyAltSim
+        import PyGeoloc
 
         # save options file to outdir
         if not os.path.exists(outdir+outdirnams[0]):
@@ -125,6 +123,7 @@ if __name__ == '__main__':
         # [PyXover.main(x) for x in args_pyxover]
 
     elif sect == 2:
+        import PyXover
 
         ie = int(resampl)
         # after all tracks have been simulated and geolocalised (if it applies)
@@ -132,6 +131,7 @@ if __name__ == '__main__':
         PyXover.main(args_pyxover[ie])
 
     elif sect == 3:
+        import AccumXov
 
         #outdirnams = [i+'xov/' for i in outdirnams][0]
         AccumXov.main([outdirnams, data_sim, ext_iter])
@@ -147,3 +147,6 @@ if __name__ == '__main__':
               "proc_step can be 1=geolocalise data, 2=locate and process xovers, 3=cumulate and invert")
         exit(2)
 
+if __name__ == '__main__':
+
+    main()

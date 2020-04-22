@@ -81,8 +81,9 @@ plot_netcdf.py: change input, plots grd and differences
 
 Profiling
 ---------
-Decorate routines with @profile; then launch with, e.g.,
+Decorate routines with #@profile; then launch with, e.g.,
 kernprof -v -l launch_test.py 0 0 3 0   # for time profiling
 python3 -m memory_profiler launch_test.py 0 0 3 0   # for memory profiling
-N.B.: does not work when launching from within pycharm (or would need config)
+mprof run --include-children --multiprocess launch_test.py 0 20 2 1 # time-wise memory profiling
+N.B.: does not work when launching from within pycharm (or would need config - maybe just include memory_profile)
 Then plot using "snakeviz program.prof" (https://jiffyclub.github.io/snakeviz/)

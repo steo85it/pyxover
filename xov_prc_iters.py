@@ -1,6 +1,8 @@
 import glob
 import os
 
+from tqdm import tqdm
+
 from Amat import Amat
 from ground_track import gtrack
 from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel
@@ -139,14 +141,29 @@ def get_xov_latlon(xov, df):
 
 def project_chunk(proc_chunk):
 
-    chunk_res = project_stereographic(proc_chunk['LON'],
-                                      proc_chunk['LAT'],
-                                      proc_chunk['LON_proj'],
-                                      proc_chunk['LAT_proj'],
+    # chunk_res = project_stereographic(proc_chunk['LON'],
+    #                                   proc_chunk['LAT'],
+    #                                   proc_chunk['LON_proj'],
+    #                                   proc_chunk['LAT_proj'],
+    #                                   R=vecopts['PLANETRADIUS'])
+    chunk_res = project_stereographic(proc_chunk[:,0],
+                                      proc_chunk[:,1],
+                                      proc_chunk[:,2],
+                                      proc_chunk[:,3],
                                       R=vecopts['PLANETRADIUS'])
+    # print(pd.DataFrame(chunk_res).T)
+    # proc_chunk[['x','y']] = pd.DataFrame(chunk_res).T
 
-    proc_chunk[['x','y']] = pd.DataFrame(chunk_res).T
+
+    # proc_chunk['x'], proc_chunk['y'] = zip(*proc_chunk.apply(
+    #     lambda x: project_stereographic(x['LON'], x['LAT'], x['LON_proj'], x['LAT_proj'],
+    #                                     R=vecopts['PLANETRADIUS']),
+    #     axis=1))
+
     # chunk_res.index = proc_chunk.index
+    # print(proc_chunk[:,-1])
+    # print(np.asarray(chunk_res))
+    proc_chunk = np.vstack([proc_chunk[:,-1],np.asarray(chunk_res)]).T
 
     return proc_chunk
 
@@ -314,19 +331,25 @@ def xov_prc_iters_run(args,cmb):
 
     if parallel:
         n_proc = mp.cpu_count()-1
+        n_chunks = 1*n_proc
 
         proj_df.reset_index(inplace=True,drop=True)
         # this often can't be devided evenly (handle this in the for-loop below)
-        chunksize = len(proj_df) // n_proc
+        chunksize = len(proj_df) // n_chunks
+        print("chunksize",chunksize)
+        print(len(proj_df),n_chunks)
 
         # devide into chunks
         proc_chunks = []
-        for i_proc in range(n_proc):
+        tmp_proj = proj_df[['LON','LAT','LON_proj','LAT_proj','genid']].values
+        for i_proc in range(n_chunks):
             chunkstart = i_proc * chunksize
             # make sure to include the division remainder for the last process
-            chunkend = (i_proc + 1) * chunksize if i_proc < n_proc - 1 else None
+            chunkend = (i_proc + 1) * chunksize if i_proc < n_chunks - 1 else None
+            # print(proj_df.columns)
 
-            proc_chunks.append(proj_df.iloc[slice(chunkstart, chunkend)])
+            # proc_chunks.append(proj_df.iloc[slice(chunkstart, chunkend)])
+            proc_chunks.append(tmp_proj[chunkstart: chunkend,:])
 
         assert sum(map(len, proc_chunks)) == len(proj_df)   # make sure all data is in the chunks
 
@@ -341,8 +364,9 @@ def xov_prc_iters_run(args,cmb):
             result_chunks = [r.get() for r in proc_results]
             # print(result_chunks)
 
-        # concatenate results from worker processes
-        proj_df = pd.concat(result_chunks)
+        # concatenate results from worker processes and add to df
+        # proj_df = proj_df.merge(tmp_proj,on='genid')
+        proj_df = pd.concat([proj_df,pd.DataFrame(np.vstack(result_chunks)[:,1:],columns=['x','y'])],axis=1)
     else:
         proj_df['x'], proj_df['y'] = zip(*proj_df.apply(
             lambda x: project_stereographic(x['LON'], x['LAT'], x['LON_proj'], x['LAT_proj'],
@@ -360,20 +384,27 @@ def xov_prc_iters_run(args,cmb):
     if partials:
         partials_df_list = []
         for pder in ['_' + x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']]:
+            # print(pder)
             partials_proj_df = proj_df.loc[proj_df['partid'] == pder[1:]].copy()
             partials_proj_df.rename(columns={'x': 'X_stgprj' + pder, 'y': 'Y_stgprj' + pder, "ET_BC": 'ET_BC' + pder,
                                              "R": 'dR/' + pder[1:-2]},
                                     inplace=True)
-            partials_df_list.append(partials_proj_df[['X_stgprj' + pder, 'Y_stgprj' + pder, 'ET_BC' + pder,
+            # partials dR/dp are the same for +-, so just save one
+            if pder[-1]=='p':
+                partials_df_list.append(partials_proj_df[['X_stgprj' + pder, 'Y_stgprj' + pder, 'ET_BC' + pder,
                                                       'dR/' + pder[
-                                                              1:-2]]])  # could include genid and xovid from partials to check
+                                                              1:-2]]].reset_index(drop=True))  # could include genid and xovid from partials to check
+            else:
+                partials_df_list.append(partials_proj_df[['X_stgprj' + pder, 'Y_stgprj' + pder, 'ET_BC' + pder]].reset_index(drop=True))
 
-        proj_df = pd.concat([tmp_proj] + partials_df_list, axis=1, sort=False)
+        proj_df = pd.concat([tmp_proj.reset_index(drop=True)] + partials_df_list, axis=1, sort=False)
+
     else:
         proj_df = tmp_proj
 
     end_proj = time.time()
 
+    print("Len proj_df after reordering:",len(proj_df))
     print("Projection finished after ", end_proj - start_proj, "sec!")
 
     start_finexov = time.time()
@@ -423,15 +454,21 @@ def xov_prc_iters_run(args,cmb):
         ncores = mp.cpu_count() - 1  # 8
         # pool = mp.Pool(processes=ncores)  # mp.cpu_count())
         # xov_list = pool.map(fine_xov_proc, args)  # parallel
-        with mp.get_context("spawn").Pool(processes=ncores) as pool:
+        # apply_async example
+        pbar = tqdm(total=len(xovs_list))
 
-            xov_list = [pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], xov_tmp)) for idx in range(len(xovs_list))]
+        def update(*a):
+            pbar.update()
+
+        xov_list = []
+        with mp.get_context("spawn").Pool(processes=ncores) as pool:
+            for idx in range(len(xovs_list)):
+                xov_list.append(pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], xov_tmp), callback=update))
             pool.close()
             pool.join()
 
         # blocks until all results are fetched
         xov_list = [r.get() for r in xov_list]
-        # print(xov_list)
         # exit()
 
         # launch once in serial mode to get ancillary values
@@ -441,7 +478,9 @@ def xov_prc_iters_run(args,cmb):
 
     else:
         for idx in range(len(xovs_list)):
-            fine_xov_proc((xovs_list[idx], dfl[idx], xov_tmp))
+            if (idx / len(xovs_list) * 100.) % 5. == 0.:
+                print("Working... ", (idx / len(xovs_list) * 100.), "% done ...")
+            fine_xov_proc(xovs_list[idx], dfl[idx], xov_tmp)
             # print(idx)
             # xov_tmp.xovers.info(memory_usage='deep')
 

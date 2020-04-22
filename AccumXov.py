@@ -288,7 +288,7 @@ def plt_geo_dR(sol, xov):
     plt.clf()
     plt.close()
 
-# @profile
+# #@profile
 def prepare_Amat(xov, vecopts, par_list=''):
 
     # xov.xovers = xov.xovers[xov.xovers.orbA=='1301042351']
@@ -368,7 +368,7 @@ def analyze_dist_vs_dR(xov):
     tmp.drop(['dist_minA', 'dist_minB'], inplace=True, axis='columns')
     tmp['abs_dR'] = abs(tmp['dR'])
 
-# @profile
+# #@profile
 def solve(xovi_amat,dataset, previous_iter=None):
     from scipy.sparse import csr_matrix, identity
     from prOpt import par_constr, mean_constr, sol4_orb, sol4_glo
@@ -918,7 +918,7 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # # print(xovi_amat.sol)
     # xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
 
-# @profile
+# #@profile
 def clean_partials(b, spA, nglbpars, threshold = 1.e6):
     # spA = spA[:99264,-4:]
 

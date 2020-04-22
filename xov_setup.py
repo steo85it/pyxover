@@ -21,6 +21,7 @@ import pickle
 import re
 import matplotlib.pyplot as plt
 import subprocess
+# from memory_profiler import profile
 
 # from mapcount import mapcount
 from unproject_coord import unproject_stereographic
@@ -125,7 +126,7 @@ class xov:
         tmp.columns = ['offnad_A', 'offnad_B']
         self.xovtmp = pd.concat([self.xovtmp, tmp], axis=1)
 
-    #@profile
+    # ##@profile
     def combine(self, xov_list):
 
         # Only select elements with number of xovers > 0
@@ -603,13 +604,6 @@ class xov:
                 ldA_ = df_[df_[:, 0] == 0][:,1:]
                 ldB_ = df_[df_[:, 0] == 1][:,1:]
 
-            # # print(df_.loc[df_['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]])
-            # ldA_ = df_.loc[df_['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]].values
-            # ldB_ = df_.loc[df_['orbID'] == orb_lst[1]][[X_stgB, Y_stgB]].values
-
-            # ldA_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]][[X_stgA, Y_stgA]].values
-            # ldB_ = ladata_df.loc[ladata_df['orbID'] == orb_lst[1]][[X_stgB, Y_stgB]].values
-
             if debug:
                 print("Fine", param,self.proj_center)
                 print(rough_indA, rough_indB)
@@ -827,10 +821,10 @@ class xov:
     def get_xover_rough(self, arg, ladata_df, msrm_sampl):
         # Decimate data and find rough intersection
         x, y, ind_A, ind_B = intersection(
-            ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj']].values[::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[0]][['Y_stgprj']].values[::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[1]][['X_stgprj']].values[::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[1]][['Y_stgprj']].values[::msrm_sampl])
+            ladata_df.loc[ladata_df['orbID'] == arg[0]]['X_stgprj'].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[1]]['X_stgprj'].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[1]]['Y_stgprj'].values[::msrm_sampl])
         if debug:
             print("rough intersection")
             print(x, y, ind_A, ind_B)
@@ -999,7 +993,7 @@ class xov:
 
         self.xovers = pd.concat([self.xovers, tmp], axis=1)
 
-
+    #@profile
     def set_partials(self):
         # Compute crossover position for partials at + and -
         # and combine them for each observation and parameter
@@ -1113,7 +1107,7 @@ class xov:
                      ], axis=1
                 )
 
-            xovers_df = pd.concat([xovers_df,pd.DataFrame(np.reshape(self.get_dt(ladata_df, xovers_df),(len(xovers_df),-1)),
+            xovers_df = pd.concat([xovers_df,pd.DataFrame(np.reshape(self.get_dt(ladata_df, xovers_df),(len(xovers_df),2)),
                                   columns=['dtA','dtB'])],axis=1)
             # if (OrbRep == 'lin' or OrbRep == 'quad'):
             #     xovers_df = self.upd_orbrep(xovers_df)
@@ -1168,8 +1162,9 @@ class xov:
 
         return xovers_df
 
+    ##@profile
     def get_dt(self,ladata_df,xovers_df):
-        tracksid = list(self.tracks.values())
+        # tracksid = list(self.tracks.values())
         dt = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].loc[
                              map(round, xovers_df.cmb_idA.values)][['ET_TX']].values, \
                          ladata_df.loc[ladata_df['orbID'].values == 1].loc[
@@ -1185,6 +1180,7 @@ class xov:
 
         return dt
 
+    #@profile
     def get_partials(self, l):
 
         # comb1 = self.tracks
@@ -1195,8 +1191,8 @@ class xov:
             print("xov fin")
             print(xovers_df[['cmb_idA']].values.astype(int).flatten(), l)
 
-        out_finloc = np.vstack(self.get_xover_fine(xovers_df[['cmb_idA']].values.astype(int).flatten(),
-                                                   xovers_df[['cmb_idB']].values.astype(int).flatten(), l))  # seq
+        out_finloc = np.vstack(self.get_xover_fine(xovers_df['cmb_idA'].values.astype(int).flatten(),
+                                                   xovers_df['cmb_idB'].values.astype(int).flatten(), l))  # seq
 
         if len(xovers_df) != len(out_finloc[0]):
             if debug:
