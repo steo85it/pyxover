@@ -158,6 +158,7 @@ def launch_xov(
                           misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
     ########################################
+#@profile
 def main(args):
     from prOpt import parallel, outdir, auxdir, local, vecopts
 

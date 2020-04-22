@@ -101,7 +101,7 @@ https://www.mathworks.com/matlabcentral/fileexchange/11837-fast-and-robust-curve
 """
 
 
-# @profile
+# #@profile
 def _rect_inter_inner(x1, x2):
     n1 = x1.shape[0] - 1
     n2 = x2.shape[0] - 1
@@ -114,7 +114,7 @@ def _rect_inter_inner(x1, x2):
     return R1, R2, R3, R4
 
 
-# @profile
+# #@profile
 def _rectangle_intersection_(x1, x2):
     S1, S2, S3, S4 = _rect_inter_inner(x1, x2)
     # print(np.shape(S1))
@@ -125,7 +125,7 @@ def _rectangle_intersection_(x1, x2):
     return C1, C2
 
 
-# @profile
+# #@profile
 def _rectangle_intersection_check_(x1, y1, x2, y2):
     C1, C2 = _rectangle_intersection_(x1, x2)
     C3, C4 = _rectangle_intersection_(y1, y2)
@@ -134,7 +134,7 @@ def _rectangle_intersection_check_(x1, y1, x2, y2):
     return ii, jj
 
 
-# @profile
+# #@profile
 def intersection(x1, y1, x2, y2):
     """
 INTERSECTIONS Intersections of curves.
