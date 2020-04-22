@@ -1,7 +1,7 @@
 import glob
 import os
 
-from tqdm import tqdm
+#from tqdm import tqdm
 
 from Amat import Amat
 from ground_track import gtrack
@@ -455,15 +455,15 @@ def xov_prc_iters_run(args,cmb):
         # pool = mp.Pool(processes=ncores)  # mp.cpu_count())
         # xov_list = pool.map(fine_xov_proc, args)  # parallel
         # apply_async example
-        pbar = tqdm(total=len(xovs_list))
+        #pbar = tqdm(total=len(xovs_list))
 
-        def update(*a):
-            pbar.update()
+        #def update(*a):
+        #    pbar.update()
 
         xov_list = []
         with mp.get_context("spawn").Pool(processes=ncores) as pool:
             for idx in range(len(xovs_list)):
-                xov_list.append(pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], xov_tmp), callback=update))
+                xov_list.append(pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], xov_tmp))) #, callback=update))
             pool.close()
             pool.join()
 
