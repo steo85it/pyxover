@@ -171,8 +171,11 @@ class gtrack:
         pklfile.close()
 
     # load groundtrack from file
+    @profile
     def load(self, filnam):
-
+        import gc
+        # disabling cyclic garbage collection
+        gc.disable()
         if os.path.isfile(filnam):
             pklfile = open(filnam, 'rb')
             self = pickle.load(pklfile)
@@ -184,7 +187,7 @@ class gtrack:
         # print('Groundtrack loaded from '+filnam)
         # print(self.ladata_df)
         # print(self.MGRx.tck)
-
+        gc.enable()
         return self
 
     def read_fill(self, infil):

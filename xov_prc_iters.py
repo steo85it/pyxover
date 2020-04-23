@@ -2,11 +2,9 @@ import glob
 import os
 from collections import defaultdict
 
-#from tqdm import tqdm
-
 from Amat import Amat
 from ground_track import gtrack
-from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel
+from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel, local
 import numpy as np
 import pandas as pd
 import time
@@ -17,7 +15,7 @@ import multiprocessing as mp
 
 msrm_smpl = 4  # should be even...
 
-#@profile
+@profile
 def fine_xov_proc(xovi,df,xov_tmp): #args):
     # xovi = args[0]
     # df = args[1]
@@ -168,7 +166,7 @@ def project_chunk(proc_chunk):
 
     return proc_chunk
 
-#@profile
+@profile
 def xov_prc_iters_run(args,cmb):
     start = time.time()
 
@@ -379,6 +377,8 @@ def xov_prc_iters_run(args,cmb):
             pool.close()
             pool.join()
             # blocks until all results are fetched
+            # proc_chunk = np.vstack([proc_chunk[:, 0], np.asarray(chunk_res)]).T
+
             result_chunks = {x: np.hstack([y,z.get()[:,1:]]) for x, y in part_proj_dict.items() for z in proc_results}
             # result_chunks = dict(zip(part_proj_dict.keys(),[r.get() for r in proc_results]))
             # print(result_chunks)
@@ -389,23 +389,15 @@ def xov_prc_iters_run(args,cmb):
         # concatenate results from worker processes and add to df
         # mla_proj_df = mla_proj_df.merge(tmp_proj,on='genid')
     else:
-        result_chunks = []
+        proc_results = []
         for chunk in part_proj_dict.values():
-            result_chunks.append(project_stereographic(chunk[3], chunk[4], chunk[0], chunk[1],
+            # print(chunk.shape)
+            proc_results.append(project_stereographic(chunk[:,3], chunk[:,4], chunk[:,1], chunk[:,2],
                                                 R=vecopts['PLANETRADIUS']))  # (lon, lat, lon0, lat0, R=1)
-            # print(result_chunks)
-
-            # mla_proj_df['x'], mla_proj_df['y'] = zip(*mla_proj_df.apply(
-            #     lambda x: project_stereographic(chunk['LON'], x['LAT'], x['LON_proj'], x['LAT_proj'],
-            #                                     R=vecopts['PLANETRADIUS']),
-            #     axis=1))  # (lon, lat, lon0, lat0, R=1)
-
-
+        # print([p for p in proc_results])
+        result_chunks = {x: np.hstack([y,np.vstack(z).T]) for x, y in part_proj_dict.items() for z in proc_results}
 
     mla_proj_df = pd.concat([mla_proj_df,pd.DataFrame(result_chunks['none'][:,-2:],columns=['X_stgprj','Y_stgprj'])],axis=1)
-    # print(mla_proj_df)
-
-    # exit()
     #
     # mla_proj_df = pd.concat([mla_proj_df, pd.DataFrame(np.vstack(result_chunks)[:, 1:], columns=['x', 'y'])], axis=1)
     # print("len mla_proj_df:", len(mla_proj_df))
@@ -441,6 +433,10 @@ def xov_prc_iters_run(args,cmb):
 
     print("Len mla_proj_df after reordering:",len(mla_proj_df))
     print("Projection finished after ", end_proj - start_proj, "sec!")
+    #
+    # print(mla_proj_df)
+    # print(mla_proj_df.columns)
+    #
     # exit()
 
     start_finexov = time.time()
@@ -491,17 +487,23 @@ def xov_prc_iters_run(args,cmb):
         # pool = mp.Pool(processes=ncores)  # mp.cpu_count())
         # xov_list = pool.map(fine_xov_proc, args)  # parallel
         # apply_async example
-        #pbar = tqdm(total=len(xovs_list))
+        if local:
+            from tqdm import tqdm
+            pbar = tqdm(total=len(xovs_list))
 
-        #def update(*a):
-        #    pbar.update()
+            def update(*a):
+                pbar.update()
 
         xov_list = []
         with mp.get_context("spawn").Pool(processes=ncores) as pool:
             # for idx in range(len(xovs_list)):
                 # xov_list.append(pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], xov_tmp), callback=update))
             for xovi in xovs_list:
-                xov_list.append(pool.apply_async(fine_xov_proc, args = (xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp))) #, callback=update))
+
+                if local:
+                    xov_list.append(pool.apply_async(fine_xov_proc, args = (xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp), callback=update))
+                else:
+                    xov_list.append(pool.apply_async(fine_xov_proc, args = (xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)))
 
             pool.close()
             pool.join()
@@ -514,12 +516,12 @@ def xov_prc_iters_run(args,cmb):
         xov_tmp.xovers = pd.concat(xov_list, axis=0)
 
     else:
-        for idx in range(len(xovs_list)):
+        for idx,xovi in enumerate(xovs_list):
             if (idx / len(xovs_list) * 100.) % 5. == 0.:
                 print("Working... ", (idx / len(xovs_list) * 100.), "% done ...")
-            fine_xov_proc(xovs_list[idx], dfl[idx], xov_tmp)
+            fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
             # print(idx)
-            # xov_tmp.xovers.info(memory_usage='deep')
+        xov_tmp.xovers.info(memory_usage='deep')
 
         # _ = [fine_xov_proc(arg) for arg in args]  # seq
 

@@ -283,7 +283,11 @@ class xov:
 
             regex = re.compile(r'^dR/' + par.partition('_')[0] + '$')
             dRdp = list(filter(regex.search, ladata_df.columns))[0]
-            ldA_ = ladata_df[['orbID',ETBCparpm, 'R', 'genID',dRdp]].values
+            # select columns (fastest way)
+            index_cols = [ladata_df.columns.get_loc(col) for col in ['orbID',ETBCparpm, 'R', 'genID',dRdp]]
+            # df_1 = self.ladata_df.iloc[:,index_cols].values
+            ldA_ = ladata_df.values[:, index_cols]
+            # ldA_ = ladata_df[['orbID',ETBCparpm, 'R', 'genID',dRdp]].values
             ldA_ = ldA_[ldA_[:,0]==0][:,1:]
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
 
@@ -312,7 +316,9 @@ class xov:
 
         else:
 
-            ldA_ = ladata_df[['orbID','ET_BC', 'R', 'genID']].values
+            index_cols = [ladata_df.columns.get_loc(col) for col in ['orbID','ET_BC', 'R', 'genID']]
+            ldA_ = ladata_df.values[:, index_cols]
+            # ldA_ = ladata_df[['orbID','ET_BC', 'R', 'genID']].values
             ldA_ = ldA_[ldA_[:,0]==0][:,1:]
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
             t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
@@ -357,7 +363,10 @@ class xov:
             # TODO regex not needed twice
             regex = re.compile(r'^dR/' + par.partition('_')[0] + '$')
             dRdp = list(filter(regex.search, ladata_df.columns))[0]
-            ldB_ = ladata_df[['orbID',ETBCparpm, 'R', 'genID',dRdp]].values
+
+            index_cols = [ladata_df.columns.get_loc(col) for col in ['orbID',ETBCparpm, 'R', 'genID',dRdp]]
+            ldB_ = ladata_df.values[:, index_cols]
+            # ldB_ = ladata_df[['orbID',ETBCparpm, 'R', 'genID',dRdp]].values
             ldB_ = ldB_[ldB_[:,0]==1][:,1:]
 
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
@@ -381,7 +390,9 @@ class xov:
                     xyintB[k][1] -= xyintB[k][3] * diff_step
 
         else:
-            ldB_ = ladata_df[['orbID','ET_BC', 'R', 'genID']].values
+            index_cols = [ladata_df.columns.get_loc(col) for col in ['orbID','ET_BC', 'R', 'genID']]
+            ldB_ = ladata_df.values[:, index_cols]
+            # ldB_ = ladata_df[['orbID','ET_BC', 'R', 'genID']].values
             ldB_ = ldB_[ldB_[:,0]==1][:,1:]
 
             xyintB = [ldB_[max(0, k - len(ldA_) - msrm_sampl):min(k - len(ldA_) + msrm_sampl, ldB_.shape[0])].T for
@@ -596,11 +607,23 @@ class xov:
         # bracketing points' indeces
         if set([X_stgA, Y_stgA, X_stgB, Y_stgB]).issubset(self.ladata_df.columns): # if partials
             if X_stgA != X_stgB and Y_stgA != Y_stgB:
-                df_ = self.ladata_df[['orbID', X_stgA, Y_stgA, X_stgB, Y_stgB]].values
+                # df_ = self.ladata_df[['orbID', X_stgA, Y_stgA, X_stgB, Y_stgB]].values
+                index_cols = [self.ladata_df.columns.get_loc(col) for col in ['orbID', X_stgA, Y_stgA, X_stgB, Y_stgB]]
+                # df_1 = self.ladata_df.iloc[:,index_cols].values
+                df_ = self.ladata_df.values[:,index_cols]
                 ldA_ = df_[df_[:, 0] == 0][:,1:]
                 ldB_ = df_[df_[:, 0] == 1][:,3:]
             else: # if no partials
-                df_ = self.ladata_df[['orbID', X_stgA, Y_stgA]].values
+                # print(self.ladata_df.columns)
+                # print([self.ladata_df.columns.get_loc(col) for col in ['orbID', X_stgA, Y_stgA]])
+                # print(len(self.ladata_df))
+                # df_ = self.ladata_df[['orbID', X_stgA, Y_stgA]].values
+                index_cols = [self.ladata_df.columns.get_loc(col) for col in ['orbID', X_stgA, Y_stgA]]
+                # df_1 = self.ladata_df.iloc[:,index_cols].values
+                df_ = self.ladata_df.values[:,index_cols]
+                # exit()
+
+                # df_ = self.ladata_df[['orbID', X_stgA, Y_stgA]].values
                 ldA_ = df_[df_[:, 0] == 0][:,1:]
                 ldB_ = df_[df_[:, 0] == 1][:,1:]
 
