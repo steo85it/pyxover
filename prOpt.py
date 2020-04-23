@@ -3,7 +3,7 @@
 import numpy as np
 from util import deg2as
 ##############################################
-# @profile
+# #@profile
 # local or PGDA
 local = 0
 # debug mode
@@ -32,7 +32,7 @@ pert_tracks = [] #'1107021838','1210192326','1403281002','1503191143'] #
 
 # select subset of parameters to solve for
 sol4_orb = [] #'1107021838','1210192326','1403281002','1503191143']  #
-sol4_orbpar = [None] #'dA','dC','dR'] #,'dRl','dPt'] #,'dA1','dC1','dR1','dA2','dC2','dR2']  #] #
+sol4_orbpar = ['dA','dC','dR'] #,'dRl','dPt'] #,'dA1','dC1','dR1','dA2','dC2','dR2']  #] #
 sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] #,  None]
 
 # orbital representation
@@ -54,6 +54,8 @@ multi_xov = False
 full_covar = False
 # roughness map
 roughn_map = False
+# new algo
+new_algo = True
 
 # PyAltSim stuff
 # simulation mode

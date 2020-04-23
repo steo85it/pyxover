@@ -14,7 +14,7 @@ import pickle
 
 def save(objIn, filnam):
     pklfile = open(filnam, "wb")
-    pickle.dump(objIn, pklfile)
+    pickle.dump(objIn, pklfile, protocol=-1)
     pklfile.close()
 
 

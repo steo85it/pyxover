@@ -13,9 +13,7 @@ from xov_setup import xov
 import multiprocessing as mp
 # from memory_profiler import profile
 
-msrm_smpl = 4  # should be even...
-
-#@profile
+# @profile
 def fine_xov_proc(xovi,df,xov_tmp): #args):
     # xovi = args[0]
     # df = args[1]
@@ -42,13 +40,12 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
         print(df)
         return  # continue
 
+    # populate xov_tmp with local data for specific xov
     xov_tmp.ladata_df = df.copy()
-
-    xov_tmp.msrm_sampl = msrm_smpl
     xov_tmp.tracks = dict(zip(df.orbID.unique(), list(range(2))))
-
-
     xov_tmp.ladata_df['orbID'] = xov_tmp.ladata_df['orbID'].map(xov_tmp.tracks)
+
+    msrm_smpl = xov_tmp.msrm_sampl
 
     try:
         x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
@@ -166,27 +163,38 @@ def project_chunk(proc_chunk):
 
     return proc_chunk
 
-#@profile
-def xov_prc_iters_run(args,cmb):
+# @profile
+def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     start = time.time()
-
-    xov_iter = args[-1]
-    outdir_in = args[2] #"sim/KX1r4_0/0res_1amp/"
+    #
+    # xov_iter = args[-1]
+    # outdir_in = args[2] #"sim/KX1r4_0/0res_1amp/"
+    if xov_iter==0:
+        msrm_smpl = 50 # same as used for rough_xovs in PyXover (should be automatic)
+    else:
+        msrm_smpl = 4  # should be even...
 
     if msrm_smpl % 2 != 0:
         print("*** ERROR: msrm_smpl not an even number:", msrm_smpl)
 
-    outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
-    # print(outdir_old, outdir_in)
-    tmp = Amat(vecopts)
-    # print(outdir + outdir_old + 'Abmat*.pkl')
-    tmp = tmp.load(glob.glob(outdir + outdir_old + 'Abmat*.pkl')[0])
+    useful_columns = ['LON', 'LAT', 'xOvID', 'orbA', 'orbB', 'mla_idA', 'mla_idB']
+    if len(input_xov)==0:
+        outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
+        # print(outdir_old, outdir_in)
+        tmp_Amat = Amat(vecopts)
+        # print(outdir + outdir_old + 'Abmat*.pkl')
+        tmp = tmp_Amat.load(glob.glob(outdir + outdir_old + 'Abmat*.pkl')[0])
+        old_xovs = tmp.xov.xovers[useful_columns]
+    else:
+        old_xovs = input_xov[useful_columns]
+        old_xovs = old_xovs.drop('xOvID',axis=1).rename_axis('xOvID').reset_index()
 
     # print(tmp.xov.xovers.columns)
-    old_xovs = tmp.xov.xovers[['LON', 'LAT', 'xOvID', 'orbA', 'orbB', 'mla_idA', 'mla_idB']]
     old_xovs = old_xovs.loc[
         (old_xovs['orbA'].str.startswith(str(cmb[0]))) & (old_xovs['orbB'].str.startswith(str(cmb[1])))]
     # print(tmp.xov.xovers.loc[tmp.xov.xovers.xOvID.isin([7249,7526,1212,8678,34,11436,625])][['R_A','R_B','x0','y0']])
+    # exit()
+    # print(old_xovs.loc[old_xovs['orbA'].isin(['1502130018','1504152013'])])
     # exit()
 
     tracks_in_xovs = np.unique(old_xovs[['orbA', 'orbB']].values)
@@ -444,6 +452,8 @@ def xov_prc_iters_run(args,cmb):
     xovs_list = mla_proj_df.xovid.unique()
     xov_tmp = xov(vecopts)
 
+    # pass measurements sampling to fine_xov computation through xov_tmp
+    xov_tmp.msrm_sampl = msrm_smpl
     # store involved tracks as dict
     # xov_tmp.tracks = dict(zip(df.orbID.unique(), list(range(2))))
     # store the imposed perturbation (if closed loop simulation) - get from last track uploaded in prepro step

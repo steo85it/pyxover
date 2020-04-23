@@ -26,7 +26,7 @@ import subprocess
 # from mapcount import mapcount
 from unproject_coord import unproject_stereographic
 from intersection import intersection
-from prOpt import debug, partials, OrbRep, parGlo, parOrb, tmpdir, auxdir, local, multi_xov
+from prOpt import debug, partials, OrbRep, parGlo, parOrb, tmpdir, auxdir, local, multi_xov, new_algo
 from util import lflatten, rms, sec2day
 
 
@@ -83,8 +83,12 @@ class xov:
                                                 noise)
             self.apply_texture = interp_spline
 
-        # Crossover computation (rough+fine+elev)
-        nxov = self.get_xov()
+        if new_algo:
+            # rough only as prepro
+            nxov = self.get_xov_prelim()
+        else:
+            # Crossover computation (rough+fine+elev)
+            nxov = self.get_xov()
 
         # Depending on prOpt, ignore pairs where more than 1 xov has been found
         if multi_xov:
@@ -95,13 +99,14 @@ class xov:
 
         if multi_xov_check:
 
-            # Compute and store distances between obs and xov coord
-            self.set_xov_obs_dist()
-            # Compute and store offnadir state for obs around xov
-            self.set_xov_offnadir()
+            if not new_algo:
+                # Compute and store distances between obs and xov coord
+                self.set_xov_obs_dist()
+                # Compute and store offnadir state for obs around xov
+                self.set_xov_offnadir()
 
-            if partials:
-                self.set_partials()
+                if partials:
+                    self.set_partials()
 
             # Remap track names to df
             self.xovtmp['orbA'] = self.xovtmp['orbA'].map({v: k for k, v in self.tracks.items()})
@@ -164,7 +169,7 @@ class xov:
             del (self.ladata_df)
         if hasattr(self, 'gtracks'):
             del (self.gtracks)
-        pickle.dump(self, pklfile)
+        pickle.dump(self, pklfile, protocol=-1)
         pklfile.close()
 
     # @profile
@@ -853,9 +858,6 @@ class xov:
             print(x, y, ind_A, ind_B)
         return ind_A, ind_B, x, y
 
-    #        outf.write('Issue with: '+str(arg)+'\n')
-    #  print('Issue with: '+str(arg)+'\n')
-    #  return
     #@profile
     def get_xov(self):
         """
@@ -882,6 +884,81 @@ class xov:
         #  results = pool.map(self.get_xOver_elev, comb)  # parallel
         # else:
         results = self.get_xOver_elev(list(self.tracks.values()))  # seq
+
+        if results is not None:
+            # print(results)
+            xovtmp = self.postpro_xov_elev(ladata_df, results)
+
+            # print(xovtmp)
+            # exit()
+
+            # Update xovtmp as attribute for partials
+            self.xovtmp = xovtmp
+
+            if debug:
+                print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " + list(self.tracks.keys())[1])
+
+            return len(xovtmp)
+
+        else:
+            if debug:
+                if len(self.tracks):
+                    tmp = dict([v, k] for k, v in self.tracks.items())
+                    print("no xovers btw " + tmp[0] + " and " + tmp[1])
+
+            return -1  # 0 xovers found
+
+    def get_xov_prelim(self):
+        """
+        Read ladata_df and compute all xovers, then updates xovers dataframe
+        :return: number of detected xovers
+        """
+        ladata_df = self.ladata_df  # adapt
+
+        # Get intersections between all orbits (x of xover,y of xover,
+        # i=index in first orbit,j=index in second orbit)
+
+        # Copy index to column for book-keeping of crossovers
+        ladata_df['genID'] = ladata_df.index
+
+        # Call sequence only
+        # Compute crossover position (2 steps procedure: first roughly locate,
+        # downsampling data to 'msrm_sampl', then with full sampling around the
+        # points located with the first pass). Use either the seq or parallel
+        # version.
+
+        # if(parallel):
+        #  #print((mp.cpu_count() - 1))
+        #  pool = mp.Pool(processes = mp.cpu_count() - 1)
+        #  results = pool.map(self.get_xOver_elev, comb)  # parallel
+        # else:
+        # results = self.get_xOver_elev(list(self.tracks.values()))  # seq
+
+        arg = list(self.tracks.values())
+        # ladata_df = self.ladata_df
+        msrm_sampl = self.msrm_sampl
+
+        ind_A, ind_B, x, y = self.get_xover_rough(arg, ladata_df, msrm_sampl)
+
+        # reassign index to full list (from down-sampled index)
+        ind_A *= msrm_sampl
+        ind_B *= msrm_sampl
+
+        if len(x) == 1:
+            # Retrieve ladata_df index of observations involved in the crossover
+            # (can be used to extract orbit number with join btw ladata_df and xovers_df -
+            # eg, (ladata_df.loc[ind0][['orbID']].values).reshape(1,-1) -
+            # the orbit number can then be used to get the value at ind_A and ind_B by interpolation)
+            # ind0 and ind1 now are the indeces of the points just before the
+            # intersection in ladata_df, so that (ind0,ind0+1) and (ind1,ind1+1) are the
+            # bracketing points' indeces
+            rough_indA = ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[ind_A].index.values
+            rough_indB = ladata_df.loc[ladata_df['orbID'] == arg[1]].iloc[ind_B].index.values
+
+            results = [[x[0] for x in [x,y,rough_indA,rough_indB,np.zeros(len(x)),np.zeros(len(x))]]]
+        else:
+            results = None
+
 
         if results is not None:
             xovtmp = self.postpro_xov_elev(ladata_df, results)

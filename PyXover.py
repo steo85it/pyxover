@@ -29,7 +29,7 @@ import spiceypy as spice
 import time
 
 # mylib
-from prOpt import new_xov, vecopts, outdir, debug, monthly_sets
+from prOpt import new_xov, vecopts, outdir, debug, monthly_sets, new_algo
 # from mapcount import mapcount
 from ground_track import gtrack
 from xov_setup import xov
@@ -126,6 +126,8 @@ def launch_xov(
                     #     print(
                     #         'failed to load trackB ' + outdir + 'gtrack_' + gtrackB + '.pkl' + ' to process ' + outdir + 'gtrack_' + track_id + '.pkl')
 
+                # exit()
+
                 # for each gtrackA, write
                 # print([s for s in comb if track_id in s[0]])
                 if [s for s in comb if track_id in s[0]] and len(xov_tmp.xovers) > 0:
@@ -145,7 +147,10 @@ def launch_xov(
                     # exit()
                     print('Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
                           misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
-                    return gtrackA
+                    if new_algo:
+                        return xov_tmp.xovers
+                    else:
+                        return gtrackA
 
         # except:
         #     print(
@@ -171,6 +176,7 @@ def main(args):
     cmb_y_in = args[0]
     indir_in = args[1]
     outdir_in = args[2]
+    iter_in = args[-1]
 
     # locate data
     if local == 0:
@@ -241,102 +247,110 @@ def main(args):
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
 
-    print(args)
-    if args[-1] > 0:
-        print("Calling another awesome routine")
-        xov_prc_iters_run(args, misycmb[par])
-        exit()
-
     # exit()
 
-    # -------------------------------
-    # File reading and ground-tracks computation
-    # -------------------------------
+    if args[-1] == 0:
 
-    startInit = time.time()
+        # -------------------------------
+        # File reading and ground-tracks computation
+        # -------------------------------
 
-    # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
-    # for orbitA and orbitB.
-    # Geoloc, if active, will process all files in A+B. Xov will only process combinations
-    # of orbits from A and B
-    # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
-    # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
+        startInit = time.time()
 
-    # print(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
-    # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*')))
+        # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
+        # for orbitA and orbitB.
+        # Geoloc, if active, will process all files in A+B. Xov will only process combinations
+        # of orbits from A and B
+        # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
+        # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
 
-    if monthly_sets:
-      allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
-      allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1][:2] + '/gtrack_'+misycmb[par][1]+'*'))
-    else:
-      allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
-      allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
+        # print(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
+        # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*')))
+
+        if monthly_sets:
+          allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
+          allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1][:2] + '/gtrack_'+misycmb[par][1]+'*'))
+        else:
+          allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
+          allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
 
 
-    if misycmb[par][0] == misycmb[par][1]:
-        allFiles = allFilesA
-    else:
-        allFiles = allFilesA + allFilesB
+        if misycmb[par][0] == misycmb[par][1]:
+            allFiles = allFilesA
+        else:
+            allFiles = allFilesA + allFilesB
 
-    # print(allFiles)
+        # print(allFiles)
 
-    endInit = time.time()
-    print(
-        '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
-            (endInit - startInit) / 60.) + ' min -----')
+        endInit = time.time()
+        print(
+            '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
+                (endInit - startInit) / 60.) + ' min -----')
 
-    # -------------------------------
-    # Xovers setup
-    # -------------------------------
+        # -------------------------------
+        # Xovers setup
+        # -------------------------------
 
-    startXov2 = time.time()
+        startXov2 = time.time()
 
-    xovnames = ['xov_' + fil.split('.')[0][-10:] for fil in allFiles]
-    # trackxov_list = []
+        xovnames = ['xov_' + fil.split('.')[0][-10:] for fil in allFiles]
+        # trackxov_list = []
 
-    # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
-    # comb=np.array(list(itert.combinations([fil.split('.')[0][-10:] for fil in allFiles], 2))) # this computes comb btw ALL files
-    comb = list(
-        itert.product([fil.split('.')[0][-10:] for fil in allFilesA], [fil.split('.')[0][-10:] for fil in allFilesB]))
-    comb = np.array([c for c in comb if c[0] != c[1]])
+        # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
+        # comb=np.array(list(itert.combinations([fil.split('.')[0][-10:] for fil in allFiles], 2))) # this computes comb btw ALL files
+        comb = list(
+            itert.product([fil.split('.')[0][-10:] for fil in allFilesA], [fil.split('.')[0][-10:] for fil in allFilesB]))
+        comb = np.array([c for c in comb if c[0] != c[1]])
 
-    # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
-    # TODO, check wether one could safely save time by only considering xovers with a given weight
-    iter = int(outdir_in.split('/')[1].split('_')[-1])
-    if iter>0:
-        comb = select_useful_comb(comb, iter, outdir_in)
+        # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
+        # TODO, check wether one could safely save time by only considering xovers with a given weight
+        iter = int(outdir_in.split('/')[1].split('_')[-1])
+        if iter>0:
+            comb = select_useful_comb(comb, iter, outdir_in)
 
-    # print(comb)
+        # print(comb)
 
-    # load all tracks
-    tmp = [gtrack(vecopts) for i in range(len(allFiles))]
+        # load all tracks
+        tmp = [gtrack(vecopts) for i in range(len(allFiles))]
 
-    # if False:
-    #     tracklist = {}
-    #     for idx, fil in enumerate(allFiles):
-    #         try:
-    #             print(outdir)
-    #             _ = tmp[idx].load(outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
-    #             tracklist[str(_.name)] = _
-    #         except:
-    #             print('Failed to load' + outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
+        # if False:
+        #     tracklist = {}
+        #     for idx, fil in enumerate(allFiles):
+        #         try:
+        #             print(outdir)
+        #             _ = tmp[idx].load(outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
+        #             tracklist[str(_.name)] = _
+        #         except:
+        #             print('Failed to load' + outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
 
-    args = ((fil.split('.')[0][-10:], comb, misycmb, par, outdir + outdir_in) for fil in allFilesA)
+        args = ((fil.split('.')[0][-10:], comb, misycmb, par, outdir + outdir_in) for fil in allFilesA)
 
-    # loop over all gtracks
-    # parallel = 1
-    if parallel:
-        # filnams_loop = [fil.split('.')[0][-10:] for fil in allFiles]
-        # print(filnams_loop)
-        # print((mp.cpu_count() - 1))
-        pool = mp.Pool(processes=ncores)  # mp.cpu_count())
-        # store list of tracks with xovs
-        acttracks = pool.map(launch_xov, args)  # parallel
-        acttracks = np.unique(np.array([x for x in acttracks if x is not None]).flatten())
-        pool.close()
-        pool.join()
-    else:
-        _ = [launch_xov(arg) for arg in args]  # seq
+        # loop over all gtracks
+        # parallel = 1
+        if parallel:
+            # filnams_loop = [fil.split('.')[0][-10:] for fil in allFiles]
+            # print(filnams_loop)
+            # print((mp.cpu_count() - 1))
+            pool = mp.Pool(processes=ncores)  # mp.cpu_count())
+            # store list of tracks with xovs
+            result = pool.map(launch_xov, args)  # parallel
+            pool.close()
+            pool.join()
+
+            if new_algo:
+                rough_xov = pd.concat(result).reset_index()
+            else:
+                acttracks = np.unique(np.array([x for x in result if x is not None]).flatten())
+        else:
+            _ = [launch_xov(arg) for arg in args]  # seq
+
+    else: # xovs will be taken from old iter
+        rough_xov = pd.DataFrame()
+
+    if new_algo:
+        print("Calling another awesome routine")
+        xov_prc_iters_run(outdir_in, iter_in, misycmb[par],rough_xov)
+        exit()
 
     endXov2 = time.time()
     print(
