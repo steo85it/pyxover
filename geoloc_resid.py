@@ -53,7 +53,7 @@ def import_dem(filein):
     # and 0<=lon<pi are accepted (checked that lon=0 has same values)
     # print(data[:,0]==data[:,-1])
     # kx=ky=1 required not to mess up results!!!!!!!!!! Higher interp orders mess up...
-    if False:
+    if True:
         interp_spline = RectBivariateSpline(lats[:-1],
                                             lons[:-1],
                                             data[:-1, :-1], kx=1, ky=1)

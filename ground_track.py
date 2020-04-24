@@ -167,11 +167,11 @@ class gtrack:
         self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dR_tid$').columns, axis='columns')
 
         pklfile = open(filnam, "wb")
-        pickle.dump(self, pklfile)
+        pickle.dump(self, pklfile, protocol=-1)
         pklfile.close()
 
     # load groundtrack from file
-    @profile
+    #@profile
     def load(self, filnam):
         import gc
         # disabling cyclic garbage collection

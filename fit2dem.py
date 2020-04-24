@@ -316,7 +316,7 @@ if __name__ == '__main__':
     read_pkl = 0
 
     # epo = '1212'
-    exp = 'KX1r4_0'  # 'KX0_0'
+    exp = 'AGTP_0' # 'KX1r4_0'  # 'KX0_0'
     rghn = '0res_1amp'
 
     if read_pkl:

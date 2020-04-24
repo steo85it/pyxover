@@ -71,7 +71,7 @@ class Amat:
         if hasattr(self, 'A'):
             del (self.A)
             # print('A removed')
-        pickle.dump(self, pklfile)
+        pickle.dump(self, pklfile, protocol=-1)
         pklfile.close()
 
         if debug:  # check if correctly saved

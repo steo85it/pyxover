@@ -3,15 +3,15 @@
 import numpy as np
 from util import deg2as
 ##############################################
-# @profile
+# #@profile
 # local or PGDA
 local = 0
 # debug mode
 debug = 0
 # parallel processing?
-parallel = 0
+parallel = 1
 # compute partials?
-partials = 1
+partials = 0
 
 # std perturbations for finite differences (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
 parOrb = {'dA': 20.,'dC': 20.,'dR': 5.} #,'dRl':0.2, 'dPt':0.2} #
@@ -54,6 +54,8 @@ multi_xov = False
 full_covar = False
 # roughness map
 roughn_map = False
+# new algo
+new_algo = True
 
 # PyAltSim stuff
 # simulation mode
@@ -95,4 +97,4 @@ else:
     outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
     auxdir = '/home/sberton2/Works/NASA/Mercury_tides/aux/'
     tmpdir = '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/'
-    spauxdir = 'KX_spk/' #'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    spauxdir = 'AG_TP_spk' # 'KX_spk/' #'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'

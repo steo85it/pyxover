@@ -14,7 +14,7 @@ import pickle
 
 def save(objIn, filnam):
     pklfile = open(filnam, "wb")
-    pickle.dump(objIn, pklfile)
+    pickle.dump(objIn, pklfile, protocol=-1)
     pklfile.close()
 
 
@@ -23,6 +23,7 @@ def load(filnam):
     try:
         pklfile = open(filnam, 'rb')
     except:
+        # TODO this just applies to pickled spice orbits... should not be a general fallback
         # accounts for different minutes (time-scale?) btw real and simulated data
         HH = int(filnam[-8:-6])
         MM = int(filnam[-6:-4])

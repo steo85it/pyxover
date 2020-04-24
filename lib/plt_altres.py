@@ -20,7 +20,7 @@ from prOpt import outdir, tmpdir, vecopts
 from project_coord import project_stereographic
 
 subdir = "" # archived/KX1r2_fitglborb/"
-subexp = '3res_20amp'
+subexp = '0res_1amp' # '3res_20amp'
 
 
 def plot_topo(df):
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     ## subtract
     # grdmath
 
-    sols = ['tp4_0'] #,'KX1r2_17']
+    sols = ['AGTP_0'] #'tp4_0'] #,'KX1r2_17']
     topomaps = []
 
     new_lats = np.deg2rad(np.arange(0, 180, 1))
