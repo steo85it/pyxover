@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from Amat import Amat
 from ground_track import gtrack
-from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel, local
+from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel, local, debug
 import numpy as np
 import pandas as pd
 import time
@@ -36,8 +36,9 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
         xov_tmp.proj_center = {'lon': df['LON_proj'].values[0], 'lat': df['LAT_proj'].values[0]}
         df.drop(columns=['LON_proj','LAT_proj'],inplace=True)
     else:
-        print("### Empty proj_df_xovi on xov #", xovi)
-        print(df)
+        if debug:
+            print("### Empty proj_df_xovi on xov #", xovi)
+            print(df)
         return  # continue
 
     # populate xov_tmp with local data for specific xov
@@ -50,8 +51,9 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
     try:
         x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
     except:
-        print("### get_xover_fine issue on xov #", xovi)
-        print(xov_tmp.ladata_df)
+        if debug:
+            print("### get_xover_fine issue on xov #", xovi)
+            print(xov_tmp.ladata_df)
         return  # continue
     # print(x, y, subldA, subldB, ldA, ldB)
 
@@ -61,15 +63,17 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
     # print(df)
     # print(out)
     if len(out) == 0:
-        print("### Empty out on xov #", xovi)
+        if debug:
+            print("### Empty out on xov #", xovi)
         return  # continue
 
     # post-processing
     xovtmp = xov_tmp.postpro_xov_elev(xov_tmp.ladata_df, out)
 
     if len(xovtmp) > 1:
-        print("### Bad multi-xov at xov#", xovi)
-        print(xovtmp)
+        if debug:
+            print("### Bad multi-xov at xov#", xovi)
+            print(xovtmp)
         return  # continue
 
     # Update xovtmp as attribute for partials
@@ -545,15 +549,19 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     xov_tmp.parOrb_xy = [x.split('_')[0] for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values]  # update partials list
     xov_tmp.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(parGlo.keys())]
     xov_tmp.par_xy = xov_tmp.parOrb_xy+xov_tmp.parGlo_xy  # update partials list
-    print("Parameters:",xov_tmp.parOrb_xy,xov_tmp.parGlo_xy,xov_tmp.par_xy)
+
+    if debug:
+        print("Parameters:",xov_tmp.parOrb_xy,xov_tmp.parGlo_xy,xov_tmp.par_xy)
 
     # update xovers table with LAT and LON
     xov_tmp = get_xov_latlon(xov_tmp, mla_proj_df.loc[mla_proj_df.partid == 'none'])
 
     xov_tmp.xovers.drop('xovid', axis=1).reset_index(inplace=True, drop=True)
     # print(xov_tmp.xovers.columns)
-    pd.set_option('display.max_columns', 500)
-    print(xov_tmp.xovers)
+
+    if debug:
+        pd.set_option('display.max_columns', 500)
+        print(xov_tmp.xovers)
 
     end = time.time()
 

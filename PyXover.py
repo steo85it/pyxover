@@ -133,23 +133,18 @@ def launch_xov(
                 if [s for s in comb if track_id in s[0]] and len(xov_tmp.xovers) > 0:
                     # get xover LAT and LON
                     xov_tmp.get_xov_latlon(trackA)
-                    # Drop useless columns (can be useful for fractional part of xov location)
-                    # xov_tmp.xovers.drop(['cmb_idA', 'cmb_idB'],axis=1,inplace=True)
 
-                    # Save to file
-                    if not os.path.exists(outdir + 'xov/'):
-                        os.mkdir(outdir + 'xov/')
-                    xov_tmp.save(outdir + 'xov/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
-                    # print(xov_tmp.xovers)
-                    # trackxov_list.append(gtrackA)
-                    # pd.set_option('display.max_columns', None)
-                    # print(xov_tmp.xovers)
-                    # exit()
-                    print('Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
-                          misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
                     if new_algo:
+                        # just pass rough_xovs to next step
                         return xov_tmp.xovers
                     else:
+                        # Save to file
+                        if not os.path.exists(outdir + 'xov/'):
+                            os.mkdir(outdir + 'xov/')
+                        xov_tmp.save(outdir + 'xov/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
+                        print(
+                            'Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
+                            misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
                         return gtrackA
 
         # except:
@@ -337,25 +332,32 @@ def main(args):
             pool.close()
             pool.join()
 
+        else:
+            result = [launch_xov(arg) for arg in args]  # seq
+            print(result)
+
+        if len(result)>0:
             if new_algo:
                 rough_xov = pd.concat(result).reset_index()
             else:
                 acttracks = np.unique(np.array([x for x in result if x is not None]).flatten())
         else:
-            _ = [launch_xov(arg) for arg in args]  # seq
+            print("### PyXover: no xovers between these tracks")
+            exit()
+
 
     else: # xovs will be taken from old iter
         rough_xov = pd.DataFrame()
-
-    if new_algo:
-        print("Calling another awesome routine")
-        xov_prc_iters_run(outdir_in, iter_in, misycmb[par],rough_xov)
-        exit()
 
     endXov2 = time.time()
     print(
         '----- Runtime Xov2 = ' + str(endXov2 - startXov2) + ' sec -----' + str(
             (endXov2 - startXov2) / 60.) + ' min -----')
+
+    if new_algo:
+        print("Calling another awesome routine")
+        xov_prc_iters_run(outdir_in, iter_in, misycmb[par],rough_xov)
+        exit()
 
 
 def select_useful_comb(comb, iter, outdir_in):
