@@ -306,7 +306,7 @@ def main(args):
         # print(comb)
 
         # load all tracks
-        tmp = [gtrack(vecopts) for i in range(len(allFiles))]
+        # tmp = [gtrack(vecopts) for i in range(len(allFiles))]
 
         # if False:
         #     tracklist = {}

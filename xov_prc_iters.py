@@ -220,7 +220,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     mla_proj_list = []
     mla_idx = ['mla_idA', 'mla_idB']
     for track_id in tracks_in_xovs[:]:
-        # if track_id in ['1312171723','1312240123']:
+       # if track_id in ['1502130018','1502202222']:
         # print(track_id)
 
         for idx, orb in enumerate(['orbA', 'orbB']):
@@ -307,11 +307,13 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
                 newlat_m = -1. * (
                     part_deltas_df.loc[:, part_deltas_df.columns.str.startswith("dLAT")].sub(tmp_ladata_partials.LAT,
                                                                                              axis=0))
+
                 # update column names
-                newlon_p.columns = ['LON_' + x + '_p' for x in delta_pars.keys()]
-                newlat_p.columns = ['LAT_' + x + '_p' for x in delta_pars.keys()]
-                newlon_m.columns = ['LON_' + x + '_m' for x in delta_pars.keys()]
-                newlat_m.columns = ['LAT_' + x + '_m' for x in delta_pars.keys()]
+                upd_cols = [x.split('/')[-1] for x in newlat_p.columns]
+                newlon_p.columns = ['LON_' + x + '_p' for x in upd_cols]
+                newlat_p.columns = ['LAT_' + x + '_p' for x in upd_cols]
+                newlon_m.columns = ['LON_' + x + '_m' for x in upd_cols]
+                newlat_m.columns = ['LAT_' + x + '_m' for x in upd_cols]
 
                 # tmp_proj_part = tmp_proj.drop(['ET_BC', 'LON', 'LAT'], axis=1)
                 for idx,pder in enumerate(['_' + x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']]):
@@ -337,7 +339,6 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
                     # print(part_proj_dict[idx])
 
                     part_proj_dict[idx].append(tmp)
-                    # print(len(part_proj_dict[pder[1:]]))
 
             mla_proj_list.append(mla_proj_df)
 
@@ -381,6 +382,8 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         #     proc_chunks.append(tmp_proj[chunkstart: chunkend,:])
         #
         # assert sum(map(len, proc_chunks)) == len(mla_proj_df)   # make sure all data is in the chunks
+        # print(part_proj_dict)
+        # exit()
 
         # distribute work to the worker processes
         with mp.get_context("spawn").Pool(processes=n_proc) as pool:
@@ -392,7 +395,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
             # blocks until all results are fetched
             # proc_chunk = np.vstack([proc_chunk[:, 0], np.asarray(chunk_res)]).T
 
-            result_chunks = {x: np.hstack([y,z.get()[:,1:]]) for x, y in part_proj_dict.items() for z in proc_results}
+            result_chunks = {x: np.hstack([y,proc_results[idx].get()[:,1:]]) for idx, (x, y) in enumerate(part_proj_dict.items())}
             # result_chunks = dict(zip(part_proj_dict.keys(),[r.get() for r in proc_results]))
             # print(result_chunks)
             # genid, LON_proj, LAT_proj, LON, LAT, ET_BC, dR / dp
@@ -403,14 +406,17 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         # mla_proj_df = mla_proj_df.merge(tmp_proj,on='genid')
     else:
         proc_results = []
-        for chunk in part_proj_dict.values():
-            # print(chunk.shape)
+        for idx,chunk in enumerate(part_proj_dict.values()):
             proc_results.append(project_stereographic(chunk[:,3], chunk[:,4], chunk[:,1], chunk[:,2],
                                                 R=vecopts['PLANETRADIUS']))  # (lon, lat, lon0, lat0, R=1)
-        # print([p for p in proc_results])
-        result_chunks = {x: np.hstack([y,np.vstack(z).T]) for x, y in part_proj_dict.items() for z in proc_results}
+        # print([(part_proj_dict.keys()x,p) for p in proc_results for x in ])
+        # result_chunks = {}
+        # for idx, (x, y) in enumerate(part_proj_dict.items()):
+        #     result_chunks[x] = np.hstack([y,np.vstack(proc_results[idx]).T])
+        result_chunks = {x:np.hstack([y,np.vstack(proc_results[idx]).T]) for idx, (x, y) in enumerate(part_proj_dict.items())}
 
     mla_proj_df = pd.concat([mla_proj_df,pd.DataFrame(result_chunks['none'][:,-2:],columns=['X_stgprj','Y_stgprj'])],axis=1)
+
     #
     # mla_proj_df = pd.concat([mla_proj_df, pd.DataFrame(np.vstack(result_chunks)[:, 1:], columns=['x', 'y'])], axis=1)
     # print("len mla_proj_df:", len(mla_proj_df))
@@ -442,7 +448,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     end_proj = time.time()
 
-    # print(mla_proj_df)
+    # exit()
 
     print("Len mla_proj_df after reordering:",len(mla_proj_df))
     print("Projection finished after ", end_proj - start_proj, "sec!")
@@ -546,7 +552,9 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     # print(xov_tmp.xovers)
     # assign parOrb to xov
-    xov_tmp.parOrb_xy = [x.split('_')[0] for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values]  # update partials list
+    # xov_tmp.parOrb_xy = [x.split('_')[0] for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values]  # update partials list
+    xov_tmp.parOrb_xy = [x for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns]  # update partials list
+
     xov_tmp.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(parGlo.keys())]
     xov_tmp.par_xy = xov_tmp.parOrb_xy+xov_tmp.parGlo_xy  # update partials list
 
@@ -561,7 +569,9 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     if debug:
         pd.set_option('display.max_columns', 500)
-        print(xov_tmp.xovers)
+        pd.set_option('display.max_rows', 500)
+
+        print(xov_tmp.xovers) #.loc[xov_tmp.xovers['orbA']=='1504030011'])
 
     end = time.time()
 

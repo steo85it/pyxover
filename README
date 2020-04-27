@@ -76,10 +76,11 @@ PyGeoloc: set furnsh to desired file
 
 Produce topo from altimetry residuals
 -------------------------------------
-While waiting for automatisation... in lib/
+Automatised in lib/gtrack2dem.py : select input exp and run
+Backup solution only: ... in lib/ (sends to slurm, which is somehow good)
 plt_altres.py : change name of input and output to generate concat_ladata
 plot_res.sh: launches gmt reading and processing to grd (change input/output in ladata2grd.sh)
-plot_netcdf.py: change input, plots grd and differences
+go back to gtrack2dem for last step
 
 Profiling
 ---------

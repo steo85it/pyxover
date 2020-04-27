@@ -11,7 +11,7 @@ debug = 0
 # parallel processing?
 parallel = 1
 # compute partials?
-partials = 0
+partials = 1
 
 # std perturbations for finite differences (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
 parOrb = {'dA': 20.,'dC': 20.,'dR': 5.} #,'dRl':0.2, 'dPt':0.2} #
@@ -41,7 +41,7 @@ OrbRep = 'cnt' # 'lin' # 'quad' #
 # interpolation/spice direct call (0: use spice, 1: yes, use interpolation, 2: yes, create interpolation)
 SpInterp = 1
 # create new gtrack (0:no, 1:yes, if not already present, 2: yes, create and replace)
-new_gtrack = 2
+new_gtrack = 1
 # create new xov (0:no, 1:yes, if not already present, 2: yes, create and replace)
 new_xov = 2
 
@@ -97,4 +97,4 @@ else:
     outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
     auxdir = '/home/sberton2/Works/NASA/Mercury_tides/aux/'
     tmpdir = '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/'
-    spauxdir = 'AG_TP_spk' # 'KX_spk/' #'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    spauxdir = 'KX_spk/' #'AG_TP_spk' #'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'

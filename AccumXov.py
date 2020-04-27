@@ -61,7 +61,7 @@ h2_limit_on = False
 sigma_0 = 1. # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
 # scaling factors for obs and constraints
 weight_obs = 0.1
-weight_constr = 2.5
+weight_constr = 3.0
 ###
 convergence_criteria = 0.05 # =5%
 
