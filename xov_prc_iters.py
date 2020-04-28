@@ -368,7 +368,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         # print("chunksize",chunksize)
         # print(len(mla_proj_df),n_chunks)
         #
-        # # devide into chunks
+        # devide into chunks
         # proc_chunks = []
         # tmp_proj = mla_proj_df[['LON','LAT','LON_proj','LAT_proj','genid']].values
         # for i_proc in range(n_chunks):
@@ -381,8 +381,29 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         #     proc_chunks.append(tmp_proj[chunkstart: chunkend,:])
         #
         # assert sum(map(len, proc_chunks)) == len(mla_proj_df)   # make sure all data is in the chunks
-        # print(part_proj_dict)
-        # exit()
+        # print()
+        # print(part_proj_dict['none'])
+        max_length_proj = 1.e7
+        chunked_proj_dict = len(part_proj_dict['none']) > max_length_proj
+        if chunked_proj_dict:
+            chunksize = len(part_proj_dict['none']) // 5
+            n_chunks = 5
+            print("Splitting a large array of", len(part_proj_dict['none']), "mla_data in chunks of", chunksize, "rows")
+
+            proc_chunks = {}
+            for id,tmp_proj in part_proj_dict.items():
+                for i_proc in range(n_chunks):
+                    chunkstart = i_proc * chunksize
+                    # make sure to include the division remainder for the last process
+                    chunkend = (i_proc + 1) * chunksize if i_proc < n_chunks - 1 else None
+                    # print(mla_proj_df.columns)
+
+                    # proc_chunks.append(mla_proj_df.iloc[slice(chunkstart, chunkend)])
+                    proc_chunks[id+'_'+str(i_proc)] = tmp_proj[chunkstart: chunkend, :]
+
+            # important check but need to solve the vstack issue (none has 7 columns, partials have 5, or viceversa...)
+            # assert len(np.vstack(proc_chunks.values()))  == len(np.vstack(part_proj_dict.values()[:,0]))  # make sure all data is in the chunks
+            part_proj_dict = proc_chunks
 
         # distribute work to the worker processes
         with mp.get_context("spawn").Pool(processes=n_proc) as pool:
@@ -397,6 +418,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
             result_chunks = {x: np.hstack([y,proc_results[idx].get()[:,1:]]) for idx, (x, y) in enumerate(part_proj_dict.items())}
             # result_chunks = dict(zip(part_proj_dict.keys(),[r.get() for r in proc_results]))
             # print(result_chunks)
+        # exit()
             # genid, LON_proj, LAT_proj, LON, LAT, ET_BC, dR / dp
 
 
@@ -414,8 +436,16 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         #     result_chunks[x] = np.hstack([y,np.vstack(proc_results[idx]).T])
         result_chunks = {x:np.hstack([y,np.vstack(proc_results[idx]).T]) for idx, (x, y) in enumerate(part_proj_dict.items())}
 
-    mla_proj_df = pd.concat([mla_proj_df,pd.DataFrame(result_chunks['none'][:,-2:],columns=['X_stgprj','Y_stgprj'])],axis=1)
-
+    if chunked_proj_dict:
+        tmp_chunks = np.vstack([v[:, -2:] for (k, v) in result_chunks.items() if 'none' in k])
+        # print(tmp_chunks)
+        mla_proj_df = pd.concat([mla_proj_df, pd.DataFrame(tmp_chunks, columns=['X_stgprj', 'Y_stgprj'])], axis=1)
+    else:
+        mla_proj_df = pd.concat([mla_proj_df,pd.DataFrame(result_chunks['none'][:,-2:],columns=['X_stgprj','Y_stgprj'])],axis=1)
+    #
+    # print(mla_proj_df)
+    # print(len(mla_proj_df))
+    # exit()
     #
     # mla_proj_df = pd.concat([mla_proj_df, pd.DataFrame(np.vstack(result_chunks)[:, 1:], columns=['x', 'y'])], axis=1)
     # print("len mla_proj_df:", len(mla_proj_df))
@@ -431,7 +461,13 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         partials_df_list = []
         for pder in ['_' + x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']]:
             # print(pder)
-            partials_proj_df = pd.DataFrame(result_chunks[pder[1:]],columns=['genid','LON_proj','LAT_proj','LON','LAT','ET_BC'+pder,'dR/' + pder[1:-2],'X_stgprj' + pder,'Y_stgprj' + pder])
+            if chunked_proj_dict:
+                tmp_chunks = np.vstack([v for (k, v) in result_chunks.items() if pder[1:] in k])
+                partials_proj_df = pd.DataFrame(tmp_chunks,
+                                                columns=['genid','LON_proj','LAT_proj','LON','LAT','ET_BC'+pder,'dR/' + pder[1:-2],'X_stgprj' + pder,'Y_stgprj' + pder])
+            else:
+                partials_proj_df = pd.DataFrame(result_chunks[pder[1:]],
+                                                columns=['genid','LON_proj','LAT_proj','LON','LAT','ET_BC'+pder,'dR/' + pder[1:-2],'X_stgprj' + pder,'Y_stgprj' + pder])
             # partials_proj_df.rename(columns={'x': 'X_stgprj' + pder, 'y': 'Y_stgprj' + pder, "ET_BC": 'ET_BC' + pder,
             #                                  "R": 'dR/' + pder[1:-2]},
             #                         inplace=True)
