@@ -345,14 +345,13 @@ def main(args):
             print("### PyXover: no xovers between these tracks")
             exit()
 
+        endXov2 = time.time()
+        print(
+            '----- Runtime Xov2 = ' + str(endXov2 - startXov2) + ' sec -----' + str(
+                (endXov2 - startXov2) / 60.) + ' min -----')
 
     else: # xovs will be taken from old iter
         rough_xov = pd.DataFrame()
-
-    endXov2 = time.time()
-    print(
-        '----- Runtime Xov2 = ' + str(endXov2 - startXov2) + ' sec -----' + str(
-            (endXov2 - startXov2) / 60.) + ' min -----')
 
     if new_algo:
         print("Calling another awesome routine")
