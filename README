@@ -65,6 +65,9 @@ Copy data to experiment folder (in data folder) by
 for f in SIM_1?/; do cp -r $f/tpg $f/a01; done
 or, e.g., to create sym links
 for f in SIM_1?; do cp -rs /att/nobackup/sberton2/MLA/data/$f/KX1/* /att/nobackup/sberton2/MLA/data/$f/AGTP/.; done
+or
+for f in /att/nobackup/sberton2/MLA/data/SIM_1?/; do cp -rs $f/AGTP/* $f/AGS/.; done
+
 Update launch_test
 
 Import new orbit to pkl

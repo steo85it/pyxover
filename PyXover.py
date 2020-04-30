@@ -135,6 +135,10 @@ def launch_xov(
                     xov_tmp.get_xov_latlon(trackA)
 
                     if new_algo:
+                        # Save to temporary folder
+                        if not os.path.exists(outdir + 'xov/tmp/'):
+                            os.mkdir(outdir + 'xov/tmp/')
+                        xov_tmp.save(outdir + 'xov/tmp/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
                         # just pass rough_xovs to next step
                         return xov_tmp.xovers
                     else:

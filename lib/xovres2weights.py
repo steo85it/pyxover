@@ -50,8 +50,9 @@ def get_interpolation_weight(xov_):
     # get weight as inverse of roughness (relative, 0:1) value - could use factors given in ref + sim results to rescale
     interp_weights['weight'] = 1./interp_weights['rough_at_mindist'].values
 
-    print(interp_weights)
-    print(interp_weights['weight'].mean(),interp_weights['weight'].median(),interp_weights['weight'].max(),interp_weights['weight'].min())
+    if debug:
+        print(interp_weights)
+        print(interp_weights['weight'].mean(),interp_weights['weight'].median(),interp_weights['weight'].max(),interp_weights['weight'].min())
 
     # plot some histos for debug
     if debug:
@@ -182,11 +183,14 @@ def generate_dR_regions(filnam,xov):
         xovtmp['dist_minB'] = xovtmp.filter(regex='^dist_B.*$').min(axis=1)
         xovtmp['dist_min_avg'] = xovtmp.filter(regex='^dist_min.*$').mean(axis=1)
 
-        print("pre weighting")
-        print(xovtmp.dR.abs().max(),xovtmp.dR.abs().min(),xovtmp.dR.median(),rms(xovtmp.dR.values))
-        print("post weighting")
+        if debug:
+            print("pre weighting")
+            print(xovtmp.dR.abs().max(),xovtmp.dR.abs().min(),xovtmp.dR.median(),rms(xovtmp.dR.values))
+            print("post weighting")
         xovtmp.dR *= xovtmp.huber
-        print(xovtmp.dR.abs().max(),xovtmp.dR.abs().min(),xovtmp.dR.median(),rms(xovtmp.dR.values))
+
+        if debug:
+            print(xovtmp.dR.abs().max(),xovtmp.dR.abs().min(),xovtmp.dR.median(),rms(xovtmp.dR.values))
         #
         # remove data if xover distance from measurements larger than 0.4km (interpolation error)
         # plus remove outliers with median method
@@ -244,7 +248,8 @@ def generate_dR_regions(filnam,xov):
     lons = np.deg2rad(piv.columns.values) + np.pi
     data = piv.values
 
-    print(data)
+    if debug:
+        print(data)
 
     # Exclude last column because only 0<=lat<pi
     # and 0<=lon<pi are accepted (checked that lon=0 has same values)

@@ -12,7 +12,7 @@ import itertools
 
 import seaborn as sns
 
-from accum_utils import get_xov_cov_tracks
+from accum_utils import get_xov_cov_tracks, get_vce_factor
 from util import mergsum, update_in_alist, rms
 from lib.xovres2weights import get_interpolation_weight
 # from xov_utils import get_tracks_rms
@@ -160,7 +160,9 @@ def get_stats(amat):
 
     xsol = []
     xstd = []
+    # print(amat.sol_dict['sol'])
     for filt in amat.sol4_pars:
+        # print(filt)
         filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
         xsol.append(list(filtered_dict.values())[0])
         filtered_dict = {k: v for (k, v) in amat.sol_dict['std'].items() if filt in k}
@@ -234,6 +236,116 @@ def get_stats(amat):
             axis=1).sort_values(
             ascending=False)
         print(nobs_tracks)
+
+
+def compute_vce_weights(amat):
+
+    xsol = []
+    # print(amat.sol_dict['sol'])
+    for filt in amat.sol4_pars:
+        # print(filt)
+        filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
+        xsol.append(list(filtered_dict.values())[0])
+    xsol = np.array(xsol)
+
+    xsol_iter = []
+    # print(amat.sol_dict['sol'])
+    for filt in amat.sol4_pars:
+        # print(filt)
+        filtered_dict = {k: v for (k, v) in amat.sol_dict_iter['sol'].items() if filt in k}
+        xsol_iter.append(list(filtered_dict.values())[0])
+    xsol_iter = np.array(xsol_iter)
+    lP = amat.penalty_mat
+    # print('lP',lP)
+    # exit()
+
+    s2_obs_apr = 1./amat.vce[0]
+    s2_constr_apr = 1./amat.vce[1]
+    s2_constr_avg_apr = 1./amat.vce[2]
+
+    # compute total N**-1
+    # select only columns with solved for parameters
+    Amat = amat.spA[:,[amat.parNames[p] for p in amat.sol4_pars]]
+    # print(Amat)
+    # print(amat.to_constrain)
+    # print(np.sum(Amat[:,165].A))
+    # exit()
+
+    ATP = Amat.T * amat.weights
+    ATPA = ATP * Amat
+
+    # exit()
+    N = ((1./s2_obs_apr)*ATPA + (1./s2_constr_apr)*lP + (1./s2_constr_avg_apr)*amat.penalty_mat_avg).todense()
+    print("det",np.linalg.det(N),np.linalg.cond(N))
+    Ninv = np.linalg.pinv(N,hermitian=True,rcond=1.e-20) #
+    # print(Ninv)
+    # assert np.allclose(N, N@(Ninv@N))
+    if not np.allclose(N, N@(Ninv@N)):
+        print('### N is almost singular!! Help!!!')
+    # print("check",np.allclose(N, N@(Ninv@N)))
+    # print("N.shape", Ninv.shape)
+
+    # get obs vce sigma2
+    # # print("rms b",rms(amat.b))
+    # # print(amat.b)
+    # d_Adx = (amat.b -  Amat * xsol_iter)
+    # # print("rms d_Adx",rms(d_Adx))
+    # # print(Amat * xsol_iter)
+    # # exit()
+    #
+    # d_AdxT_w = csr_matrix(d_Adx.T) * amat.weights
+    # d_AdxT_w_d_Adx = (d_AdxT_w * d_Adx)[0]
+    # # print("d_AdxT_w_d_Adx", d_AdxT_w_d_Adx, d_AdxT_w_d_Adx.shape)
+    # # print("nobs, trace",nobs,np.trace(ATPA @ Ninv))
+    # redundancy_obs = nobs - (1./s2_obs_apr)*np.trace(ATPA @ Ninv)
+    # # print(dof)
+    # chi2_obs = d_AdxT_w_d_Adx / redundancy_obs
+    # s2_obs_new = chi2_obs  # weight = 1/sigma**2
+    # print("s2_obs_new",s2_obs_new, np.sqrt(s2_obs_new))
+    # print("rms pre", np.sqrt((csr_matrix(amat.b.T) * amat.weights)*amat.b))
+    # print("rms post d_Adx", np.sqrt(d_AdxT_w_d_Adx)," - redundancy factors",redundancy_obs, np.trace(ATPA @ Ninv))
+
+    # exit()
+
+    # get constr VCE sigma2
+    # npar = len(xsol)
+    # xT = xsol.reshape(1, -1)
+    # # print("xT",xT)
+    # # print("lP",lP)
+    # xT_P = csr_matrix(xT) * lP
+    # xT_P_x = (xT_P * xsol)[0]
+    # # print("xT_P_x",xT_P_x)
+    # # print(lP.shape, Ninv.shape)
+    # redundancy_constr = npar - (1./s2_constr_apr)*np.trace(lP @ Ninv)
+    # # print("dof",dof,nobs, np.trace(lP @ Ninv))
+    # chi2_constr = xT_P_x / redundancy_constr
+    # # print(chi2_constr)
+    # s2_constr_new = chi2_constr
+    #
+    # print("s2_constr_new:", s2_constr_new, np.sqrt(s2_constr_new))
+    # print("xT_P_x",xT_P_x," - redundancy factors",redundancy_constr, npar, (1./s2_constr_apr)*np.trace(lP @ Ninv))
+
+    print("Computing VCE weights:")
+    s2_obs_new = get_vce_factor(b=amat.b,A=Amat,x=xsol_iter,Cinv=amat.weights,Ninv=Ninv,sapr=1./np.sqrt(amat.vce[0]))
+    s2_constr_new = get_vce_factor(b=0.,A=0.,x=xsol,Cinv=lP,Ninv=Ninv,sapr=1./np.sqrt(amat.vce[1]),kind='constr')
+    s2_constr_avg_new = get_vce_factor(b=0.,A=0.,x=xsol,Cinv=amat.penalty_mat_avg,Ninv=Ninv,sapr=1./np.sqrt(amat.vce[2]),kind='constr_avg')
+
+    # print("avg weight:", 1./s2_constr_avg)
+
+    # print("total redundancy:", redundancy_obs+redundancy_constr, nobs)
+    print("old weights (obs, constr, avg)", 1./s2_obs_apr, 1./s2_constr_apr, 1./s2_constr_avg_apr)
+    print("new weights (obs, constr, avg)", 1./s2_obs_new, 1./s2_constr_new, 1./s2_constr_avg_new)
+    # exit()
+
+    # new weights have to be > 0
+    assert s2_obs_new > 0
+    assert s2_constr_new > 0
+    assert s2_constr_avg_new > 0
+
+    # exit()
+
+    return s2_obs_new, s2_constr_new, s2_constr_avg_new
+
 
 def plt_histo_dR(idx, mean_dR, std_dR, xov, xov_ref=''):
     import scipy.stats as stats
@@ -369,7 +481,7 @@ def analyze_dist_vs_dR(xov):
     tmp['abs_dR'] = abs(tmp['dR'])
 
 # #@profile
-def solve(xovi_amat,dataset, previous_iter=None):
+def prepro_weights_constr(xovi_amat, previous_iter=None):
     from scipy.sparse import csr_matrix, identity
     from prOpt import par_constr, mean_constr, sol4_orb, sol4_glo
 
@@ -393,8 +505,11 @@ def solve(xovi_amat,dataset, previous_iter=None):
     # exit()
 
     if sol4_pars != []:
+        if debug:
+            print(sol4_pars)
+            print(xovi_amat.parNames)
+            print([xovi_amat.parNames[p] for p in sol4_pars])
         # select columns of design matrix corresponding to chosen parameters to solve for
-        # print([xovi_amat.parNames[p] for p in sol4_pars])
         spA_sol4 = xovi_amat.spA[:,[xovi_amat.parNames[p] for p in sol4_pars]]
         # set b=0 for rows not involving chosen set of parameters
         nnz_per_row = spA_sol4.getnnz(axis=1)
@@ -467,7 +582,9 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # get quality of tracks and apply huber weights
         if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
             tmp = xovi_amat.xov.xovers.copy()[['xOvID','LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]#.astype('float16')
-            print("pre xovcov types",tmp.dtypes)
+            if debug:
+                print("pre xovcov types",tmp.dtypes)
+
             weights_xov_tracks = get_xov_cov_tracks(df=tmp,plot_stuff=True)
 
             # the histogram of weight distribution
@@ -800,10 +917,12 @@ def solve(xovi_amat,dataset, previous_iter=None):
             ascending=False)
 
         to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
-
+        xovi_amat.to_constrain = to_constrain
         if debug:
             print("number of constrained pars", len(to_constrain))
             print(to_constrain)
+            print([dict(zip(xovi_amat.parNames.values(), xovi_amat.parNames.keys()))[x] for x in to_constrain])
+            # exit()
 
         for p in parindex:
             if p[0] in to_constrain:
@@ -864,44 +983,15 @@ def solve(xovi_amat,dataset, previous_iter=None):
         # print(sum(csr_avg))
         # print(penalty_matrix)
 
-        penalty_matrix = penalty_matrix + sum(csr_avg)
+        # penalty_matrix = penalty_matrix + sum(csr_avg)
+        penalty_matrix_avg = sum(csr_avg)
+        xovi_amat.penalty_mat_avg = penalty_matrix_avg
 
-    # store penalty into amat
+    # store penalties into amat
     xovi_amat.penalty_mat = penalty_matrix
-        # exit()
 
-    # Choleski decompose matrix and append to design matrix
-    Q = np.linalg.cholesky(penalty_matrix.todense())
-
-    # print(np.shape(xovi_amat.weights))
-    # print(len(np.ravel(np.dot(Q,previous_iter.sol_iter[0]))))
-    # print(np.shape(xovi_amat.b))
-    if previous_iter != None and previous_iter.sol_dict_iter != None:
-        # get previous solution reordered as sol4_pars (and hence as Q)
-        # should this rather be sol_dict?? Do we want to constrain the correction amplitude at each iter or the full correction?
-        prev_sol_ord = [previous_iter.sol_dict_iter['sol'][key] if
-                        key in previous_iter.sol_dict_iter['sol'] else 0. for key in sol4_pars]
-        b_penal = np.hstack([weight_obs*xovi_amat.weights*xovi_amat.b, weight_constr*np.ravel(np.dot(Q,prev_sol_ord))]) #np.zeros(len(sol4_pars))]) #
-    else:
-        b_penal = np.hstack([weight_obs*xovi_amat.weights*xovi_amat.b, weight_constr*np.zeros(len(sol4_pars))])
-    # import scipy
-    spA_sol4_penal = scipy.sparse.vstack([weight_obs*spA_sol4,weight_constr*csr_matrix(Q)])
-    xovi_amat.spA_penal = spA_sol4_penal
-    xovi_amat.vce = [weight_obs,weight_constr]
-    # print("Pre-sol: len(A,b)=",len(b_penal),spA_sol4_penal.shape)
-    #print([xovi_amat.parNames[p] for p in sol4_pars])
-
-    # exit()
-    # print("Pre-sol-2: len(A,b)=",spA_sol4_penal.shape,len(b_penal))
-    # exit()
-
-    xovi_amat.sol = lsqr(spA_sol4_penal, b_penal,damp=0,show=True,iter_lim=100000,atol=1.e-8/sigma_0,btol=1.e-8/sigma_0,calc_var=True)
-    # xovi_amat.sol = lsqr(xovi_amat.spA, xovi_amat.b,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
-    # print("sol sparse: ",xovi_amat.sol[0])
-    # print('to_be_recovered', pert_cloop['glo'])
-    print("Solution iters terminated with ", xovi_amat.sol[1])
-    if xovi_amat.sol[1] != 2:
-       exit(2)
+    # store cleaned and weighted spA
+    xovi_amat.spA_weight_clean = spA_sol4
 
     if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
         tmp = obs_weights.diagonal()
@@ -911,12 +1001,6 @@ def solve(xovi_amat,dataset, previous_iter=None):
         print("Slightly downweighted obs: ", len(tmp[(tmp<0.5*avg_weight)*(tmp>0.05*avg_weight)]), "or ",len(tmp[(tmp<0.5*avg_weight)*(tmp>0.05*avg_weight)])/len(tmp)*100.,"%")
         print("Brutally downweighted obs (<0.05*sigma0): ", len(tmp[(tmp<0.05*avg_weight)]), "or ",len(tmp[(tmp<0.05*avg_weight)])/len(tmp)*100.,"%")
 
-    # exit()
-
-    # _ = lsmr(A+penalty_matrix,b.toarray(),show=False, maxiter=5000)
-    # # print(np.diag(np.linalg.pinv(((A+penalty_matrix).transpose() * (A+penalty_matrix)).todense())))
-    # # print(xovi_amat.sol)
-    # xovi_amat.sol = (_[0], *xovi_amat.sol[1:])
 
 # #@profile
 def clean_partials(b, spA, nglbpars, threshold = 1.e6):
@@ -1025,7 +1109,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
     sol4_pars = sorted(sol4_orb) + sorted(sol4_glo)
 
-    # print(len(sorted(sol4_orb)))
+    print('solving for',len(sorted(sol4_orb)),'parameters.')
     # print('solving for:',np.array(sol4_pars))
 
     return sol4_pars
@@ -1115,6 +1199,16 @@ def analyze_sol(xovi_amat,xov):
 
     else:
         orb_sol = pd.DataFrame()
+
+    print("Max values:")
+    print(orb_sol.filter(regex='sol_dR/').max(axis=0))
+    print("Min values:")
+    print(orb_sol.filter(regex='sol_dR/').min(axis=0))
+    print("Median values:")
+    print(orb_sol.filter(regex='sol_dR/').median(axis=0))
+    print("Mean values:")
+    print(orb_sol.filter(regex='sol_dR/').mean(axis=0))
+    # exit()
 
     # print([isinstance(i,tuple) for i in table.columns])
     # print(['_'.join(i) for i in table.columns if isinstance(i,tuple)])
@@ -1239,120 +1333,196 @@ def main(arg):
             par_list = ['orbA', 'orbB', 'xOvID']
             xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
 
-            solve(xovi_amat, dataset=ds, previous_iter=previous_iter)
-            # Save to pkl
-            orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat,xov_cmb)
+            # actually preparing weights and constraints for the solution
+            prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
 
-            # check std of orbital parameters for systematics
-            if debug:
-                testA = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dA', axis=0).loc[:,'std']
-                testC = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dC', axis=0).loc[:,'std']
-                testR = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dR', axis=0).loc[:,'std']
-                plt.figure(figsize=(8, 3))
-                testA.plot()
-                testC.plot()
-                testR.plot()
-                # plt.xlabel('dR (m)')
-                # plt.ylabel('Probability')
-                # plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
-                # # Tweak spacing to prevent clipping of ylabel
-                # plt.subplots_adjust(left=0.15)
-                plt.savefig(tmpdir + '/orbpart_vs_time.png')
-                plt.clf()
+            weight_obs = 1.
+            weight_constr = 30.
+            weight_constr_avg = 1.
+            xovi_amat.vce = [weight_obs, weight_constr, weight_constr_avg]
+            keep_iterating_vce = True
+            for i in (i for i in range(10) if keep_iterating_vce):
 
-            # remove corrections OF SINGLE ITER if "unreasonable" (larger than 100 meters in any direction, or 50 meters/day, or 20 arcsec)
-            sol_dict_iter = sol_dict
-            print("Length of original sol", len(sol_dict_iter['sol']))
+                print("iter+weights obs/constr", i, xovi_amat.vce)
 
-            sol_dict_iter_clean = []
-            std_dict_iter_clean = []
-            regex = re.compile(".*_dR/d[A,C,R,Rl,Pt]0{0,1}$")
-            tracks = list(set([x.split('_')[0] for x, v in sol_dict_iter['sol'].items() if regex.match(x)]))
-            bad_count = 0
-            for tr in tracks:
-                regex = re.compile("^" + tr + "*")
-                soltmp = dict([(x, v) for x, v in sol_dict_iter['sol'].items() if regex.match(x)])
-                stdtmp = dict([(x, v) for x, v in sol_dict_iter['std'].items() if regex.match(x)])
-                regex = re.compile(".*_dR/d[A,C,R]0{0,1}$")
-                max_orb_corr = np.max(np.abs([v if regex.match(x) else 0 for x, v in soltmp.items()]))
-                regex = re.compile(".*_dR/d[A,C,R]1$")
-                max_orb_drift_corr = np.max(np.abs([v if regex.match(x) else 0 for x, v in soltmp.items()]))
-                regex = re.compile(".*_dR/d{Rl,Pt}$")
-                max_att_corr = np.max(np.abs([v if regex.match(x) else 0 for x, v in soltmp.items()]))
-                # ok to put limit on CUMULATED corrections
-                # soltmp = track.sol_prev_iter['orb'].filter(regex='sol_dR/.*')
-                # max_orb_corr = soltmp.filter(regex="sol_dR/d[A,C,R]0*").abs().max(axis=1).values[0]
-                # max_orb_drift_corr = soltmp.filter(regex='sol_dR/d[A,C,R]1').abs().max(axis=1).values[0]
-                # max_att_corr = soltmp.filter(regex='sol_dR/d{Rl,Pt}').abs().max(axis=1).values[0]
-                # print("max_orb_corr,max_orb_drift_corr,max_att_corr")
-                # print(max_orb_corr, max_orb_drift_corr, max_att_corr)
+                ######################### MAKE NEW SOLVE ROUTINE (rename the one above as prepro_weights_constr())
+                weight_obs = xovi_amat.vce[0]
+                sqrt_weight_obs = np.sqrt(xovi_amat.vce[0])
+                weight_constr = xovi_amat.vce[1]
+                weight_constr_avg = xovi_amat.vce[2]
+                # sqrt_weight_constr = np.sqrt(xovi_amat.vce[1])
+                # sqrt_weight_constr = np.sqrt(xovi_amat.vce[2])
+                # Choleski decompose matrix and append to design matrix (weight_constr applied except for constrain on avg)
+                Q = np.linalg.cholesky((weight_constr*xovi_amat.penalty_mat+weight_constr_avg*xovi_amat.penalty_mat_avg).todense())
 
-                if max_orb_corr > 250 or max_orb_drift_corr > 50 or max_att_corr > 2.:
-                    print("Solution fixed for track", tr, 'with max_orb_corr,max_orb_drift_corr,max_att_corr:',max_orb_corr, max_orb_drift_corr, max_att_corr)
-                    sol_dict_iter_clean.append(dict.fromkeys(soltmp, 0.))
-                    bad_count += 1
+                # add penalisation to residuals
+                if previous_iter != None and previous_iter.sol_dict_iter != None:
+                    # get previous solution reordered as sol4_pars (and hence as Q)
+                    # should this rather be sol_dict?? Do we want to constrain the correction amplitude at each iter or the full correction?
+                    prev_sol_ord = [previous_iter.sol_dict_iter['sol'][key] if
+                                    key in previous_iter.sol_dict_iter['sol'] else 0. for key in xovi_amat.spA_weight_clean]
+                    b_penal = np.hstack([sqrt_weight_obs * xovi_amat.weights * xovi_amat.b,
+                                         1. * np.ravel(
+                                             np.dot(Q, prev_sol_ord))])  # np.zeros(len(sol4_pars))]) #
                 else:
-                    # pass
-                    sol_dict_iter_clean.append(soltmp)
-                # keep std also for bad orbits
-                std_dict_iter_clean.append(stdtmp)
+                    b_penal = np.hstack([sqrt_weight_obs * xovi_amat.weights * xovi_amat.b,
+                                         1. * np.zeros(len(xovi_amat.sol4_pars))])
 
-            # add back global parameters
-            if len(sol4_glo)>0:
-                sol_dict_iter_clean.append(dict([(x,v) for x, v in sol_dict_iter['sol'].items() if x in sol4_glo]))
-                std_dict_iter_clean.append(dict([(x,v) for x, v in sol_dict_iter['std'].items() if x in sol4_glo]))
+                # add penalisation to partials matrix
+                spA_sol4_penal = scipy.sparse.vstack([sqrt_weight_obs * xovi_amat.spA_weight_clean, 1. * csr_matrix(Q)])
 
-            sol_dict_iter_clean = {k: v for d in sol_dict_iter_clean for k, v in d.items()}
-            std_dict_iter_clean = {k: v for d in std_dict_iter_clean for k, v in d.items()}
-            sol_dict_iter_clean = dict(zip(['sol','std'],[sol_dict_iter_clean,std_dict_iter_clean]))
-            print("New length of cleaned sol",len(sol_dict_iter_clean['sol'])-bad_count)
+                # save penalised matrices
+                xovi_amat.spA_penal = spA_sol4_penal
+                xovi_amat.b_penal = b_penal
 
-            xovi_amat.sol_dict = sol_dict_iter_clean
-            # exit()
+                # solve using lsqr
+                xovi_amat.sol = lsqr(xovi_amat.spA_penal, xovi_amat.b_penal, damp=0, show=False, iter_lim=100000, atol=1.e-8 / sigma_0,
+                                     btol=1.e-8 / sigma_0, calc_var=True)
+                # xovi_amat.sol = lsqr(xovi_amat.spA, xovi_amat.b,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
 
-            if debug:
-                pd.set_option('display.max_rows', None)
-                pd.set_option('display.max_columns', None)
-                pd.set_option('display.width', None)
-                pd.set_option('display.max_colwidth', -1)
+                # print("sol sparse: ",xovi_amat.sol[0])
+                # print('to_be_recovered', pert_cloop['glo'])
+                print("Solution iters terminated with ", xovi_amat.sol[1])
+                if xovi_amat.sol[1] != 2:
+                    exit(2)
+                #############################################
 
-            print("Sol for iter ", str(ext_iter))
-            print_sol(orb_sol, glb_sol, xov, xovi_amat)
-            # # print(orb_sol.filter(regex="sol_.*"))
-            # print("#####\n Average corrections:")
-            # print(orb_sol.filter(regex="sol_.*").astype(float).mean(axis=0))
-            # print("#####\n Std corrections:")
-            # print(orb_sol.filter(regex="sol_.*").astype(float).std(axis=0))
-            # print("#####")
-            # print("Max corrections:")
-            # print(orb_sol.filter(regex="sol_.*").astype(float).abs().max(axis=0))
-            # print("#####")
+                # Save to pkl
+                orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat,xov_cmb)
 
-            # store improvments from current iteration
-            xovi_amat.sol_dict_iter = xovi_amat.sol_dict.copy()
-            xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
+                # check std of orbital parameters for systematics
+                if debug:
+                    testA = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dA', axis=0).loc[:,'std']
+                    testC = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dC', axis=0).loc[:,'std']
+                    testR = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dR', axis=0).loc[:,'std']
+                    plt.figure(figsize=(8, 3))
+                    testA.plot()
+                    testC.plot()
+                    testR.plot()
+                    # plt.xlabel('dR (m)')
+                    # plt.ylabel('Probability')
+                    # plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
+                    # # Tweak spacing to prevent clipping of ylabel
+                    # plt.subplots_adjust(left=0.15)
+                    plt.savefig(tmpdir + '/orbpart_vs_time.png')
+                    plt.clf()
 
-            # Cumulate with solution from previous iter (or from pre-processing)
-            if previous_iter != None: #(int(ext_iter) > 0) and (previous_iter != None):
-                if previous_iter.sol_dict != None:
-                    # sum the values with same keys
-                    updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
-                    updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
-                    xovi_amat.sol4_pars = list(updated_sol.keys())
+                # remove corrections OF SINGLE ITER if "unreasonable" (larger than 100 meters in any direction, or 50 meters/day, or 20 arcsec)
+                sol_dict_iter = sol_dict
+                # print("Length of original sol", len(sol_dict_iter['sol']))
 
-                    xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
-                    # use dict to update amat.sol, keep std
-                    xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
-                    orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
-                    print("Cumulated solution")
-                    print_sol(orb_sol, glb_sol, xov, xovi_amat)
+                sol_dict_iter_clean = []
+                std_dict_iter_clean = []
+                regex = re.compile(".*_dR/d[A,C,R,Rl,Pt]0{0,1}$")
+                tracks = list(set([x.split('_')[0] for x, v in sol_dict_iter['sol'].items() if regex.match(x)]))
+                bad_count = 0
+                for tr in tracks:
+                    regex = re.compile("^" + tr + "*")
+                    soltmp = dict([(x, v) for x, v in sol_dict_iter['sol'].items() if regex.match(x)])
+                    stdtmp = dict([(x, v) for x, v in sol_dict_iter['std'].items() if regex.match(x)])
+                    regex = re.compile(".*_dR/d[A,C,R]0{0,1}$")
+                    max_orb_corr = np.max(np.abs([v if regex.match(x) else 0 for x, v in soltmp.items()]))
+                    regex = re.compile(".*_dR/d[A,C,R]1$")
+                    max_orb_drift_corr = np.max(np.abs([v if regex.match(x) else 0 for x, v in soltmp.items()]))
+                    regex = re.compile(".*_dR/d{Rl,Pt}$")
+                    max_att_corr = np.max(np.abs([v if regex.match(x) else 0 for x, v in soltmp.items()]))
+                    # ok to put limit on CUMULATED corrections
+                    # soltmp = track.sol_prev_iter['orb'].filter(regex='sol_dR/.*')
+                    # max_orb_corr = soltmp.filter(regex="sol_dR/d[A,C,R]0*").abs().max(axis=1).values[0]
+                    # max_orb_drift_corr = soltmp.filter(regex='sol_dR/d[A,C,R]1').abs().max(axis=1).values[0]
+                    # max_att_corr = soltmp.filter(regex='sol_dR/d{Rl,Pt}').abs().max(axis=1).values[0]
+                    # print("max_orb_corr,max_orb_drift_corr,max_att_corr")
+                    # print(max_orb_corr, max_orb_drift_corr, max_att_corr)
+
+                    if max_orb_corr > 250 or max_orb_drift_corr > 50 or max_att_corr > 2.:
+                        # print("Solution fixed for track", tr, 'with max_orb_corr,max_orb_drift_corr,max_att_corr:',max_orb_corr, max_orb_drift_corr, max_att_corr)
+                        sol_dict_iter_clean.append(dict.fromkeys(soltmp, 0.))
+                        bad_count += 1
+                    else:
+                        # pass
+                        sol_dict_iter_clean.append(soltmp)
+                    # keep std also for bad orbits
+                    std_dict_iter_clean.append(stdtmp)
+
+                # add back global parameters
+                if len(sol4_glo)>0:
+                    sol_dict_iter_clean.append(dict([(x,v) for x, v in sol_dict_iter['sol'].items() if x in sol4_glo]))
+                    std_dict_iter_clean.append(dict([(x,v) for x, v in sol_dict_iter['std'].items() if x in sol4_glo]))
+
+                sol_dict_iter_clean = {k: v for d in sol_dict_iter_clean for k, v in d.items()}
+                std_dict_iter_clean = {k: v for d in std_dict_iter_clean for k, v in d.items()}
+                sol_dict_iter_clean = dict(zip(['sol','std'],[sol_dict_iter_clean,std_dict_iter_clean]))
+                # print("New length of cleaned sol",len(sol_dict_iter_clean['sol'])-bad_count)
+
+                xovi_amat.sol_dict = sol_dict_iter_clean
+                # exit()
+
+                if debug:
+                    pd.set_option('display.max_rows', None)
+                    pd.set_option('display.max_columns', None)
+                    pd.set_option('display.width', None)
+                    pd.set_option('display.max_colwidth', -1)
+
+                print("Sol for iter ", str(ext_iter))
+                print_sol(orb_sol, glb_sol, xov, xovi_amat)
+                # # print(orb_sol.filter(regex="sol_.*"))
+                # print("#####\n Average corrections:")
+                # print(orb_sol.filter(regex="sol_.*").astype(float).mean(axis=0))
+                # print("#####\n Std corrections:")
+                # print(orb_sol.filter(regex="sol_.*").astype(float).std(axis=0))
+                # print("#####")
+                # print("Max corrections:")
+                # print(orb_sol.filter(regex="sol_.*").astype(float).abs().max(axis=0))
+                # print("#####")
+
+                # store improvments from current iteration
+                xovi_amat.sol_dict_iter = xovi_amat.sol_dict.copy()
+                xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
+
+                # Cumulate with solution from previous iter (or from pre-processing)
+                if previous_iter != None: #(int(ext_iter) > 0) and (previous_iter != None):
+                    if previous_iter.sol_dict != None:
+                        # sum the values with same keys
+                        updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
+                        updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
+                        xovi_amat.sol4_pars = list(updated_sol.keys())
+
+                        xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
+                        # use dict to update amat.sol, keep std
+                        xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
+                        orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
+                        print("Cumulated solution")
+                        print_sol(orb_sol, glb_sol, xov, xovi_amat)
+                    else:
+                        print("previous_iter.sol_dict=",previous_iter.sol_dict)
+                #
+                # # if pre-processing took place
+                # elif (int(ext_iter) == 0): # and (xov_cmb.pert_cloop.shape[1]>0):
+                #     print("prev_iter_truc= ",previous_iter.sol_dict['sol'])
+                #     exit()
+                # if partials:
+                get_stats(amat=xovi_amat)
+                # VCE
+                sigma2_obs, sigma2_constr, sigma2_constr_avg = compute_vce_weights(amat=xovi_amat)
+
+                keep_iterating_vce = (np.abs(weight_obs-1./sigma2_obs)/weight_obs > 0.01)+\
+                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr > 0.01)+\
+                                     (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg > 0.01)
+                # print(keep_iterating_vce)
+                if keep_iterating_vce:
+                    print("vce iter,weight (obs,constr):", i, xovi_amat.vce,keep_iterating_vce)
+                    print("w_obs updated by",(np.abs(weight_obs-1./sigma2_obs)/weight_obs*100.),'% and w_constr by',\
+                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),'%')
+                    # update weights
+                    weight_obs =  1./sigma2_obs
+                    weight_constr = 1./sigma2_constr
+                    weight_constr_avg = 1./sigma2_constr_avg
+                    xovi_amat.vce = (weight_obs, weight_constr, weight_constr_avg)
                 else:
-                    print("previous_iter.sol_dict=",previous_iter.sol_dict)
-            #
-            # # if pre-processing took place
-            # elif (int(ext_iter) == 0): # and (xov_cmb.pert_cloop.shape[1]>0):
-            #     print("prev_iter_truc= ",previous_iter.sol_dict['sol'])
-            #     exit()
+                    print("vce iter,weight (obs,constr):", i, xovi_amat.vce,keep_iterating_vce)
+                    print("w_obs updated by",(np.abs(weight_obs-1./sigma2_obs)/weight_obs*100.),'% and w_constr by',\
+                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),\
+                                     (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg*100.),'%. Stop!')
 
         else:
             # TODO also compute weights and store them (no reason not to do so w/o partials)
@@ -1371,15 +1541,12 @@ def main(arg):
             #     empty_geomap_df = pd.DataFrame(0, index=np.arange(0, 91),
             #                                    columns=np.arange(-180, 181))
             #     plt_geo_dR(tstname, xov_cmb)
-
+        # exit()
 
         # append to list for stats
         xov_cmb_lst.append(xov_cmb)
 
-    print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
-
-    if partials:
-        get_stats(amat=xovi_amat)
+        # print("len xov_cmb ", len(xov_cmb_lst[0].xovers))
 
     #print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
 

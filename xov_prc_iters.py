@@ -484,8 +484,14 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     end_proj = time.time()
 
-    # exit()
+    # Save intermediate result
+    if not os.path.exists(outdir + outdir_in  + 'xov/tmp/'):
+        os.mkdir(outdir + outdir_in  + 'xov/tmp/')
+    mla_proj_df.to_pickle(outdir + outdir_in  + 'xov/tmp/xov_' + str(cmb[0]) + '_' + str(
+        cmb[1]) + '_project.pkl.gz')
 
+    print("Intermediate file saved to:",outdir + outdir_in  + 'xov/tmp/xov_' + str(cmb[0]) + '_' + str(
+        cmb[1]) + '_project.pkl.gz')
     print("Len mla_proj_df after reordering:",len(mla_proj_df))
     print("Projection finished after ", end_proj - start_proj, "sec!")
     #
