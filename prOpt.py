@@ -39,7 +39,7 @@ sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] #,  None]
 OrbRep = 'cnt' # 'lin' # 'quad' #
 
 # interpolation/spice direct call (0: use spice, 1: yes, use interpolation, 2: yes, create interpolation)
-SpInterp = 1
+SpInterp = 0
 # create new gtrack (0:no, 1:yes, if not already present, 2: yes, create and replace)
 new_gtrack = 0
 # create new xov (0:no, 1:yes, if not already present, 2: yes, create and replace)
@@ -91,7 +91,7 @@ if (local == 0):
     outdir = '/att/nobackup/sberton2/MLA/out/'
     auxdir = '/att/nobackup/sberton2/MLA/aux/'
     tmpdir = '/att/nobackup/sberton2/MLA/tmp/'
-    spauxdir = 'KX_spk/' # 'AG_A_spk/' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    spauxdir = 'AG_A_spk/' # 'AGTP_spk' # 'KX_spk/' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
 else:
 #    outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
     outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'

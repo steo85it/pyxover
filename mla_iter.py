@@ -148,7 +148,7 @@ if __name__ == '__main__':
                         exit(iostat)
 
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '7', '01:30:00', '5Gb', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '1', '01:30:00', '5Gb', '100'])
                 if iostat != 0:
                     print("*** PyGeol_" + str(rt) + " failed on iter", iter)
                     exit(iostat)
@@ -162,7 +162,7 @@ if __name__ == '__main__':
                         exit(iostat)
                 else:
                   iostat = s.call(
-                      ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '16:00:00', '90Gb', '10'])
+                      ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '99:00:00', '90Gb', '10'])
                   if iostat != 0:
                       print("*** PyXov_" + str(rt) + " failed on iter", iter)
                       exit(iostat)
