@@ -42,6 +42,7 @@ class Amat:
         self.converged = False
         self.resid_wrmse = None
         self.xov = None
+        self.to_constrain = None
 
     def setup(self, xov):
 

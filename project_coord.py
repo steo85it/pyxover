@@ -30,7 +30,6 @@ def project_stereographic(lon, lat, lon0, lat0, R=1):
     :return: stereographic projection xy coord from center (km)
     """
     #
-    # print(lon, lat, lon0, lat0)
     # exit()
 
     cosd_lat = cosd(lat)

@@ -9,7 +9,7 @@
 # Created: 05-Feb-2020
 
 import numpy as np
-from scipy.sparse import csr_matrix, diags
+from scipy.sparse import csr_matrix, diags, issparse
 
 from prOpt import tmpdir, full_covar, debug, local
 import matplotlib.pyplot as plt
@@ -91,3 +91,48 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     np.reciprocal(cov_xov_tracks.data, out=cov_xov_tracks.data)
 
     return cov_xov_tracks
+
+def get_vce_factor(Ninv, Cinv, x, b = None, A = None, sapr=1., kind='obs'):
+    """
+    compute vce factor for subset of data or constraint
+    see eq. 17-21 of https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1002/jgre.20118
+    Lemoine 2013, JGRE
+    # from scipy.sparse import csr_matrix, issparse
+    # import numpy as np
+    :param Ninv: full covariance matrix (inverse of full normal matrix), (npar,npar)
+    :param Cinv: weight matrix (inverse of apriori covariance), (nele,nele), nele= npar if constraint, nobs if data
+    :param x: solution vector (for iter if kind=obs, total if constraint), (nele,), nele= npar if constraint, nobs if data
+    :param b: residuals vector (kind=obs only), (nobs,)
+    :param A: partials matrix (kind=obs only), (nobs,npar)
+    :param sapr: sigma a priori of the subset, scalar
+    :param kind: 'obs' if computing weights for a subset of data, whatever else for a constraint (influences arguments)
+    :return: new sigma^2 (inverse of estimated vce weight) associated to the subset of data or constraint
+    """
+
+    # A and w should be csr sparse matrices (else multiplication doesn't work, should replace by @)
+    if not issparse(A) and A != None:
+        A = csr_matrix(A)
+    if not issparse(Cinv):
+        Cinv = csr_matrix(Cinv)
+
+    # nelem is nobs for a subset of data or nparam for a constraint
+    nelem = Cinv.shape[0]
+    # a priori squared sigma (inverse of weight associated)
+    s2apr = sapr**2
+
+    if kind == 'obs':
+        ri = (b - A * x)
+        Ni = A.T * Cinv * A
+    else:
+        ri = x
+        Ni = Cinv
+
+    # numerator (basically the quantity to minimize)
+    rTw = csr_matrix(ri.T) * Cinv
+    rTwr = (rTw * ri)[0]
+    # basically a modified dof for the subset
+    redundancy = nelem - (1. / s2apr) * np.trace(Ni @ Ninv)
+    print("kind, sqrt(rTwr),redundancy,chi2:",kind,np.sqrt(rTwr),redundancy,rTwr/redundancy)
+
+    # the new sigma^2 associated to the subset of data or constraint
+    return rTwr / redundancy
