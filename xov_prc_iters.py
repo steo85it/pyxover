@@ -87,14 +87,16 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
     # process partials from gtrack to xov, if required
     if partials:
         xov_tmp.set_partials()
+    else:
+        # retrieve epoch to, e.g., trace tracks quality
+        xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(np.reshape(xov_tmp.get_dt(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
+                                                   columns=['dtA', 'dtB'])], axis=1)
 
     # Remap track names to df
     xov_tmp.xovtmp['orbA'] = xov_tmp.xovtmp['orbA'].map({v: k for k, v in xov_tmp.tracks.items()})
     xov_tmp.xovtmp['orbB'] = xov_tmp.xovtmp['orbB'].map({v: k for k, v in xov_tmp.tracks.items()})
 
     xov_tmp.xovtmp['xOvID'] = xovi
-
-    # print("inside", xov_tmp.xovtmp)
 
     # Update general df (serial only, does not work in parallel since not a shared object)
     if not parallel:

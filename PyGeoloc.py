@@ -176,7 +176,9 @@ def main(args):
             tmp = tmp.load(('_').join(((outdir + ('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1]) +
                            '_' + str(iter_in - 1) + '/' +
                            outdir_in.split('/')[-2] + '/Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
-            orb_sol, glo_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
+            import_prev_sol = hasattr(tmp,'sol4_pars')
+            if import_prev_sol:
+                orb_sol, glo_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
         # epo_in=[]
         tracks = []
         for track_id, infil in zip(tracknames, allFiles):
@@ -190,7 +192,7 @@ def main(args):
             #    print('Issue in preprocessing for '+track_id)
             # epo_in.extend(track.ladata_df.ET_TX.values)
 
-            if int(iter_in) > 0:
+            if int(iter_in) > 0 and import_prev_sol:
                 try:
                     track.pert_cloop_0 = tmp.pert_cloop_0.loc[str(track.name)].to_dict()
                 except:
