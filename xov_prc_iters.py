@@ -177,7 +177,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     if xov_iter==0:
         msrm_smpl = 50 # same as used for rough_xovs in PyXover (should be automatic)
     else:
-        msrm_smpl = 4  # should be even...
+        msrm_smpl = 20  # should be even...
 
     if msrm_smpl % 2 != 0:
         print("*** ERROR: msrm_smpl not an even number:", msrm_smpl)
@@ -485,6 +485,8 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     end_proj = time.time()
 
     # Save intermediate result
+    if not os.path.exists(outdir + outdir_in  + 'xov/'):
+        os.mkdir(outdir + outdir_in  + 'xov/')
     if not os.path.exists(outdir + outdir_in  + 'xov/tmp/'):
         os.mkdir(outdir + outdir_in  + 'xov/tmp/')
     mla_proj_df.to_pickle(outdir + outdir_in  + 'xov/tmp/xov_' + str(cmb[0]) + '_' + str(

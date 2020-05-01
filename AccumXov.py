@@ -1360,7 +1360,7 @@ def main(arg):
                     # get previous solution reordered as sol4_pars (and hence as Q)
                     # should this rather be sol_dict?? Do we want to constrain the correction amplitude at each iter or the full correction?
                     prev_sol_ord = [previous_iter.sol_dict_iter['sol'][key] if
-                                    key in previous_iter.sol_dict_iter['sol'] else 0. for key in xovi_amat.spA_weight_clean]
+                                    key in previous_iter.sol_dict_iter['sol'] else 0. for key in xovi_amat.sol4_pars]
                     b_penal = np.hstack([sqrt_weight_obs * xovi_amat.weights * xovi_amat.b,
                                          1. * np.ravel(
                                              np.dot(Q, prev_sol_ord))])  # np.zeros(len(sol4_pars))]) #
