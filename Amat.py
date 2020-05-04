@@ -17,7 +17,7 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 
 # from mapcount import mapcount
-from prOpt import debug
+from prOpt import debug, cloop_sim
 
 
 class Amat:
@@ -43,6 +43,8 @@ class Amat:
         self.resid_wrmse = None
         self.xov = None
         self.to_constrain = None
+        self.sol4_pars = None
+        self.sol4_pars_iter = None
 
     def setup(self, xov):
 
@@ -50,18 +52,25 @@ class Amat:
         # print(self.xov.tracks)
         self.xovpart_reorder()
         # print(self.A)
+
+        if cloop_sim:
+            self.setup_cloop(xov)
+
+    def setup_cloop(self, xov):
         self.pert_cloop_0 = xov.pert_cloop_0
         self.pert_cloop = xov.pert_cloop
-        self.pert_cloop_glo = self.pert_cloop.filter(['dL','dRA', 'dDEC', 'dPM', 'dh2']).iloc[0]
-        self.pert_cloop.drop(columns=['dL','dRA', 'dDEC', 'dPM', 'dh2'],errors='ignore',inplace=True)
-
+        # print(xov.pert_cloop_0)
+        # print(xov.pert_cloop)
+        # exit()
+        self.pert_cloop_glo = self.pert_cloop.filter(['dL', 'dRA', 'dDEC', 'dPM', 'dh2']).iloc[0]
+        self.pert_cloop.drop(columns=['dL', 'dRA', 'dDEC', 'dPM', 'dh2'], errors='ignore', inplace=True)
         if len(self.pert_cloop.columns) > 0 or not self.pert_cloop.empty:
             print("Max perturb cloop", self.pert_cloop.abs().max())
             print("Mean perturb cloop", self.pert_cloop.mean())
 
             self.pert_cloop.drop_duplicates(inplace=True)
             self.pert_cloop.sort_index(inplace=True)
-            print("self.pert_cloop",self.pert_cloop.dropna())
+            print("self.pert_cloop\n", self.pert_cloop.dropna())
 
     def save(self, filnam):
         pklfile = open(filnam, "wb")

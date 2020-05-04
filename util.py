@@ -74,12 +74,16 @@ def multiply_sparse_get_diag(a,b):
 
 
 def mergsum(a, b):
+    import copy
+    sum=copy.deepcopy(b)
     for k in b:
         if k in a:
-            b[k] = b[k] + a[k]
-    c = {**a, **b}
+            sum[k] = sum[k] + a[k]
+    c = {**a, **sum}
     return c
 
+def dict2np(x):
+    return np.array(list(x.values()))
 
 def update_in_alist(alist, key, value):
     return [[k, v] if (k != key) else (key, value) for (k, v) in alist]

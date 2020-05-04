@@ -241,23 +241,20 @@ def get_stats(amat):
 def compute_vce_weights(amat):
 
     xsol = []
-    # print(amat.sol_dict['sol'])
-    for filt in amat.sol4_pars:
-        # print(filt)
+    for filt in amat.sol4_pars_iter:
         filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
         xsol.append(list(filtered_dict.values())[0])
     xsol = np.array(xsol)
 
     xsol_iter = []
-    # print(amat.sol_dict['sol'])
-    for filt in amat.sol4_pars:
-        # print(filt)
+    for filt in amat.sol4_pars_iter:
         filtered_dict = {k: v for (k, v) in amat.sol_dict_iter['sol'].items() if filt in k}
-        xsol_iter.append(list(filtered_dict.values())[0])
+        if len(list(filtered_dict.values()))>0:
+            xsol_iter.append(list(filtered_dict.values())[0])
     xsol_iter = np.array(xsol_iter)
+
     lP = amat.penalty_mat
-    # print('lP',lP)
-    # exit()
+    # print("len xsol", len(xsol),len(xsol_iter),amat.penalty_mat.shape)
 
     s2_obs_apr = 1./amat.vce[0]
     s2_constr_apr = 1./amat.vce[1]
@@ -265,76 +262,35 @@ def compute_vce_weights(amat):
 
     # compute total N**-1
     # select only columns with solved for parameters
-    Amat = amat.spA[:,[amat.parNames[p] for p in amat.sol4_pars]]
-    # print(Amat)
-    # print(amat.to_constrain)
-    # print(np.sum(Amat[:,165].A))
-    # exit()
+    Amat = amat.spA[:,[amat.parNames[p] for p in amat.sol4_pars if p in amat.parNames.keys()]]
 
     ATP = Amat.T * amat.weights
     ATPA = ATP * Amat
 
-    # exit()
     N = ((1./s2_obs_apr)*ATPA + (1./s2_constr_apr)*lP + (1./s2_constr_avg_apr)*amat.penalty_mat_avg).todense()
-    print("det",np.linalg.det(N),np.linalg.cond(N))
     Ninv = np.linalg.pinv(N,hermitian=True,rcond=1.e-20) #
-    # print(Ninv)
-    # assert np.allclose(N, N@(Ninv@N))
+
     if not np.allclose(N, N@(Ninv@N)):
         print('### N is almost singular!! Help!!!')
-    # print("check",np.allclose(N, N@(Ninv@N)))
-    # print("N.shape", Ninv.shape)
 
-    # get obs vce sigma2
-    # # print("rms b",rms(amat.b))
-    # # print(amat.b)
-    # d_Adx = (amat.b -  Amat * xsol_iter)
-    # # print("rms d_Adx",rms(d_Adx))
-    # # print(Amat * xsol_iter)
-    # # exit()
-    #
-    # d_AdxT_w = csr_matrix(d_Adx.T) * amat.weights
-    # d_AdxT_w_d_Adx = (d_AdxT_w * d_Adx)[0]
-    # # print("d_AdxT_w_d_Adx", d_AdxT_w_d_Adx, d_AdxT_w_d_Adx.shape)
-    # # print("nobs, trace",nobs,np.trace(ATPA @ Ninv))
-    # redundancy_obs = nobs - (1./s2_obs_apr)*np.trace(ATPA @ Ninv)
-    # # print(dof)
-    # chi2_obs = d_AdxT_w_d_Adx / redundancy_obs
-    # s2_obs_new = chi2_obs  # weight = 1/sigma**2
-    # print("s2_obs_new",s2_obs_new, np.sqrt(s2_obs_new))
-    # print("rms pre", np.sqrt((csr_matrix(amat.b.T) * amat.weights)*amat.b))
-    # print("rms post d_Adx", np.sqrt(d_AdxT_w_d_Adx)," - redundancy factors",redundancy_obs, np.trace(ATPA @ Ninv))
+    # TODO this should be handled differently!!!
+    # if len(xsol)!=len(xsol_iter):
+    #     print("### updating xsol=xsol_iter for VCE")
+    #     xsol = xsol_iter
+    #     print('then xsol=\n',xsol)
+    # print("len of full and iter sol",len(amat.sol_dict['sol']),len(amat.sol_dict_iter['sol']))
+    # print('xTx=', xsol.T@xsol,'xTx_iter=', xsol_iter.T@xsol_iter)
 
-    # exit()
-
-    # get constr VCE sigma2
-    # npar = len(xsol)
-    # xT = xsol.reshape(1, -1)
-    # # print("xT",xT)
-    # # print("lP",lP)
-    # xT_P = csr_matrix(xT) * lP
-    # xT_P_x = (xT_P * xsol)[0]
-    # # print("xT_P_x",xT_P_x)
-    # # print(lP.shape, Ninv.shape)
-    # redundancy_constr = npar - (1./s2_constr_apr)*np.trace(lP @ Ninv)
-    # # print("dof",dof,nobs, np.trace(lP @ Ninv))
-    # chi2_constr = xT_P_x / redundancy_constr
-    # # print(chi2_constr)
-    # s2_constr_new = chi2_constr
-    #
-    # print("s2_constr_new:", s2_constr_new, np.sqrt(s2_constr_new))
-    # print("xT_P_x",xT_P_x," - redundancy factors",redundancy_constr, npar, (1./s2_constr_apr)*np.trace(lP @ Ninv))
-
-    print("Computing VCE weights:")
-    s2_obs_new = get_vce_factor(b=amat.b,A=Amat,x=xsol_iter,Cinv=amat.weights,Ninv=Ninv,sapr=1./np.sqrt(amat.vce[0]))
+    # print("Computing VCE weights:")
+    s2_obs_new = get_vce_factor(b=amat.b,A=Amat,x=xsol_iter,Cinv=amat.weights,Ninv=Ninv,sapr=1./np.sqrt(amat.vce[0]),kind='obs')
     s2_constr_new = get_vce_factor(b=0.,A=0.,x=xsol,Cinv=lP,Ninv=Ninv,sapr=1./np.sqrt(amat.vce[1]),kind='constr')
     s2_constr_avg_new = get_vce_factor(b=0.,A=0.,x=xsol,Cinv=amat.penalty_mat_avg,Ninv=Ninv,sapr=1./np.sqrt(amat.vce[2]),kind='constr_avg')
 
     # print("avg weight:", 1./s2_constr_avg)
 
     # print("total redundancy:", redundancy_obs+redundancy_constr, nobs)
-    print("old weights (obs, constr, avg)", 1./s2_obs_apr, 1./s2_constr_apr, 1./s2_constr_avg_apr)
-    print("new weights (obs, constr, avg)", 1./s2_obs_new, 1./s2_constr_new, 1./s2_constr_avg_new)
+    # print("old weights (obs, constr, avg)", 1./s2_obs_apr, 1./s2_constr_apr, 1./s2_constr_avg_apr)
+    # print("new weights (obs, constr, avg)", 1./s2_obs_new, 1./s2_constr_new, 1./s2_constr_avg_new)
     # exit()
 
     # new weights have to be > 0
@@ -501,7 +457,11 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         sol4_pars = [x+str(y) for y in range(2) for x in list(filter(regex.match, sol4_pars))]
         sol4_pars.extend(const_pars)
 
+    # Initialize list of solved for parameters (first one will be updated with full list
+    # from previous iterations if needed)
     xovi_amat.sol4_pars = sol4_pars
+    xovi_amat.sol4_pars_iter = sol4_pars
+
     # exit()
 
     if sol4_pars != []:
@@ -916,7 +876,9 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             n_goodobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
 
-        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
+        # to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
+        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 1].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
+
         xovi_amat.to_constrain = to_constrain
         if debug:
             print("number of constrained pars", len(to_constrain))
@@ -942,8 +904,9 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     penalty_matrix = sum(csr)
     # print(penalty_matrix)
 
+    # does not work with only one set of orbit parameters solved
+    # if len(sol4_orb)>1 and True:
     if True:
-
         csr_avg = []
         for constrain in mean_constr.items():
             regex = re.compile(".*"+constrain[0]+"0{0,1}$")
@@ -1109,13 +1072,13 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
     sol4_pars = sorted(sol4_orb) + sorted(sol4_glo)
 
-    print('solving for',len(sorted(sol4_orb)),'parameters.')
+    print('solving for',len(sol4_pars),'parameters.')
     # print('solving for:',np.array(sol4_pars))
 
     return sol4_pars
 
 
-def analyze_sol(xovi_amat,xov):
+def analyze_sol(xovi_amat,xov,mode='full'):
     # print('xovi_amat.sol',xovi_amat.sol)
 
     # print(parOrb)
@@ -1125,9 +1088,15 @@ def analyze_sol(xovi_amat,xov):
 
     # print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
     #                          len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
+    # check wheter list contains full list of pars or just those from this iter
+    if mode=='full':
+        sol4_pars = xovi_amat.sol4_pars
+    else:
+        sol4_pars = xovi_amat.sol4_pars_iter
+
 
     # Ordering is important here, don't use set or other "order changing" functions
-    _ = np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)),
+    _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
                    np.reshape(xovi_amat.sol[0], (-1, 1)),
                    np.reshape(xovi_amat.sol[-1], (-1, 1))
                    ))
@@ -1136,9 +1105,6 @@ def analyze_sol(xovi_amat,xov):
     if debug:
         print("sol_dict_analyze_sol")
         print(sol_dict)
-    # print(np.hstack((np.reshape(xovi_amat.sol4_pars, (-1, 1)), np.reshape([xovi_amat.parNames[p] for p in xovi_amat.sol4_pars], (-1, 1)), np.reshape(xovi_amat.sol[0], (-1, 1)),
-    #                np.reshape(xovi_amat.sol[-1], (-1, 1)))))
-    # exit()
 
     # Extract solution for global parameters
     glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(parGlo.keys()) for x in _[:,0]]],columns=['par','sol','std'])
@@ -1311,6 +1277,10 @@ def main(arg):
                 previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
                                 '_' + str(ext_iter - 1) + '/' +
                                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+                print("initial sol dict=", len(previous_iter.sol_dict['sol']))
+
+                # print(previous_iter.sol_dict)
+                # exit()
             # if pre-processing took place (else, if perturbing simulation, also pert_cloop_orb should contain something)
             elif xov_cmb.pert_cloop.shape[1]>0: # and len(pert_cloop_orb) == 0:
                 parsk = list(xov_cmb.pert_cloop.to_dict().keys())
@@ -1336,10 +1306,16 @@ def main(arg):
             # actually preparing weights and constraints for the solution
             prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
 
-            weight_obs = 1.
-            weight_constr = 30.
-            weight_constr_avg = 1.
-            xovi_amat.vce = [weight_obs, weight_constr, weight_constr_avg]
+            if previous_iter != None and previous_iter.vce != None:
+                xovi_amat.vce = previous_iter.vce
+            else:
+                weight_obs = 1.
+                weight_constr = 1.
+                weight_constr_avg = 1.
+
+                xovi_amat.vce = [weight_obs, weight_constr, weight_constr_avg]
+                # xovi_amat.vce = [0.0002247404434024504, 5.0025679108113685, 0.0010878786212904351]
+
             keep_iterating_vce = True
             for i in (i for i in range(10) if keep_iterating_vce):
 
@@ -1356,17 +1332,21 @@ def main(arg):
                 Q = np.linalg.cholesky((weight_constr*xovi_amat.penalty_mat+weight_constr_avg*xovi_amat.penalty_mat_avg).todense())
 
                 # add penalisation to residuals
-                if previous_iter != None and previous_iter.sol_dict_iter != None:
-                    # get previous solution reordered as sol4_pars (and hence as Q)
+                if previous_iter != None and previous_iter.sol_dict != None:
+                    # get previous solution reordered as sol4_pars_iter (and hence as Q) - contains the full solution but only for the
+                    # parameters also solved in this iteration (and hence consistent with Q, else it crashes).
                     # should this rather be sol_dict?? Do we want to constrain the correction amplitude at each iter or the full correction?
-                    prev_sol_ord = [previous_iter.sol_dict_iter['sol'][key] if
-                                    key in previous_iter.sol_dict_iter['sol'] else 0. for key in xovi_amat.sol4_pars]
+                    if i == 0: # no need to update this at each iter
+                        prev_sol_ord = [previous_iter.sol_dict['sol'][key] if
+                                    key in previous_iter.sol_dict['sol'] else 0. for key in xovi_amat.sol4_pars_iter]
+
                     b_penal = np.hstack([sqrt_weight_obs * xovi_amat.weights * xovi_amat.b,
-                                         1. * np.ravel(
-                                             np.dot(Q, prev_sol_ord))])  # np.zeros(len(sol4_pars))]) #
+                                         -1. * np.ravel(
+                                             np.dot(Q, prev_sol_ord))])
+                                        # np.zeros(len(xovi_amat.sol4_pars_iter)))]) #
                 else:
                     b_penal = np.hstack([sqrt_weight_obs * xovi_amat.weights * xovi_amat.b,
-                                         1. * np.zeros(len(xovi_amat.sol4_pars))])
+                                         -1. * np.zeros(len(xovi_amat.sol4_pars_iter))])
 
                 # add penalisation to partials matrix
                 spA_sol4_penal = scipy.sparse.vstack([sqrt_weight_obs * xovi_amat.spA_weight_clean, 1. * csr_matrix(Q)])
@@ -1388,7 +1368,7 @@ def main(arg):
                 #############################################
 
                 # Save to pkl
-                orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat,xov_cmb)
+                orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat,xov_cmb,mode='iter')
 
                 # check std of orbital parameters for systematics
                 if debug:
@@ -1452,7 +1432,7 @@ def main(arg):
                 sol_dict_iter_clean = {k: v for d in sol_dict_iter_clean for k, v in d.items()}
                 std_dict_iter_clean = {k: v for d in std_dict_iter_clean for k, v in d.items()}
                 sol_dict_iter_clean = dict(zip(['sol','std'],[sol_dict_iter_clean,std_dict_iter_clean]))
-                # print("New length of cleaned sol",len(sol_dict_iter_clean['sol'])-bad_count)
+                print("New length of cleaned sol",len(sol_dict_iter_clean['sol'])-bad_count)
 
                 xovi_amat.sol_dict = sol_dict_iter_clean
                 # exit()
@@ -1482,15 +1462,23 @@ def main(arg):
                 # Cumulate with solution from previous iter (or from pre-processing)
                 if previous_iter != None: #(int(ext_iter) > 0) and (previous_iter != None):
                     if previous_iter.sol_dict != None:
+                        # def dict2np(x):
+                        #     return np.array(list(x.values()))
+                        # print("test xTx update -soldictiter- pre=",np.sqrt(dict2np(xovi_amat.sol_dict_iter['sol']).T@dict2np(xovi_amat.sol_dict_iter['sol'])))
+                        # print("test xTx update -prevsol- pre=",np.sqrt(dict2np(previous_iter.sol_dict['sol']).T@dict2np(previous_iter.sol_dict['sol'])))
                         # sum the values with same keys
-                        updated_sol = mergsum(xovi_amat.sol_dict['sol'],previous_iter.sol_dict['sol'])
-                        updated_std = mergsum(xovi_amat.sol_dict['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
-                        xovi_amat.sol4_pars = list(updated_sol.keys())
+                        updated_sol = mergsum(xovi_amat.sol_dict_iter['sol'],previous_iter.sol_dict['sol'])
+                        updated_std = mergsum(xovi_amat.sol_dict_iter['std'],previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
+                        # print("test xTx update -soldictiter- post=",np.sqrt(dict2np(xovi_amat.sol_dict_iter['sol']).T@dict2np(xovi_amat.sol_dict_iter['sol'])))
+                        # print("test xTx update -prevsol- post=",np.sqrt(dict2np(previous_iter.sol_dict['sol']).T@dict2np(previous_iter.sol_dict['sol'])))
+                        # print("test xTx update post=",np.sqrt(dict2np(updated_sol).T@dict2np(updated_sol)))
 
+                        # save total list of parameters (previous iters + current)
+                        xovi_amat.sol4_pars = list(updated_sol.keys())
                         xovi_amat.sol_dict = {'sol': updated_sol, 'std' : updated_std}
                         # use dict to update amat.sol, keep std
                         xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1], list(xovi_amat.sol_dict['std'].values()))
-                        orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb)
+                        orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb,mode='full')
                         print("Cumulated solution")
                         print_sol(orb_sol, glb_sol, xov, xovi_amat)
                     else:
@@ -1512,7 +1500,8 @@ def main(arg):
                 if keep_iterating_vce:
                     print("vce iter,weight (obs,constr):", i, xovi_amat.vce,keep_iterating_vce)
                     print("w_obs updated by",(np.abs(weight_obs-1./sigma2_obs)/weight_obs*100.),'% and w_constr by',\
-                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),'%')
+                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),'% and w_constr_avg by',\
+                                     (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg*100.),'%')
                     # update weights
                     weight_obs =  1./sigma2_obs
                     weight_constr = 1./sigma2_constr
@@ -1521,13 +1510,15 @@ def main(arg):
                 else:
                     print("vce iter,weight (obs,constr):", i, xovi_amat.vce,keep_iterating_vce)
                     print("w_obs updated by",(np.abs(weight_obs-1./sigma2_obs)/weight_obs*100.),'% and w_constr by',\
-                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),\
+                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),'% and w_constr_avg by',\
                                      (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg*100.),'%. Stop!')
 
         else:
             # TODO also compute weights and store them (no reason not to do so w/o partials)
             # create Amat
             xovi_amat = prepare_Amat(xov_cmb, vecopts)
+            # print(xovi_amat.xov.xovers.columns)
+            # exit()
 
             # clean only
             # clean_xov(xov_cmb, '')

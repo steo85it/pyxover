@@ -216,68 +216,208 @@ def draw_map(m, scale=0.2):
 def rmse(y, y_pred=0):
     return np.sqrt(np.mean(np.square(y - y_pred)))
 
-def analyze_sol(sol, ref_sol = '', subexp = ''):
+def analyze_sol(sols, ref_sol = '', subexp = ''):
     from matplotlib.cm import get_cmap
 
     vecopts = {}
-    tmp = Amat(vecopts)
-    tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
-    # print(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')
-    # tmp = tmp.load(glob.glob(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')[0])
+    dfs = []
+    for sol in sols:
+        tmp = Amat(vecopts)
+        tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+        # print(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')
+        # tmp = tmp.load(glob.glob(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')[0])
 
-    if ref_sol != '':
-        ref = Amat(vecopts)
-        ref = ref.load(outdir+'sim/'+subfolder+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
-        # if correlation matrix wanted (long, only prints >0.95)
-        # print(ref.corr_mat())
+        # if ref_sol != '':
+        #     ref = Amat(vecopts)
+        #     ref = ref.load(outdir+'sim/'+subfolder+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+            # if correlation matrix wanted (long, only prints >0.95)
+            # print(ref.corr_mat())
 
-    # if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
-    #
-    #     add_xov_separation(tmp)
-    #     xovacc.analyze_dist_vs_dR(tmp.xov)
-    #
-    #     if remove_max_dist:
-    #         print(len(tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]),
-    #               'xovers removed by dist from obs > 1km')
-    #         tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]
-    #         tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_min_mean < 1]
+        # if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
+        #
+        #     add_xov_separation(tmp)
+        #     xovacc.analyze_dist_vs_dR(tmp.xov)
+        #
+        #     if remove_max_dist:
+        #         print(len(tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]),
+        #               'xovers removed by dist from obs > 1km')
+        #         tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]
+        #         tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_min_mean < 1]
 
-    # interp_weights = tmp.xov.xovers.copy()
+        # interp_weights = tmp.xov.xovers.copy()
 
-    check_weights = pd.DataFrame()
-    check_weights['interp_weights'] = get_interpolation_weight(tmp.xov).weight
+        # select subset, e.g., for tests
+        tmp.xov.xovers = tmp.xov.xovers.loc[:,:]
+        dfs.append(tmp)
 
-    tmp_trkw = tmp.xov.xovers.copy()[
-        ['xOvID', 'LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]  # .astype('float16')
-    print("pre xovcov types", tmp_trkw.dtypes)
-    check_weights['tracks_weights'] = get_xov_cov_tracks(df=tmp_trkw, plot_stuff=True).diagonal()
+    plot_weights_components = False
+    if plot_weights_components:
+        check_weights = pd.DataFrame()
+        check_weights['interp_weights'] = get_interpolation_weight(tmp.xov).weight
 
-    check_weights['huber'] = tmp.xov.xovers.copy().huber
-    check_weights['weights'] = check_weights['tracks_weights']*check_weights['interp_weights']*check_weights['huber']
+        if ['dtA','huber'] in list(tmp.xov.xovers.columns):
+            tmp_trkw = tmp.xov.xovers.copy()[
+                ['xOvID', 'LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]  # .astype('float16')
+        else:
+            tmp_trkw = tmp.xov.xovers.copy()[
+                ['xOvID', 'LON', 'LAT', 'dR', 'orbA', 'orbB']]
+            tmp_trkw['huber'] = 1.
+            tmp_trkw['dtA'] = tmp_trkw['LAT'].values
 
-    plt.figure()  # figsize=(8, 3))
-    num_bins = 'auto'  # 40  # v
+        print("pre xovcov types", tmp_trkw.dtypes)
+        check_weights['tracks_weights'] = get_xov_cov_tracks(df=tmp_trkw, plot_stuff=False).diagonal()
 
-    # check_weights.hist(bins=num_bins) #, cumulative=True)
-    # plt.xlim([0, 1.0])
-    # plt.xlabel('roughness@baseline700 (m/m)')
+        check_weights['huber'] = tmp_trkw.huber #tmp.xov.xovers.copy().huber
+        check_weights['weights'] = check_weights['tracks_weights']*check_weights['interp_weights']*check_weights['huber']
+        # tmp.xov.xovers['weights'] = check_weights['weights'].values/check_weights['weights'].max()
 
-    sns.distplot(check_weights['huber'], kde=True, label='huber', rug=False, bins=500, hist_kws={'range':(0.05,1)})
-    sns.distplot(check_weights['tracks_weights'], kde=True, label='tracks_weights', rug=False, bins=100, hist_kws={'range':(0.1,10)})
-    sns.distplot(check_weights['interp_weights'], kde=True, label='interp_weights', rug=False, hist_kws={'range':(0.1,40)})
-    sns.distplot(check_weights['weights'], kde=True, label='weights', rug=False, bins=500, hist_kws={'range':(0.05,10)})
-    plt.xlim([0.05, 40.0])
-    plt.semilogx()
+        plt.figure()  # figsize=(8, 3))
+        num_bins = 'auto'  # 40  # v
+
+        # check_weights.hist(bins=num_bins) #, cumulative=True)
+        # plt.xlim([0, 1.0])
+        # plt.xlabel('roughness@baseline700 (m/m)')
+
+
+        sns.distplot(check_weights['huber'], kde=True, label='huber', rug=False, bins=500) #, hist_kws={'range':(0.05,1)})
+        sns.distplot(check_weights['tracks_weights'], kde=True, label='tracks_weights', rug=False) #, bins=100, hist_kws={'range':(0.1,10)})
+        sns.distplot(check_weights['interp_weights'], kde=True, label='interp_weights', rug=False) #, hist_kws={'range':(0.1,40)})
+        sns.distplot(check_weights['weights'], kde=True, label='weights', rug=False, bins=500) #, hist_kws={'range':(0.05,10)})
+        plt.xlim([0.05, 40.0])
+        plt.semilogx()
+        plt.semilogy()
+
+        plt.legend()
+        plt.savefig(tmpdir + '/weights.png')
+        plt.clf()
+
+        print(check_weights)
+
+        print("max:",check_weights.max())
+        print("min:",check_weights.min())
+        print("mean:",check_weights.mean())
+        print("median:",check_weights.median())
+
+    # print([x.xov.xovers.dR for x in dfs])
+    # exit()
+
+    # uniform datasets
+    dfA = dfs[0].xov.xovers[['dR','orbA','orbB']]
+    dfA['dR'] = dfA.dR.abs()
+    dfA.columns = ['dRA','orbA','orbB']
+
+    dfB = dfs[1].xov.xovers[['dR','orbA','orbB']]
+    dfB['dR'] = dfB.dR.abs()
+    dfB.columns = ['dRB','orbA','orbB']
+
+    dfC = dfs[2].xov.xovers[['dR','orbA','orbB']]
+    dfC['dR'] = dfC.dR.abs()
+    dfC.columns = ['dRC','orbA','orbB']
+
+    tmp = pd.merge(dfA, dfB, how='left', left_on=['orbA', 'orbB'], right_on=['orbA', 'orbB'])
+    df_merged = pd.merge(tmp, dfC, how='left', left_on=['orbA', 'orbB'], right_on=['orbA', 'orbB'])
+    print(df_merged)
+
+    # define subsets by year
+    subs = ['']+[str(x) for x in np.arange(11,16)]
+
+    fig = plt.figure("resid_iters")
+
+    for sub in subs[:1]:
+        print("sub=",sub)
+        plt.clf()
+        if sub == '':
+            df = df_merged.filter(regex='dR?')
+        else:
+            df = df_merged.loc[(df_merged['orbA'].str.startswith(sub))&(df_merged['orbB'].str.startswith(sub))].filter(regex='dR?')
+        df.columns = sols
+        df.plot.hist(alpha=0.5,  density=False, bins=200, range=[0,1000])
+        plt.title('Histogram of xovers discrepancies')
+        plt.xlim([0., 1000.0])
+        plt.xlabel('meters')
+        plt.ylabel('# of xovs (log)')
+        plt.semilogy()
+
+        plt.savefig(tmpdir + "histo_resid_"+sub+".png")
+
+    df_merged = df_merged.astype({'orbA': 'int32', 'orbB': 'int32'})
+    # select only if acceptable xovs (< 1km)
+    acceptif = (df_merged.dRA<2.e3)&(df_merged.dRB<2.e3)&(df_merged.dRC<2.e3)
+
+    total_occ_tracks = pd.DataFrame([df_merged['orbA'].value_counts(), df_merged['orbB'].value_counts()]).T.fillna(0).sum \
+        (axis=1).sort_values(ascending=False)
+    tracks = list(total_occ_tracks.index.values)[:]
+
+    dRs = ['dRA','dRB','dRC']
+    tot = len(df_merged)
+    print("Out of ", tot,"xovers:")
+    for idx, dR in enumerate(dRs):
+        print(sols[idx],"has ",round(df_merged.loc[df_merged[dR]<100.,dR].count()/tot*100.,2),"% xovers with dR<100 m,",
+              round(df_merged.loc[df_merged[dR]<50.,dR].count()/tot*100.,2),"% xovers with dR <50 m and",
+              round(df_merged.loc[df_merged[dR]<10.,dR].count()/tot*100.,2),"% xovers with dR <10 m.")
+
+    df_median = []
+    df_mean = []
+    df_merged = df_merged.loc[acceptif]
+    for tr in tracks[:]:
+        df = df_merged.loc[((df_merged.orbA == int(tr)) | (df_merged.orbB == int(tr)))]
+        df_mean.append(df.filter(regex='dR?').mean(axis=0).append(pd.Series([tr],index=['track'])))
+        df_median.append(df.filter(regex='dR?').median(axis=0).append(pd.Series([tr],index=['track'])))
+
+
+
+    df_median = pd.concat(df_median, axis=1).T.set_index('track').abs()
+    df_median.index = df_median.index.map(str)
+    df_median.columns = sols
+    df_median.dropna(inplace=True)
+
+    df_median.plot.hist(alpha=0.5, density=False, bins=500)
+    plt.title('Histogram of tracks median dR')
+    plt.xlim([0., 300.0])
+    plt.xlabel('meters')
+    plt.ylabel('# of tracks')
+    # plt.semilogy()
+
+    plt.savefig(tmpdir + "histo_tracks1.png")
+
+    print(df_median.sort_index())
+    print(df_median.mean(axis=0))
+    print(df_median.std(axis=0))
+    for sol in sols:
+        print("##############")
+        print("best 10 by",sol)
+        print(df_median.sort_values(by=sol).iloc[:10,:])
+        print("##############")
+        print("worst 10 by",sol)
+        print(df_median.sort_values(by=sol).iloc[-10:,:])
+
+
+
+        # print(df.filter(regex='dR?').std(axis=0))
+
+    exit()
+
+
+    exit()
+    # exit()
+
+    fig = plt.figure("resid_iters")
+
+    for idx,tmp in enumerate(dfs):
+        # evaluate residuals
+        xovers = tmp.xov.xovers.copy()
+        print('sol',idx,'contains',len(xovers),'xovers with mean',xovers['dR'].mean(), ', median',xovers['dR'].median(),'and std',xovers['dR'].std())
+        plt.hist(xovers['dR'].values, label='dR_'+str(idx), density= True,  bins=10000, alpha= 1./(idx+1),range=[-10000,10000])
+        plt.xlim([-500., 500.0])
+        plt.semilogy()
+
+        # plt.hist((xovers[['dR','weights']].product(axis='columns',skipna=True)).values, label=str('weighted'), bins=50, range=[-100, 100])
+
+        # plt.title('Mean')
+        # plt.xlabel("value")
+        # plt.ylabel("Frequency")
     plt.legend()
-    plt.savefig(tmpdir + '/weights.png')
-    plt.clf()
-
-    print(check_weights)
-
-    print("max:",check_weights.max())
-    print("min:",check_weights.min())
-    print("mean:",check_weights.mean())
-    print("median:",check_weights.median())
+    plt.savefig(tmpdir + "histo_resid.png")
 
     exit()
 
@@ -1012,7 +1152,7 @@ if __name__ == '__main__':
 
     simulated_data = False #True
 
-    analyze_sol(sol='KX1r4_0', ref_sol='', subexp = '0res_1amp')
+    analyze_sol(sols=['AGTP_0','AGS_0', 'KX1_0'], ref_sol='', subexp = '0res_1amp')
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp4_0',subexp='3res_20amp')

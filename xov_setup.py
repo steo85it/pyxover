@@ -141,6 +141,7 @@ class xov:
         # print([x.xovers for x in xov_list])
         if len(xov_list) > 0:
             self.xovers = pd.concat([x.xovers for x in xov_list], sort=True)
+            # self.xovers= self.xovers.loc[self.xovers.orbA == '1307210040'].iloc[:1000]
             self.xovers = self.xovers.reset_index(drop=True)
             self.xovers['xOvID'] = self.xovers.index
             # print(self.xovers)
@@ -150,6 +151,7 @@ class xov:
             orb_unique.extend(self.xovers['orbB'].tolist())
             self.tracks = list(set(orb_unique))
             # print(self.tracks)
+            # exit()
             # print(orb_unique)
 
             if partials == 1:

@@ -128,11 +128,12 @@ def get_vce_factor(Ninv, Cinv, x, b = None, A = None, sapr=1., kind='obs'):
         Ni = Cinv
 
     # numerator (basically the quantity to minimize)
-    rTw = csr_matrix(ri.T) * Cinv
+    rTw = csr_matrix(ri.T)* Cinv
+    # print(csr_matrix(ri.T),rTw * ri, Cinv,Cinv.max(),Cinv.min())
     rTwr = (rTw * ri)[0]
     # basically a modified dof for the subset
     redundancy = nelem - (1. / s2apr) * np.trace(Ni @ Ninv)
-    print("kind, sqrt(rTwr),redundancy,chi2:",kind,np.sqrt(rTwr),redundancy,rTwr/redundancy)
+    # print("kind, sqrt(rTwr),redundancy,chi2:",kind,np.sqrt(rTwr),redundancy,np.trace(Ni.todense()),rTwr/redundancy)
 
     # the new sigma^2 associated to the subset of data or constraint
     return rTwr / redundancy
