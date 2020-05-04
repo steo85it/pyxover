@@ -12,7 +12,7 @@ import itertools
 
 import seaborn as sns
 
-from accum_utils import get_xov_cov_tracks, get_vce_factor
+from accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers
 from util import mergsum, update_in_alist, rms
 from lib.xovres2weights import get_interpolation_weight
 # from xov_utils import get_tracks_rms
@@ -49,6 +49,7 @@ sim_altdata = 0
 remove_max_dist = False
 remove_3sigma_median = False
 remove_dR200 = False
+downsize = True
 # only applied if the above ones are false
 clean_part = True
 huber_threshold = 30
@@ -1307,6 +1308,12 @@ def main(arg):
 
             # actually preparing weights and constraints for the solution
             prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
+
+            if downsize:
+                xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers,max_xovers=8.e5)
+                xovi_amat.xov.combine([xovi_amat.xov])
+                xovi_amat = prepare_Amat(xovi_amat.xov, vecopts, par_list)
+                prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
 
             if previous_iter != None and previous_iter.vce != None:
                 xovi_amat.vce = previous_iter.vce

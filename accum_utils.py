@@ -133,7 +133,38 @@ def get_vce_factor(Ninv, Cinv, x, b = None, A = None, sapr=1., kind='obs'):
     rTwr = (rTw * ri)[0]
     # basically a modified dof for the subset
     redundancy = nelem - (1. / s2apr) * np.trace(Ni @ Ninv)
-    # print("kind, sqrt(rTwr),redundancy,chi2:",kind,np.sqrt(rTwr),redundancy,np.trace(Ni.todense()),rTwr/redundancy)
+    print("kind, sqrt(rTwr),redundancy,chi2:",kind,np.sqrt(rTwr),redundancy,np.trace(Ni.todense()),rTwr/redundancy)
 
     # the new sigma^2 associated to the subset of data or constraint
     return rTwr / redundancy
+
+
+def downsize_xovers(xov_df,max_xovers=1.e5):
+    # remove very large dR (>1km)
+    xov_df = xov_df.loc[xov_df['dR'].abs() < 1.e3]
+    print(xov_df.columns)
+    # print(tmp.weights)
+    # exit()
+    hilat_xov = xov_df.loc[xov_df.LAT > 60]
+    print(hilat_xov[['dR', 'weights', 'huber']].abs().max())
+    print(hilat_xov[['dR', 'weights', 'huber']].abs().min())
+    print(hilat_xov[['dR', 'weights', 'huber']].abs().mean())
+    print(hilat_xov[['dR', 'weights', 'huber']].abs().median())
+
+    # select approx number of xovers to keep and derive proportion to keep at hi-lats
+    to_keep = 1. - max_xovers / len(hilat_xov)
+    to_keep_hilat = hilat_xov.loc[hilat_xov['weights'] > hilat_xov['weights'].quantile(to_keep)].xOvID.values
+    # by default, keep 90% of xovers at low-lats
+    lolat_xov = xov_df.loc[xov_df.LAT < 60]
+    to_keep_lolat = lolat_xov.loc[lolat_xov['weights'] > lolat_xov['weights'].quantile(0.1)].xOvID.values
+
+    # select very good xovers at LAT>60N OR decent xovers at low latitudes
+    selected = xov_df.loc[(xov_df.xOvID.isin(to_keep_hilat)) | (xov_df.xOvID.isin(to_keep_lolat))]
+    print(len(selected))
+    print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().max())
+    print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().min())
+    print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().median())
+    print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().mean())
+    print("Downsized xovers to the 'best'",len(selected),"xovers out of",len(xov_df),". Done!")
+
+    return selected
