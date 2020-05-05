@@ -55,7 +55,7 @@ class xov:
         self.gtracks = gtracks
         df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df],sort=True).reset_index(drop=True)
 
-        self.msrm_sampl = 50
+        self.msrm_sampl = 10
         # store involved tracks as dict
         self.tracks = dict(zip(df.orbID.unique(),list(range(2))))
         # store the imposed perturbation (if closed loop simulation)

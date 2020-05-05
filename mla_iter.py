@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     for rt in rough_test:
 
-        for iter in np.arange(6,10):
+        for iter in np.arange(0,5):
     
             if local:
                 print("Processing PyXover series at external iteration", iter)
@@ -148,7 +148,7 @@ if __name__ == '__main__':
                         exit(iostat)
 
                 iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '7', '01:30:00', '5Gb', '10'])
+                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '7', '01:30:00', '20Gb', '10'])
                 if iostat != 0:
                     print("*** PyGeol_" + str(rt) + " failed on iter", iter)
                     exit(iostat)

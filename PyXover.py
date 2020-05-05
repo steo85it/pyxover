@@ -109,6 +109,7 @@ def launch_xov(
                         if monthly_sets:
                            trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + gtrackB + '.pkl')
                         else:
+                           #print(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
                            trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
 
                         if not trackB == None and len(trackB.ladata_df) > 0:
@@ -134,6 +135,9 @@ def launch_xov(
                     # get xover LAT and LON
                     xov_tmp.get_xov_latlon(trackA)
 
+                    # Save to file
+                    if not os.path.exists(outdir + 'xov/'):
+                        os.mkdir(outdir + 'xov/')
                     if new_algo:
                         # Save to temporary folder
                         if not os.path.exists(outdir + 'xov/tmp/'):
@@ -142,9 +146,6 @@ def launch_xov(
                         # just pass rough_xovs to next step
                         return xov_tmp.xovers
                     else:
-                        # Save to file
-                        if not os.path.exists(outdir + 'xov/'):
-                            os.mkdir(outdir + 'xov/')
                         xov_tmp.save(outdir + 'xov/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
                         print(
                             'Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +

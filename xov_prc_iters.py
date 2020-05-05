@@ -177,9 +177,9 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     # xov_iter = args[-1]
     # outdir_in = args[2] #"sim/KX1r4_0/0res_1amp/"
     if xov_iter==0:
-        msrm_smpl = 50 # same as used for rough_xovs in PyXover (should be automatic)
+        msrm_smpl = 10 # same as used for rough_xovs in PyXover (should be automatic)
     else:
-        msrm_smpl = 20  # should be even...
+        msrm_smpl = 4  # should be even...
 
     if msrm_smpl % 2 != 0:
         print("*** ERROR: msrm_smpl not an even number:", msrm_smpl)
@@ -191,6 +191,9 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         tmp_Amat = Amat(vecopts)
         # print(outdir + outdir_old + 'Abmat*.pkl')
         tmp = tmp_Amat.load(glob.glob(outdir + outdir_old + 'Abmat*.pkl')[0])
+        #if 'mla_idA' not in tmp.xov.xovers.columns:
+        #   tmp.xov.xovers = tmp.xov.xovers.rename(columns={"ladata_idA": "mla_idA", "ladata_idB": "mla_idB"})
+           #print(tmp.xov.xovers.columns)
         old_xovs = tmp.xov.xovers[useful_columns]
     else:
         old_xovs = input_xov[useful_columns]

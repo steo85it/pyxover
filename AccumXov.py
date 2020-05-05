@@ -12,7 +12,7 @@ import itertools
 
 import seaborn as sns
 
-from accum_utils import get_xov_cov_tracks, get_vce_factor
+from accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers
 from util import mergsum, update_in_alist, rms
 from lib.xovres2weights import get_interpolation_weight
 # from xov_utils import get_tracks_rms
@@ -49,6 +49,7 @@ sim_altdata = 0
 remove_max_dist = False
 remove_3sigma_median = False
 remove_dR200 = False
+downsize = True
 # only applied if the above ones are false
 clean_part = True
 huber_threshold = 30
@@ -60,8 +61,8 @@ h2_limit_on = False
 # could be updated by checking chi2 or by VCE
 sigma_0 = 1. # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
 # scaling factors for obs and constraints
-weight_obs = 0.1
-weight_constr = 3.0
+weight_obs = 1.0
+weight_constr = 1.0
 ###
 convergence_criteria = 0.05 # =5%
 
@@ -876,8 +877,8 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             n_goodobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
             ascending=False)
 
-        # to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
-        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 1].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
+        to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
+        # to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 1].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
 
         xovi_amat.to_constrain = to_constrain
         if debug:
@@ -1246,6 +1247,9 @@ def main(arg):
     data_sim = arg[1]
     ext_iter = arg[2]
 
+    if ext_iter>0:
+        downsize = False
+    
     if data_sim == 'sim':
         _ = [x.split('/')[-2] for x in datasets]
         resval = [10. / 2 ** int(''.join(filter(str.isdigit, strng.split('_')[0]))) for strng in _]
@@ -1305,6 +1309,12 @@ def main(arg):
 
             # actually preparing weights and constraints for the solution
             prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
+
+            if downsize:
+                xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers,max_xovers=8.e5)
+                xovi_amat.xov.combine([xovi_amat.xov])
+                xovi_amat = prepare_Amat(xovi_amat.xov, vecopts, par_list)
+                prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
 
             if previous_iter != None and previous_iter.vce != None:
                 xovi_amat.vce = previous_iter.vce
