@@ -61,6 +61,7 @@ from xov_setup import xov
 #
 # exit()
 
+#@profile
 def launch_xov(
         args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
     track_id = args[0]
@@ -94,6 +95,8 @@ def launch_xov(
 
                 # print(comb)
 
+                xovers_list = []
+                xover_found = False
                 # loop over all combinations containing track_id
                 for gtrackA, gtrackB in [s for s in comb if track_id in s[0]]:
 
@@ -120,13 +123,18 @@ def launch_xov(
                             # trackB.ladata_df = trackB.ladata_df.rename(index=str, columns={"X_stgprj": "X_NPstgprj", "Y_stgprj": "Y_NPstgprj"})
 
                             # looping over all track combinations and updating the general df xov_tmp.xovers
-                            xov_tmp.setup([trackA,trackB])
+                            xover_found = xov_tmp.setup([trackA,trackB])
 
+                    if new_algo and xover_found:
+                        xovers_list.append(xov_tmp.xovtmp)
                     # except:
                     #     print(
                     #         'failed to load trackB ' + outdir + 'gtrack_' + gtrackB + '.pkl' + ' to process ' + outdir + 'gtrack_' + track_id + '.pkl')
 
-                # exit()
+                if new_algo:
+                    xov_tmp.xovers = pd.DataFrame(xovers_list)
+                    xov_tmp.xovers.reset_index(drop=True, inplace=True)
+                    xov_tmp.xovers['xOvID'] = xov_tmp.xovers.index
 
                 # for each gtrackA, write
                 # print([s for s in comb if track_id in s[0]])
@@ -134,6 +142,9 @@ def launch_xov(
                     # get xover LAT and LON
                     xov_tmp.get_xov_latlon(trackA)
 
+                    # Save to file
+                    if not os.path.exists(outdir + 'xov/'):
+                        os.mkdir(outdir + 'xov/')
                     if new_algo:
                         # Save to temporary folder
                         if not os.path.exists(outdir + 'xov/tmp/'):
@@ -142,9 +153,6 @@ def launch_xov(
                         # just pass rough_xovs to next step
                         return xov_tmp.xovers
                     else:
-                        # Save to file
-                        if not os.path.exists(outdir + 'xov/'):
-                            os.mkdir(outdir + 'xov/')
                         xov_tmp.save(outdir + 'xov/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
                         print(
                             'Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
@@ -162,7 +170,7 @@ def launch_xov(
                           misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
     ########################################
-#@profile
+##@profile
 def main(args):
     from prOpt import parallel, outdir, auxdir, local, vecopts
 

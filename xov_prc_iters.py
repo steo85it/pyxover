@@ -13,7 +13,7 @@ from xov_setup import xov
 import multiprocessing as mp
 # from memory_profiler import profile
 
-# @profile
+#@profile
 def fine_xov_proc(xovi,df,xov_tmp): #args):
     # xovi = args[0]
     # df = args[1]
@@ -69,6 +69,7 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
 
     # post-processing
     xovtmp = xov_tmp.postpro_xov_elev(xov_tmp.ladata_df, out)
+    xovtmp = pd.DataFrame(xovtmp,index=[0]) # TODO possibly avoid, very time consuming
 
     if len(xovtmp) > 1:
         if debug:
@@ -169,7 +170,7 @@ def project_chunk(proc_chunk):
 
     return proc_chunk
 
-# @profile
+#@profile
 def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     start = time.time()
     #
@@ -360,6 +361,8 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     start_proj = time.time()
 
+    # setting standard value (no chunks)
+    chunked_proj_dict = False
     if parallel:
         n_proc = mp.cpu_count()-1
         # n_chunks = 1*n_proc
@@ -385,12 +388,18 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         # assert sum(map(len, proc_chunks)) == len(mla_proj_df)   # make sure all data is in the chunks
         # print()
         # print(part_proj_dict['none'])
-        max_length_proj = 1.e7
+        if local:
+            max_length_proj = 1.e5
+        else:
+            max_length_proj = 1.e7
+
         chunked_proj_dict = len(part_proj_dict['none']) > max_length_proj
         if chunked_proj_dict:
-            chunksize = len(part_proj_dict['none']) // 5
-            n_chunks = 5
-            print("Splitting a large array of", len(part_proj_dict['none']), "mla_data in chunks of", chunksize, "rows")
+
+            n_chunks = max(int(len(part_proj_dict['none']) // max_length_proj),n_proc)
+            chunksize = int(len(part_proj_dict['none'])/n_chunks)
+
+            print("Splitting a large array of", len(part_proj_dict['none']), "mla_data in",n_chunks,"chunks of", chunksize, "rows")
 
             proc_chunks = {}
             for id,tmp_proj in part_proj_dict.items():
