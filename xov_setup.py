@@ -50,14 +50,26 @@ class xov:
         self.parGlo_xy = None
         self.par_xy = None
 
+    #@profile
     def setup(self, gtracks):
 
         self.gtracks = gtracks
-        df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df],sort=True).reset_index(drop=True)
 
-        self.msrm_sampl = 10
+        if new_algo:
+            cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
+             'X_stgprj', 'Y_stgprj']
+            # df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df],sort=True).reset_index(drop=True)
+            self.ladata_df = pd.concat([gtracks[0].ladata_df.loc[:,cols], gtracks[1].ladata_df.loc[:,cols]],sort=False).reset_index(drop=True)
+        else:
+            df = pd.concat([gtracks[0].ladata_df, gtracks[1].ladata_df],sort=False).reset_index(drop=True)
+            self.ladata_df = df.drop('chn', axis=1)
+
         # store involved tracks as dict
-        self.tracks = dict(zip(df.orbID.unique(),list(range(2))))
+        self.tracks = dict(zip(self.ladata_df.orbID.unique(),list(range(2))))
+        # map tracks to 0 and 1
+        self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
+
+        self.msrm_sampl = 24
         # store the imposed perturbation (if closed loop simulation)
         self.pert_cloop = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop, list(self.tracks.keys())[1]:gtracks[1].pert_cloop}
         self.pert_cloop_0 = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop_0, list(self.tracks.keys())[1]:gtracks[1].pert_cloop_0}
@@ -65,8 +77,6 @@ class xov:
         self.sol_prev_iter = {list(self.tracks.keys())[0]:gtracks[0].sol_prev_iter,list(self.tracks.keys())[1]:gtracks[1].sol_prev_iter}
         # print(df.orbID)
         # print(df.orbID.unique())
-        self.ladata_df = df.drop('chn', axis=1)
-        self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
         # print(self.ladata_df.orbID)
 
         if debug and False:
@@ -84,6 +94,7 @@ class xov:
             self.apply_texture = interp_spline
 
         if new_algo:
+            # self.ladata_df = self.ladata_df[['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R', 'X_stgprj', 'Y_stgprj']]
             # rough only as prepro
             nxov = self.get_xov_prelim()
         else:
@@ -108,16 +119,24 @@ class xov:
                 if partials:
                     self.set_partials()
 
-            # Remap track names to df
-            self.xovtmp['orbA'] = self.xovtmp['orbA'].map({v: k for k, v in self.tracks.items()})
-            self.xovtmp['orbB'] = self.xovtmp['orbB'].map({v: k for k, v in self.tracks.items()})
+                # Remap track names to df
+                self.xovtmp['orbA'] = self.xovtmp['orbA'].map({v: k for k, v in self.tracks.items()})
+                self.xovtmp['orbB'] = self.xovtmp['orbB'].map({v: k for k, v in self.tracks.items()})
 
-            # Update general df
-            self.xovers = self.xovers.append(self.xovtmp,sort=True)
-            self.xovers.reset_index(drop=True, inplace=True)
-            self.xovers['xOvID'] = self.xovers.index
-            # print(self.xovers)
-        # exit()
+                # Update general df
+                self.xovers = self.xovers.append(self.xovtmp, sort=True)
+                self.xovers.reset_index(drop=True, inplace=True)
+                self.xovers['xOvID'] = self.xovers.index
+            else:
+                # Remap track names to df
+                trackmap = {v: k for k, v in self.tracks.items()}
+                self.xovtmp['orbA'] = trackmap[self.xovtmp['orbA']]
+                self.xovtmp['orbB'] = trackmap[self.xovtmp['orbB']]
+
+                # print(self.xovtmp)
+                # Update general df
+                # self.xovers.append(self.xovtmp)
+        return multi_xov_check
 
     def set_xov_offnadir(self):
         obslist = self.xovtmp[['cmb_idA','cmb_idB']].values.astype(int).tolist()
@@ -131,7 +150,7 @@ class xov:
         tmp.columns = ['offnad_A', 'offnad_B']
         self.xovtmp = pd.concat([self.xovtmp, tmp], axis=1)
 
-    # ##@profile
+    # ####@profile
     def combine(self, xov_list):
 
         # Only select elements with number of xovers > 0
@@ -144,7 +163,7 @@ class xov:
             # self.xovers= self.xovers.loc[self.xovers.orbA == '1307210040'].iloc[:1000]
             self.xovers = self.xovers.reset_index(drop=True)
             self.xovers['xOvID'] = self.xovers.index
-            # print(self.xovers)
+            # print(self.xovers)postpro_xov_elev
 
             # Retrieve all orbits involved in xovers
             orb_unique = self.xovers['orbA'].tolist()
@@ -174,7 +193,7 @@ class xov:
         pickle.dump(self, pklfile, protocol=-1)
         pklfile.close()
 
-    # @profile
+    # ##@profile
     # load groundtrack from file
     def load(self, filnam):
 
@@ -244,7 +263,7 @@ class xov:
     # Compute elevation R at crossover points by interpolation
     # (should be put in a function and looped over -
     # also, check the higher order interp)
-    #@profile
+    ###@profile
     def get_elev(self, arg, ii, jj, ind_A, ind_B, par='', x=0, y=0):
 
         ladata_df = self.ladata_df
@@ -546,7 +565,7 @@ class xov:
         print(self.tracks)
         # exit()
 
-    #@profile
+    ###@profile
     def get_xover_fine(self, rough_indA, rough_indB, param):
         """
         Fine-tune xover index and coordinates from first rough guess,
@@ -829,7 +848,7 @@ class xov:
                 # exit()
                 return np.vstack((x, y, ldA, ldB, R_A, R_B)).T
             # except:
-    #@profile
+    ###@profile
     def xov_project(self, ladata_df, msrm_sampl, rough_indA):
         # compute central lon/lat of trackA (then use it for both, as close to intersection)
         df_ = ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[0]][['LON', 'LAT']].values
@@ -848,6 +867,7 @@ class xov:
         self.ladata_df.update(ladata_df)
         self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
 
+    ##@profile
     def get_xover_rough(self, arg, ladata_df, msrm_sampl):
         # Decimate data and find rough intersection
         x, y, ind_A, ind_B = intersection(
@@ -860,7 +880,7 @@ class xov:
             print(x, y, ind_A, ind_B)
         return ind_A, ind_B, x, y
 
-    #@profile
+    ###@profile
     def get_xov(self):
         """
         Read ladata_df and compute all xovers, then updates xovers dataframe
@@ -890,6 +910,8 @@ class xov:
         if results is not None:
             # print(results)
             xovtmp = self.postpro_xov_elev(ladata_df, results)
+            if len(results)==1:
+                xovtmp = pd.DataFrame(xovtmp,index=[0]) # very slow and should be avoided if only 1 line
 
             # print(xovtmp)
             # exit()
@@ -910,6 +932,7 @@ class xov:
 
             return -1  # 0 xovers found
 
+    ##@profile
     def get_xov_prelim(self):
         """
         Read ladata_df and compute all xovers, then updates xovers dataframe
@@ -967,11 +990,13 @@ class xov:
 
             # Update xovtmp as attribute for partials
             self.xovtmp = xovtmp
+            # by default, just taking single xovers (will be an issue with other probes...)
+            nxov = 1 # np.max([len([x]) for x in xovtmp])
 
             if debug:
                 print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " + list(self.tracks.keys())[1])
 
-            return len(xovtmp)
+            return nxov
 
         else:
             if debug:
@@ -981,27 +1006,63 @@ class xov:
 
             return -1  # 0 xovers found
 
+    # #@profile
     def postpro_xov_elev(self, ladata_df, results):
 
-        xovtmp = pd.DataFrame(np.vstack([x for x in results if x is not None]).reshape(-1, np.shape(results)[1]))
-        xovtmp.columns = ['x0', 'y0', 'cmb_idA', 'cmb_idB', 'R_A', 'R_B']
-        # if(parallel):
-        #  pool.close()
-        #  pool.join()
-        # Get discrepancies (dR = R(obs1) - R(obs2)) at crossover time (where ideal dR=0)
-        xovtmp['dR'] = xovtmp.R_B - xovtmp.R_A
-        # Store reference orbit IDs for each xov
-        xovtmp['orbA'] = \
-            ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[0]].loc[map(round, xovtmp.cmb_idA.values)][
-                ['orbID']].values
-        xovtmp['orbB'] = \
-            ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[1]].loc[map(round, xovtmp.cmb_idB.values)][
-                ['orbID']].values
-        xovtmp['xOvID'] = xovtmp.index
+        xovtmp = np.vstack([x for x in results if x is not None]).reshape(-1, np.shape(results)[1])
+
         # Store seqid of mla obs related to xover (only if single xov between orbits TODO: extend if interested)
         if len(xovtmp) == 1:
-            xovtmp['mla_idA'] = self.ladata_df.loc[self.ladata_df['genID'].isin(xovtmp.cmb_idA.values)]['seqid'].values
-            xovtmp['mla_idB'] = self.ladata_df.loc[self.ladata_df['genID'].isin(xovtmp.cmb_idB.values)]['seqid'].values
+
+            xovtmp = dict(zip(['x0', 'y0', 'cmb_idA', 'cmb_idB', 'R_A', 'R_B'],[x[0] for x in xovtmp.T]))
+            # print(xovtmp)
+            # exit()
+
+            # Get discrepancies (dR = R(obs1) - R(obs2)) at crossover time (where ideal dR=0)
+            have_elev = (xovtmp['R_B'] == 0.) + (xovtmp['R_A'] == 0.)
+            # print(xovtmp)
+            if have_elev:
+                xovtmp['dR'] = 0
+            else:
+                xovtmp['dR'] = xovtmp['R_B'] - xovtmp['R_A']
+
+            # Store reference orbit IDs for each xov (it was actually just storing 0 for orbA and 1 for orbB, mapped later to orbit - and it was very slow)
+            xovtmp['orbA'] = 0
+            xovtmp['orbB'] = 1
+            # this should always be 0 ...
+            xovtmp['xOvID'] = 0
+            # retrieve index of obs close to xover (for fine search)
+            index_cols = [ladata_df.columns.get_loc(col) for col in ['genID', 'seqid']]
+            ladata_np = ladata_df.values[:,index_cols]
+
+            xovtmp['mla_idA'] = ladata_np[ladata_np[:,0]==np.round(xovtmp['cmb_idA'],0),1].astype('int')[0]
+            xovtmp['mla_idB'] = ladata_np[ladata_np[:,0]==np.round(xovtmp['cmb_idB'],0),1].astype('int')[0]
+
+            # xovtmp = pd.DataFrame(xovtmp, index=[0])
+            # print(xovtmp)
+            # exit()
+
+        elif False: # update to use for multiple xovs (e.g., Bepi)
+
+            xovtmp.columns = ['x0', 'y0', 'cmb_idA', 'cmb_idB', 'R_A', 'R_B']
+
+            # Get discrepancies (dR = R(obs1) - R(obs2)) at crossover time (where ideal dR=0)
+            xovtmp['dR'] = xovtmp.R_B - xovtmp.R_A
+
+            # Store reference orbit IDs for each xov (it was actually just storing 0 for orbA and 1 for orbB, mapped later to orbit - and it was very slow)
+            xovtmp['orbA'] = \
+                ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[0]].loc[
+                    map(round, xovtmp.cmb_idA.values)][
+                    ['orbID']].values
+            xovtmp['orbB'] = \
+                ladata_df.loc[ladata_df['orbID'] == list(self.tracks.values())[1]].loc[
+                    map(round, xovtmp.cmb_idB.values)][
+                    ['orbID']].values
+            xovtmp['xOvID'] = xovtmp.index
+            xovtmp['mla_idA'] = ladata_df.loc[ladata_df['genID'].isin(xovtmp.cmb_idA.values)]['seqid'].values
+            xovtmp['mla_idB'] = ladata_df.loc[ladata_df['genID'].isin(xovtmp.cmb_idB.values)]['seqid'].values
+
+        # returns dict, not df (might cause errors to correct)
         return xovtmp
 
     def set_xov_obs_dist(self):
@@ -1095,7 +1156,7 @@ class xov:
 
         self.xovers = pd.concat([self.xovers, tmp], axis=1)
 
-    #@profile
+    ###@profile
     def set_partials(self):
         # Compute crossover position for partials at + and -
         # and combine them for each observation and parameter
@@ -1264,7 +1325,7 @@ class xov:
 
         return xovers_df
 
-    ##@profile
+    ####@profile
     def get_dt(self,ladata_df,xovers_df):
         # tracksid = list(self.tracks.values())
         dt = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].loc[
@@ -1282,7 +1343,7 @@ class xov:
 
         return dt
 
-    #@profile
+    ###@profile
     def get_partials(self, l):
 
         # comb1 = self.tracks

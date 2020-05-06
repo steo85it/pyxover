@@ -1242,6 +1242,12 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
             print(orb_sol.loc[orb_sol.orb == '1301022345', :])
 
 def main(arg):
+
+    ##############################################
+    # launch program and clock
+    # -----------------------------
+    startT = time.time()
+
     print(arg)
     datasets = arg[0]  # ['sim_mlatimes/0res_35amp']
     data_sim = arg[1]
@@ -1310,8 +1316,9 @@ def main(arg):
             # actually preparing weights and constraints for the solution
             prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
 
-            if downsize:
-                xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers,max_xovers=8.e5)
+            max_xovers = 8.e5
+            if downsize and len(xovi_amat.xov.xovers)>max_xovers:
+                xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers,max_xovers=max_xovers)
                 xovi_amat.xov.combine([xovi_amat.xov])
                 xovi_amat = prepare_Amat(xovi_amat.xov, vecopts, par_list)
                 prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
@@ -1578,6 +1585,12 @@ def main(arg):
     # print(xovi_amat.xov.xovers)
 
     print("AccumXov ended succesfully!")
+    ##############################################
+    # stop clock and print runtime
+    # -----------------------------
+    endT = time.time()
+    print('----- Runtime Amat = ' + str(endT - startT) + ' sec -----' + str(
+        (endT - startT) / 60.) + ' min -----')
     return True
 
 
