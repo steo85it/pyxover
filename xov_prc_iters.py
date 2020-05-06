@@ -15,18 +15,6 @@ import multiprocessing as mp
 
 #@profile
 def fine_xov_proc(xovi,df,xov_tmp): #args):
-    # xovi = args[0]
-    # df = args[1]
-    # xov_tmp = args[2]
-
-    # print(proj_df_xovi.columns)
-    # print(len(proj_df_xovi))
-    # exit()
-
-    # if (idx / len(xovs_list) * 100.) % 5 == 0:
-    #     print("Working... ", (idx / len(xovs_list) * 100.), "% done ...")
-
-    # try:
 
     df = df.reset_index(
         drop=True).reset_index()
@@ -89,7 +77,7 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
     if partials:
         xov_tmp.set_partials()
     else:
-        # retrieve epoch to, e.g., trace tracks quality
+        # retrieve epoch to, e.g., trace tracks quality (else done inside set_partials)
         xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(np.reshape(xov_tmp.get_dt(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
                                                    columns=['dtA', 'dtB'])], axis=1)
 
@@ -170,14 +158,14 @@ def project_chunk(proc_chunk):
 
     return proc_chunk
 
-#@profile
+# @profile
 def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     start = time.time()
     #
     # xov_iter = args[-1]
     # outdir_in = args[2] #"sim/KX1r4_0/0res_1amp/"
     if xov_iter==0:
-        msrm_smpl = 50 # same as used for rough_xovs in PyXover (should be automatic)
+        msrm_smpl = 10 # same as used for rough_xovs in PyXover (should be automatic)
     else:
         msrm_smpl = 4  # should be even...
 
@@ -357,7 +345,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     end_prepro = time.time()
 
-    print("Pre-processing finished after ", end_prepro - start, "sec!")
+    print("Pre-processing finished after ", int(end_prepro - start), "sec or ", round((end_prepro - start)/60.,2), " min!")
 
     start_proj = time.time()
 
@@ -365,31 +353,9 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     chunked_proj_dict = False
     if parallel:
         n_proc = mp.cpu_count()-1
-        # n_chunks = 1*n_proc
 
-        # mla_proj_df.reset_index(inplace=True,drop=True)
-        # this often can't be devided evenly (handle this in the for-loop below)
-        # chunksize = len(mla_proj_df) // n_chunks
-        # print("chunksize",chunksize)
-        # print(len(mla_proj_df),n_chunks)
-        #
-        # devide into chunks
-        # proc_chunks = []
-        # tmp_proj = mla_proj_df[['LON','LAT','LON_proj','LAT_proj','genid']].values
-        # for i_proc in range(n_chunks):
-        #     chunkstart = i_proc * chunksize
-        #     # make sure to include the division remainder for the last process
-        #     chunkend = (i_proc + 1) * chunksize if i_proc < n_chunks - 1 else None
-        #     # print(mla_proj_df.columns)
-        #
-        #     # proc_chunks.append(mla_proj_df.iloc[slice(chunkstart, chunkend)])
-        #     proc_chunks.append(tmp_proj[chunkstart: chunkend,:])
-        #
-        # assert sum(map(len, proc_chunks)) == len(mla_proj_df)   # make sure all data is in the chunks
-        # print()
-        # print(part_proj_dict['none'])
         if local:
-            max_length_proj = 1.e5
+            max_length_proj = 1.e4
         else:
             max_length_proj = 1.e7
 
@@ -503,7 +469,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     print("Intermediate file saved to:",outdir + outdir_in  + 'xov/tmp/xov_' + str(cmb[0]) + '_' + str(
         cmb[1]) + '_project.pkl.gz')
     print("Len mla_proj_df after reordering:",len(mla_proj_df))
-    print("Projection finished after ", end_proj - start_proj, "sec!")
+    print("Projection finished after", int(end_proj - start_proj), "sec or ", round((end_proj - start_proj)/60.,2), " min!")
     #
     # print(mla_proj_df)
     # print(mla_proj_df.columns)
@@ -582,7 +548,15 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
             pool.join()
 
         # blocks until all results are fetched
-        xov_list = [r.get() for r in xov_list]
+        tmpl = []
+        for idx,r in enumerate(xov_list):
+            try:
+                tmpl.append(r.get())
+            except:
+                print("r.get failed on", idx)
+        xov_list = tmpl
+        print(len(xov_list))
+        # xov_list = [r.get() for r in xov_list]
         # exit()
 
         # launch once in serial mode to get ancillary values
@@ -629,7 +603,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     end = time.time()
 
-    print("Fine_xov finished after", end - start_finexov, "sec and located", len(xov_tmp.xovers),"out of previous", len(old_xovs),"xovers!")
+    print("Fine_xov finished after", int(end - start_finexov), "sec or ", round((end - start_finexov)/60.,2), " min and located", len(xov_tmp.xovers),"out of previous", len(old_xovs),"xovers!")
 
     # Save to file
     if not os.path.exists(outdir + outdir_in + 'xov/'):
@@ -640,7 +614,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
     print('Xov for ' + str(cmb) + ' processed and written to ' + outdir + outdir_in + 'xov/xov_' + str(cmb[0]) + '_' + str(
         cmb[1]) + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
-    print("Process finished after ", end-start, "sec!")
+    print("Process finished after", int(end - start), "sec or ", round((end - start)/60.,2), " min!")
 
     return xov_tmp
 
@@ -654,4 +628,4 @@ if __name__ == '__main__':
 
     end = time.time()
 
-    print("Process finished after ", end - start, "sec!")
+    print("Process finished after", int(end - start), "sec or ", round((end - start)/60.,2), " min!")

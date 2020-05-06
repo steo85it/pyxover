@@ -69,7 +69,7 @@ class xov:
         # map tracks to 0 and 1
         self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
 
-        self.msrm_sampl = 50
+        self.msrm_sampl = 10
         # store the imposed perturbation (if closed loop simulation)
         self.pert_cloop = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop, list(self.tracks.keys())[1]:gtracks[1].pert_cloop}
         self.pert_cloop_0 = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop_0, list(self.tracks.keys())[1]:gtracks[1].pert_cloop_0}
