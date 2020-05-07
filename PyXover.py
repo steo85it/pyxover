@@ -61,19 +61,20 @@ from xov_setup import xov
 #
 # exit()
 
-#@profile
+# @profile
 def launch_xov(
         args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
-    track_id = args[0]
+    track_idA = args[0]
     # print(track_id)
     comb = args[1]
     misycmb = args[2]
     par = args[3]
-    outdir = args[4]
+    mladata = args[4]
+    outdir = args[5]
 
     if new_xov:  # and track_id=='1301232350':
         # print( "check", track_id, misycmb[par])
-        if not os.path.isfile(outdir + 'xov/xov_' + track_id + '_' + misycmb[par][1] + '.pkl') or new_xov == 2:
+        if not os.path.isfile(outdir + 'xov/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl') or new_xov == 2:
 
             # print("Processing " + track_id + " ...")
 
@@ -83,14 +84,14 @@ def launch_xov(
             trackA = gtrack(vecopts)
 
             if monthly_sets:
-                trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_id + '.pkl')
+                trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_idA + '.pkl')
             else:
-                trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
-
+                # trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
+                trackA.ladata_df = mladata[track_idA]   # faster and less I/O which overloads PGDA
 
             if not trackA == None and len(trackA.ladata_df) > 0:
 
-                xov_tmp = track_id
+                xov_tmp = track_idA
                 xov_tmp = xov(vecopts)
 
                 # print(comb)
@@ -98,21 +99,22 @@ def launch_xov(
                 xovers_list = []
                 xover_found = False
                 # loop over all combinations containing track_id
-                for gtrackA, gtrackB in [s for s in comb if track_id in s[0]]:
+                for track_idA, track_idB in [s for s in comb if track_idA in s[0]]:
 
                     # if debug:
                     #    print("Processing " + gtrackA + " vs " + gtrackB)
 
-                    if gtrackB > gtrackA:
+                    if track_idB > track_idA:
                         # try:
                         #        trackB = track_id
                         #        trackB = tracklist[str(gtrackB)]
                         trackB = gtrack(vecopts)
 
                         if monthly_sets:
-                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + gtrackB + '.pkl')
+                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + track_idB + '.pkl')
                         else:
-                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
+                           # trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
+                           trackB.ladata_df = mladata[track_idB]  # faster and less I/O which overloads PGDA
 
                         if not trackB == None and len(trackB.ladata_df) > 0:
 
@@ -138,7 +140,7 @@ def launch_xov(
 
                 # for each gtrackA, write
                 # print([s for s in comb if track_id in s[0]])
-                if [s for s in comb if track_id in s[0]] and len(xov_tmp.xovers) > 0:
+                if [s for s in comb if track_idA in s[0]] and len(xov_tmp.xovers) > 0:
                     # get xover LAT and LON
                     xov_tmp.get_xov_latlon(trackA)
 
@@ -149,15 +151,15 @@ def launch_xov(
                         # Save to temporary folder
                         if not os.path.exists(outdir + 'xov/tmp/'):
                             os.mkdir(outdir + 'xov/tmp/')
-                        xov_tmp.save(outdir + 'xov/tmp/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
+                        xov_tmp.save(outdir + 'xov/tmp/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl')
                         # just pass rough_xovs to next step
                         return xov_tmp.xovers
                     else:
-                        xov_tmp.save(outdir + 'xov/xov_' + gtrackA + '_' + misycmb[par][1] + '.pkl')
+                        xov_tmp.save(outdir + 'xov/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl')
                         print(
-                            'Xov for ' + track_id + ' processed and written to ' + outdir + 'xov/xov_' + gtrackA + '_' +
+                            'Xov for ' + track_idA + ' processed and written to ' + outdir + 'xov/xov_' + track_idA + '_' +
                             misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
-                        return gtrackA
+                        return track_idA
 
         # except:
         #     print(
@@ -166,11 +168,11 @@ def launch_xov(
         else:
 
             #      track = track.load('out/xov_'+gtrackA+'.pkl')
-            print('Xov for ' + track_id + ' already exists in ' + outdir + 'xov_' + track_id + '_' +
+            print('Xov for ' + track_idA + ' already exists in ' + outdir + 'xov_' + track_idA + '_' +
                           misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
     ########################################
-##@profile
+# @profile
 def main(args):
     from prOpt import parallel, outdir, auxdir, local, vecopts
 
@@ -254,15 +256,14 @@ def main(args):
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
 
-    # exit()
+    ###########################
+    startInit = time.time()
 
     if args[-1] == 0:
 
         # -------------------------------
         # File reading and ground-tracks computation
         # -------------------------------
-
-        startInit = time.time()
 
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
         # for orbitA and orbitB.
@@ -281,26 +282,14 @@ def main(args):
           allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
           allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
 
-
-        if misycmb[par][0] == misycmb[par][1]:
-            allFiles = allFilesA
-        else:
-            allFiles = allFilesA + allFilesB
+        # if misycmb[par][0] == misycmb[par][1]:
+        #     allFiles = allFilesA
+        # else:
+        #     allFiles = allFilesA + allFilesB
 
         # print(allFiles)
 
-        endInit = time.time()
-        print(
-            '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
-                (endInit - startInit) / 60.) + ' min -----')
-
-        # -------------------------------
-        # Xovers setup
-        # -------------------------------
-
-        startXov2 = time.time()
-
-        xovnames = ['xov_' + fil.split('.')[0][-10:] for fil in allFiles]
+        # xovnames = ['xov_' + fil.split('.')[0][-10:] for fil in allFiles]
         # trackxov_list = []
 
         # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
@@ -330,23 +319,86 @@ def main(args):
         #         except:
         #             print('Failed to load' + outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
 
-        args = ((fil.split('.')[0][-10:], comb, misycmb, par, outdir + outdir_in) for fil in allFilesA)
+        # read all ladata needed for these combinations
+        # print(comb)
+        # print(comb.shape,np.ravel(comb).shape,len(set(np.ravel(comb))))
+        # print(set(np.ravel(comb)))
+        track_obj = gtrack(vecopts)
+        mladata = {}
+        cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
+             'X_stgprj', 'Y_stgprj']
+        for track_id in  set(np.ravel(comb)):
+            track_obj = track_obj.load(outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+            mladata[track_id] =track_obj.ladata_df.loc[:,cols]
+        # print(len(mladata))
+        # exit()
+            # transform to df to get memory
+            # print("total memory:",pd.from_dict(mladata).memory_usage(deep=True).sum()*1.e-6)
+            # exit()
+
+
+        endInit = time.time()
+        print(
+            '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
+                (endInit - startInit) / 60.) + ' min -----')
+
+        # -------------------------------
+        # Xovers setup
+        # -------------------------------
+
+        startXov2 = time.time()
+
+        args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in) for fil in allFilesA)
+        print("Looking for (potential) xovers within combinations of",len(allFilesA),"tracks (A) with",len(allFilesB),"tracks (B)...")
 
         # loop over all gtracks
         # parallel = 1
         if parallel:
-            # filnams_loop = [fil.split('.')[0][-10:] for fil in allFiles]
-            # print(filnams_loop)
-            # print((mp.cpu_count() - 1))
-            pool = mp.Pool(processes=ncores)  # mp.cpu_count())
-            # store list of tracks with xovs
-            result = pool.map(launch_xov, args)  # parallel
-            pool.close()
-            pool.join()
+
+            if local:
+                # forks everything, if much memory needed, use the remote option with get_context
+                from tqdm.contrib.concurrent import process_map  # or thread_map
+                result = process_map(launch_xov, args, max_workers=ncores, total=len(allFilesA))
+            else:
+                # filnams_loop = [fil.split('.')[0][-10:] for fil in allFiles]
+                # print(filnams_loop)
+                # print((mp.cpu_count() - 1))
+                pool = mp.get_context("spawn").Pool(processes=ncores)  # mp.cpu_count())
+                # store list of tracks with xovs
+                result = pool.map(launch_xov, args)  # parallel
+# ######################################
+#             ncores = mp.cpu_count() - 1  # 8
+#
+            # if local:
+            #     from tqdm import tqdm
+            #     pbar = tqdm(total=len(allFilesA))
+            #
+            #     def update(*a):
+            #         pbar.update()
+            #
+            # result = []
+            # with mp.get_context("spawn").Pool(processes=ncores) as pool:
+            #     for fil in allFilesA:
+            #         if local:
+            #             result.append(pool.apply_async(launch_xov, args=(fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in), callback=update))
+            #         else:
+            #             result.append(pool.apply_async(launch_xov, args=(fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in)))
+            #
+            #     pool.close()
+            #     pool.join()
+            # # result.get blocks processing until all results of apply_async are fetched
+            # result = [r.get() for r in result]
 
         else:
-            result = [launch_xov(arg) for arg in args]  # seq
-            print(result)
+            result = []  # seq
+            if local:
+                from tqdm import tqdm
+                for arg in tqdm(args, total=len(allFilesA)):
+                    result.append(launch_xov(arg))
+            else:
+                for arg in args:
+                    result.append(launch_xov(arg))
+            # print(result)
 
         if len(result)>0:
             if new_algo:
@@ -354,7 +406,7 @@ def main(args):
             else:
                 acttracks = np.unique(np.array([x for x in result if x is not None]).flatten())
         else:
-            print("### PyXover: no xovers between these tracks")
+            print("### PyXover: no xovers between the available tracks")
             exit()
 
         endXov2 = time.time()
@@ -365,10 +417,17 @@ def main(args):
     else: # xovs will be taken from old iter
         rough_xov = pd.DataFrame()
 
+    # called either with results from xov_rough (iter=0) or with empty df and xovers from old solution
     if new_algo:
-        print("Calling another awesome routine")
-        xov_prc_iters_run(outdir_in, iter_in, misycmb[par],rough_xov)
-        exit()
+        print("Calling a new awesome routine!!")
+        xov_prc_iters_run(outdir_in, iter_in, misycmb[par], rough_xov)
+
+    #############################################
+    endXov3 = time.time()
+    print(
+        '----- Runtime Xov rough+fine = ' + str(endXov3 - startInit) + ' sec -----' + str(
+            (endXov3 - startInit) / 60.) + ' min -----')
+    #############################################    # exit()
 
 
 def select_useful_comb(comb, iter, outdir_in):
