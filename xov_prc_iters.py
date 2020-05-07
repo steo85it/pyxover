@@ -158,7 +158,7 @@ def project_chunk(proc_chunk):
 
     return proc_chunk
 
-# @profile
+#@profile
 def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     start = time.time()
@@ -213,9 +213,12 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     mla_proj_list = []
     mla_idx = ['mla_idA', 'mla_idB']
+    mladata = {}
     for track_id in tracks_in_xovs[:]:
-       # if track_id in ['1502130018','1502202222']:
+        # if track_id in ['1502130018','1502202222']:
         # print(track_id)
+        track = track.load(outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+        mladata[track_id] = track.ladata_df
 
         for idx, orb in enumerate(['orbA', 'orbB']):
             # print(idx,orb)
@@ -223,14 +226,15 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
             # load file if year of track corresponds to folder
             if track_id[:2]==str(cmb[idx]):
-                track = track.load(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
+                # track = track.load(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
+                tmp_ladata = mladata[track_id] # faster and less I/O
             else:
                 # print("### Track ",track_id,"does not exist in",outdir + outdir_in + 'gtrack_' + str(cmb[idx]))
                 # track = gtrack(vecopts) # reinitialize track to avoid error "'NoneType' object has no attribute 'load'"
                 continue
 
             # exit()
-            tmp_ladata = track.ladata_df.copy()  # .reset_index()
+            # tmp_ladata = track.ladata_df.copy()  # .reset_index()
 
             # xov df extract and expand to neighb obs
             tmp = old_xovs.loc[old_xovs[orb] == track_id][[mla_idx[idx], 'xOvID', 'LON', 'LAT']].astype(
@@ -359,7 +363,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         n_proc = mp.cpu_count()-1
 
         if local:
-            max_length_proj = 1.e4
+            max_length_proj = 1.e5
         else:
             max_length_proj = 1.e7
 
@@ -443,12 +447,15 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         for pder in ['_' + x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']]:
             # print(pder)
             if chunked_proj_dict:
-                tmp_chunks = np.vstack([v for (k, v) in result_chunks.items() if pder[1:] in k])
+                tmp_chunks = np.vstack([v[:,-4:] for (k, v) in result_chunks.items() if pder[1:] in k])
                 partials_proj_df = pd.DataFrame(tmp_chunks,
-                                                columns=['genid','LON_proj','LAT_proj','LON','LAT','ET_BC'+pder,'dR/' + pder[1:-2],'X_stgprj' + pder,'Y_stgprj' + pder])
+                                                # columns=['genid','LON_proj','LAT_proj','LON','LAT','ET_BC'+pder,'dR/' + pder[1:-2],'X_stgprj' + pder,'Y_stgprj' + pder])
+                                                columns = ['ET_BC' + pder, 'dR/' + pder[1:-2],'X_stgprj' + pder, 'Y_stgprj' + pder])
             else:
                 partials_proj_df = pd.DataFrame(result_chunks[pder[1:]],
                                                 columns=['genid','LON_proj','LAT_proj','LON','LAT','ET_BC'+pder,'dR/' + pder[1:-2],'X_stgprj' + pder,'Y_stgprj' + pder])
+                                                # columns = ['ET_BC' + pder, 'dR/' + pder[1:-2],'X_stgprj' + pder, 'Y_stgprj' + pder])
+
             # partials_proj_df.rename(columns={'x': 'X_stgprj' + pder, 'y': 'Y_stgprj' + pder, "ET_BC": 'ET_BC' + pder,
             #                                  "R": 'dR/' + pder[1:-2]},
             #                         inplace=True)
@@ -570,20 +577,16 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         xov_tmp.xovers = pd.concat(xov_list, axis=0)
 
     else:
-        for idx,xovi in enumerate(xovs_list):
-            if (idx / len(xovs_list) * 100.) % 5. == 0.:
-                print("Working... ", (idx / len(xovs_list) * 100.), "% done ...")
-            fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
+        if local:
+            from tqdm import tqdm
+            for xovi in tqdm(xovs_list):
+                fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
+        else:
+            for xovi in xovs_list:
+                fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
+
             # print(idx)
-        xov_tmp.xovers.info(memory_usage='deep')
 
-        # _ = [fine_xov_proc(arg) for arg in args]  # seq
-
-    # for name, size in sorted(((name, sys.getsizeof(value)) for name, value in locals().items()),
-    #                          key=lambda x: -x[1])[:10]:
-    #     print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
-
-    # print(xov_tmp.xovers)
     # assign parOrb to xov
     # xov_tmp.parOrb_xy = [x.split('_')[0] for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values]  # update partials list
     xov_tmp.parOrb_xy = [x for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns]  # update partials list
