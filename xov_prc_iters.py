@@ -553,12 +553,6 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
             pool.close()
             pool.join()
 
-        for idx,r in enumerate(xov_list):
-            try:
-                print(r.get())
-            except:
-                print("Failed on",idx)
-        print(len(xov_list))
         # blocks until all results are fetched
         tmpl = []
         for idx,r in enumerate(xov_list):
