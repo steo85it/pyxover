@@ -35,7 +35,7 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         os.mkdir(outdir + outdir_in + 'xov/tmp/proj')
 
     if xov_iter==0:
-        msrm_smpl = 10 # same as used for rough_xovs in PyXover (should be automatic)
+        msrm_smpl = 4 # same as used for rough_xovs in PyXover (should be automatic)
     else:
         msrm_smpl = 4  # should be even...
 
@@ -95,43 +95,12 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start)/60.,2), " min!")
 
-<<<<<<< HEAD
-#@profile
-def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
-
-    start = time.time()
-    #
-    # xov_iter = args[-1]
-    # outdir_in = args[2] #"sim/KX1r4_0/0res_1amp/"
-    if xov_iter==0:
-        msrm_smpl = 10 # same as used for rough_xovs in PyXover (should be automatic)
-    else:
-        msrm_smpl = 4  # should be even...
-=======
     return xov_tmp
->>>>>>> 80c1c15295effae38b2ec9ceab03401eb05435ed
 
 ## SUBROUTINES ##
 def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
 
-<<<<<<< HEAD
-    useful_columns = ['LON', 'LAT', 'xOvID', 'orbA', 'orbB', 'mla_idA', 'mla_idB']
-    if len(input_xov)==0:
-        outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
-        # print(outdir_old, outdir_in)
-        tmp_Amat = Amat(vecopts)
-        # print(outdir + outdir_old + 'Abmat*.pkl')
-        tmp = tmp_Amat.load(glob.glob(outdir + outdir_old + 'Abmat*.pkl')[0])
-        #if 'mla_idA' not in tmp.xov.xovers.columns:
-        #   tmp.xov.xovers = tmp.xov.xovers.rename(columns={"ladata_idA": "mla_idA", "ladata_idB": "mla_idB"})
-           #print(tmp.xov.xovers.columns)
-        old_xovs = tmp.xov.xovers[useful_columns]
-    else:
-        old_xovs = input_xov[useful_columns]
-        old_xovs = old_xovs.drop('xOvID',axis=1).rename_axis('xOvID').reset_index()
-=======
     start_prepro = time.time()
->>>>>>> 80c1c15295effae38b2ec9ceab03401eb05435ed
 
     # print(tmp.xov.xovers.columns)
     old_xovs = old_xovs.loc[
@@ -344,7 +313,6 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
     else:
         proc_chunks = part_proj_dict
     if parallel:
-        # n_proc = mp.cpu_count()-5
 
         # distribute work to the worker processes
         with mp.get_context("spawn").Pool(processes=n_proc) as pool:
@@ -454,18 +422,10 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
 
             mla_proj_df = pd.concat([mla_proj_df.reset_index(drop=True)] + partials_df_list, axis=1, sort=False)
     # Save intermediate result
-<<<<<<< HEAD
-    if not os.path.exists(outdir + outdir_in  + 'xov/'):
-        os.mkdir(outdir + outdir_in  + 'xov/')
-    if not os.path.exists(outdir + outdir_in  + 'xov/tmp/'):
-        os.mkdir(outdir + outdir_in  + 'xov/tmp/')
-    mla_proj_df.to_pickle(outdir + outdir_in  + 'xov/tmp/xov_' + str(cmb[0]) + '_' + str(
-=======
     proj_pkl_path = outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
         cmb[1]) + '_project.pkl.gz'
     mla_proj_df.to_pickle(proj_pkl_path)
     print("Projected df saved to:", outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
->>>>>>> 80c1c15295effae38b2ec9ceab03401eb05435ed
         cmb[1]) + '_project.pkl.gz')
     print("Len mla_proj_df after reordering:", len(mla_proj_df))
     ################################################

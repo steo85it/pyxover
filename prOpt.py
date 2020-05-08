@@ -59,7 +59,7 @@ roughn_map = False
 # new algo
 new_algo = True # False #
 # load input xov
-compute_input_xov = False
+compute_input_xov = True
 
 # PyAltSim stuff
 # simulation mode
