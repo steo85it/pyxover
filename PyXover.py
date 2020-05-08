@@ -29,7 +29,7 @@ import spiceypy as spice
 import time
 
 # mylib
-from prOpt import new_xov, vecopts, outdir, debug, monthly_sets, new_algo
+from prOpt import new_xov, vecopts, outdir, debug, monthly_sets, new_algo, compute_input_xov
 # from mapcount import mapcount
 from ground_track import gtrack
 from xov_setup import xov
@@ -149,9 +149,9 @@ def launch_xov(
                         os.mkdir(outdir + 'xov/')
                     if new_algo:
                         # Save to temporary folder
-                        if not os.path.exists(outdir + 'xov/tmp/'):
-                            os.mkdir(outdir + 'xov/tmp/')
-                        xov_tmp.save(outdir + 'xov/tmp/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl')
+                        # if not os.path.exists(outdir + 'xov/tmp/'):
+                        #     os.mkdir(outdir + 'xov/tmp/')
+                        # xov_tmp.save(outdir + 'xov/tmp/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl')
                         # just pass rough_xovs to next step
                         return xov_tmp.xovers
                     else:
@@ -259,7 +259,7 @@ def main(args):
     ###########################
     startInit = time.time()
 
-    if args[-1] == 0:
+    if iter_in == 0 and compute_input_xov:
 
         # -------------------------------
         # File reading and ground-tracks computation

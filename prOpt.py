@@ -57,7 +57,9 @@ full_covar = False
 # roughness map
 roughn_map = False
 # new algo
-new_algo = True
+new_algo = True # False #
+# load input xov
+compute_input_xov = False
 
 # PyAltSim stuff
 # simulation mode
