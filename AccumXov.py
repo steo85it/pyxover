@@ -188,20 +188,10 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     if previous_iter != None and previous_iter.converged:
         print("Weights are fixed as solution converged to 5%")
         # associate weights of old solution to corresponding xov of current one (id by tracks, supposing uniqueness)
-        print(xovi_amat.xov.xovers.orbA)
-        print(xovi_amat.xov.xovers.orbB)
-
-        print(previous_iter.xov.xovers.orbA)
-        print(previous_iter.xov.xovers.orbB)
-        exit()
         tmp_xov_trk = pd.DataFrame(xovi_amat.xov.xovers['orbA']+xovi_amat.xov.xovers['orbB'],columns = ['trksid'])
         tmp_prev_trk = pd.DataFrame(previous_iter.xov.xovers['orbA']+previous_iter.xov.xovers['orbB'],columns = ['trksid'])
         tmp_prev_trk['weights'] = previous_iter.weights.diagonal().T
-        print(tmp_xov_trk.iloc[-10:])
-        print(tmp_prev_trk.iloc[-10:])
-        obs_weights = pd.merge(tmp_xov_trk.iloc[-10:], tmp_xov_trk.iloc[-10:], how='inner', on=['trksid'])
-        print(obs_weights)
-        exit()
+        obs_weights = pd.merge(tmp_xov_trk, tmp_prev_trk, how='left', on=['trksid'])
 
         obs_weights = diags(obs_weights['weights'].fillna(0).values)
         # unsafe if list of xov is different or ordered differently
