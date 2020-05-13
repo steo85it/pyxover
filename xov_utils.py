@@ -7,19 +7,30 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 04-Feb-2020
+import glob
+import os
 
 import numpy as np
 import pandas as pd
 
 # from eval_sol import rmse
+from matplotlib import pyplot as plt
+from scipy.sparse import identity, csr_matrix
 from statsmodels.tools.eval_measures import rmse
 
-from prOpt import tmpdir, vecopts, local, debug
+# from AccumXov import remove_max_dist
+# from accum_utils import analyze_dist_vs_dR
+# from AccumXov import remove_max_dist
+# from accum_utils import analyze_dist_vs_dR
+from prOpt import tmpdir, vecopts, local, debug, sol4_orbpar, sol4_glo
 from project_coord import project_stereographic
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 # @profile
+from xov_setup import xov
+
+
 def get_tracks_rms(xovers_df, plot_xov_tseries=False):
 
     if debug:
@@ -159,3 +170,161 @@ def plot_tracks_histo(postfit_list, filename=tmpdir + '/histo_tracks_eval.png'):
     plt.subplots_adjust(left=0.15)
     plt.savefig(filename)
     plt.clf()
+
+
+def load_combine(xov_pth,vecopts,dataset='sim'):
+    # -------------------------------
+    # Amat setup
+    # -------------------------------
+    pd.set_option('display.max_columns', 500)
+
+    # Combine all xovers and setup Amat
+    xov_ = xov(vecopts)
+
+    # modify this selection to use sub-sample of xov only!!
+    #------------------------------------------------------
+    allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.pkl'))
+
+    # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
+    xov_list = [xov_.load(x) for x in allFiles[:]]
+
+    # orb_unique = [x.xovers['orbA'].tolist() for x in xov_list if len(x.xovers) > 0]
+    # orb_unique.extend([x.xovers['orbB'].tolist() for x in xov_list if len(x.xovers) > 0])
+    # orb_unique = list(set([y for x in orb_unique for y in x]))
+
+    xov_cmb = xov(vecopts)
+    xov_cmb.combine(xov_list)
+
+    # save cloop perturbations to xov_cmb
+    pertdict = [x.pert_cloop for x in xov_list if hasattr(x, 'pert_cloop')]
+    if pertdict != []:
+        xov_cmb.pert_cloop = pd.concat([pd.DataFrame(l) for l in pertdict],axis=1,sort=True).T
+    else:
+        xov_cmb.pert_cloop = pd.DataFrame()
+
+    # save initial cloop perturbations to xov_cmb
+    test_pert = len(list(xov_list[0].pert_cloop_0.values())[0])
+
+    pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
+    if test_pert>0 and len([v for x in pertdict for k,v in x.items() if v]) > 0 and sol4_orbpar != [None]:
+        pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
+        xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
+        xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
+    else:
+        xov_cmb.pert_cloop_0 = pd.DataFrame()
+
+    return xov_cmb
+
+
+def clean_xov(xov, par_list=[]):
+    from accum_utils import analyze_dist_vs_dR
+    from accum_opt import remove_max_dist
+
+    # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
+    # plus remove outliers with median method
+    tmp = xov.xovers.copy()
+
+    # print(tmp[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
+
+    if xov.xovers.filter(regex='^dist_[A,B].*$').empty == False:
+        xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
+
+        tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
+        tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
+        tmp['dist_min_mean'] = tmp.filter(regex='^dist_min[A,B].*$').mean(axis=1)
+        xov.xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
+
+        analyze_dist_vs_dR(xov)
+
+        if remove_max_dist:
+            print(len(xov.xovers[xov.xovers.dist_max < 0.4]),
+              'xovers removed by dist from obs > 0.4km out of ', len(xov.xovers))
+            xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
+            #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+
+    return xov
+
+
+def clean_partials(b, spA, nglbpars, threshold = 1.e6):
+    # spA = spA[:99264,-4:]
+
+    if debug:
+        print("## clean_partials - size pre:", len(b), spA.shape)
+        # print(sol4_glo)
+        # print(len(sol4_glo))
+        # print(spA[:,2].data)
+        plt.clf()
+        fig, axlst = plt.subplots(nglbpars)
+        # exit()
+        # ax.plot(spA_sol4.todense()<2000)
+        if nglbpars>1:
+            for idx in range(nglbpars):
+                axlst[idx].plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+                # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
+                axlst[idx].legend(loc='upper right')
+        else:
+            axlst.plot(spA[:, -nglbpars + 0].todense(), label=sol4_glo[0])
+            # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
+            axlst.legend(loc='upper right')
+        # i.plot(b)
+        plt.savefig(tmpdir + 'b_and_A_pre.png')
+    # exit()
+
+    Nexcluded = 0
+    # print(spla.norm(spA[:,-5:],axis=0))
+    for i in range(len(sol4_glo)):
+        # if an error arises, check the hard-coded list of solved for
+        # global parameters
+        data = spA.tocsc()[:, -i - 1].data
+        median_residuals = np.abs(data - np.median(data, axis=0))
+        sorted = np.sort(median_residuals)
+        std_median = sorted[round(0.68 * len(sorted))]
+
+        std_mean = np.std(data, axis=0)
+        if std_mean>10:
+            print("## Check partials for outliers", i, std_median, std_mean, std_median/std_mean)
+
+        exclude = np.argwhere(median_residuals >= 20 * std_mean).T[0]
+        row2index = dict(zip(range(len(data)),list(set(spA.tocsc()[:, -i - 1].nonzero()[0].tolist()))))
+        exclude = [row2index[i] for i in exclude]
+
+        # remove bad rows, only non-zero columns to keep sparsity
+        J = identity(spA.shape[0], format='csr')
+        row = col = exclude
+        J = J + csr_matrix((np.ones(len(row))*(-1+1.e-20), (row, col)), dtype=np.float32, shape=(spA.shape[0],spA.shape[0]))
+        spA = J * spA
+        b[exclude] = 1e-20
+
+        Nexcluded += len(exclude)
+
+        # keep = list(set(spA.nonzero()[0].tolist()) ^ set(exclude))
+        # print("bad= ", i, np.median(data, axis=0), 4 * std_median, len(median_residuals), np.max(median_residuals),
+        #       len(exclude) / len(median_residuals) * 100., "% ")
+        # print(spA[exclude, -i - 1])
+        # print(np.array(keep))
+        # print("## clean_partials removed ", i, 4 * std_median, np.round((len(b) - len(keep)) / len(b) * 100., 2),
+        #       "% observations")
+        # b = b[keep]
+        # spA = spA[keep, :]
+
+        # print("post= ", i, np.max(spA[:, -i - 1].data))
+
+    print("## clean_partials - size excluded:", Nexcluded, Nexcluded/len(b)*100.,"%") #, len(keep))
+    if debug:
+        plt.clf()
+        fig, axlst = plt.subplots(nglbpars)
+        if nglbpars>1:
+            for idx in range(nglbpars):
+                axlst[idx].plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+                # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
+                axlst[idx].legend(loc='upper right')
+        else:
+            axlst.plot(spA[:, -nglbpars + 0].todense(), label=sol4_glo[0])
+            # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
+            axlst.legend(loc='upper right')
+        plt.savefig(tmpdir + 'b_and_A_post.png')
+
+    # print(spla.norm(spA[:,-5:],axis=0))
+    # exit()
+
+    return b, spA

@@ -161,7 +161,13 @@ class xov:
         # print([x.xovers for x in xov_list])
         if len(xov_list) > 0:
             self.xovers = pd.concat([x.xovers for x in xov_list], sort=True)
-            # self.xovers= self.xovers.loc[self.xovers.orbA == '1307210040'].iloc[:1000]
+            # check for duplicate rows
+            print("len xovers (pre duplicate search):", len(self.xovers))
+            self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'],errors='ignore').drop_duplicates()
+                # .reset_index().rename(
+                # columns={"index": "xOvID"})
+            print("new len xovers (post duplicates):", len(self.xovers))
+            # reset index to have a sequential one
             self.xovers = self.xovers.reset_index(drop=True)
             self.xovers['xOvID'] = self.xovers.index
             # print(self.xovers)postpro_xov_elev

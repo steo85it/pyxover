@@ -10,6 +10,7 @@ import warnings
 
 import pandas as pd
 
+import accum_utils
 from Amat import Amat
 import AccumXov as xovacc
 
@@ -179,7 +180,7 @@ def main(args):
                            outdir_in.split('/')[-2] + '/Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
             import_prev_sol = hasattr(tmp,'sol4_pars')
             if import_prev_sol:
-                orb_sol, glo_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
+                orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
         # epo_in=[]
         tracks = []
         for track_id, infil in zip(tracknames, allFiles):

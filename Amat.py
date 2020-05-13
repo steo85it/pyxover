@@ -109,7 +109,7 @@ class Amat:
 
         xovers_df = self.xov.xovers.reset_index(drop=True)
         # TODO check if this makes sense, seems redundant or second row taking wrong input from self....
-        parOrb_xy = list(set([part.split('_')[0] for part in sorted(self.xov.parOrb_xy)]))
+        # parOrb_xy = list(set([part.split('_')[0] for part in sorted(self.xov.parOrb_xy)]))
         parOrb_xy = list(set([part for part in sorted(self.xov.parOrb_xy)]))
         # print(parOrb_xy)
         parGlo_xy = sorted(self.xov.parGlo_xy)

@@ -1,32 +1,34 @@
 import glob
+import multiprocessing as mp
 import os
+import time
 from collections import defaultdict
+
+import numpy as np
+import pandas as pd
 
 from Amat import Amat
 from ground_track import gtrack
 from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel, local, debug, compute_input_xov
-import numpy as np
-import pandas as pd
-import time
 from project_coord import project_stereographic
+# from util import get_size
 from xov_setup import xov
-import multiprocessing as mp
+
 # from memory_profiler import profile
 
 # set number of processors to use
 
 n_proc = mp.cpu_count() - 1
 import_proj = False
+import_abmat = (True,outdir+"sim/KX2_0/0res_1amp/Abmat*.pkl")
 
 
 ## MAIN ##
 # @profile
-def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
-
-
+def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
     start = time.time()
 
-    #create useful dirs
+    # create useful dirs
     if not os.path.exists(outdir + outdir_in + 'xov/'):
         os.mkdir(outdir + outdir_in + 'xov/')
     if not os.path.exists(outdir + outdir_in + 'xov/tmp/'):
@@ -48,12 +50,18 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
         useful_columns = ['LON', 'LAT', 'xOvID', 'orbA', 'orbB', 'mla_idA', 'mla_idB']
 
         # depending on available input xov, get xovers location from AbMat or from xov_rough
-        if xov_iter>0: #len(input_xov)==0:
-            outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
+        if xov_iter > 0 or import_abmat[0]:  # len(input_xov)==0:
+            # read old abmat file
+            if xov_iter > 0:
+                outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
+                abmat = outdir + outdir_old + 'Abmat*.pkl'
+            else: # read a user defined abmat file
+                abmat = import_abmat[1]
+
             # print(outdir_old, outdir_in)
             tmp_Amat = Amat(vecopts)
             # print(outdir + outdir_old + 'Abmat*.pkl')
-            tmp = tmp_Amat.load(glob.glob(outdir + outdir_old + 'Abmat*.pkl')[0])
+            tmp = tmp_Amat.load(glob.glob(abmat)[0])
             old_xovs = tmp.xov.xovers[useful_columns]
         else:
             input_xov_path = outdir + outdir_in + 'xov/tmp/xovin_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl.gz'
@@ -61,10 +69,10 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
                 input_xov = pd.read_pickle(input_xov_path)
                 print("Input xovs read from", input_xov_path, ". Done!")
             else:
-                #save to file (just in case...)
+                # save to file (just in case...)
                 input_xov.to_pickle(input_xov_path)
             old_xovs = input_xov[useful_columns]
-            old_xovs = old_xovs.drop('xOvID',axis=1).rename_axis('xOvID').reset_index()
+            old_xovs = old_xovs.drop('xOvID', axis=1).rename_axis('xOvID').reset_index()
 
         # preprocessing of old xov and mla_data
         mla_proj_df, part_proj_dict = prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb)
@@ -74,10 +82,10 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     # or just retrieve them from file
     else:
-        proj_pkl_path = outdir + outdir_in  + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
+        proj_pkl_path = outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
             cmb[1]) + '_project.pkl.gz'
         mla_proj_df = pd.read_pickle(proj_pkl_path)
-        print("mla_proj_df loaded from",proj_pkl_path,". Done!!")
+        print("mla_proj_df loaded from", proj_pkl_path, ". Done!!")
 
     # compute new xovs
     xov_tmp = compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb)
@@ -90,16 +98,17 @@ def xov_prc_iters_run(outdir_in, xov_iter,cmb,input_xov):
 
     end = time.time()
 
-    print('Xov for ' + str(cmb) + ' processed and written to ' + outdir + outdir_in + 'xov/xov_' + str(cmb[0]) + '_' + str(
+    print('Xov for ' + str(cmb) + ' processed and written to ' + outdir + outdir_in + 'xov/xov_' + str(
+        cmb[0]) + '_' + str(
         cmb[1]) + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
-    print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start)/60.,2), " min!")
+    print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
     return xov_tmp
 
+
 ## SUBROUTINES ##
 def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
-
     start_prepro = time.time()
 
     # print(tmp.xov.xovers.columns)
@@ -254,12 +263,13 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
 
     # concatenate lists
     mla_proj_df = pd.concat(mla_proj_list, sort=False).reset_index(drop=True)
-    mla_proj_df.rename(columns={"seqid_x": "seqid_xov", "seqid_y": "seqid_mla"}, inplace=True) # remember that seqid_mla is not continuous because of eventual bad obs
+    mla_proj_df.rename(columns={"seqid_x": "seqid_xov", "seqid_y": "seqid_mla"},
+                       inplace=True)  # remember that seqid_mla is not continuous because of eventual bad obs
     # print(mla_proj_df)
-    part_proj_dict = {x:np.vstack(y) for x,y in part_proj_dict.items()}
-    part_proj_dict = dict(zip([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']],part_proj_dict.values()))
+    part_proj_dict = {x: np.vstack(y) for x, y in part_proj_dict.items()}
+    part_proj_dict = dict(zip([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']], part_proj_dict.values()))
 
-    part_proj_dict.update({'none': mla_proj_df[['genid','LON_proj','LAT_proj','LON','LAT']].values})
+    part_proj_dict.update({'none': mla_proj_df[['genid', 'LON_proj', 'LAT_proj', 'LON', 'LAT']].values})
 
     # free-up memory
     mladata.clear()
@@ -273,10 +283,12 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
 
     end_prepro = time.time()
 
-    print("Pre-processing finished after ", int(end_prepro - start_prepro), "sec or ", round((end_prepro - start_prepro) / 60., 2),
+    print("Pre-processing finished after ", int(end_prepro - start_prepro), "sec or ",
+          round((end_prepro - start_prepro) / 60., 2),
           " min!")
 
     return mla_proj_df, part_proj_dict
+
 
 def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
     start_proj = time.time()
@@ -436,8 +448,8 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
 
     return mla_proj_df
 
-def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
 
+def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     start_finexov = time.time()
     # initialize xov object
     xovs_list = mla_proj_df.xovid.unique()
@@ -487,10 +499,10 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
 
                 if local:
                     xov_list.append(pool.apply_async(fine_xov_proc, args=(
-                    xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp), callback=update))
+                        xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp), callback=update))
                 else:
                     xov_list.append(pool.apply_async(fine_xov_proc, args=(
-                    xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)))
+                        xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)))
 
             pool.close()
             pool.join()
@@ -543,17 +555,18 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
           len(xovs_list), "xovers!")
     return xov_tmp
 
+
 ## SUBSUB ##
-#@profile
-def fine_xov_proc(xovi,df,xov_tmp): #args):
+# @profile
+def fine_xov_proc(xovi, df, xov_tmp):  # args):
 
     df = df.reset_index(
         drop=True).reset_index()
     df.rename(columns={'index': 'genID', 'seqid_mla': 'seqid'}, inplace=True)
 
-    if len(df)>0: # and {'LON_proj','LAT_proj'}.issubset(df.columns):
+    if len(df) > 0:  # and {'LON_proj','LAT_proj'}.issubset(df.columns):
         xov_tmp.proj_center = {'lon': df['LON_proj'].values[0], 'lat': df['LAT_proj'].values[0]}
-        df.drop(columns=['LON_proj','LAT_proj'],inplace=True)
+        df.drop(columns=['LON_proj', 'LAT_proj'], inplace=True)
     else:
         if debug:
             print("### Empty proj_df_xovi on xov #", xovi)
@@ -588,7 +601,7 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
 
     # post-processing
     xovtmp = xov_tmp.postpro_xov_elev(xov_tmp.ladata_df, out)
-    xovtmp = pd.DataFrame(xovtmp,index=[0]) # TODO possibly avoid, very time consuming
+    xovtmp = pd.DataFrame(xovtmp, index=[0])  # TODO possibly avoid, very time consuming
 
     if len(xovtmp) > 1:
         if debug:
@@ -609,8 +622,9 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
         xov_tmp.set_partials()
     else:
         # retrieve epoch to, e.g., trace tracks quality (else done inside set_partials)
-        xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(np.reshape(xov_tmp.get_dt(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
-                                                   columns=['dtA', 'dtB'])], axis=1)
+        xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(
+            np.reshape(xov_tmp.get_dt(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
+            columns=['dtA', 'dtB'])], axis=1)
 
     # Remap track names to df
     xov_tmp.xovtmp['orbA'] = xov_tmp.xovtmp['orbA'].map({v: k for k, v in xov_tmp.tracks.items()})
@@ -640,6 +654,7 @@ def fine_xov_proc(xovi,df,xov_tmp): #args):
 
     return xov_tmp.xovtmp
 
+
 ## UTILITIES ##
 def get_xov_latlon(xov, df):
     """
@@ -661,21 +676,20 @@ def get_xov_latlon(xov, df):
 
     return xov
 
-def project_chunk(proc_chunk):
 
+def project_chunk(proc_chunk):
     # chunk_res = project_stereographic(proc_chunk['LON'],
     #                                   proc_chunk['LAT'],
     #                                   proc_chunk['LON_proj'],
     #                                   proc_chunk['LAT_proj'],
     #                                   R=vecopts['PLANETRADIUS'])
-    chunk_res = project_stereographic(proc_chunk[:,3],
-                                      proc_chunk[:,4],
-                                      proc_chunk[:,1],
-                                      proc_chunk[:,2],
+    chunk_res = project_stereographic(proc_chunk[:, 3],
+                                      proc_chunk[:, 4],
+                                      proc_chunk[:, 1],
+                                      proc_chunk[:, 2],
                                       R=vecopts['PLANETRADIUS'])
     # print(pd.DataFrame(chunk_res).T)
     # proc_chunk[['x','y']] = pd.DataFrame(chunk_res).T
-
 
     # proc_chunk['x'], proc_chunk['y'] = zip(*proc_chunk.apply(
     #     lambda x: project_stereographic(x['LON'], x['LAT'], x['LON_proj'], x['LAT_proj'],
@@ -685,9 +699,10 @@ def project_chunk(proc_chunk):
     # chunk_res.index = proc_chunk.index
     # print(proc_chunk[:,-1])
     # print(np.asarray(chunk_res))
-    proc_chunk = np.vstack([proc_chunk[:,0],np.asarray(chunk_res)]).T
+    proc_chunk = np.vstack([proc_chunk[:, 0], np.asarray(chunk_res)]).T
 
     return proc_chunk
+
 
 def get_ds_attrib():
     # prepare pars keys, lists and dicts
@@ -696,6 +711,7 @@ def get_ds_attrib():
     delta_pars = {**parOrb, **parGlo}
     etbcs = ['ET_BC_' + x + y for x in list(parOrb.keys()) + list(parGlo.keys()) for y in ['_p', '_m']]
     return delta_pars, etbcs, pars
+
 
 ## MAIN ##
 if __name__ == '__main__':

@@ -16,6 +16,9 @@ import seaborn as sns
 from scipy.sparse import diags
 
 import AccumXov as xovacc
+import accum_utils
+import plot_utils
+import xov_utils
 from Amat import Amat
 from accum_utils import get_xov_cov_tracks
 from lib.xovres2weights import get_roughness_at_coord, get_interpolation_weight
@@ -38,8 +41,8 @@ def xovnum_plot():
 
     if True:
         #xov_cmb = xov.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim_mlatimes/0res_1amp/',vecopts)
-        xov_sim = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/1301_sph_0/0res_1amp/', vecopts)
-        xov_real = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/1301/0res_1amp/', vecopts)
+        xov_sim = xov_utils.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/1301_sph_0/0res_1amp/', vecopts)
+        xov_real = xov_utils.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/1301/0res_1amp/', vecopts)
         # xov_real = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim/mlatimes/full/0res_1amp/', vecopts)
         #xov_real = xovacc.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/real/xov/', vecopts,'real')
 
@@ -216,41 +219,40 @@ def draw_map(m, scale=0.2):
 def rmse(y, y_pred=0):
     return np.sqrt(np.mean(np.square(y - y_pred)))
 
+#####################################################
 def analyze_sol(sols, ref_sol = '', subexp = ''):
     from matplotlib.cm import get_cmap
+
+    # run options
+    plot_resmap = True
+    plot_reshisto= True
+    plot_sol_errors = True
+    plot_weights_components = False # True #
+    compare_spk = False
 
     vecopts = {}
     dfs = []
     for sol in sols:
         tmp = Amat(vecopts)
         tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
-        # print(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')
-        # tmp = tmp.load(glob.glob(outdir+'Abmat/KX1r4_IAU2/'+subexp+'/Abmat_sim_*_'+subexp+'.pkl')[0])
-
-        # if ref_sol != '':
-        #     ref = Amat(vecopts)
-        #     ref = ref.load(outdir+'sim/'+subfolder+ref_sol+'/'+subexp+'/Abmat_sim_'+ref_sol.split('_')[0]+'_'+str(int(ref_sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
-            # if correlation matrix wanted (long, only prints >0.95)
-            # print(ref.corr_mat())
-
-        # if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
-        #
-        #     add_xov_separation(tmp)
-        #     xovacc.analyze_dist_vs_dR(tmp.xov)
-        #
-        #     if remove_max_dist:
-        #         print(len(tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]),
-        #               'xovers removed by dist from obs > 1km')
-        #         tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]
-        #         tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_min_mean < 1]
-
-        # interp_weights = tmp.xov.xovers.copy()
 
         # select subset, e.g., for tests
         tmp.xov.xovers = tmp.xov.xovers.loc[:,:]
         dfs.append(tmp)
 
-    plot_weights_components = False
+    if plot_resmap:
+        for idx,amat in enumerate(dfs):
+            plot_utils.plt_geo_dR(sols[idx] + '_' + subexp, amat.xov, truncation=20)
+
+    if plot_reshisto:
+        for idx,amat in enumerate(dfs):
+            # if ref_sol != '':
+            #     xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
+            #                     amat.xov.xovers,xov_ref=ref.xov.xovers)
+            # else:
+            plot_utils.plt_histo_dR(sols[idx] + '_' + subexp,
+                                    amat.xov.xovers, xlim=100)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
+
     if plot_weights_components:
         check_weights = pd.DataFrame()
         check_weights['interp_weights'] = get_interpolation_weight(tmp.xov).weight
@@ -263,6 +265,9 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
                 ['xOvID', 'LON', 'LAT', 'dR', 'orbA', 'orbB']]
             tmp_trkw['huber'] = 1.
             tmp_trkw['dtA'] = tmp_trkw['LAT'].values
+            tmp_trkw=tmp_trkw.loc[(tmp_trkw.orbA.str.startswith('140706'))] # or (tmp_trkw.orbB.str.startswith('140706'))]
+            print(tmp_trkw)
+        # exit()
 
         print("pre xovcov types", tmp_trkw.dtypes)
         check_weights['tracks_weights'] = get_xov_cov_tracks(df=tmp_trkw, plot_stuff=False).diagonal()
@@ -298,107 +303,53 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         print("mean:",check_weights.mean())
         print("median:",check_weights.median())
 
+        # exit()
+
+    if compare_spk:
+        sol, tmp = compare_MLA_spk(dfs, sol, sols, tmp)
+
+
+    if plot_sol_errors:
+        for idx,amat in enumerate(dfs):
+
+            # compute formal errors
+            sol = amat.sol_dict['sol']
+            formal_err = amat.sol_dict['std']
+            print(formal_err)
+
+            # compute a posteriori
+            ATP = amat.spA.T * amat.weights
+            # degf = len(amat.xov.xovers['dR'].values) - len(sol4_glo)
+            m_0 = amat.resid_wrmse
+            # iters_rms.append([tst_id, np.sqrt(lTPl/degf)[0][0], m_0, degf])
+            PA = amat.weights * amat.spA
+            ell = diags(np.abs(amat.b))
+
+            # if idx == len(dfs[:])-1:
+            posterr = np.linalg.pinv((ATP * ell * PA).todense())
+            posterr = np.sqrt(posterr.diagonal())
+            m_X = dict(zip(amat.sol4_pars,np.ravel(m_0 * posterr[0])))
+
+            apost_err = m_X
+            print(apost_err)
+
+            df = pd.DataFrame([sol,formal_err,apost_err]).T
+            df.columns = ['sol','formal_LS','apost_uw']
+
+            df = df.sort_index()
+            print(df)
+            print("### plot_sol_errors: m_X produced for sol", sols[idx])
+
+    exit()
+
     # print([x.xov.xovers.dR for x in dfs])
     # exit()
 
-    # uniform datasets
-    dfA = dfs[0].xov.xovers[['dR','orbA','orbB']]
-    dfA['dR'] = dfA.dR.abs()
-    dfA.columns = ['dRA','orbA','orbB']
 
-    dfB = dfs[1].xov.xovers[['dR','orbA','orbB']]
-    dfB['dR'] = dfB.dR.abs()
-    dfB.columns = ['dRB','orbA','orbB']
-
-    dfC = dfs[2].xov.xovers[['dR','orbA','orbB']]
-    dfC['dR'] = dfC.dR.abs()
-    dfC.columns = ['dRC','orbA','orbB']
-
-    tmp = pd.merge(dfA, dfB, how='left', left_on=['orbA', 'orbB'], right_on=['orbA', 'orbB'])
-    df_merged = pd.merge(tmp, dfC, how='left', left_on=['orbA', 'orbB'], right_on=['orbA', 'orbB'])
-    print(df_merged)
-
-    # define subsets by year
-    subs = ['']+[str(x) for x in np.arange(11,16)]
-
-    fig = plt.figure("resid_iters")
-
-    for sub in subs[:1]:
-        print("sub=",sub)
-        plt.clf()
-        if sub == '':
-            df = df_merged.filter(regex='dR?')
-        else:
-            df = df_merged.loc[(df_merged['orbA'].str.startswith(sub))&(df_merged['orbB'].str.startswith(sub))].filter(regex='dR?')
-        df.columns = sols
-        df.plot.hist(alpha=0.5,  density=False, bins=200, range=[0,1000])
-        plt.title('Histogram of xovers discrepancies')
-        plt.xlim([0., 1000.0])
-        plt.xlabel('meters')
-        plt.ylabel('# of xovs (log)')
-        plt.semilogy()
-
-        plt.savefig(tmpdir + "histo_resid_"+sub+".png")
-
-    df_merged = df_merged.astype({'orbA': 'int32', 'orbB': 'int32'})
-    # select only if acceptable xovs (< 1km)
-    acceptif = (df_merged.dRA<2.e3)&(df_merged.dRB<2.e3)&(df_merged.dRC<2.e3)
-
-    total_occ_tracks = pd.DataFrame([df_merged['orbA'].value_counts(), df_merged['orbB'].value_counts()]).T.fillna(0).sum \
-        (axis=1).sort_values(ascending=False)
-    tracks = list(total_occ_tracks.index.values)[:]
-
-    dRs = ['dRA','dRB','dRC']
-    tot = len(df_merged)
-    print("Out of ", tot,"xovers:")
-    for idx, dR in enumerate(dRs):
-        print(sols[idx],"has ",round(df_merged.loc[df_merged[dR]<100.,dR].count()/tot*100.,2),"% xovers with dR<100 m,",
-              round(df_merged.loc[df_merged[dR]<50.,dR].count()/tot*100.,2),"% xovers with dR <50 m and",
-              round(df_merged.loc[df_merged[dR]<10.,dR].count()/tot*100.,2),"% xovers with dR <10 m.")
-
-    df_median = []
-    df_mean = []
-    df_merged = df_merged.loc[acceptif]
-    for tr in tracks[:]:
-        df = df_merged.loc[((df_merged.orbA == int(tr)) | (df_merged.orbB == int(tr)))]
-        df_mean.append(df.filter(regex='dR?').mean(axis=0).append(pd.Series([tr],index=['track'])))
-        df_median.append(df.filter(regex='dR?').median(axis=0).append(pd.Series([tr],index=['track'])))
-
-
-
-    df_median = pd.concat(df_median, axis=1).T.set_index('track').abs()
-    df_median.index = df_median.index.map(str)
-    df_median.columns = sols
-    df_median.dropna(inplace=True)
-
-    df_median.plot.hist(alpha=0.5, density=False, bins=500)
-    plt.title('Histogram of tracks median dR')
-    plt.xlim([0., 300.0])
-    plt.xlabel('meters')
-    plt.ylabel('# of tracks')
-    # plt.semilogy()
-
-    plt.savefig(tmpdir + "histo_tracks1.png")
-
-    print(df_median.sort_index())
-    print(df_median.mean(axis=0))
-    print(df_median.std(axis=0))
-    for sol in sols:
-        print("##############")
-        print("best 10 by",sol)
-        print(df_median.sort_values(by=sol).iloc[:10,:])
-        print("##############")
-        print("worst 10 by",sol)
-        print(df_median.sort_values(by=sol).iloc[-10:,:])
-
-
-
-        # print(df.filter(regex='dR?').std(axis=0))
-
-    exit()
-
-
-    exit()
+    # exit()
+    #
+    #
+    # exit()
     # exit()
 
     fig = plt.figure("resid_iters")
@@ -419,7 +370,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
     plt.legend()
     plt.savefig(tmpdir + "histo_resid.png")
 
-    exit()
+    # exit()
 
     # get roughness at 700 meters from http://www.planetary.brown.edu/html_pages/mercury_roughness-maps.html
     # ref baseline in meters (depending on input map)
@@ -480,8 +431,8 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         # plt.close()
 
     if True:
-        orb_sol, glb_sol, sol_dict = xovacc.analyze_sol(tmp, tmp.xov)
-        xovacc.print_sol(orb_sol, glb_sol, tmp.xov, tmp)
+        orb_sol, glb_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
+        accum_utils.print_sol(orb_sol, glb_sol, tmp.xov, tmp)
 
         # trackA = gtrack(vecopts)
         # trackA = trackA.load('/home/sberton2/Works/NASA/Mercury_tides/out/sim/1301_'+sol+'_0/0res_1amp/gtrack_13/gtrack_' + '1301142347' + '.pkl')
@@ -600,17 +551,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             plt.savefig(tmpdir + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
             plt.clf()
 
-    if True:
 
-        if ref_sol != '':
-            xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
-                            tmp.xov.xovers,xov_ref=ref.xov.xovers)
-        else:
-            xovacc.plt_histo_dR(sol+subexp, mean_dR, std_dR,
-                            tmp.xov.xovers)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
-
-        xovacc.plt_geo_dR(sol+subexp, tmp.xov)
-        # exit()
 
     if False:
         tmp_plot = tmp.xov.xovers.copy()
@@ -737,6 +678,89 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             fig.savefig(tmpdir+'mla_dh2_'+sol+'.png')
             plt.clf()
             plt.close()
+
+
+def compare_MLA_spk(dfs, sol, sols, tmp):
+    # uniform datasets
+    dfA = dfs[0].xov.xovers[['dR', 'orbA', 'orbB']]
+    dfA['dR'] = dfA.dR.abs()
+    dfA.columns = ['dRA', 'orbA', 'orbB']
+    dfB = dfs[1].xov.xovers[['dR', 'orbA', 'orbB']]
+    dfB['dR'] = dfB.dR.abs()
+    dfB.columns = ['dRB', 'orbA', 'orbB']
+    dfC = dfs[2].xov.xovers[['dR', 'orbA', 'orbB']]
+    dfC['dR'] = dfC.dR.abs()
+    dfC.columns = ['dRC', 'orbA', 'orbB']
+    tmp = pd.merge(dfA, dfB, how='left', left_on=['orbA', 'orbB'], right_on=['orbA', 'orbB'])
+    df_merged = pd.merge(tmp, dfC, how='left', left_on=['orbA', 'orbB'], right_on=['orbA', 'orbB'])
+    print(df_merged)
+    # define subsets by year
+    subs = [''] + [str(x) for x in np.arange(11, 16)]
+    fig = plt.figure("resid_iters")
+    for sub in subs[:1]:
+        print("sub=", sub)
+        plt.clf()
+        if sub == '':
+            df = df_merged.filter(regex='dR?')
+        else:
+            df = df_merged.loc[
+                (df_merged['orbA'].str.startswith(sub)) & (df_merged['orbB'].str.startswith(sub))].filter(regex='dR?')
+        df.columns = sols
+        df.plot.hist(alpha=0.5, density=False, bins=200, range=[0, 1000])
+        plt.title('Histogram of xovers discrepancies')
+        plt.xlim([0., 1000.0])
+        plt.xlabel('meters')
+        plt.ylabel('# of xovs (log)')
+        plt.semilogy()
+
+        plt.savefig(tmpdir + "histo_resid_" + sub + ".png")
+    df_merged = df_merged.astype({'orbA': 'int32', 'orbB': 'int32'})
+    # select only if acceptable xovs (< 1km)
+    acceptif = (df_merged.dRA < 2.e3) & (df_merged.dRB < 2.e3) & (df_merged.dRC < 2.e3)
+    total_occ_tracks = pd.DataFrame([df_merged['orbA'].value_counts(), df_merged['orbB'].value_counts()]).T.fillna(
+        0).sum \
+        (axis=1).sort_values(ascending=False)
+    tracks = list(total_occ_tracks.index.values)[:]
+    dRs = ['dRA', 'dRB', 'dRC']
+    tot = len(df_merged)
+    print("Out of ", tot, "xovers:")
+    for idx, dR in enumerate(dRs):
+        print(sols[idx], "has ", round(df_merged.loc[df_merged[dR] < 100., dR].count() / tot * 100., 2),
+              "% xovers with dR<100 m,",
+              round(df_merged.loc[df_merged[dR] < 50., dR].count() / tot * 100., 2), "% xovers with dR <50 m and",
+              round(df_merged.loc[df_merged[dR] < 10., dR].count() / tot * 100., 2), "% xovers with dR <10 m.")
+    df_median = []
+    df_mean = []
+    df_merged = df_merged.loc[acceptif]
+    for tr in tracks[:]:
+        df = df_merged.loc[((df_merged.orbA == int(tr)) | (df_merged.orbB == int(tr)))]
+        df_mean.append(df.filter(regex='dR?').mean(axis=0).append(pd.Series([tr], index=['track'])))
+        df_median.append(df.filter(regex='dR?').median(axis=0).append(pd.Series([tr], index=['track'])))
+    df_median = pd.concat(df_median, axis=1).T.set_index('track').abs()
+    df_median.index = df_median.index.map(str)
+    df_median.columns = sols
+    df_median.dropna(inplace=True)
+    df_median.plot.hist(alpha=0.5, density=False, bins=500)
+    plt.title('Histogram of tracks median dR')
+    plt.xlim([0., 300.0])
+    plt.xlabel('meters')
+    plt.ylabel('# of tracks')
+    # plt.semilogy()
+    plt.savefig(tmpdir + "histo_tracks1.png")
+    print(df_median.sort_index())
+    print(df_median.mean(axis=0))
+    print(df_median.std(axis=0))
+    for sol in sols:
+        print("##############")
+        print("best 10 by", sol)
+        print(df_median.sort_values(by=sol).iloc[:10, :])
+        print("##############")
+        print("worst 10 by", sol)
+        print(df_median.sort_values(by=sol).iloc[-10:, :])
+
+        # print(df.filter(regex='dR?').std(axis=0))
+    return sol, tmp
+
 
 # Check convergence over iterations
 # @profile
@@ -1152,7 +1176,7 @@ if __name__ == '__main__':
 
     simulated_data = False #True
 
-    analyze_sol(sols=['AGTP_0','AGS_0', 'KX1_0'], ref_sol='', subexp = '0res_1amp')
+    analyze_sol(sols=['KX2_0','KX2_1'], ref_sol='', subexp = '0res_1amp') # 'AGTP_0','AGS_0',
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp4_0',subexp='3res_20amp')
