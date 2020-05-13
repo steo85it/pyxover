@@ -49,7 +49,7 @@ sim_altdata = 0
 remove_max_dist = False
 remove_3sigma_median = False
 remove_dR200 = False
-downsize = True
+downsize = False
 # only applied if the above ones are false
 clean_part = True
 huber_threshold = 30
@@ -1253,6 +1253,7 @@ def main(arg):
     data_sim = arg[1]
     ext_iter = arg[2]
 
+    downsize = True
     if ext_iter>0:
         downsize = False
     
@@ -1317,6 +1318,7 @@ def main(arg):
             prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
 
             max_xovers = 8.e5
+            #downsize = True
             if downsize and len(xovi_amat.xov.xovers)>max_xovers:
                 xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers,max_xovers=max_xovers)
                 xovi_amat.xov.combine([xovi_amat.xov])
