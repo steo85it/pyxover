@@ -5,6 +5,7 @@ import pandas as pd
 import seaborn as sns
 
 import AccumXov as xovacc
+import xov_utils
 from xov_setup import xov
 
 
@@ -13,7 +14,7 @@ def xovnum_plot():
 
     if False:
         # xov_cmb = xov.load_combine('/home/sberton2/Works/NASA/Mercury_tides/out/sim_mlatimes/0res_1amp/',vecopts)
-        xov_cmb = xovacc.load_combine('/att/nobackup/sberton2/MLA/out/mladata/', vecopts)
+        xov_cmb = xov_utils.load_combine('/att/nobackup/sberton2/MLA/out/mladata/', vecopts)
 
         mon = [i for i in range(1, 13)]
         yea = [i for i in range(11, 16)]
