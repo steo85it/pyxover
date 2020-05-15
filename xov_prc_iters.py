@@ -134,7 +134,8 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     for track_id in tracks_in_xovs[:]:
         # if track_id in ['1502130018','1502202222']:
         # print(track_id)
-        track = track.load(outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+        trackfil = outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
+        track = track.load(trackfil)
         mladata[track_id] = track.ladata_df
 
     for track_id in tracks_in_xovs[:]:
