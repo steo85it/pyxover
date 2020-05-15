@@ -9,7 +9,7 @@ import pandas as pd
 
 from Amat import Amat
 from ground_track import gtrack
-from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel, local, debug, compute_input_xov
+from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel, local, debug, compute_input_xov, new_xov
 from project_coord import project_stereographic
 # from util import get_size
 from xov_setup import xov
@@ -18,7 +18,7 @@ from xov_setup import xov
 
 # set number of processors to use
 
-n_proc = mp.cpu_count() - 1
+n_proc = mp.cpu_count() - 3
 import_proj = False
 import_abmat = (True,outdir+"sim/KX2_0/0res_1amp/Abmat*.pkl")
 
@@ -27,6 +27,12 @@ import_abmat = (True,outdir+"sim/KX2_0/0res_1amp/Abmat*.pkl")
 # @profile
 def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
     start = time.time()
+
+    # Exit process if file already exists and no option to recreate
+    outpath = outdir + outdir_in + 'xov/xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'
+    if (new_xov != 2) and (os.path.isfile(outpath)):
+        print("Fine xov", outpath," already exists. Stop!")
+        return
 
     # create useful dirs
     if not os.path.exists(outdir + outdir_in + 'xov/'):
@@ -122,6 +128,11 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
 
     tracks_in_xovs = np.unique(old_xovs[['orbA', 'orbB']].values)
     print("Processing", len(tracks_in_xovs), "tracks, previously resulting in", len(old_xovs), "xovers.")
+    # check if tracks to process in this combination
+    if len(tracks_in_xovs)==0:
+        print("No tracks to be processed. Stop!")
+        exit()
+
     track = gtrack(vecopts)
     delta_pars, etbcs, pars = get_ds_attrib()
     # part_proj_dict = dict.fromkeys([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']], [])
@@ -553,7 +564,7 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
 
         print(xov_tmp.xovers)  # .loc[xov_tmp.xovers['orbA']=='1504030011'])
     end_finexov = time.time()
-    print("Fine_xov finished after", int(end_finexov - start_finexov), "sec or ",
+    print("Fine_xov for", str(cmb) ,"finished after", int(end_finexov - start_finexov), "sec or ",
           round((end_finexov - start_finexov) / 60., 2), " min and located", len(xov_tmp.xovers), "out of previous",
           len(xovs_list), "xovers!")
     return xov_tmp
