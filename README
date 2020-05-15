@@ -26,6 +26,12 @@ Processing
    setting configuration to run python3 launch_test X Y 2, where X = 0 unless when testing
    the impact of different topographies; Y is the grid element (YYMM vs YYMM) to process; 
    2 launches the xover analysis
+   Xovers analysis is based on gtrack files generated in prOpt.outdir by PyGeoloc (step 1).
+   Depending on settings (prOpt.compute_input_xov and xov_prc_iters.import_abmat), the xovers location
+   is either computed using all combinations of subsampled tracks (time consuming) or imported from previous knowledge.
+   Then, subtracks are extracted from gtracks and stacked togheter, projected around preliminary xovers coordinates and
+   processed to get refined location and partial derivatives w.r.t. chosen parameters (in prOpt). Output is a pkl
+   containing all required info for least-square solution of orbit and geophysical parameters improvement.
 
 Closed-loop simulation
 ----------------------
@@ -61,13 +67,11 @@ Prepare files locally (data selection)
 
 Copy full dataset and orbits to data and aux, respectively.
 Launch selection script (currently scratch_12) with the data dir.
-Copy data to experiment folder (in data folder) by
-for f in SIM_1?/; do cp -r $f/tpg $f/a01; done
-or, e.g., to create sym links
-for f in SIM_1?; do cp -rs /att/nobackup/sberton2/MLA/data/$f/KX1/* /att/nobackup/sberton2/MLA/data/$f/AGTP/.; done
+Copy data to experiment folder by
+for f in /home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/; do mkdir $f/KX1; cp -rs $f/KX2/* $f/KX1/.; done
 or
-for f in /att/nobackup/sberton2/MLA/data/SIM_1?/; do mkdir $f/KX2; done
-for f in /att/nobackup/sberton2/MLA/data/SIM_1?/; do cp -rs $f/KX1/* $f/KX2/.; done
+for f in /att/nobackup/sberton2/MLA/data/SIM_??/; do mkdir $f/KX2; done
+for f in /att/nobackup/sberton2/MLA/data/SIM_??/; do cp -rs $f/KX1/* $f/KX2/.; done
 Update launch_test
 
 Import new orbit to pkl

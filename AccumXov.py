@@ -140,7 +140,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
 
     # Solve
     if not local:
-        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] # [None] # used on pgda, since prOpt badly read
+        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL'] #,'dR/dh2'] # [None] # used on pgda, since prOpt badly read
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -188,12 +188,22 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     if previous_iter != None and previous_iter.converged:
         print("Weights are fixed as solution converged to 5%")
         # associate weights of old solution to corresponding xov of current one (id by tracks, supposing uniqueness)
-        tmp_xov_trk = pd.DataFrame(xovi_amat.xov.xovers['orbA']+xovi_amat.xov.xovers['orbB'],columns = ['trksid'])
+        if True: # only if issues with duplicates
+            previous_iter.xov.xovers = previous_iter.xov.xovers.drop(columns=['xOvID', 'xovid'],errors='ignore').drop_duplicates().reset_index().rename(columns={"index": "xOvID"})
         tmp_prev_trk = pd.DataFrame(previous_iter.xov.xovers['orbA']+previous_iter.xov.xovers['orbB'],columns = ['trksid'])
-        tmp_prev_trk['weights'] = previous_iter.weights.diagonal().T
-        obs_weights = pd.merge(tmp_xov_trk, tmp_prev_trk, how='left', on=['trksid'])
+        tmp_prev_trk['weights'] = previous_iter.xov.xovers.weights.values
+        if True: # only if issues with duplicates
+            tmp_prev_trk.drop_duplicates(inplace=True)
+        else:
+            tmp_prev_trk['weights'] = previous_iter.weights.diagonal().T
+            print("len(tmp_prev_trk)",len(tmp_prev_trk))
+            print("len(xovi_amat.xov.xovers)",len(xovi_amat.xov.xovers))
 
+        tmp_xov_trk = pd.DataFrame(xovi_amat.xov.xovers['orbA']+xovi_amat.xov.xovers['orbB'],columns = ['trksid'])
+
+        obs_weights = pd.merge(tmp_xov_trk, tmp_prev_trk, how='left', on=['trksid'])
         obs_weights = diags(obs_weights['weights'].fillna(0).values)
+
         # unsafe if list of xov is different or ordered differently
         # obs_weights = previous_iter.weights
     else:
@@ -741,9 +751,9 @@ def main(arg):
     data_sim = arg[1]
     ext_iter = arg[2]
 
-    downsize = True
-    if ext_iter>0:
-        downsize = False
+    #downsize = True
+    #if ext_iter>0:
+    #    downsize = False
     
     if data_sim == 'sim':
         _ = [x.split('/')[-2] for x in datasets]
