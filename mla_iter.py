@@ -161,7 +161,7 @@ if __name__ == '__main__':
                         exit(iostat)
                 else:
                   iostat = s.call(
-                      ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '03:00:00', '99Gb', '3'])
+                      ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '03:00:00', '99Gb', '5'])
                   if iostat != 0:
                       print("*** PyXov_" + str(rt) + " failed on iter", iter)
                       exit(iostat)

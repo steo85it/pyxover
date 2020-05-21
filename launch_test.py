@@ -12,7 +12,9 @@ from prOpt import sim_altdata, local, outdir
 # tp4: full dataset, simulation, h2 = 1.0, no perturbations, noise, PM@J2013.0
 # tp8: full dataset, simulation, h2 = 0.8, no perturbations (as tp2, but updated code --> eg, 0.5 in tid)
 # tp9: full dataset, simulation, h2 = 0.8, no perturbations, noise, PM@J2013.0
-# KX1: real data, tidal h2=0.8 included (=1 after 27-Jan)
+# KX1: real data, tidal h2=0, KX orbits+IAU ap, 1mln xovers (h2 since the beginning)
+# KX2: real data, KX orbits+IAU ap, 1mln xovers (h2 since convergence)
+# KX3: real data, KX orbits+AG ap, 1mln xovers (h2 since convergence) - wrong AbMat name, just rename
 # KX1r2: real data, same subsel as tp8 (apriori h2=0 after 05-Feb)
 # tpAp: full simu, KX orbits, AG a priori
 
@@ -20,7 +22,7 @@ from prOpt import sim_altdata, local, outdir
 def main():
 
     data_sim = 'sim'  # 'data' #
-    exp = 'KX2' # 'tp4' #
+    exp = 'AGTP' # 'tp4' #
     # exp += '_'+str(ext_iter)
 
 #    res = [3]

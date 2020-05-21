@@ -92,12 +92,14 @@ def launch_gtrack(args):
             # print(track.ladata_df)
             # exit()
             track.save(gtrack_out)
-            print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
+            if not local or debug:
+                print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
         # except:
         #    print('failed to process ' + track_id)
         else:
             # track = track.load('out/'+track_id+'.pkl')
-            print('Gtrack file ' + gtrack_out + ' already existed!')
+            if not local or debug:
+                print('Gtrack file ' + gtrack_out + ' already existed!')
 
 
 def main(args):
@@ -261,12 +263,19 @@ def main(args):
     # loop over all gtracks
     if parallel:
         # print((mp.cpu_count() - 1))
-        pool = mp.Pool(processes=ncores)  # mp.cpu_count())
-        _ = pool.map(launch_gtrack, args)  # parallel
-        pool.close()
-        pool.join()
+        if local:
+            # forks everything, if much memory needed, use the remote option with get_context
+            from tqdm.contrib.concurrent import process_map  # or thread_map
+            _ = process_map(launch_gtrack, args, max_workers=ncores, total=len(allFiles))
+        else:
+            pool = mp.Pool(processes=ncores)  # mp.cpu_count())
+            _ = pool.map(launch_gtrack, args)  # parallel
+            pool.close()
+            pool.join()
     else:
-        _ = [launch_gtrack(arg) for arg in args]  # seq
+        from tqdm import tqdm
+        for arg in tqdm(args):
+            launch_gtrack(arg)  # seq
 
     endGeoloc = time.time()
     print('----- Runtime Geoloc= ' + str(endGeoloc - startGeoloc) + ' sec -----' + str(

@@ -53,7 +53,7 @@ monthly_sets = False
 # analyze multi-xov pairs
 multi_xov = False
 # compute full covariance (could give memory issues)
-full_covar = False
+full_covar = False # True #
 # roughness map
 roughn_map = False
 # new algo
@@ -91,14 +91,14 @@ vecopts = {'SCID': '-236',
 
 
 # out and aux
-if (local == 0):
+if (local == 0): # if pgda
     outdir = '/att/nobackup/sberton2/MLA/out/'
     auxdir = '/att/nobackup/sberton2/MLA/aux/'
     tmpdir = '/att/nobackup/sberton2/MLA/tmp/'
-    spauxdir = 'KX_spk/' # 'AG_A_spk/' # 'AGTP_spk' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
-else:
+    spauxdir = 'AG_TP_spk/' # 'KX_spk/' # 'AG_A_spk/' # 'AGTP_spk' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
+else: # if local!!!
 #    outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
     outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
     auxdir = '/home/sberton2/Works/NASA/Mercury_tides/aux/'
     tmpdir = '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/'
-    spauxdir = 'KX_spk/' #'AG_TP_spk' #'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    spauxdir = 'KX_spk/' #'AG_TP_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'

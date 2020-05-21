@@ -355,7 +355,7 @@ def main(args):
         # loop over all gtracks
         # parallel = 1
         if parallel:
-
+            # close?join?
             if local:
                 # forks everything, if much memory needed, use the remote option with get_context
                 from tqdm.contrib.concurrent import process_map  # or thread_map
