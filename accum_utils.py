@@ -81,7 +81,11 @@ def get_xov_cov_tracks(df, plot_stuff=False):
         plt.clf()
         # exit()
 
-    cov_tracks = diags(huber_weights_track.round(2).astype('float16'), 0)
+    cov_tracks = huber_weights_track.round(2).astype('float16')
+    # if cov_tracks element == 0, add 0.001 to avoid inf because of rounding)
+    cov_tracks[cov_tracks==0] += 1.e-3
+    # convert to sparse (on diagonal)
+    cov_tracks = diags(cov_tracks, 0)
 
     # project variance of individual tracks on xovers
     # print(A_tracks.getnnz() / np.prod(A_tracks.shape))
