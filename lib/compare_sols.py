@@ -12,25 +12,75 @@ import matplotlib.pyplot as plt
 # if using a Jupyter notebook, include:
 import pandas as pd
 
-from prOpt import tmpdir
-from util import as2deg
+from Amat import Amat
+from prOpt import tmpdir, outdir
+from util import as2deg, mergsum
 
 if __name__ == '__main__':
 
     ind = np.array(['RA', 'DEC', 'PM', 'L','h2'])
     consist_check = True
 
+    # a priori values
+    IAU = {'sol': {'RA': 281.00975, 'DEC': 61.4143, 'PM': 6.1385025, 'L': 38.5},
+           'std': {'RA': 0.0048, 'DEC': 0.0028, 'PM': 0.0000013, 'L': 1.6}}
+    AG = {'sol': {'RA': 281.0082, 'DEC': 61.4164, 'PM': 6.1385054, 'L': 40.},
+          'std': {'RA': 9.e-4, 'DEC': 3.e-4, 'PM': 0., 'L': 8.7}}
+
+    unit_transf = [as2deg(1),as2deg(1),as2deg(1)/365.25,1.,1.]
+
+    # exit()
+
+    subfolder = ''
+    vecopts = {}
+    sols = [('KX1_7','IAU'),('KX2_7','IAU'),('KX3_7','AG')]
+    subexp = '0res_1amp'
+    solout = {}
+    errout = {}
+
+    for (solnam, ap) in sols:
+        tmp = Amat(vecopts)
+        tmp = tmp.load(outdir +'sim/' + subfolder + solnam + '/' + subexp + '/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+
+        sol_glb = {i:tmp.sol_dict['sol']['dR/d'+i] for i in ind if 'dR/d'+i in tmp.sol_dict['sol'].keys()}
+        err_glb = {i:tmp.sol_dict['std']['dR/d'+i] for i in ind if 'dR/d'+i in tmp.sol_dict['std'].keys()}
+
+        # convert units to (deg, deg, deg/day, 1, 1)
+        sol_glb = {a:unit_transf[i]*b for i,(a,b) in enumerate(sol_glb.items())}
+        err_glb = {a:unit_transf[i]*b for i,(a,b) in enumerate(err_glb.items())}
+
+        # exit()
+
+        # sum to apriori
+        tot_glb = mergsum(eval(ap)['sol'],sol_glb)
+
+        solout[solnam+'_'+ap] = tot_glb
+        errout[solnam+'_'+ap] = err_glb
+
+    print(solout)
+    # add reference sols
+    for ref in ['IAU','AG']:
+        solout[ref] = eval(ref)['sol']
+        errout[ref] = eval(ref)['std']
+
+    # print([y['sol'] for x in out for y in x.values()])
+    # exit()
+    # sols = {a:b for a,b in out}
+    sol_df = pd.DataFrame.from_dict(solout)
+    err_df = pd.DataFrame.from_dict(errout)
+
+    print(sol_df)
+
+    # exit()
+
     # internal consistency check
     ############################
-    if consist_check:
+    if False:
         cols = np.array([#'Stark (2015)', 'Margot (2012)', 'Mazarico (2014)', 'Barker (2016)', 'Genova (2019)', 'Verma (2016)',
             'ap0', 'ap1','orb0/ap0', 'orb0/ap0/rgh', 'orb0/ap1',
                          'orb1/ap1','orb1/ap0','orb0/ap1/par1','orb0/ap0/FM'])  # orb: 0=KX, 2=AG, 1=AG2/SG, ap: 0=IAU, 1=AG, par:-: orb+glb, 1:orb+pnt+glb
 
-        IAU = {'sol':{'RA':281.00975,'DEC':61.4143,'PM':6.1385025,'L':38.5},
-              'std':{'RA':0.0048,'DEC':0.0028,'PM':0.0000013,'L':1.6}}
-        AG = {'sol':{'RA':281.0082,'DEC':61.4164,'PM':6.1385054,'L':40.},
-              'std':{'RA':9.e-4,'DEC':3.e-4,'PM':0.,'L':8.7}}
+
 
         # first digit is orb, second gives apriori values
         # old
@@ -39,8 +89,10 @@ if __name__ == '__main__':
         # new
         # test00 = {'sol':{'RA':0.36,'DEC':- 0.098,'PM':0.610,'L':- 0.866, 'h2':1.3},
         #       'std':{'RA':0.21,'DEC':0.06,'PM':0.19,'L':0.14, 'h2':0.54}}
-        test00 = {'sol':{'RA':0.008,'DEC':- 0.137,'PM':0.35,'L':- 1.02, 'h2':1.42},
-              'std':{'RA':0.8,'DEC':0.98,'PM':0.26,'L':0.23, 'h2':1.42}}
+        # test00 = {'sol':{'RA':0.008,'DEC':- 0.137,'PM':0.35,'L':- 1.02, 'h2':1.42},
+        #       'std':{'RA':0.8,'DEC':0.98,'PM':0.26,'L':0.23, 'h2':1.42}}
+        test00 = {'sol':{'RA':2.73,'DEC':1.35,'PM':3.2,'L':0.56, 'h2':3.17},
+              'std':{'RA':0.52,'DEC':0.16,'PM':0.34,'L':0.27, 'h2':1.22}}
         test002 = {'sol':{'RA':-1.6,'DEC':-0.04,'PM':2.9,'L':- 0.72, 'h2':2.92},
               'std':{'RA':0.8,'DEC':0.89,'PM':0.24,'L':0.22, 'h2':1.47}}
         # test01 = {'sol':{'RA':4.849,'DEC':-4.007,'PM':1.502,'L':- 0.641, 'h2':3.227},
@@ -170,106 +222,122 @@ if __name__ == '__main__':
         # xerr = np.random.random_sample(10)
         # yerr = np.random.random_sample(10)
 
+    elif consist_check:
+
+        sol_df = sol_df.T
+        err_df = err_df.T
+        # print(sol_df.RA)
+        # exit()
+        print(sol_df)
+        print(err_df)
+
         my_colors = ['r', 'g', 'b', 'k', 'y', 'm', 'c', 'tab:brown','tab:pink']  # ,
         # 'c', 'tab:brown',
         #          'tab:pink', 'tab:purple']
 
-        fig, ax = plt.subplots()
-        plt.style.use('seaborn-paper')
+        for par in ['RADEC','PM','L','h2']:
 
+            fig, ax = plt.subplots()
+            plt.style.use('seaborn-paper')
+            for idx in range(len(sol_df)):
+                # if idx not in [4]:
 
-        for idx, color in enumerate(my_colors):
-            # if idx not in [4]:
+                    if sol_df.index[idx] in ['IAU','AG']:
+                        fmtkey = 'v'
+                    else:
+                        fmtkey = 'o'
 
-                if idx in [0,1]:
-                    fmtkey = 'v'
-                else:
-                    fmtkey = 'o'
+                    if par == 'RADEC':
+                        ax.errorbar(sol_df.RA[idx], sol_df.DEC[idx],
+                                xerr=err_df.RA[idx],
+                                yerr=err_df.DEC[idx],
+                                fmt=fmtkey, color=my_colors[idx], label=sol_df.index[idx])
+                    else:
+                        ax.ticklabel_format(axis="y", useMathText=True)
 
-                ax.errorbar(RA[idx], DEC[idx],
-                            xerr=err_RA[idx],
-                            yerr=err_DEC[idx],
-                            fmt=fmtkey, color=color, label=cols[idx])
-        ax.legend()
-        # ax.ticklabel_format(axis="y",useMathText=True)
-        ax.set_xlabel('RA (deg)')
-        ax.set_ylabel('DEC (deg)')
-        ax.set_title('')
+                        ax.errorbar(idx, sol_df[par][idx],
+                                yerr=err_df[par][idx],
+                                fmt=fmtkey, color=my_colors[idx], label=sol_df.index[idx])
 
-        plt.savefig(tmpdir+'RADEC_GSFC.png')
-        plt.clf()
+            ax.legend()
+            # ax.ticklabel_format(axis="y",useMathText=True)
+            ax.set_xlabel('RA (deg)')
+            ax.set_ylabel('DEC (deg)')
+            ax.set_title('')
 
-        fig, ax = plt.subplots()
-        plt.style.use('seaborn-paper')
-        ax.ticklabel_format(axis="y", useMathText=True)
+            plt.savefig(tmpdir+par+'_GSFC.png')
+            plt.clf()
 
-        for idx, color in enumerate(my_colors):
-            # if idx not in [4]:
-
-                if idx in [0,1]:
-                    fmtkey = 'v'
-                else:
-                    fmtkey = 'o'
-
-                ax.errorbar(idx, PM[idx],
-                                yerr=err_PM[idx],
-                                fmt=fmtkey, color=color, label=cols[idx])
-        ax.legend()
-        ax.set_xlabel('')
-        ax.set_ylabel('PM (deg/day)')
-        ax.set_title('')
-
-        plt.savefig(tmpdir+'PM_GSFC.png')
-        plt.clf()
-
-        fig, ax = plt.subplots()
-        plt.style.use('seaborn-paper')
-
-        for idx, color in enumerate(my_colors):
-            # if idx not in [4]:
-
-                if idx in [0, 1]:
-                    fmtkey = 'v'
-                else:
-                    fmtkey = 'o'
-
-                ax.errorbar(idx, L[idx],
-                            yerr=err_L[idx],
-                            fmt=fmtkey, color=color, label=cols[idx])
-        ax.legend()
-        # ax.ticklabel_format(axis="y", useMathText=True)
-        ax.set_xlabel('')
-        ax.set_ylabel('L (as)')
-        ax.set_title('')
-
-        plt.savefig(tmpdir + 'L_GSFC.png')
-        plt.clf()
-
-        fig, ax = plt.subplots()
-        plt.style.use('seaborn-paper')
-
-        for idx, color in enumerate(my_colors):
-            # if idx not in [4]:
-
-                if idx in [0, 1]:
-                    fmtkey = 'v'
-                    ax.errorbar(idx, h2[idx],
-                            yerr=err_h2[idx],
-                            fmt=fmtkey, color=color, label=["inter_model_SG","-"][idx])
-                else:
-                    fmtkey = 'o'
-
-                    ax.errorbar(idx, h2[idx],
-                            yerr=err_h2[idx],
-                            fmt=fmtkey, color=color, label=cols[idx])
-        ax.legend()
-        # ax.ticklabel_format(axis="y", useMathText=True)
-        ax.set_xlabel('')
-        ax.set_ylabel('h2')
-        ax.set_title('')
-
-        plt.savefig(tmpdir + 'h2_GSFC.png')
-        plt.clf()
+        # fig, ax = plt.subplots()
+        # plt.style.use('seaborn-paper')
+        #
+        # for idx, color in enumerate(my_colors):
+        #     # if idx not in [4]:
+        #
+        #         if idx in [0,1]:
+        #             fmtkey = 'v'
+        #         else:
+        #             fmtkey = 'o'
+        #
+        #         ax.errorbar(idx, PM[idx],
+        #                         yerr=err_PM[idx],
+        #                         fmt=fmtkey, color=color, label=cols[idx])
+        # ax.legend()
+        # ax.set_xlabel('')
+        # ax.set_ylabel('PM (deg/day)')
+        # ax.set_title('')
+        #
+        # plt.savefig(tmpdir+'PM_GSFC.png')
+        # plt.clf()
+        #
+        # fig, ax = plt.subplots()
+        # plt.style.use('seaborn-paper')
+        #
+        # for idx, color in enumerate(my_colors):
+        #     # if idx not in [4]:
+        #
+        #         if idx in [0, 1]:
+        #             fmtkey = 'v'
+        #         else:
+        #             fmtkey = 'o'
+        #
+        #         ax.errorbar(idx, L[idx],
+        #                     yerr=err_L[idx],
+        #                     fmt=fmtkey, color=color, label=cols[idx])
+        # ax.legend()
+        # # ax.ticklabel_format(axis="y", useMathText=True)
+        # ax.set_xlabel('')
+        # ax.set_ylabel('L (as)')
+        # ax.set_title('')
+        #
+        # plt.savefig(tmpdir + 'L_GSFC.png')
+        # plt.clf()
+        #
+        # fig, ax = plt.subplots()
+        # plt.style.use('seaborn-paper')
+        #
+        # for idx, color in enumerate(my_colors):
+        #     # if idx not in [4]:
+        #
+        #         if idx in [0, 1]:
+        #             fmtkey = 'v'
+        #             ax.errorbar(idx, h2[idx],
+        #                     yerr=err_h2[idx],
+        #                     fmt=fmtkey, color=color, label=["inter_model_SG","-"][idx])
+        #         else:
+        #             fmtkey = 'o'
+        #
+        #             ax.errorbar(idx, h2[idx],
+        #                     yerr=err_h2[idx],
+        #                     fmt=fmtkey, color=color, label=cols[idx])
+        # ax.legend()
+        # # ax.ticklabel_format(axis="y", useMathText=True)
+        # ax.set_xlabel('')
+        # ax.set_ylabel('h2')
+        # ax.set_title('')
+        #
+        # plt.savefig(tmpdir + 'h2_GSFC.png')
+        # plt.clf()
 
     else:
         # comparison with other groups/techniques
