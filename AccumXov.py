@@ -826,7 +826,7 @@ def main(arg):
             if previous_iter != None and previous_iter.vce != None:
                 xovi_amat.vce = previous_iter.vce
             else:
-                weight_obs = 1.
+                weight_obs = 1.e-3
                 weight_constr = 1.
                 weight_constr_avg = 1.
 
@@ -873,7 +873,7 @@ def main(arg):
                 xovi_amat.b_penal = b_penal
 
                 # solve using lsqr
-                xovi_amat.sol = lsqr(xovi_amat.spA_penal, xovi_amat.b_penal, damp=0, show=False, iter_lim=100000, atol=1.e-8 / sigma_0,
+                xovi_amat.sol = lsqr(xovi_amat.spA_penal, xovi_amat.b_penal, damp=0, show=True, iter_lim=100000, atol=1.e-8 / sigma_0,
                                      btol=1.e-8 / sigma_0, calc_var=True)
                 # xovi_amat.sol = lsqr(xovi_amat.spA, xovi_amat.b,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
 
