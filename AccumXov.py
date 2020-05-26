@@ -13,9 +13,9 @@ import itertools
 import seaborn as sns
 
 from accum_opt import remove_max_dist, remove_3sigma_median, remove_dR200, downsize, clean_part, huber_threshold, \
-    distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria
+    distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling
 from accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
-    analyze_sol
+    analyze_sol, subsample_xovers, load_previous_iter_if_any
 from util import mergsum, rms
 from lib.xovres2weights import get_interpolation_weight
 # from xov_utils import get_tracks_rms
@@ -774,49 +774,39 @@ def main(arg):
         # exit()
 
         if partials:
-
-            # retrieve old solution
-            if int(ext_iter) > 0:
-                previous_iter = Amat(vecopts)
-                # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-                previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-                                '_' + str(ext_iter - 1) + '/' +
-                               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
-                print("initial sol dict=", len(previous_iter.sol_dict['sol']))
-
-                # print(previous_iter.sol_dict)
-                # exit()
-            # if pre-processing took place (else, if perturbing simulation, also pert_cloop_orb should contain something)
-            elif xov_cmb.pert_cloop.shape[1]>0: # and len(pert_cloop_orb) == 0:
-                parsk = list(xov_cmb.pert_cloop.to_dict().keys())
-                trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
-
-                # pertpar_list = list(pert_cloop_orb.keys())
-                pertpar_list = xov_cmb.pert_cloop.columns
-                fit2dem_sol = np.ravel([list(x.values()) for x in xov_cmb.pert_cloop.filter(pertpar_list).to_dict().values()])
-                fit2dem_keys = [tr+'_dR/'+par for par in parsk for tr in trackk]
-                fit2dem_dict = dict(zip(fit2dem_keys,fit2dem_sol))
-
-                previous_iter = Amat(vecopts)
-                previous_iter.sol_dict = {'sol':fit2dem_dict,'std':dict(zip(fit2dem_keys,np.zeros(len(fit2dem_keys))))}
-            # not first iter, nor pre-processing
-            else:
-                previous_iter = None #Amat(vecopts)
-                # previous_iter.sol_dict_iter = previous_iter.sol_dict
+            # load previous iter from disk (orbs, sols, etc) if available
+            previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
 
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
             xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
 
+            if (downsize or sampling) and ext_iter==0:
+                # downsize dataset by removing worst weighted data (mostly at high latitudes)
+                # also removes very bad xovers with dR > 1km
+                max_xovers = 3.e6  # 8.e5
+                if downsize and len(xovi_amat.xov.xovers)>max_xovers:
+                    # actually preparing weights and constraints for the solution (weights are needed for downsampling)
+                    prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
+                    # downsize
+                    xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers,max_xovers=max_xovers)
+
+                    # reset weights and sol4pars variables for modified dataset
+                    xovi_amat.xov.combine([xovi_amat.xov])
+                    xovi_amat = prepare_Amat(xovi_amat.xov, vecopts, par_list)
+
+                # subsample with replacement for bootstrap test
+                if sampling and ext_iter==0:
+                    # get seed as experiment name
+                    rand_seed = int(datasets[0].split('/')[-3].split('_')[0][-1])
+                    xovi_amat.xov.xovers = subsample_xovers(xovi_amat.xov.xovers, size_samples=5.e5, rand_seed=rand_seed)
+
+                    # reset weights and sol4pars variables for modified dataset
+                    xovi_amat.xov.combine([xovi_amat.xov])
+                    xovi_amat = prepare_Amat(xovi_amat.xov, vecopts, par_list)
+
             # actually preparing weights and constraints for the solution
             prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
-
-            max_xovers = 8.e5
-            if downsize and len(xovi_amat.xov.xovers)>max_xovers:
-                xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers,max_xovers=max_xovers)
-                xovi_amat.xov.combine([xovi_amat.xov])
-                xovi_amat = prepare_Amat(xovi_amat.xov, vecopts, par_list)
-                prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
 
             if previous_iter != None and previous_iter.vce != None:
                 xovi_amat.vce = previous_iter.vce

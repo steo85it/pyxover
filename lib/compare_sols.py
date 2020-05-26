@@ -11,10 +11,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 # if using a Jupyter notebook, include:
 import pandas as pd
+from scipy.sparse import diags
+from scipy.linalg import pinv, pinvh
 
 from Amat import Amat
-from prOpt import tmpdir, outdir
+from prOpt import tmpdir, outdir, sol4_glo
 from util import as2deg, mergsum
+
+
+def get_apost_parerr(amat):
+    ATP = amat.spA.T * amat.weights
+    m_0 = amat.resid_wrmse
+    PA = amat.weights * amat.spA
+    ell = diags(np.abs(amat.b))
+    posterr = pinvh((ATP * ell * PA).todense(),check_finite=False)
+    posterr = np.sqrt(posterr.diagonal())
+    m_X = dict(zip(amat.sol4_pars, np.ravel(m_0 * posterr)))
+    return m_X
+
 
 if __name__ == '__main__':
 
@@ -25,7 +39,7 @@ if __name__ == '__main__':
     IAU = {'sol': {'RA': 281.00975, 'DEC': 61.4143, 'PM': 6.1385025, 'L': 38.5},
            'std': {'RA': 0.0048, 'DEC': 0.0028, 'PM': 0.0000013, 'L': 1.6}}
     AG = {'sol': {'RA': 281.0082, 'DEC': 61.4164, 'PM': 6.1385054, 'L': 40.},
-          'std': {'RA': 9.e-4, 'DEC': 3.e-4, 'PM': 0., 'L': 8.7}}
+          'std': {'RA': 9.e-4, 'DEC': 3.e-4, 'PM': 0., 'L': 8.7/10.}}
 
     unit_transf = [as2deg(1),as2deg(1),as2deg(1)/365.25,1.,1.]
 
@@ -33,23 +47,25 @@ if __name__ == '__main__':
 
     subfolder = ''
     vecopts = {}
-    sols = [('KX1r4_1','IAU'),('KX1_3','IAU'),('KX2_3','IAU')]
+    sols = [('KX2_0','IAU'),('KX2_1','IAU'),('KX2_2','IAU'),('KX2_3','IAU')]
     subexp = '0res_1amp'
     solout = {}
     errout = {}
 
-    for (solnam, ap) in sols:
-        tmp = Amat(vecopts)
-        tmp = tmp.load(outdir +'sim/' + subfolder + solnam + '/' + subexp + '/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+    for idx,(solnam, ap) in enumerate(sols):
+        amat = Amat(vecopts)
+        amat = amat.load(outdir + 'sim/' + subfolder + solnam + '/' + subexp + '/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
-        sol_glb = {i:tmp.sol_dict['sol']['dR/d'+i] for i in ind if 'dR/d'+i in tmp.sol_dict['sol'].keys()}
-        err_glb = {i:tmp.sol_dict['std']['dR/d'+i] for i in ind if 'dR/d'+i in tmp.sol_dict['std'].keys()}
+        sol_glb = {i:amat.sol_dict['sol']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['sol'].keys()}
+        err_glb = {i:amat.sol_dict['std']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['std'].keys()}
+
+        # if idx == len(sols)-1:
+        #     m_X = get_apost_parerr(amat=amat)
+        #     print({x.split('/')[-1][1:]:y for x,y in m_X.items() if x in sol4_glo})
 
         # convert units to (deg, deg, deg/day, 1, 1)
         sol_glb = {a:unit_transf[i]*b for i,(a,b) in enumerate(sol_glb.items())}
         err_glb = {a:unit_transf[i]*b for i,(a,b) in enumerate(err_glb.items())}
-
-        # exit()
 
         # sum to apriori
         tot_glb = mergsum(eval(ap)['sol'],sol_glb)
@@ -226,6 +242,9 @@ if __name__ == '__main__':
 
         sol_df = sol_df.T
         err_df = err_df.T
+        sol_df = sol_df.rename({'IAU': '0IAU', 'AG': '0AG'}, axis='index').sort_index()
+        err_df = err_df.rename({'IAU': '0IAU', 'AG': '0AG'}, axis='index').sort_index()
+
         # print(sol_df.RA)
         # exit()
         print(sol_df)
@@ -235,10 +254,12 @@ if __name__ == '__main__':
         # 'c', 'tab:brown',
         #          'tab:pink', 'tab:purple']
 
-        for par in ['RADEC','PM','L','h2']:
+        fig, axes = plt.subplots(2,2)
+        plt.style.use('seaborn-paper')
 
-            fig, ax = plt.subplots()
-            plt.style.use('seaborn-paper')
+        print(np.ravel(axes))
+        for ax,(par,unit) in zip(np.ravel(axes),[('RADEC','deg'),('PM','deg/day'),('L','as'),('h2','')]):
+
             for idx in range(len(sol_df)):
                 # if idx not in [4]:
 
@@ -252,6 +273,9 @@ if __name__ == '__main__':
                                 xerr=err_df.RA[idx],
                                 yerr=err_df.DEC[idx],
                                 fmt=fmtkey, color=my_colors[idx], label=sol_df.index[idx])
+                        ax.set_xlabel('RA (deg)')
+                        ax.xaxis.tick_top()
+                        ax.set_ylabel('DEC (deg)')
                     else:
                         ax.ticklabel_format(axis="y", useMathText=True)
 
@@ -259,14 +283,15 @@ if __name__ == '__main__':
                                 yerr=err_df[par][idx],
                                 fmt=fmtkey, color=my_colors[idx], label=sol_df.index[idx])
 
-            ax.legend()
-            # ax.ticklabel_format(axis="y",useMathText=True)
-            ax.set_xlabel('RA (deg)')
-            ax.set_ylabel('DEC (deg)')
-            ax.set_title('')
+                        ax.set_ylabel(par+' ('+unit+')')
 
-            plt.savefig(tmpdir+par+'_GSFC.png')
-            plt.clf()
+        ax.legend()
+        # ax.ticklabel_format(axis="y",useMathText=True)
+
+        ax.set_title('')
+
+        plt.savefig(tmpdir+'sols_GSFC.png')
+        plt.clf()
 
         # fig, ax = plt.subplots()
         # plt.style.use('seaborn-paper')

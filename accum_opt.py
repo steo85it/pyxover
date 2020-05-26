@@ -15,7 +15,9 @@ offnad_threshold = 2
 h2_limit_on = False
 
 # remove worse obs at first iter to speed up
-downsize = False
+downsize = False #True
+# extract sample for bootstrap
+sampling = False #True
 
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)

@@ -16,7 +16,7 @@ from scipy.sparse import csr_matrix, diags, issparse
 
 # from AccumXov import sigma_0, remove_3sigma_median, remove_max_dist
 from accum_opt import sigma_0, remove_3sigma_median
-from prOpt import tmpdir, full_covar, debug, local, pert_cloop, parOrb, parGlo, OrbRep
+from prOpt import tmpdir, full_covar, debug, local, pert_cloop, parOrb, parGlo, OrbRep, vecopts, outdir
 import matplotlib.pyplot as plt
 
 from xov_setup import xov
@@ -178,6 +178,22 @@ def downsize_xovers(xov_df,max_xovers=1.e5):
     print("Downsized xovers to the 'best'",len(selected),"xovers out of",len(xov_df),". Done!")
 
     return selected
+
+def subsample_xovers(xov_df,size_samples=1.e5,rand_seed=0):
+    from sklearn.utils import resample
+
+    # use xovers index to identify in sampling
+    data = xov_df.index.values
+    # round to 10 deg latitude to assign stratification
+    lats = np.round(xov_df.LAT.values/10.,0)*10.
+
+    # prepare bootstrap sample (no replace cause I just want 1 occurrence per element)
+    boot = resample(data, replace=False, n_samples=size_samples, random_state=rand_seed, stratify=lats)
+
+    print(boot)
+    print(len(boot))
+
+    return xov_df.iloc[boot]
 
 
 def get_stats(amat):
@@ -470,3 +486,36 @@ def analyze_sol(xovi_amat,xov,mode='full'):
         orb_sol[col] = orb_sol[col].astype('float').values/sigma_0
 
     return orb_sol, glb_sol, sol_dict
+
+def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
+    from Amat import Amat
+
+    # retrieve old solution
+    if int(ext_iter) > 0:
+        previous_iter = Amat(vecopts)
+        # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
+        previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+                                           '_' + str(ext_iter - 1) + '/' +
+                                           ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+        print("initial sol dict=", len(previous_iter.sol_dict['sol']))
+
+        # print(previous_iter.sol_dict)
+        # exit()
+    # if pre-processing took place (else, if perturbing simulation, also pert_cloop_orb should contain something)
+    elif xov_cmb.pert_cloop.shape[1] > 0:  # and len(pert_cloop_orb) == 0:
+        parsk = list(xov_cmb.pert_cloop.to_dict().keys())
+        trackk = list(xov_cmb.pert_cloop.to_dict()[parsk[0]].keys())
+
+        # pertpar_list = list(pert_cloop_orb.keys())
+        pertpar_list = xov_cmb.pert_cloop.columns
+        fit2dem_sol = np.ravel([list(x.values()) for x in xov_cmb.pert_cloop.filter(pertpar_list).to_dict().values()])
+        fit2dem_keys = [tr + '_dR/' + par for par in parsk for tr in trackk]
+        fit2dem_dict = dict(zip(fit2dem_keys, fit2dem_sol))
+
+        previous_iter = Amat(vecopts)
+        previous_iter.sol_dict = {'sol': fit2dem_dict, 'std': dict(zip(fit2dem_keys, np.zeros(len(fit2dem_keys))))}
+    # not first iter, nor pre-processing
+    else:
+        previous_iter = None  # Amat(vecopts)
+        # previous_iter.sol_dict_iter = previous_iter.sol_dict
+    return previous_iter

@@ -11,6 +11,8 @@ import numpy as np
 from scipy.stats import stats
 import matplotlib.pyplot as plt
 
+import accum_opt
+import accum_utils
 from Amat import Amat
 from prOpt import tmpdir, outdir
 from util import rms
@@ -32,16 +34,16 @@ def fit_sols(sol,exp_list):
             tmp.xov.xovers['dist_minA'] = tmp.xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
             tmp.xov.xovers['dist_minB'] = tmp.xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
             tmp.xov.xovers['dist_min_mean'] = tmp.xov.xovers.filter(regex='^dist_min.*$').mean(axis=1)
-            xovacc.analyze_dist_vs_dR(tmp.xov)
+            accum_utils.analyze_dist_vs_dR(tmp.xov)
 
-            if xovacc.remove_max_dist:
+            if accum_opt.remove_max_dist:
                 print(len(tmp.xov.xovers[tmp.xov.xovers.dist_max > 0.4]),
                       'xovers removed by dist from obs > 400m')
                 tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_max < 0.4]
                 tmp.xov.xovers = tmp.xov.xovers[tmp.xov.xovers.dist_min_mean < 1]
 
         # Remove huge outliers
-        mean_dR, std_dR, worst_tracks = tmp.xov.remove_outliers('dR', remove_bad=xovacc.remove_3sigma_median)
+        mean_dR, std_dR, worst_tracks = tmp.xov.remove_outliers('dR', remove_bad=accum_opt.remove_3sigma_median)
 
         list.append([subexp,mean_dR,std_dR,rms(tmp.xov.xovers.dR.values)])
 
