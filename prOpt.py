@@ -13,6 +13,12 @@ parallel = 1
 # compute partials?
 partials = 1
 
+# processing names and experiments
+datasimopt = 'sim'  # 'data' #
+expopt = 'BS2' # 'BS2' # 'AGTP' # 'AGTP' # 'tp4' # 'KX1r4' #
+resopt = [0]
+amplopt = [1]
+
 # std perturbations for finite differences (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
 parOrb = {'dA': 20.,'dC': 20.,'dR': 5.} #,'dRl':0.2, 'dPt':0.2} #
 parGlo = {'dRA':[0.2, 0.000, 0.000], 'dDEC':[0.36, 0.000, 0.000],'dPM':[0, 0.013, 0.000],'dL':1.e-3*deg2as(1.)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]), 'dh2': 0.1}
@@ -34,7 +40,7 @@ pert_tracks = [] #'1107021838','1210192326','1403281002','1503191143'] #
 
 # select subset of parameters to solve for
 sol4_orb = [] #'1503250029'] #'1107021838','1210192326','1403281002','1503191143']  #
-sol4_orbpar = ['dA','dC','dR','dRl','dPt'] #,'dA1','dC1','dR1','dA2','dC2','dR2']  #] #
+sol4_orbpar = ['dA','dC','dR'] #,'dRl','dPt'] #,'dA1','dC1','dR1','dA2','dC2','dR2']  #] #
 sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL'] #,'dR/dh2'] #,  None]
 
 # orbital representation

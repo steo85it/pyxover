@@ -139,8 +139,13 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     from prOpt import par_constr, mean_constr, sol4_orb, sol4_glo
 
     # Solve
-    if not local:
-        sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] # [None] # used on pgda, since prOpt badly read
+    # if not local:
+    #     sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] # [None] # used on pgda, since prOpt badly read
+    # test: if converged, also solve for h2
+    # if previous_iter.converged:
+    #     print("Adding h2 to sol4_glo as solution converged...")
+    #     sol4_glo.extend(['dR/dh2'])
+
     sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
@@ -180,7 +185,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     # screening of partial derivatives (downweights data)
     nglbpars = len([i for i in sol4_glo if i])
     if nglbpars>0 and clean_part:
-        xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6, nglbpars=nglbpars)
+        xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6, glbpars=sol4_glo)
         # pass
 
     # WEIGHTING TODO refactor to separate method
@@ -776,6 +781,9 @@ def main(arg):
         if partials:
             # load previous iter from disk (orbs, sols, etc) if available
             previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
+            if previous_iter.converged:
+                print("Adding h2 to sol4_glo as solution converged...")
+                sol4_glo.extend(['dR/dh2'])
 
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
@@ -1072,7 +1080,7 @@ def main(arg):
     endT = time.time()
     print('----- Runtime Amat = ' + str(endT - startT) + ' sec -----' + str(
         (endT - startT) / 60.) + ' min -----')
-    return True
+    return
 
 ########################
 if __name__ == '__main__':

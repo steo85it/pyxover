@@ -3,7 +3,8 @@ import os
 import shutil
 import sys
 
-from prOpt import sim_altdata, local, outdir
+from prOpt import sim_altdata, local, outdir, datasimopt, expopt, resopt, amplopt
+
 
 # Experiments
 #------------
@@ -19,14 +20,14 @@ from prOpt import sim_altdata, local, outdir
 #@profile
 def main():
 
-    data_sim = 'sim'  # 'data' #
-    exp = 'KX1r4' # 'tp4' #
+    data_sim = datasimopt  #'sim'  # 'data' #
+    exp = expopt # 'BS0' # 'AGTP' # 'AGTP' # 'tp4' #
     # exp += '_'+str(ext_iter)
 
 #    res = [3]
 #    ampl = [5,10,20,30,40,60,80]
-    res = [0]
-    ampl = [1]
+    res = resopt #[0]
+    ampl = amplopt # [1]
 
     if len(sys.argv) > 1:
         resampl = sys.argv[1]
