@@ -35,7 +35,7 @@ pert_tracks = [] #'1107021838','1210192326','1403281002','1503191143'] #
 # select subset of parameters to solve for
 sol4_orb = [] #'1107021838','1210192326','1403281002','1503191143']  #
 sol4_orbpar = ['dA','dC','dR'] #,'dRl','dPt'] #,'dA1','dC1','dR1','dA2','dC2','dR2']  #] #
-sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL'] #,'dR/dh2'] #,  None]
+sol4_glo = ['dR/dRA', 'dR/dDEC', 'dR/dPM','dR/dL','dR/dh2'] #,  None]
 
 # orbital representation
 OrbRep = 'cnt' # 'lin' # 'quad' #
@@ -43,9 +43,9 @@ OrbRep = 'cnt' # 'lin' # 'quad' #
 # interpolation/spice direct call (0: use spice, 1: yes, use interpolation, 2: yes, create interpolation)
 SpInterp = 1
 # create new gtrack (0:no, 1:yes, if not already present, 2: yes, create and replace)
-new_gtrack = 1
+new_gtrack = 2
 # create new xov (0:no, 1:yes, if not already present, 2: yes, create and replace)
-new_xov = 1
+new_xov = 2
 
 # Other options
 # monthly or yearly sets for PyXover
@@ -95,7 +95,7 @@ if (local == 0): # if pgda
     outdir = '/att/nobackup/sberton2/MLA/out/'
     auxdir = '/att/nobackup/sberton2/MLA/aux/'
     tmpdir = '/att/nobackup/sberton2/MLA/tmp/'
-    spauxdir = 'AG_TP_spk/' # 'KX_spk/' # 'AG_A_spk/' # 'AGTP_spk' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    spauxdir = 'KX_spk/' # 'KX_spk/' # 'AG_A_spk/' # 'AGTP_spk' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
 else: # if local!!!
 #    outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
     outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
