@@ -781,9 +781,9 @@ def main(arg):
         if partials:
             # load previous iter from disk (orbs, sols, etc) if available
             previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
-            if previous_iter.converged:
-                print("Adding h2 to sol4_glo as solution converged...")
-                sol4_glo.extend(['dR/dh2'])
+            if ext_iter>0 and previous_iter.converged:
+                    print("Adding h2 to sol4_glo as solution converged...")
+                    sol4_glo.extend(['dR/dh2'])
 
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
