@@ -70,8 +70,7 @@ Launch selection script (currently scratch_12) with the data dir.
 Copy data to experiment folder by
 for f in /home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/; do mkdir $f/KX1; cp -rs $f/KX2/* $f/KX1/.; done
 or
-for f in /att/nobackup/sberton2/MLA/data/SIM_??/; do mkdir $f/KX2; done
-for f in /att/nobackup/sberton2/MLA/data/SIM_??/; do cp -rs $f/KX1/* $f/KX2/.; done
+for f in /att/nobackup/sberton2/MLA/data/SIM_??/; do mkdir $f/KX2; cp -rs $f/KX1/* $f/KX2/.; done
 Update launch_test
 
 Import new orbit to pkl

@@ -190,8 +190,20 @@ def subsample_xovers(xov_df,size_samples=1.e5,rand_seed=0):
     # prepare bootstrap sample (no replace cause I just want 1 occurrence per element)
     boot = resample(data, replace=False, n_samples=size_samples, random_state=rand_seed, stratify=lats)
 
-    print(boot)
-    print(len(boot))
+    # check common elements among extractions (approx 12-15% for 500K out of 3.5 mln)
+    # sets = []
+    # for rand_seed in range(20):
+    #
+    #     boot = resample(data, replace=False, n_samples=size_samples, random_state=rand_seed, stratify=lats)
+    #     sets.append(boot)
+    # for idx,list2 in enumerate(sets[:]):
+    #     list1_as_set = set(sets[1])
+    #     intersection = list1_as_set.intersection(list2)
+    #     intersection_as_list = list(intersection)
+    #     print(np.array(intersection_as_list))
+    #     print(100.*len(intersection_as_list)/len(list2),"% for list ", idx+1)
+    # print(boot)
+    # print(len(boot))
 
     return xov_df.iloc[boot]
 

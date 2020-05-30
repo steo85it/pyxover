@@ -60,8 +60,10 @@ def compare_subsets():
 def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
 
     subs = load(tracklist)
+    print(subs)
     tracks = set(subs[0].ravel())
-    # print(tracks)
+    print(tracks)
+    exit()
 
     if local:
         obsfil = glob.glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/" + exp + "/" + kind + "/*.TAB")
@@ -139,16 +141,69 @@ def run(seed,sub_len=100):
     print("Got it in ", str(end-start), " seconds!")
     # exit()
 
+def select_from_stats(sol ='KX1', subexp ='0res_1amp', outfil='bestROItracks.pkl'):
+
+    from Amat import Amat
+    from prOpt import outdir, vecopts
+    # import numpy as np
+
+    subfolder = ''
+    # sol = 'KX1_0'  # r4_1'
+    # subexp = '0res_1amp'
+
+    tmp = Amat(vecopts)
+    tmp = tmp.load(outdir + 'sim/' + subfolder + sol + '/' + subexp + '/Abmat_sim_' + sol.split('_')[0] + '_' + str(
+        int(sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+
+    xov_df = tmp.xov.xovers
+    # remove very large dR (>1km)
+    xov_df = xov_df.loc[xov_df['dR'].abs() < 1.e3]
+    print(xov_df.columns)
+    # print(tmp.weights)
+    # exit()
+    hilat_xov = xov_df.loc[xov_df.LAT > 60]
+    print(hilat_xov[['dR', 'weights', 'huber']].abs().max())
+    print(hilat_xov[['dR', 'weights', 'huber']].abs().min())
+    print(hilat_xov[['dR', 'weights', 'huber']].abs().mean())
+    print(hilat_xov[['dR', 'weights', 'huber']].abs().median())
+
+    to_keep = 1. - 8.e5 / len(hilat_xov)
+    to_keep_hilat = hilat_xov.loc[hilat_xov['weights'] > hilat_xov['weights'].quantile(to_keep)].xOvID.values
+
+    lolat_xov = xov_df.loc[xov_df.LAT < 60]
+    to_keep_lolat = lolat_xov.loc[lolat_xov['weights'] > lolat_xov['weights'].quantile(0.1)].xOvID.values
+
+    # select very good xovers at LAT>60N OR decent xovers at low latitudes
+    selected = xov_df.loc[(xov_df.xOvID.isin(to_keep_hilat)) | (xov_df.xOvID.isin(to_keep_lolat))]
+    print(len(selected))
+    print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().max())
+    print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().min())
+    print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().median())
+    print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().mean())
+
+    # set of orbits giving
+    orbs = list(set(np.hstack([selected.orbA.values, selected.orbB.values])))
+    print(orbs)
+    print(len(orbs), "orbits giving the 'best'", len(selected), "xovers out of", len(xov_df))
+
+    save([np.array(orbs)], tmpdir + outfil)
+    return orbs
+
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
         print('# Use as python3 max_roi_tracks.py rand_seed')
 
+    tracks_fil = 'bestROItracks.pkl'
+
     proc = int(sys.argv[1])
+    print(proc)
     #run(seed=proc,sub_len=500)
 
     #intersect_percent = compare_subsets()
     #print(intersect_percent)
 
-    apply_selection(tracklist=tmpdir + 'bestROItracks500_563-464424.pkl',
-                    exp ='KX1r4', kind ='0res_1amp')
+    tracks = select_from_stats(sol ='KX1_0', subexp ='0res_1amp', outfil=tracks_fil)
+
+    apply_selection(tracklist=tmpdir + tracks_fil, #'bestROItracks500_563-464424.pkl',
+                    exp ='KX1r5', kind ='0res_1amp')

@@ -46,9 +46,11 @@ if __name__ == '__main__':
     # exit()
 
     subfolder = ''
+    fignam = 'sols_BS.png'
     vecopts = {}
-#    sols = [('KX1_7','IAU'),('KX2_7','IAU'),('KX3_7','AG')]
-    sols = [('KX2_0','IAU'),('KX2_1','IAU'),('KX2_2','IAU'),('KX2_3','IAU')]
+    sols = [('BS0_6','IAU'),('BS1_7','IAU'),('BS2_6','IAU'),('BS3_7','IAU')]
+    # sols = [('KX2_0','IAU'),('KX2_1','IAU'),('KX2_2','IAU'),('KX2_3','IAU')]
+
     subexp = '0res_1amp'
     solout = {}
     errout = {}
@@ -56,6 +58,11 @@ if __name__ == '__main__':
     for idx,(solnam, ap) in enumerate(sols):
         amat = Amat(vecopts)
         amat = amat.load(outdir + 'sim/' + subfolder + solnam + '/' + subexp + '/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+
+        print("vce weights (data,constr,avg_constr):", amat.vce)
+        for var in ['A','C','R']:
+            sol_orb = {i:amat.sol_dict['sol'][i] for i in amat.sol_dict['sol'].keys() if '_dR/d'+var in i}
+            print("Mean values",var,":",np.mean(list(sol_orb.values())),"meters")
 
         sol_glb = {i:amat.sol_dict['sol']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['sol'].keys()}
         err_glb = {i:amat.sol_dict['std']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['std'].keys()}
@@ -291,7 +298,7 @@ if __name__ == '__main__':
 
         ax.set_title('')
 
-        plt.savefig(tmpdir+'sols_GSFC.png')
+        plt.savefig(tmpdir+fignam)
         plt.clf()
 
         # fig, ax = plt.subplots()

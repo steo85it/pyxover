@@ -3,7 +3,7 @@ import time
 
 import numpy as np
 
-from prOpt import local, sim_altdata, monthly_sets
+from prOpt import local, sim_altdata, monthly_sets, outdir, datasimopt, resopt, amplopt
 
 if __name__ == '__main__':
 
@@ -73,9 +73,19 @@ if __name__ == '__main__':
                 start = time.time()
     
                 iostat = s.call(["python3", "launch_test.py", str(rt), "0", "3", str(iter)])
+                print("iostat", iostat)
                 if iostat != 0:
                     print("*** PyAccum failed on iter", iter)
-                        # exit(iostat)
+                else:
+                    out_path = outdir+'/'+datasimopt+'/'+str(resopt[0])+'res_'+str(amplopt[0])+'amp/'
+                    from pathlib import Path
+
+                    print(out_path)
+                    print(Path(out_path))
+                    for p in Path(out_path).glob('gtrack_*'):
+                        p.unlink()
+                        print(p,"has been succesfully removed after solution!")
+
                 # stop clock and print runtime
                 # -----------------------------
                 end = time.time()

@@ -22,7 +22,7 @@ from statsmodels.tools.eval_measures import rmse
 # from accum_utils import analyze_dist_vs_dR
 # from AccumXov import remove_max_dist
 # from accum_utils import analyze_dist_vs_dR
-from prOpt import tmpdir, vecopts, local, debug, sol4_orbpar, sol4_glo
+from prOpt import tmpdir, vecopts, local, debug, sol4_orbpar
 from project_coord import project_stereographic
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
@@ -245,8 +245,10 @@ def clean_xov(xov, par_list=[]):
     return xov
 
 
-def clean_partials(b, spA, nglbpars, threshold = 1.e6):
+def clean_partials(b, spA, glbpars, threshold = 1.e6):
     # spA = spA[:99264,-4:]
+
+    nglbpars = len(glbpars)
 
     if debug:
         print("## clean_partials - size pre:", len(b), spA.shape)
@@ -259,11 +261,11 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
         # ax.plot(spA_sol4.todense()<2000)
         if nglbpars>1:
             for idx in range(nglbpars):
-                axlst[idx].plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+                axlst[idx].plot(spA[:, -nglbpars + idx].todense(), label=glbpars[idx])
                 # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
                 axlst[idx].legend(loc='upper right')
         else:
-            axlst.plot(spA[:, -nglbpars + 0].todense(), label=sol4_glo[0])
+            axlst.plot(spA[:, -nglbpars + 0].todense(), label=glbpars[0])
             # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
             axlst.legend(loc='upper right')
         # i.plot(b)
@@ -272,7 +274,7 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
 
     Nexcluded = 0
     # print(spla.norm(spA[:,-5:],axis=0))
-    for i in range(len(sol4_glo)):
+    for i in range(nglbpars):
         # if an error arises, check the hard-coded list of solved for
         # global parameters
         data = spA.tocsc()[:, -i - 1].data
@@ -315,11 +317,11 @@ def clean_partials(b, spA, nglbpars, threshold = 1.e6):
         fig, axlst = plt.subplots(nglbpars)
         if nglbpars>1:
             for idx in range(nglbpars):
-                axlst[idx].plot(spA[:, -nglbpars + idx].todense(), label=sol4_glo[idx])
+                axlst[idx].plot(spA[:, -nglbpars + idx].todense(), label=glbpars[idx])
                 # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
                 axlst[idx].legend(loc='upper right')
         else:
-            axlst.plot(spA[:, -nglbpars + 0].todense(), label=sol4_glo[0])
+            axlst.plot(spA[:, -nglbpars + 0].todense(), label=glbpars[0])
             # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
             axlst.legend(loc='upper right')
         plt.savefig(tmpdir + 'b_and_A_post.png')
