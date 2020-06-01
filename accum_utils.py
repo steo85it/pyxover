@@ -222,11 +222,19 @@ def get_stats(amat):
     xstd = []
     # print(amat.sol_dict['sol'])
     for filt in amat.sol4_pars:
-        # print(filt)
+        # print(np.array(filt))
         filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
-        xsol.append(list(filtered_dict.values())[0])
+        # print(filtered_dict)
+        if len(list(filtered_dict.values()))>0:
+            xsol.append(list(filtered_dict.values())[0])
+        else:
+            print(np.array(filt),"not found")
+            xsol.append(0.)
         filtered_dict = {k: v for (k, v) in amat.sol_dict['std'].items() if filt in k}
-        xstd.append(list(filtered_dict.values())[0])
+        if len(list(filtered_dict.values()))>0:
+            xstd.append(list(filtered_dict.values())[0])
+        else:
+            xstd.append(0.)
 
     if amat.sol4_pars != []:
         # select columns of design matrix corresponding to chosen parameters to solve for
