@@ -222,7 +222,7 @@ def get_stats(amat):
     xstd = []
     # print(amat.sol_dict['sol'])
     for filt in amat.sol4_pars:
-        # print(filt)
+        #print(filt)
         filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
         xsol.append(list(filtered_dict.values())[0])
         filtered_dict = {k: v for (k, v) in amat.sol_dict['std'].items() if filt in k}
@@ -397,7 +397,7 @@ def analyze_sol(xovi_amat,xov,mode='full'):
                    np.reshape(xovi_amat.sol[0], (-1, 1)),
                    np.reshape(xovi_amat.sol[-1], (-1, 1))
                    ))
-    sol_dict = {'sol': dict(zip(_[:,0],_[:,1].astype(float))), 'std': dict(zip(_[:,0],_[:,2].astype(float))) }
+    sol_dict = {'sol': dict(zip(_[:,0],_[:,1].astype(float))), 'std': dict( zip( _[:,0],np.sqrt(_[:,2].astype(float))) ) }
 
     if debug:
         print("sol_dict_analyze_sol")
