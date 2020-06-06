@@ -46,10 +46,12 @@ if __name__ == '__main__':
     # exit()
 
     subfolder = ''
-    fignam = 'sols_BS.png'
+    fignam = 'sols_BS_iter_ap.png'
     vecopts = {}
-    sols = [('BS0_6','IAU'),('BS1_7','IAU'),('BS2_6','IAU'),('BS3_7','IAU')]
-    # sols = [('KX2_0','IAU'),('KX2_1','IAU'),('KX2_2','IAU'),('KX2_3','IAU')]
+    # sols = [('BS0_6','IAU'),('BS1_7','IAU'),('BS2_6','IAU'),('BS3_7','IAU')]
+    sols = [('KX2_0','IAU'),('KX2_1','IAU'),('KX2_2','IAU'),('KX2_3','IAU'),('KX2_4','IAU'),('KX2_5','IAU'),('KX2_6','IAU'),('KX2_7','IAU'),
+            ('KX3_0','AG'),('KX3_1','AG'),('KX3_2','AG'),('KX3_3','AG'),
+            ('AGTP_1','AG'),('AGTP_2','AG'),('AGTP_3','AG'),('AGTb_0','AG'),('AGTb_1','AG'),('AGTb_2','AG'),('AGTb_3','AG')]
 
     subexp = '0res_1amp'
     solout = {}
@@ -59,6 +61,7 @@ if __name__ == '__main__':
         amat = Amat(vecopts)
         amat = amat.load(outdir + 'sim/' + subfolder + solnam + '/' + subexp + '/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
+        print("rmse of solution at iter):", amat.resid_wrmse)
         print("vce weights (data,constr,avg_constr):", amat.vce)
         for var in ['A','C','R']:
             sol_orb = {i:amat.sol_dict['sol'][i] for i in amat.sol_dict['sol'].keys() if '_dR/d'+var in i}
@@ -73,8 +76,11 @@ if __name__ == '__main__':
 
         # convert units to (deg, deg, deg/day, 1, 1)
         sol_glb = {a:unit_transf[i]*b for i,(a,b) in enumerate(sol_glb.items())}
-        err_glb = {a:unit_transf[i]*b for i,(a,b) in enumerate(err_glb.items())}
-
+        if solnam[:3]=='KX2':
+            err_glb = {a:unit_transf[i]*np.sqrt(b)*3 for i,(a,b) in enumerate(err_glb.items())}
+        else:
+            err_glb = {a:unit_transf[i]*b*3 for i,(a,b) in enumerate(err_glb.items())}
+            
         # sum to apriori
         tot_glb = mergsum(eval(ap)['sol'],sol_glb)
 
@@ -258,7 +264,8 @@ if __name__ == '__main__':
         print(sol_df)
         print(err_df)
 
-        my_colors = ['r', 'g', 'b', 'k', 'y', 'm', 'c', 'tab:brown','tab:pink']  # ,
+        my_colors = ['r', 'g', 'r','r','r','b','b','b','b','g','g', 'g','g', 'g','g', 'g','g','tab:brown','tab:brown','tab:brown','tab:brown']
+        #my_colors = ['r', 'g', 'b', 'k', 'y', 'm', 'c', 'tab:brown','tab:pink']  # ,
         # 'c', 'tab:brown',
         #          'tab:pink', 'tab:purple']
 
@@ -269,12 +276,12 @@ if __name__ == '__main__':
         for ax,(par,unit) in zip(np.ravel(axes),[('RADEC','deg'),('PM','deg/day'),('L','as'),('h2','')]):
 
             for idx in range(len(sol_df)):
-                # if idx not in [4]:
+                #if idx not in [4]:
 
                     if sol_df.index[idx] in ['IAU','AG']:
                         fmtkey = 'v'
                     else:
-                        fmtkey = 'o'
+                        fmtkey = '.'
 
                     if par == 'RADEC':
                         ax.errorbar(sol_df.RA[idx], sol_df.DEC[idx],
@@ -293,7 +300,7 @@ if __name__ == '__main__':
 
                         ax.set_ylabel(par+' ('+unit+')')
 
-        ax.legend()
+        # ax.legend()
         # ax.ticklabel_format(axis="y",useMathText=True)
 
         ax.set_title('')

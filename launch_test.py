@@ -15,7 +15,9 @@ from prOpt import sim_altdata, local, outdir, datasimopt, expopt, resopt, amplop
 # tp9: full dataset, simulation, h2 = 0.8, no perturbations, noise, PM@J2013.0
 # KX1: real data, tidal h2=0, KX orbits+IAU ap, 1mln xovers (h2 since the beginning)
 # KX2: real data, KX orbits+IAU ap, 1mln xovers (h2 since convergence)
-# KX3: real data, KX orbits+AG ap, 1mln xovers (h2 since convergence) - wrong AbMat name, just rename
+# KX3: real data, KX orbits+AG ap, 1mln xovers (h2 since convergence)
+# KX4: real data, KX orbits+AG ap (PM0 from IAU), 1mln xovers (h2 since convergence)
+# AGTP0: real data, AG_TP orbits+AG ap, 1mln xovers (h2 since convergence)
 # KX1r2: real data, same subsel as tp8 (apriori h2=0 after 05-Feb)
 # tpAp: full simu, KX orbits, AG a priori
 

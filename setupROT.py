@@ -14,7 +14,7 @@ import numpy as np
 from prOpt import vecopts, debug
 from util import as2deg
 
-AG = False
+AG = True
 ZAP = False
 
 def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
@@ -25,7 +25,8 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
         if vecopts['PM_ORIGIN'] == 'J2000':
             PM0 = np.array([329.75, 6.1385054, 0.])
         elif vecopts['PM_ORIGIN'] == 'J2013.0':
-            PM0 = np.array([318.4455, 6.1385025, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
+            PM0 = np.array([318.4455, 6.1385054, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
+            #PM0 = np.array([318.2245, 6.1385054, 0.])
     elif ZAP:
         # from zero
         POLE_RA0 = np.array([0., -0.0328, 0.])

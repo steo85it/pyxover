@@ -17,7 +17,7 @@ h2_limit_on = False
 # remove worse obs at first iter to speed up
 downsize = True #False #
 # extract sample for bootstrap
-sampling = True #False #
+sampling = False #
 
 # rescaling factor for weight matrix, based on average error on xovers at Mercury
 # dimension of meters (to get s0/s dimensionless)
@@ -28,3 +28,5 @@ weight_obs = 1. # 1.57174113e-06 # 1.
 weight_constr = 30 # 2.29140788e-05 # 1.
 # convergence criteria for fixing weights
 convergence_criteria = 0.05 # =5%
+#VCE
+compute_vce = True

@@ -20,7 +20,7 @@ from xov_setup import xov
 
 n_proc = mp.cpu_count() - 3
 import_proj = False
-import_abmat = (False,outdir+"sim/KX2_0/0res_1amp/Abmat*.pkl")
+import_abmat = (False,outdir+"sim/AGTP_0/0res_1amp/Abmat*.pkl")
 
 
 ## MAIN ##

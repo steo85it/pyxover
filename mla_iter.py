@@ -145,22 +145,23 @@ if __name__ == '__main__':
                 if iter == 0 and False:
                     iostat = s.call(
                         ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) + '_' + str(-1), '8',
-                         '01:30:00', '10'])
+                         '01:30:00', '90Gb', '10'])
                     if iostat != 0:
                         print("*** PyGeol_" + str(rt) + " failed on iter", str(-1))
                         exit(iostat)
                     iostat = s.call(
                         ['/home/sberton2/launchLISTslurm', 'loadfit2dem', 'fit2dem_' + str(rt) + '_' + str(-1), '8',
-                         '01:30:00', '10'])
+                         '03:00:00', '90Gb', '10'])
                     if iostat != 0:
                         print("*** fit2dem_" + str(rt) + " failed on iter", str(-1))
                         exit(iostat)
 
-                iostat = s.call(
-                    ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '7', '01:00:00', '30Gb', '10'])
-                if iostat != 0:
-                    print("*** PyGeol_" + str(rt) + " failed on iter", iter)
-                    exit(iostat)
+                if iter > 1:                        
+                    iostat = s.call(
+                        ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '7', '01:00:00', '30Gb', '10'])
+                    if iostat != 0:
+                        print("*** PyGeol_" + str(rt) + " failed on iter", iter)
+                        exit(iostat)
 
                 if monthly_sets:
                   for i in range(2):
@@ -171,7 +172,7 @@ if __name__ == '__main__':
                         exit(iostat)
                 else:
                   iostat = s.call(
-                      ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '03:00:00', '99Gb', '10'])
+                      ['/home/sberton2/launchLISTslurm', 'loadPyXover', 'PyXov_' + str(rt) +'_' + str(iter), '8', '04:00:00', '99Gb', '10'])
                   if iostat != 0:
                       print("*** PyXov_" + str(rt) + " failed on iter", iter)
                       exit(iostat)

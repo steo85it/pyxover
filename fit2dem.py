@@ -169,7 +169,7 @@ def extract_dRvsLAT(fil):
     # exit()
 
     # update track.previous iter
-    coeff_set_re = ['sol_dR/dA', 'sol_dR/dC', 'sol_dR/dR', 'sol_dR/dRl', 'sol_dR/dPt']
+    coeff_set_re = ['sol_dR/dA', 'sol_dR/dC', 'sol_dR/dR'] #, 'sol_dR/dRl', 'sol_dR/dPt']
     tmp = pd.DataFrame(ACRcorr).T
     tmp.columns = coeff_set_re
     track.sol_prev_iter = {'orb': tmp, 'glo': ''}
@@ -263,6 +263,8 @@ def create_amat_csr(tid_df):
 
 if __name__ == '__main__':
 
+    from prOpt import expopt
+    
     start = time.time()
 
     if len(sys.argv) > 1:
@@ -316,7 +318,7 @@ if __name__ == '__main__':
     read_pkl = 0
 
     # epo = '1212'
-    exp = 'AGTP_0' # 'KX1r4_0'  # 'KX0_0'
+    exp = expopt+'_0' # 'KX1r4_0'  # 'KX0_0'
     rghn = '0res_1amp'
 
     if read_pkl:

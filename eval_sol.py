@@ -226,7 +226,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
     # run options
     plot_resmap = True
     plot_reshisto= True
-    plot_sol_errors = True
+    plot_sol_errors = False
     plot_weights_components = False # True #
     compare_spk = False
 
@@ -1176,7 +1176,9 @@ if __name__ == '__main__':
 
     simulated_data = False #True
 
-    analyze_sol(sols=['KX2_0','KX2_1'], ref_sol='', subexp = '0res_1amp') # 'AGTP_0','AGS_0',
+    analyze_sol(sols=['AGTb_0','AGTb_1','AGTb_2','AGTb_3'], ref_sol='', subexp = '0res_1amp') 
+    #analyze_sol(sols=['KX2_0','KX2_1','KX2_2','KX2_3','KX2_4','KX2_5','KX2_6','KX2_7'], ref_sol='', subexp = '0res_1amp')
+#    analyze_sol(sols=['KX3_0','KX3_1','KX3_2','KX3_3'], ref_sol='', subexp = '0res_1amp') # 'AGTP_0','AGS_0',
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp4_0',subexp='3res_20amp')

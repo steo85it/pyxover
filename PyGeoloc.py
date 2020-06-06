@@ -124,12 +124,13 @@ def main(args):
         # load kernels
         spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'#])
                       ,
-#                      '/att/nobackup/sgoossen/MESSENGER/ORBITS/NEW_UNIT5/SPK/MSGR_UPD_PANEL_THERMAL.bsp', # new with NGF modif
+                      '/att/nobackup/sgoossen/MESSENGER/ORBITS/NEW_UNIT5/SPK/MSGR_UPD_PANEL_THERMAL.bsp', # new with NGF modif
+                      '/att/nobackup/sgoossen/MESSENGER/ORBITS/NEW_UNIT5/SPK/MSGR_UPD_PANEL_THERMAL_FLYBYS.bsp', # new with NGF modif 
 #                      '/att/nobackup/emazaric/MESSENGER/data/spk/msgr_20040803_20150328_od380sc_0.bsp',
-                      '/att/nobackup/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp',
+                      '/att/nobackup/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp'#,
 #                      '/att/nobackup/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp', # original AG orbit
 #                      '/att/nobackup/sgoossen/MESSENGER/ORBITS/SPK/MSGR_HGM008_ACCEL2_INTGCB.bsp' # AC acc OD
-		      '/att/nobackup/sgoossen/MESSENGER/ORBITS/SPK/MSGR_HGM008_ACCEL_INTGCB.bsp' # A acc OD only
+#		      '/att/nobackup/sgoossen/MESSENGER/ORBITS/SPK/MSGR_HGM008_ACCEL_INTGCB.bsp' # A acc OD only
                      ])
     else:
         data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'

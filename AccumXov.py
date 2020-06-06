@@ -13,7 +13,7 @@ import itertools
 import seaborn as sns
 
 from accum_opt import remove_max_dist, remove_3sigma_median, remove_dR200, downsize, clean_part, huber_threshold, \
-    distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling
+    distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling,compute_vce
 from accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
     analyze_sol, subsample_xovers, load_previous_iter_if_any
 from util import mergsum, rms
@@ -796,7 +796,7 @@ def main(arg):
             if (downsize or sampling) and ext_iter==0:
                 # downsize dataset by removing worst weighted data (mostly at high latitudes)
                 # also removes very bad xovers with dR > 1km
-                max_xovers = 3.e6  # 8.e5
+                max_xovers = 8.5e5 # 3.e6
                 if downsize and len(xovi_amat.xov.xovers)>max_xovers:
                     # actually preparing weights and constraints for the solution (weights are needed for downsampling)
                     prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
@@ -1001,28 +1001,31 @@ def main(arg):
                         print("previous_iter.sol_dict=",previous_iter.sol_dict)
 
                 # VCE
-                sigma2_obs, sigma2_constr, sigma2_constr_avg = compute_vce_weights(amat=xovi_amat)
+                if compute_vce:
+                    sigma2_obs, sigma2_constr, sigma2_constr_avg = compute_vce_weights(amat=xovi_amat)
 
-                keep_iterating_vce = (np.abs(weight_obs-1./sigma2_obs)/weight_obs > 0.01)+\
-                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr > 0.01)+\
-                                     (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg > 0.01)
-                # print(keep_iterating_vce)
-                if keep_iterating_vce:
-                    print("vce iter,weight (obs,constr):", i, xovi_amat.vce,keep_iterating_vce)
-                    print("w_obs updated by",(np.abs(weight_obs-1./sigma2_obs)/weight_obs*100.),'% and w_constr by',\
-                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),'% and w_constr_avg by',\
-                                     (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg*100.),'%')
-                    # update weights
-                    weight_obs =  1./sigma2_obs
-                    weight_constr = 1./sigma2_constr
-                    weight_constr_avg = 1./sigma2_constr_avg
-                    xovi_amat.vce = (weight_obs, weight_constr, weight_constr_avg)
+                    keep_iterating_vce = (np.abs(weight_obs-1./sigma2_obs)/weight_obs > 0.01)+\
+                                         (np.abs(weight_constr-1./sigma2_constr)/weight_constr > 0.01)+\
+                                         (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg > 0.01)
+                    # print(keep_iterating_vce)
+                    if keep_iterating_vce:
+                        print("vce iter,weight (obs,constr):", i, xovi_amat.vce,keep_iterating_vce)
+                        print("w_obs updated by",(np.abs(weight_obs-1./sigma2_obs)/weight_obs*100.),'% and w_constr by',\
+                                         (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),'% and w_constr_avg by',\
+                                         (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg*100.),'%')
+                        # update weights
+                        weight_obs =  1./sigma2_obs
+                        weight_constr = 1./sigma2_constr
+                        weight_constr_avg = 1./sigma2_constr_avg
+                        xovi_amat.vce = (weight_obs, weight_constr, weight_constr_avg)
+                    else:
+                        print("vce iter,weight (obs,constr):", i, xovi_amat.vce,keep_iterating_vce)
+                        print("w_obs updated by",(np.abs(weight_obs-1./sigma2_obs)/weight_obs*100.),'% and w_constr by',\
+                                         (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),'% and w_constr_avg by',\
+                                         (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg*100.),'%. Stop!')
                 else:
-                    print("vce iter,weight (obs,constr):", i, xovi_amat.vce,keep_iterating_vce)
-                    print("w_obs updated by",(np.abs(weight_obs-1./sigma2_obs)/weight_obs*100.),'% and w_constr by',\
-                                     (np.abs(weight_constr-1./sigma2_constr)/weight_constr*100.),'% and w_constr_avg by',\
-                                     (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg*100.),'%. Stop!')
-
+                    keep_iterating_vce=False
+                        
         else:
             # TODO also compute weights and store them (no reason not to do so w/o partials)
             # create Amat

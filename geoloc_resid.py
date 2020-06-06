@@ -129,7 +129,7 @@ def get_demres(dorb, track, df, coeff_set=['dA', 'dC', 'dR','dRl','dPt']): #]): 
 
 
 def get_demres_full(dorb, track, df, dem_xarr,
-                    coeff_set=['dA', 'dC', 'dR', 'dRl','dPt']):  # ,'dA1', 'dC1', 'dR1']): #,'dRl','dPt']):
+                    coeff_set=['dA', 'dC', 'dR']):  # ,'dA1', 'dC1', 'dR1']): #,'dRl','dPt']):
     track.pertPar = {'dA': 0.,
                      'dC': 0.,
                      'dR': 0.,
@@ -606,12 +606,12 @@ def fit_track_to_dem(df_in):
                     "/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD")
 
             # Preliminary data cleaning
-            dorb = np.array([0., 0., 0., 0., 0.])  # ,0,0,0]  # range(-10,10,1) #np.array([10.3, 0.7, 10.8, 11.9, 1.2])
+            dorb = np.array([0., 0., 0.]) #, 0., 0.])  # ,0,0,0]  # range(-10,10,1) #np.array([10.3, 0.7, 10.8, 11.9, 1.2])
             dr, dummy = get_demres_full(dorb, track, df_, dem_xarr)
-            print(track.name, "pre-clean (len, max, rms): ", len(dr), np.max(dr), np.sqrt(np.mean(dr ** 2)))
+            print(track.name, "pre-clean (len, max, rms): ", len(dr), np.max(dr), np.round(np.sqrt(np.mean(dr ** 2)),2))
 
             df_.loc[:, 'dr_dem'] = dr
-            df_ = df_[df_['dr_dem'] < 2.e3]
+            df_ = df_[df_['dr_dem'] < 1.e3]
             df_ = mad_clean(df_, 'dr_dem')
             # df_=df_.iloc[:-1000,:]
             # exit()
@@ -624,7 +624,7 @@ def fit_track_to_dem(df_in):
             # Fit orbit corrections to DEM
 
             sol = minimize(get_demres, dorb, args=(track,df_,dem_xarr), method='SLSQP', #'L-BFGS-B', #'Nelder-Mead', #
-                          bounds=[(-0.1,0.1),(-0.1,0.1),(-0.05,0.05),(-0.5,0.5),(-0.5,0.5)], #,(-1e-2,1e-2),(-1e-2,1e-2),(-1e-2,1e-2)],
+                           bounds=[(-0.5,0.5),(-0.5,0.5),(-0.1,0.1)], #,(-0.5,0.5),(-0.5,0.5)], #,(-1e-2,1e-2),(-1e-2,1e-2),(-1e-2,1e-2)],
                           jac='2-point',
                           options={'disp': False, 'eps': 0.0005, 'ftol': 1.e-6})
             # print(sol)
