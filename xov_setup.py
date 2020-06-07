@@ -49,6 +49,7 @@ class xov:
         self.parOrb_xy = None
         self.parGlo_xy = None
         self.par_xy = None
+        self.t0_tracks = None
 
     #@profile
     def setup(self, gtracks):
@@ -1335,18 +1336,24 @@ class xov:
     ####@profile
     def get_dt(self,ladata_df,xovers_df):
         # tracksid = list(self.tracks.values())
+
         dt = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].loc[
-                             map(round, xovers_df.cmb_idA.values)][['ET_TX']].values, \
+                             map(round, xovers_df.cmb_idA.values)][['dt']].values, \
                          ladata_df.loc[ladata_df['orbID'].values == 1].loc[
-                             map(round, xovers_df.cmb_idB.values)][['ET_TX']].values])
-        t0 = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].iloc[
-                              0][['ET_TX']].values, \
-                          ladata_df.loc[ladata_df['orbID'].values == 1].iloc[
-                              0][['ET_TX']].values])
-        if len(xovers_df)==1:
-            dt = dt - t0
-        else:
-            dt = dt - t0[:, np.newaxis]
+                             map(round, xovers_df.cmb_idB.values)][['dt']].values])
+
+        # dt = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].loc[
+        #                      map(round, xovers_df.cmb_idA.values)][['ET_TX']].values, \
+        #                  ladata_df.loc[ladata_df['orbID'].values == 1].loc[
+        #                      map(round, xovers_df.cmb_idB.values)][['ET_TX']].values])
+        # t0 = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].iloc[
+        #                       0][['ET_TX']].values, \
+        #                   ladata_df.loc[ladata_df['orbID'].values == 1].iloc[
+        #                       0][['ET_TX']].values])
+        # if len(xovers_df)==1:
+        #     dt = dt - t0
+        # else:
+        #     dt = dt - t0[:, np.newaxis]
 
         return dt
 

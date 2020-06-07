@@ -114,7 +114,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
                 ax.plot(x, np.ones(len(result.fittedvalues)) * rmspre, 'r--')
                 ax.plot(x, -1. * np.ones(len(result.fittedvalues)) * rmspre, 'r--')
                 ax.legend(loc="best")
-                ax.set_xlim(right=1500)
+                # ax.set_xlim(right=1500)
                 # if bias+drift
                 # title = "sol: R bias : " + str(rlm_results.params.round(1)[1]) + \
                 #         "m, R drift : " + str(rlm_results.params.round(2)[0]) + " m/s -- RMSE : " + \
@@ -140,6 +140,8 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             rmsprelist.append(1.e-6)
             rmslist.append(1.e-6)
             # print(tr,y)
+
+        # exit()
 
     postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, driftlist, rmslist]).T,
                            columns=['track', 'pre', 'bias', 'drift', 'minus-Rbias']).astype(float).astype({'track': int})

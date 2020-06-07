@@ -226,9 +226,9 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
     # run options
     plot_resmap = True
     plot_reshisto= True
-    plot_sol_errors = False
     plot_weights_components = False # True #
     compare_spk = False
+    plot_sol_errors = False #True
 
     vecopts = {}
     dfs = []
@@ -238,7 +238,12 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
 
         # select subset, e.g., for tests
         tmp.xov.xovers = tmp.xov.xovers.loc[:,:]
+        print("Processing",sol,", containing",len(tmp.xov.xovers),"xovers...")
+        print(tmp.vce)
+        # print(tmp.sol_dict['sol'])
+        # exit()
         dfs.append(tmp)
+
 
     if plot_resmap:
         for idx,amat in enumerate(dfs):
@@ -315,7 +320,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             # compute formal errors
             sol = amat.sol_dict['sol']
             formal_err = amat.sol_dict['std']
-            print(formal_err)
+            # print(formal_err)
 
             # compute a posteriori
             ATP = amat.spA.T * amat.weights
@@ -1176,7 +1181,7 @@ if __name__ == '__main__':
 
     simulated_data = False #True
 
-    analyze_sol(sols=['AGTb_0','AGTb_1','AGTb_2','AGTb_3'], ref_sol='', subexp = '0res_1amp') 
+    analyze_sol(sols=['AGTb_0','AGTb_1','AGTb_2','AGTb_3'], ref_sol='', subexp = '0res_1amp')
     #analyze_sol(sols=['KX2_0','KX2_1','KX2_2','KX2_3','KX2_4','KX2_5','KX2_6','KX2_7'], ref_sol='', subexp = '0res_1amp')
 #    analyze_sol(sols=['KX3_0','KX3_1','KX3_2','KX3_3'], ref_sol='', subexp = '0res_1amp') # 'AGTP_0','AGS_0',
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')

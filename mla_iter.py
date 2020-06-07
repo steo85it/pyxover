@@ -1,3 +1,4 @@
+import shutil
 import subprocess as s
 import time
 
@@ -156,7 +157,7 @@ if __name__ == '__main__':
                         print("*** fit2dem_" + str(rt) + " failed on iter", str(-1))
                         exit(iostat)
 
-                if iter > 1:                        
+                if iter > 1:
                     iostat = s.call(
                         ['/home/sberton2/launchLISTslurm', 'loadPyGeoloc', 'PyGeo_' + str(rt) +'_' + str(iter), '7', '01:00:00', '30Gb', '10'])
                     if iostat != 0:

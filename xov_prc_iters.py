@@ -20,7 +20,7 @@ from xov_setup import xov
 
 n_proc = mp.cpu_count() - 3
 import_proj = False
-import_abmat = (False,outdir+"sim/AGTP_0/0res_1amp/Abmat*.pkl")
+import_abmat = (False,outdir+"sim/BS2_0/0res_1amp/Abmat*.pkl")
 
 
 ## MAIN ##
@@ -204,7 +204,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             xov_extract = pd.DataFrame(tmp, columns=['genid', 'seqid', 'xovid', 'LON_proj', 'LAT_proj'])
 
             ladata_extract = tmp_ladata.loc[tmp_ladata.reset_index()['index'].isin(xov_extract.genid)][
-                ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir']].reset_index()
+                ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt']].reset_index()
             # print("ladata",ladata_extract)
             # if idx>0:
             #     exit()
@@ -487,7 +487,7 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
                    mla_proj_df.columns.str.startswith('Y_stgprj') + mla_proj_df.columns.str.startswith(
                        'dR/')].columns  # ,'X_stgprj','Y_stgprj'))
     proj_df_tmp = mla_proj_df[
-        ['orbID', 'seqid_mla', 'ET_TX', 'LON', 'LAT', 'R', 'offnadir', 'xovid', 'LON_proj', 'LAT_proj'] + list(
+        ['orbID', 'seqid_mla', 'ET_TX', 'LON', 'LAT', 'R', 'dt', 'offnadir', 'xovid', 'LON_proj', 'LAT_proj'] + list(
             cols_to_keep)]
     # print(proj_df_tmp.columns)
     print("total memory proj_df_tmp:", proj_df_tmp.memory_usage(deep=True).sum() * 1.e-6)

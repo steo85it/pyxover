@@ -259,6 +259,8 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
                 print("pre xovcov types",tmp.dtypes)
 
             weights_xov_tracks = get_xov_cov_tracks(df=tmp,plot_stuff=True)
+            xovi_amat.xov.xovers['huber_trks'] = weights_xov_tracks.diagonal()
+
 
             # the histogram of weight distribution
             if False and local and debug:
@@ -309,6 +311,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         interp_weights = get_interpolation_weight(xovi_amat.xov).reset_index()
         val = interp_weights['weight'].values # np.ones(len(interp_weights['weight'].values)) #
         # print("interp error values", np.sort(val))
+        xovi_amat.xov.xovers['interp_weight'] = val
 
         # apply huber weights
         if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
@@ -756,10 +759,6 @@ def main(arg):
     data_sim = arg[1]
     ext_iter = arg[2]
 
-    #downsize = True
-    #if ext_iter>0:
-    #    downsize = False
-    
     if data_sim == 'sim':
         _ = [x.split('/')[-2] for x in datasets]
         resval = [10. / 2 ** int(''.join(filter(str.isdigit, strng.split('_')[0]))) for strng in _]
@@ -785,7 +784,7 @@ def main(arg):
         if partials:
             # load previous iter from disk (orbs, sols, etc) if available
             previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
-            if ext_iter > 0 and previous_iter.converged:
+            if ext_iter > 0 and previous_iter.converged and 'dR/dh2' not in sol4_glo:
                 print("Adding h2 to sol4_glo as solution converged...")
                 sol4_glo.extend(['dR/dh2'])
 
@@ -824,8 +823,8 @@ def main(arg):
                 xovi_amat.vce = previous_iter.vce
             else:
                 weight_obs = 1.e-3
-                weight_constr = 1.
-                weight_constr_avg = 1.
+                weight_constr = 5.
+                weight_constr_avg = 1.e-2
 
                 xovi_amat.vce = [weight_obs, weight_constr, weight_constr_avg]
                 # xovi_amat.vce = [0.0002247404434024504, 5.0025679108113685, 0.0010878786212904351]
@@ -1025,7 +1024,7 @@ def main(arg):
                                          (np.abs(weight_constr_avg-1./sigma2_constr_avg)/weight_constr_avg*100.),'%. Stop!')
                 else:
                     keep_iterating_vce=False
-                        
+
         else:
             # TODO also compute weights and store them (no reason not to do so w/o partials)
             # create Amat

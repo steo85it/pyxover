@@ -60,8 +60,12 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     huber_threshold_track = 5
     # tmp = tracks_rms_df.sort_values(by='track').pre.abs().values
     # makes sense to use the bias and not the rms (actually the average value would also be fine...) !! remember ABS!!
-    tmp = tracks_rms_df.sort_values(by='track').bias.abs().values
+    tracks_rms_df.sort_values(by='track',inplace=True)
+    tmp = tracks_rms_df.bias.abs().values
     huber_weights_track = np.where(tmp > huber_threshold_track, (huber_threshold_track / tmp) ** 1, 1.)
+    # tracks_rms_df['huber'] = huber_weights_track
+    # print(tracks_rms_df)
+    # exit()
 
     if plot_stuff and local: # and debug:
         # plot histo
@@ -84,6 +88,8 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     cov_tracks = huber_weights_track.round(2).astype('float16')
     # if cov_tracks element == 0, add 0.001 to avoid inf because of rounding)
     cov_tracks[cov_tracks==0] += 1.e-3
+    # from weights to covariances (inverse)
+    np.reciprocal(cov_tracks, out=cov_tracks)
     # convert to sparse (on diagonal)
     cov_tracks = diags(cov_tracks, 0)
 
@@ -166,7 +172,7 @@ def downsize_xovers(xov_df,max_xovers=1.e5):
     to_keep_hilat = hilat_xov.loc[hilat_xov['weights'] > hilat_xov['weights'].quantile(to_keep)].xOvID.values
     # by default, keep 90% of xovers at low-lats
     lolat_xov = xov_df.loc[xov_df.LAT < 60]
-    to_keep_lolat = lolat_xov.loc[lolat_xov['weights'] > lolat_xov['weights'].quantile(0.1)].xOvID.values
+    to_keep_lolat = lolat_xov.loc[lolat_xov['weights'] > lolat_xov['weights'].quantile(0.3)].xOvID.values
 
     # select very good xovers at LAT>60N OR decent xovers at low latitudes
     selected = xov_df.loc[(xov_df.xOvID.isin(to_keep_hilat)) | (xov_df.xOvID.isin(to_keep_lolat))]

@@ -92,7 +92,8 @@ class gtrack:
             self.project()
             # update df
 
-            # print(self.ladata_df)
+            self.ladata_df['dt'] = self.ladata_df.ET_TX - self.t0_orb
+
 
     # create groundtrack from data and save to file
     def prepro(self, filnam):

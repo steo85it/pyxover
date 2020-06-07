@@ -1,20 +1,30 @@
 How to process altimetry data in PyXovers/Geoloc
 ------------------------------------------------
 
-prOpt: set most processing options (local, parallel, debug, partials) and perturbation to orbit and geophysics
-launch_test: select folder and terrain roughness
+prOpt: set most processing options (local, parallel, debug, partials) and perturbation
+to orbit and geophysics + select folder and terrain roughness
 other options depend on the parameters set at launch (see below)
 
 Processing
 ----------
 
-1. launch_test: set     
-	    local = 0/1
-	    data_sim = 'data'/'sim' to choose if simulating data (and getting them from
-			sim data folder) or from data
-	    exp = '1212_KX/' defines the folder where data are saved under out/mladata/ 
-                        (inside the data/sim folder, depending on data_sim option)
-	    ext_iter = 0  # external iteration (for updating solution after fit)
+1. prOpt: set options for crossovers analysis
+	    local = 0/1 (defines out/tmp dir and options)
+	    datasimopt = 'data'/'sim' to choose if simulating data (and getting them from
+			sim data folder) or from data --> everything is sim now, could remove
+	    parallel = run selected steps using multiprocessing.Pool routines
+	    partials = compute partials w.r.t. parOrb and parGlo (also selected in the same file). If not,
+	    only get residuals, no sol.
+	    expopt = e.g., 'KX0' defines the name of the experiment and input (datasimopt) /output folders (via outdir
+	    in same folder). Data folder should be filled and created manually (see below "Prepare files locally")
+        Select partials to compute, constraints and parameters to estimate.
+        cloop_sim = if closed loop simulation, apply perturbations as defined here
+        SpInterp = use spice (no parallel) or interpolate spice data/use existing interpolation
+        new_gtrack, new_xov = if 0, ignore, if 1 create if not already existing, if 2 create and overwrite
+        Vecopt contains the main info about the central body (name, radius, etc...) for general purpose and ephemeris
+
+Following steps can be run manually or via mla_iter, which runs geoloc, xovers, accum for a set of MMYY, combinations and iterations.
+1. geolocalisation of data:
    set configuration to run python3 launch_test X YYMM 1, where X = 0 unless when testing
    the impact of different topographies; YYMM is the month to process; 1 launches the
    PyAltSim (if data_sim = sim and sim = 1 in prOpt) and PyGeoloc in series.
@@ -61,6 +71,10 @@ Launch scripts on pgda
 ----------------------
 From the program directory, run:
 /home/sberton2/launchLISTslurm loadPyAltSim PyAltSim
+
+Evaluate/plot results
+---------------------
+
 
 Prepare files locally (data selection)
 --------------------------------------
