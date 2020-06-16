@@ -229,6 +229,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
     plot_weights_components = False # True #
     compare_spk = False
     plot_sol_errors = False #True
+    plot_orbcorr = True
 
     vecopts = {}
     # introduce reference solution in plot
@@ -353,6 +354,34 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             df = df.sort_index()
             print(df)
             print("### plot_sol_errors: m_X produced for sol", sols[idx])
+
+    if plot_orbcorr:
+        orb_sol, glb_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
+        cols = orb_sol.filter(regex='sol.*$', axis=1).columns
+        orb_sol[cols] = orb_sol.filter(regex='sol.*$', axis=1).apply(pd.to_numeric, errors='ignore')
+        orb_std = orb_sol.copy().filter(regex='std.*$', axis=1).apply(pd.to_numeric, errors='ignore')
+
+        name = "Accent"
+        cmap = get_cmap(name)  # type: matplotlib.colors.ListedColormap
+        colors = cmap.colors  # type: list
+
+        fig, ax = plt.subplots(nrows=1)
+
+
+        for idx, col in enumerate(cols):
+            ax.set_prop_cycle(color=colors)
+            orb_sol_plot = orb_sol.copy()
+            orb_sol_plot[orb_sol_plot.filter(regex='sol.*d[P,R][l,t]$', axis=1).columns] *= 1.e6
+            orb_sol_plot.reset_index().plot(kind="scatter", x="index", y=col, color=colors[idx], label=col, ax=ax)
+
+        ax.set_xticks(orb_sol.index.values)
+        ax.locator_params(nbins=10, axis='x')
+        ax.set_ylabel('sol (m)')
+        ax.set_xlabel('track #')
+
+        plt.savefig(tmpdir + 'orbcorr_tseries_' + sol + '.png')
+        plt.close()
+        print("### plot_orbcorr: orbit solutions traced for sol", sol)
 
     exit()
 
