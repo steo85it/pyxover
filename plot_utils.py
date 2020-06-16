@@ -23,7 +23,8 @@ def plt_histo_dR(idx, xov_df, xov_ref='', xlim=None):
     # y = stats.norm.pdf(bins, mean_dR, std_dR)
     # plt.plot(bins, y, 'b--')
     if isinstance(xov_ref, pd.DataFrame):
-        n, bins, patches = plt.hist(xov_ref.dR.astype(np.float), bins=num_bins, density=True, facecolor='red',
+        xov_ref = xov_ref.loc[xov_ref.dR.abs() < 200]
+        n, bins, patches = plt.hist(xov_ref.dR.astype(np.float), bins=num_bins, density=False, facecolor='red',
                                     alpha=0.3, range=[-1.*xlim, xlim])
     plt.xlabel('dR (m)')
     plt.ylabel('Probability')
@@ -63,6 +64,7 @@ def plt_geo_dR(sol, xov, truncation=None):
     # print(piv)
     # exit()
     sns.heatmap(piv, xticklabels=10, yticklabels=10)
+    plt.ylim(90,-5)
     plt.tight_layout()
     ax1.invert_yaxis()
     #         ylabel='Topog ampl rms (1st octave, m)')

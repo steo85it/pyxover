@@ -231,6 +231,11 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
     plot_sol_errors = False #True
 
     vecopts = {}
+    # introduce reference solution in plot
+    ref = Amat(vecopts)
+    ref = ref.load(outdir + 'sim/' + subfolder + ref_sol + '/' + subexp + '/Abmat_sim_' + ref_sol.split('_')[0] + '_' + str(
+        int(ref_sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+
     dfs = []
     for sol in sols:
         tmp = Amat(vecopts)
@@ -257,6 +262,10 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             # else:
             plot_utils.plt_histo_dR(sols[idx] + '_' + subexp,
                                     amat.xov.xovers, xlim=100)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
+            if idx == len(dfs)-1:
+                plot_utils.plt_histo_dR(idx=sols[idx] + '_' + subexp,
+                                        xov_df=amat.xov.xovers, xov_ref=ref.xov.xovers,
+                                        xlim=100)
 
     if plot_weights_components:
         check_weights = pd.DataFrame()
