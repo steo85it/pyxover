@@ -9,7 +9,8 @@ import pandas as pd
 
 from Amat import Amat
 from ground_track import gtrack
-from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel, local, debug, compute_input_xov, new_xov
+from prOpt import outdir, vecopts, partials, parOrb, parGlo, parallel, local, debug, compute_input_xov, new_xov, \
+    cloop_sim
 from project_coord import project_stereographic
 # from util import get_size
 from xov_setup import xov
@@ -145,7 +146,10 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     for track_id in tracks_in_xovs[:]:
         # if track_id in ['1502130018','1502202222']:
         # print(track_id)
-        trackfil = outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
+        if cloop_sim:
+            trackfil = outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id[:-2] + '*.pkl'
+        else:
+            trackfil = outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
         track = track.load(trackfil)
         mladata[track_id] = track.ladata_df
 

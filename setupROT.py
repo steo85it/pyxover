@@ -37,23 +37,30 @@ def setupROT(offsetRA, offsetDEC, offsetPM, offsetL):
             PM0 = np.array([318.2245, 0., 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
     else:
         # IAU
-        POLE_RA0 = np.array([281.0097, -0.0328, 0.])
-        POLE_DEC0 = np.array([61.4143, -0.0049, 0.])
+        POLE_RA0 = np.array([281.0103, -0.0328, 0.])
+        POLE_DEC0 = np.array([61.4155, -0.0049, 0.])
         if vecopts['PM_ORIGIN'] == 'J2000':
-            PM0 = np.array([329.5469, 6.1385025, 0.])
+            PM0 = np.array([329.5988, 6.1385108, 0.])
         elif vecopts['PM_ORIGIN'] == 'J2013.0':
-            PM0 = np.array([318.2245, 6.1385025, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
+            PM0 = np.array([318.3201, 6.1385108, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
+        #old weird mix
+        #POLE_RA0 = np.array([281.0097, -0.0328, 0.])
+        #POLE_DEC0 = np.array([61.4143, -0.0049, 0.])
+        #if vecopts['PM_ORIGIN'] == 'J2000':
+        #    PM0 = np.array([329.5469, 6.1385025, 0.])
+        #elif vecopts['PM_ORIGIN'] == 'J2013.0':
+        #    PM0 = np.array([318.2245, 6.1385025, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
 
     rotpar = {'ORIENT0': '',
-              'NUT_PREC_PM0': np.transpose([0.00993822, \
-                                            -0.00104581, \
-                                            -0.00010280, \
-                                            -0.00002364, \
-                                            -0.00000532]),
-              'NUT_PREC_ANGLES0': np.vstack([[174.791086, 4.092335], \
-                                             [349.582171, 8.184670], \
-                                             [164.373257, 12.277005], \
-                                             [339.164343, 16.369340], \
+              'NUT_PREC_PM0': np.transpose([0.01067257,
+                                            -0.00112309,
+                                            -0.00011040,
+                                            -0.00002539,
+                                            -0.00000571]),
+              'NUT_PREC_ANGLES0': np.vstack([[174.791086, 4.092335],
+                                             [349.582171, 8.184670],
+                                             [164.373257, 12.277005],
+                                             [339.164343, 16.369340],
                                              [153.955429, 20.461675]])
               }
 
