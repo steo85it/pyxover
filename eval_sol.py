@@ -233,14 +233,23 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
 
     vecopts = {}
     # introduce reference solution in plot
-    ref = Amat(vecopts)
-    ref = ref.load(outdir + 'sim/' + subfolder + ref_sol + '/' + subexp + '/Abmat_sim_' + ref_sol.split('_')[0] + '_' + str(
-        int(ref_sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+    if ref_sol != '':
+        ref = Amat(vecopts)
+        ref = ref.load(outdir + 'sim/' + subfolder + ref_sol + '/' + subexp + '/Abmat_sim_' + ref_sol.split('_')[0] + '_' + str(
+            int(ref_sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
     dfs = []
     for sol in sols:
         tmp = Amat(vecopts)
-        tmp = tmp.load(outdir+'sim/'+subfolder+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+
+        try:
+            tmp = tmp.load(
+                outdir + 'sim/' + subfolder + sol + '/' + subexp + '/Abmat_sim_' + sol.split('_')[0] + '_' + str(
+                    int(sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+        except:
+            tmp = tmp.load(
+                outdir + 'Abmat/Abmat_sim_' + sol.split('_')[0] + '_' + str(
+                    int(sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
         # select subset, e.g., for tests
         tmp.xov.xovers = tmp.xov.xovers.loc[:,:]
@@ -263,10 +272,14 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             # else:
             plot_utils.plt_histo_dR(sols[idx] + '_' + subexp,
                                     amat.xov.xovers, xlim=100)  # [tmp.xov.xovers.orbA.str.contains('14', regex=False)])
-            if idx == len(dfs)-1:
+            if idx == len(dfs)-1 and ref_sol != '':
                 plot_utils.plt_histo_dR(idx=sols[idx] + '_' + subexp,
                                         xov_df=amat.xov.xovers, xov_ref=ref.xov.xovers,
                                         xlim=100)
+            # plot histo of offnadir
+            plot_utils.plt_histo_offnadir(sols[idx] + '_' + subexp,
+                                    amat.xov.xovers, xlim=10)
+
 
     if plot_weights_components:
         check_weights = pd.DataFrame()
@@ -811,11 +824,59 @@ def compare_MLA_spk(dfs, sol, sols, tmp):
 # @profile
 def check_iters(sol, subexp=''):
 
+    ind = np.array(['RA', 'DEC', 'PM', 'L','h2'])
+
     np.set_printoptions(precision=3)
 
     sol_iters = sol.split('_')[:-1][0]
-    # prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
-    prev_sols = np.sort(glob.glob(outdir+'Abmat/KX1r4_AG2/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    # prev_sols = np.sort(glob.glob(outdir+'Abmat/KX1r4_AG2/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+
+    if len(prev_sols) == 0:
+        print("*** eval_sol: No solutions selected")
+        exit(1)
+
+    sols_iters = []
+    rmse_iters = []
+    for idx,isol in enumerate(prev_sols[:]):
+        # print(prev_sols)
+        amat = Amat(vecopts)
+        amat = amat.load(isol)
+
+        sol_glb = {i:amat.sol_dict['sol']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['sol'].keys()}
+        # err_glb = {i:amat.sol_dict['std']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['std'].keys()}
+
+        sols_iters.append(sol_glb)
+        rmse_iters.append(amat.resid_wrmse)
+
+    df = pd.DataFrame.from_dict(sols_iters)
+    df['rmse'] = pd.DataFrame(rmse_iters)
+    print(df)
+    df_diff = df.diff(axis=0)/df.iloc[-1]
+    df_diff = df_diff.abs()*100
+    print(df_diff)
+
+    plt.style.use('seaborn-paper')
+    plt.figure("resid_iters")
+    axes = df_diff[1:].plot(subplots=True, layout=(-1, 1), sharex=True, logy=True) #, sharey=True)
+    for c in axes:
+        for ax in c:
+            ax.axhline(y=1, color='r',linestyle='dashed')
+            ax.axhline(y=5, color='b',linestyle='dashed')
+
+    plt.savefig(tmpdir + "evol_iters.png")
+
+        # print(err_glb)
+    exit()
+
+
+def check_iters_old(sol, subexp=''):
+
+    np.set_printoptions(precision=3)
+
+    sol_iters = sol.split('_')[:-1][0]
+    prev_sols = np.sort(glob.glob(
+        outdir + 'sim/' + subfolder + sol_iters + '_*/' + subexp + '/Abmat_sim_' + sol_iters + '_*_' + subexp + '.pkl'))
 
     iters_rms = []
     iters_orbcorr = []
@@ -839,8 +900,8 @@ def check_iters(sol, subexp=''):
         prev = Amat(vecopts)
         prev = prev.load(isol)
 
-        if (plot_all_track_iters) or (idx == len(prev_sols)-1) or (idx == 0):
-            iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
+        # if (plot_all_track_iters) or (idx == len(prev_sols)-1) or (idx == 0):
+        #     iters_track_rms.append(get_tracks_rms(prev.xov.xovers.copy()))
         #
         # add_xov_separation(prev)
         # prev.xov.xovers = prev.xov.xovers[prev.xov.xovers.dist_max < 0.4]
@@ -859,7 +920,7 @@ def check_iters(sol, subexp=''):
         # iters_rms.append([tst_id, np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(_)])
 
         ################ print histo ###############
-        if (idx == 0) or (idx == len(prev_sols) - 1):
+        if (idx == 0) or (idx == len(prev_sols) - 1) and False:
             if idx == 0 :
                 fig = plt.figure("resid_iters")
             else:
@@ -1221,11 +1282,12 @@ if __name__ == '__main__':
 
     simulated_data = False #True
 
-    analyze_sol(sols=['AGTb_0','AGTb_1','AGTb_2','AGTb_3'], ref_sol='', subexp = '0res_1amp')
-    #analyze_sol(sols=['KX2_0','KX2_1','KX2_2','KX2_3','KX2_4','KX2_5','KX2_6','KX2_7'], ref_sol='', subexp = '0res_1amp')
+    # analyze_sol(sols=['KX1_0'], ref_sol='', subexp = '0res_1amp')
+    # analyze_sol(sols=['AGTb_0','AGTb_1','AGTb_2','AGTb_3'], ref_sol='', subexp = '0res_1amp')
+    # analyze_sol(sols=['KX2_0','KX2_1','KX2_2','KX2_3','KX2_4','KX2_5','KX2_6','KX2_7'], ref_sol='', subexp = '0res_1amp')
 #    analyze_sol(sols=['KX3_0','KX3_1','KX3_2','KX3_3'], ref_sol='', subexp = '0res_1amp') # 'AGTP_0','AGS_0',
     #analyze_sol(sol='tp9_0', ref_sol='tp9_0', subexp = '3res_20amp')
 
     # check_iters(sol='tp4_0',subexp='3res_20amp')
-    # check_iters(sol='KX1_0',subexp='0res_1amp')
+    check_iters(sol='BS0_0',subexp='0res_1amp')
 
