@@ -856,12 +856,22 @@ def check_iters(sol, subexp=''):
         if idx in [0,len(prev_sols)-1] and plt_tracks:
             iters_track_rms.append(get_tracks_rms(amat.xov.xovers.copy()))
 
+    #errors
+    errs = list(err_glb.values())
+    errs.extend([1.])
+
     df = pd.DataFrame.from_dict(sols_iters)
     df['rmse'] = pd.DataFrame(rmse_iters)
     print(df)
-    df_diff = df.diff(axis=0)/df.iloc[-1]
+    df_diff = df.diff(axis=0).abs()
+    print(df_diff)
 
-    df_diff['rmse'] = df_diff['rmse'].abs()*100
+    df_diff = df_diff/errs #/df.iloc[-1]
+
+    df_diff['rmse'] = df_diff['rmse']/df['rmse'].iloc[-1]*100
+
+    df_diff.loc[0] = df.loc[0]
+    df_diff.loc[0,'rmse'] = np.nan
     print(df_diff)
     print("err_dict=",err_glb)
     print("err_dict=",list(err_glb.values()))
@@ -869,7 +879,7 @@ def check_iters(sol, subexp=''):
     fig = plt.figure(figsize=(5, 5))
     plt.style.use('seaborn-paper')
 
-    axes = df_diff[1:].plot(subplots=True, layout=(2, 3), sharex=True, logy=False, legend=False) #, sharey=True)
+    axes = df_diff[:].plot(subplots=True, layout=(2, 3), sharex=True, logy=False, legend=False) #, sharey=True)
     plt.subplots_adjust(wspace=0.4, hspace=0.4) #left=None, bottom=None, right=None, top=None, wspace=None, hspace=None)
     for row,c in enumerate(axes): # row
 
@@ -883,7 +893,8 @@ def check_iters(sol, subexp=''):
             # ax.yaxis.set_label_position("right")
 
             if idx < len(ind):
-                ax.axhline(y=list(err_glb.values())[idx], color='r',linestyle='dashed')
+                ax.axhline(y=1., color='r',linestyle='dashed')
+                # ax.axhline(y=list(err_glb.values())[idx], color='r',linestyle='dashed')
             else:
                 ax.axhline(y=1, color='r',linestyle='dashed')
                 ax.axhline(y=5, color='b',linestyle='dashed')
