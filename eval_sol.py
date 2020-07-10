@@ -869,18 +869,22 @@ def check_iters(sol, subexp=''):
     df_diff.loc[0] = df.loc[0].abs()
     # get relative to formal errors
     df_diff = df_diff/errs #/df.iloc[-1]
-    # for rmse, get percentage
-    df_diff['rmse'] = df_diff['rmse']/df['rmse'].iloc[-1]*100
 
     # get pre-fit RMS
     # xover residuals
+    amat = amat.load(prev_sols[0])
     w = amat.xov.xovers['dR'].values
     nobs = len(w)
     npar = len(amat.sol_dict['sol'].values())
 
     lTP = w.reshape(1, -1) @ amat.weights
     lTPl = lTP @ w.reshape(-1, 1)
-    df_diff.loc[0,'rmse'] = np.sqrt(lTPl / (nobs - npar))
+    pre_fit_m0 = np.sqrt(lTPl / (nobs - npar))
+    print("pre-fit m0 =", pre_fit_m0)
+    df_diff.loc[0,'rmse'] = np.abs(pre_fit_m0-df['rmse'].iloc[0])
+
+    # for rmse, get percentage
+    df_diff['rmse'] = df_diff['rmse']/df['rmse'].iloc[-1]*100
 
     print(df_diff)
     print("err_dict=",err_glb)
