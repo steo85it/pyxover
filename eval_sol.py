@@ -865,12 +865,13 @@ def check_iters(sol, subexp=''):
     print(df)
     df_diff = df.diff(axis=0).abs()
     print(df_diff)
-
+    # put full correction as first row
+    df_diff.loc[0] = df.loc[0].abs()
+    # get relative to formal errors
     df_diff = df_diff/errs #/df.iloc[-1]
-
+    # for rmse, get percentage
     df_diff['rmse'] = df_diff['rmse']/df['rmse'].iloc[-1]*100
 
-    df_diff.loc[0] = df.loc[0]
     df_diff.loc[0,'rmse'] = np.nan
     print(df_diff)
     print("err_dict=",err_glb)
