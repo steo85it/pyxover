@@ -176,6 +176,8 @@ def plot_tracks_histo(postfit_list, filename=tmpdir + '/histo_tracks_eval.png'):
     # plt.subplots_adjust(left=0.15)
     fig.tight_layout()
     plt.savefig(filename)
+    print("### Tracks histo saved as", filename)
+
     plt.clf()
 
 

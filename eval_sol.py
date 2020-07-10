@@ -895,7 +895,9 @@ def check_iters(sol, subexp=''):
 
     fig.tight_layout()
 
-    plt.savefig(tmpdir + "evol_iters.png")
+    filnam = tmpdir + "evol_iters.png"
+    plt.savefig(filnam)
+    print("### Iters plot saved as", filnam)
 
     # get evolution of tracks
     if plt_tracks:
