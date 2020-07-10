@@ -872,7 +872,16 @@ def check_iters(sol, subexp=''):
     # for rmse, get percentage
     df_diff['rmse'] = df_diff['rmse']/df['rmse'].iloc[-1]*100
 
-    df_diff.loc[0,'rmse'] = np.nan
+    # get pre-fit RMS
+    # xover residuals
+    w = amat.xov.xovers['dR'].values
+    nobs = len(w)
+    npar = len(amat.sol_dict['sol'].values())
+
+    lTP = w.reshape(1, -1) @ amat.weights
+    lTPl = lTP @ w.reshape(-1, 1)
+    df_diff.loc[0,'rmse'] = np.sqrt(lTPl / (nobs - npar))
+
     print(df_diff)
     print("err_dict=",err_glb)
     print("err_dict=",list(err_glb.values()))
