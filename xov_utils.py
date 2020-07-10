@@ -152,16 +152,20 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
 def plot_tracks_histo(postfit_list, filename=tmpdir + '/histo_tracks_eval.png'):
     # plot histo
     # print(postfit_list)
+
     xlim = 1.e2
     plt.clf()
-    plt.figure(figsize=(8, 3))
+    fig = plt.figure(figsize=(7, 3))
+    plt.style.use('seaborn-paper')
+
     # plt.xlim(-1.*xlim, xlim)
     # the histogram of the data
     num_bins = 40  # 'auto'
+    plt_labels = ['pre-fit','post-fit']
     for idx, postfit in enumerate(postfit_list):
         # print(postfit.pre.astype(np.float))
         n, bins, patches = plt.hist(postfit.pre.astype(np.float), bins=num_bins, alpha=0.7,
-                                    label="iter " + str(idx),range=[0., xlim])  # , density=True) #, facecolor='blue',
+                                    label=plt_labels[idx],range=[0., xlim])  # , density=True) #, facecolor='blue',
     # alpha=0.7, range=[-1.*xlim, xlim])
     plt.xlabel('dR (m)')
     plt.ylabel('# tracks')
@@ -169,7 +173,8 @@ def plot_tracks_histo(postfit_list, filename=tmpdir + '/histo_tracks_eval.png'):
     plt.title('Histogram of track RMS at iters')
     # plt.semilogx()
     # # Tweak spacing to prevent clipping of ylabel
-    plt.subplots_adjust(left=0.15)
+    # plt.subplots_adjust(left=0.15)
+    fig.tight_layout()
     plt.savefig(filename)
     plt.clf()
 

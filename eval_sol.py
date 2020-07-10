@@ -824,6 +824,8 @@ def compare_MLA_spk(dfs, sol, sols, tmp):
 # @profile
 def check_iters(sol, subexp=''):
 
+    plt_tracks = False
+
     ind = np.array(['RA', 'DEC', 'PM', 'L','h2'])
 
     np.set_printoptions(precision=3)
@@ -838,33 +840,66 @@ def check_iters(sol, subexp=''):
 
     sols_iters = []
     rmse_iters = []
+    iters_track_rms = []
     for idx,isol in enumerate(prev_sols[:]):
         # print(prev_sols)
         amat = Amat(vecopts)
         amat = amat.load(isol)
-
+        # solution of orbit pars
         sol_glb = {i:amat.sol_dict['sol']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['sol'].keys()}
-        # err_glb = {i:amat.sol_dict['std']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['std'].keys()}
+        err_glb = {i:1.*np.sqrt(amat.sol_dict['std']['dR/d' + i]) for i in ind if 'dR/d' + i in amat.sol_dict['std'].keys()}
 
         sols_iters.append(sol_glb)
         rmse_iters.append(amat.resid_wrmse)
+
+        # track by track evaluation
+        if idx in [0,len(prev_sols)-1] and plt_tracks:
+            iters_track_rms.append(get_tracks_rms(amat.xov.xovers.copy()))
 
     df = pd.DataFrame.from_dict(sols_iters)
     df['rmse'] = pd.DataFrame(rmse_iters)
     print(df)
     df_diff = df.diff(axis=0)/df.iloc[-1]
-    df_diff = df_diff.abs()*100
-    print(df_diff)
 
+    df_diff['rmse'] = df_diff['rmse'].abs()*100
+    print(df_diff)
+    print("err_dict=",err_glb)
+    print("err_dict=",list(err_glb.values()))
+
+    fig = plt.figure(figsize=(5, 5))
     plt.style.use('seaborn-paper')
-    plt.figure("resid_iters")
-    axes = df_diff[1:].plot(subplots=True, layout=(-1, 1), sharex=True, logy=True) #, sharey=True)
-    for c in axes:
-        for ax in c:
-            ax.axhline(y=1, color='r',linestyle='dashed')
-            ax.axhline(y=5, color='b',linestyle='dashed')
+
+    axes = df_diff[1:].plot(subplots=True, layout=(2, 3), sharex=True, logy=False, legend=False) #, sharey=True)
+    plt.subplots_adjust(wspace=0.4, hspace=0.4) #left=None, bottom=None, right=None, top=None, wspace=None, hspace=None)
+    for row,c in enumerate(axes): # row
+
+        for col, ax in enumerate(c):  # column
+            idx = 3*row+col
+            if idx < len(ind):
+                lbl = ind[idx]
+            else:
+                lbl = 'RMSE'
+            ax.set_title(lbl)
+            # ax.yaxis.set_label_position("right")
+
+            if idx < len(ind):
+                ax.axhline(y=list(err_glb.values())[idx], color='r',linestyle='dashed')
+            else:
+                ax.axhline(y=1, color='r',linestyle='dashed')
+                ax.axhline(y=5, color='b',linestyle='dashed')
+
+    ax.set_xlabel('# iters', fontsize=12)
+    ax.xaxis.set_label_coords(-1, -0.3)
+    # fig.text(0, 0, '# iters', ha='center')
+
+
+    fig.tight_layout()
 
     plt.savefig(tmpdir + "evol_iters.png")
+
+    # get evolution of tracks
+    if plt_tracks:
+        plot_tracks_histo(iters_track_rms) #,filename=tmpdir + '/histo_tracks_eval' + isol +'.png')
 
         # print(err_glb)
     exit()
