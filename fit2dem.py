@@ -22,7 +22,8 @@ import matplotlib.pyplot as plt
 
 import pickleIO
 from PyAltSim import sim_gtrack
-from geoloc_resid import lomb, fit_track_to_dem, import_dem, get_demz_at, read_dem
+from dem_util import get_demz_tiff, get_demz_grd
+# from geoloc_resid import lomb, fit_track_to_dem, import_dem, get_demz_at, read_dem
 from ground_track import gtrack
 from prOpt import vecopts, auxdir, SpInterp, outdir, local, parallel, tmpdir
 import astro_trans as astr
@@ -134,7 +135,7 @@ def generate_topo(track, res_in=0, ampl_in=1):
     track.apply_texture = interp_spline
 
 
-def extract_dRvsLAT(fil):
+def extract_dRvsLAT(fil,file_dem):
     track = gtrack(vecopts)
 
     track = track.load(fil)
@@ -151,6 +152,15 @@ def extract_dRvsLAT(fil):
     # print(df_.ET_TX.round(3))
     # print(df_data.ET_TX.round(3))
 
+    # print(df_data.columns)
+    # print(df_data)
+    mask = (df_data['LAT'] >= 82) & (df_data['LAT'] <= 84) & (df_data['chn'] == 0) & (df_data['LON'] >= 120) & (df_data['LON'] <= 137)
+    df_data = df_data.loc[mask]
+
+    if len(df_data) == 0:
+        print("## fit2dem: no data in bounding box")
+        return None
+
     # gmt_in = 'gmt_' + track.name + '.in'
     # print(len(r_dem),len(df_data.LAT.values),len(texture_noise),len(gmt_in))
     # df_data = df_data.loc[df_data['ET_TX'].round(3).isin(df_['ET_TX'].round(3).values)]
@@ -158,15 +168,28 @@ def extract_dRvsLAT(fil):
     lattmp = df_data.LAT.values
     lontmp = df_data.LON.values
     lontmp[lontmp < 0] += 360
-    r_dem = get_demz_at(dem_xarr, lattmp, lontmp) * 1.e3
+
+    # print(dem_xarr)
+    if file_dem.split('.')[-1] == 'GRD': # to read grd/netcdf files
+        r_dem = get_demz_grd(file_dem, lontmp, lattmp) * 1.e3 #
+    elif file_dem.split('.')[-1] == 'tif': #'TIF': # to read geotiffs usgs
+        r_dem = np.squeeze(get_demz_tiff(file_dem, lontmp, lattmp)) * 1.e3
+    # print(r_dem)
+    # exit()
+    # r_dem = get_demz_at(dem_xarr, lattmp, lontmp) * 1.e3
+    # print(r_dem)
 
     df_data.loc[:, 'altdiff_dem_data'] = df_data.R.values - (r_dem)
+    dr_apriori = df_data.loc[:, 'altdiff_dem_data']
+
 
     # Fit track to DEM
-    dr, ACRcorr, df_data = fit_track_to_dem(df_data)
-    print(np.max(np.abs(dr)))
+    dr, dr_pre, ACRcorr, df_data = fit_track_to_dem(df_data,dem_file=file_dem)
+    # print(np.max(np.abs(dr)))
     # df_data.loc[:, 'altdiff_dem'] = dr
     # exit()
+    # df_data.loc[:, 'dr_apriori'] = dr_pre
+
 
     # update track.previous iter
     coeff_set_re = ['sol_dR/dA', 'sol_dR/dC', 'sol_dR/dR'] #, 'sol_dR/dRl', 'sol_dR/dPt']
@@ -177,7 +200,12 @@ def extract_dRvsLAT(fil):
     print("Saving to ",fil)
     track.save(fil)
 
-    return df_data[['ET_TX', 'orbID', 'LAT', 'LON', 'dR_tid', 'altdiff_dem_data']] #, 'dr/dA', 'dr/dC', 'dr/dR', 'dr/dh2']]
+    # print(df_data)
+    # # print(dr_apriori)
+    # exit()
+    # print(df_data.columns)
+
+    return df_data[['ET_TX', 'orbID', 'LAT', 'LON', 'dR_tid', 'dr_post','dr_pre']], ACRcorr #, 'dr/dA', 'dr/dC', 'dr/dR', 'dr/dh2']]
 
 
 def create_amat_csr(tid_df):
@@ -271,8 +299,9 @@ if __name__ == '__main__':
         args = sys.argv[1:]
         ym = args[0]
     else:
-        print("Use as python3 fit2dem.py YYMM")
-        exit()
+        ym = '*'
+        print("Taking all files in, else use as python3 fit2dem.py YYMM")
+        # exit()
 
     if False:
         from datetime import datetime
@@ -316,6 +345,7 @@ if __name__ == '__main__':
     debug = 0
     numer_sol = 1
     read_pkl = 0
+    dem_opt = 'sfs'
 
     # epo = '1212'
     exp = expopt+'_0' # 'KX1r4_0'  # 'KX0_0'
@@ -352,10 +382,14 @@ if __name__ == '__main__':
     else:
 
         if local:
-            dem = auxdir + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            # dem = "/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_NPole_665m_v2.tif" #
+            if dem_opt == 'sfs':
+                dem = "/home/sberton2/tmp/run-DEM-final.tif" #
+            elif dem_opt == 'hdem':
+                dem = auxdir + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
         else:
             dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-        dem_xarr = import_dem(dem)
+        # dem_xarr = import_dem(dem)
 
         if local:
             spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
@@ -384,21 +418,55 @@ if __name__ == '__main__':
         tid_df = []
         ACRcorr = []
 
-        # loop over all gtracks
-        if parallel:
-            # print((mp.cpu_count() - 1))
-            pool = mp.Pool(processes=mp.cpu_count())
-            tid_df = pool.map(extract_dRvsLAT, allFiles)  # parallel
-            pool.close()
-            pool.join()
+        fit2dem = False
+
+        if fit2dem:
+            # loop over all gtracks
+            if parallel:
+                # print((mp.cpu_count() - 1))
+                pool = mp.Pool(processes=mp.cpu_count())
+                tid_df = pool.map(extract_dRvsLAT, allFiles)  # parallel
+                pool.close()
+                pool.join()
+            else:
+                #            tid_df = [extract_dRvsLAT(fil) for fil in allFiles[:]]
+                for fil in allFiles[:]:
+                    try:
+                        df, ACR = extract_dRvsLAT(fil, file_dem=dem)
+                        tid_df.append(df)
+                        ACRcorr.append(ACR)
+                        # exit()
+                    except:
+                        print("Issue with:", fil)
+                        pass
+
+            ACRcorr = pd.DataFrame(ACRcorr,columns=['dA','dC','dR'])
+            # print(ACRcorr)
+            df = pd.concat(tid_df)
+            # print(df)
+
+            pd.to_pickle(ACRcorr,tmpdir+'mla_corr_'+dem_opt+'.pkl')
+            pd.to_pickle(df,tmpdir+'mla_res_'+dem_opt+'.pkl')
         else:
-            #            tid_df = [extract_dRvsLAT(fil) for fil in allFiles[:]]
-            for fil in allFiles[:]:
-                # try:
-                    tid_df.append(extract_dRvsLAT(fil))
-                # except:
-                #     print("Issue with:", fil)
-                #     pass
+            ACRcorr = pd.read_pickle(tmpdir+'mla_corr_'+dem_opt+'.pkl')
+            df = pd.read_pickle(tmpdir+'mla_res_'+dem_opt+'.pkl')
+
+        # print(df.columns)
+        df = df.loc[:,['LON','LAT','altdiff_dem_data','dr_pre','dr_post']].reset_index()
+
+        fig, axs = plt.subplots(4)
+        df.abs().plot(kind='scatter', x='LON', y='LAT', c='dr_pre', s=0.2,colormap='YlOrRd',ax=axs[0],vmax=50)
+        df.loc[:,'dr_pre'].abs().hist(ax=axs[1],bins=200)
+        axs[1].set_xlim((0,50))
+
+
+        df.abs().plot(kind='scatter', x='LON', y='LAT', c='dr_post', s=0.2,colormap='YlOrRd',ax=axs[2],vmax=50)
+        df.loc[:,'dr_post'].abs().hist(ax=axs[3],bins=200)
+        axs[3].set_xlim((0,50))
+
+        plt.savefig(tmpdir+'diralt_res_'+dem_opt+'.png')
+        exit()
+
 
         if False:
            tid_df = pd.concat(tid_df)

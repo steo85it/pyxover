@@ -19,6 +19,7 @@ from scipy.interpolate import RectBivariateSpline
 
 import pickleIO
 from PyAltSim import sim_gtrack
+from dem_util import get_demz_grd, get_demz_tiff
 from geolocate_altimetry import geoloc
 from ground_track import gtrack
 from prOpt import vecopts, auxdir, SpInterp, tmpdir, local, debug, pert_cloop, spauxdir
@@ -49,6 +50,8 @@ def import_dem(filein):
     lons = np.deg2rad(dem_xarr.lon.values)  # -np.pi
     data = dem_xarr.z.values
 
+
+    print("test")
     # Exclude last column because only 0<=lat<pi
     # and 0<=lon<pi are accepted (checked that lon=0 has same values)
     # print(data[:,0]==data[:,-1])
@@ -128,7 +131,7 @@ def get_demres(dorb, track, df, coeff_set=['dA', 'dC', 'dR','dRl','dPt']): #]): 
     return elev_rms  # , dr, track.ladata_df.ET_TX.values - track.t0_orb
 
 
-def get_demres_full(dorb, track, df, dem_xarr,
+def get_demres_full(dorb, track, df, dem_file,
                     coeff_set=['dA', 'dC', 'dR']):  # ,'dA1', 'dC1', 'dR1']): #,'dRl','dPt']):
     track.pertPar = {'dA': 0.,
                      'dC': 0.,
@@ -170,6 +173,7 @@ def get_demres_full(dorb, track, df, dem_xarr,
     track.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
     track.t0_orb = track.ladata_df['ET_TX'].values[0]
     # retrieve spice data for geoloc
+    # print(track.ladata_df)
 
     if not hasattr(track, 'SpObj') and SpInterp == 2:
         # create interp for track
@@ -223,13 +227,22 @@ def get_demres_full(dorb, track, df, dem_xarr,
     lontmp[lontmp < 0] += 360.
     # Works but slower (interpolates each time, could be improved by https://github.com/JiaweiZhuang/xESMF/issues/24)
     # radius_xarr = dem_xarr.interp(lon=xr.DataArray(lontmp, dims='z'), lat= xr.DataArray(lattmp, dims='z')).z.values * 1.e3 #
-    radius_xarr = get_demz_at(dem_xarr, lattmp, lontmp) * 1.e3
+    # radius_xarr = get_demz_at(dem_xarr, lattmp, lontmp) * 1.e3
+
+    filin = dem_file
+    if filin.split('.')[-1] == 'GRD': # to read grd/netcdf files
+        radius = get_demz_grd(filin, lontmp, lattmp) * 1.e3 #
+    elif filin.split('.')[-1] == 'tif': #'TIF': # to read geotiffs usgs
+        radius = np.squeeze(get_demz_tiff(filin, lontmp, lattmp)) * 1.e3
+
+    # print(radius)
+    # exit()
     # e = time.time()
     # print("time xarr",e-s)
     # print(radius)
     # print(radius_xarr)
     # print("diff dems", np.max(radius-radius_xarr))
-    radius = radius_xarr
+    # radius = radius_xarr
 
     # df_['RmDEM'] = df_['R'].values - radius
 
@@ -296,24 +309,24 @@ def get_demres_full(dorb, track, df, dem_xarr,
     return dr, dr_tidal
 
 
-def read_dem(gmt_in, lattmp, lontmp):
-    # use lon and lat to get "real" elevation from map
-    if os.path.exists('tmp/' + gmt_in):
-        os.remove('tmp/' + gmt_in)
-    np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp)))
-    if local:
-        dem = auxdir + 'HDEM_64.GRD'  # 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km.GRD' # 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-    else:
-        dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'
-    # print(subprocess.check_output(['grdinfo', dem]))
-    r_dem = subprocess.check_output(
-        ['grdtrack', gmt_in, '-G' + dem],
-        universal_newlines=True, cwd='tmp')
-    # print(r_dem)
-    # exit()
-    r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-    radius = r_dem * 1.e3
-    return radius
+# def read_dem(gmt_in, lattmp, lontmp):
+#     # use lon and lat to get "real" elevation from map
+#     if os.path.exists('tmp/' + gmt_in):
+#         os.remove('tmp/' + gmt_in)
+#     np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp)))
+#     if local:
+#         dem = auxdir + 'HDEM_64.GRD'  # 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km.GRD' # 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+#     else:
+#         dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'
+#     # print(subprocess.check_output(['grdinfo', dem]))
+#     r_dem = subprocess.check_output(
+#         ['grdtrack', gmt_in, '-G' + dem],
+#         universal_newlines=True, cwd='tmp')
+#     # print(r_dem)
+#     # exit()
+#     r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+#     radius = r_dem * 1.e3
+#     return radius
 
 
 def mad_clean(df, column='altdiff_dem_data'):
@@ -404,7 +417,7 @@ def plot_pergram(dforb, filename):
     return
 
 
-def fit_track_to_dem(df_in):
+def fit_track_to_dem(df_in,dem_file):
     # import warnings
     # warnings.filterwarnings("ignore", message="SettingWithCopyWarning ")
     # warnings.filterwarnings("ignore", message="RankWarning: The fit may be poorly conditioned ")
@@ -585,29 +598,30 @@ def fit_track_to_dem(df_in):
         #             plt.legend()
         #             plt.savefig("tmp/dr_fit_" + orb + "_" + spk + "_" + test_name + ".png")
 
-        if debug:
-            Amat = dforb.filter(regex='dR/d[A,C,R]$')
-            bvec = dforb.altdiff_dem
-            # print(bvec)
-
-            solstd_old = np.linalg.lstsq(Amat, bvec, rcond=None)
-            print("Diff with old sol (no dR/dLonLat) for ", orb, ":", solstd_old[0] - solstd[0])
+        # if debug:
+        #     Amat = dforb.filter(regex='dR/d[A,C,R]$')
+        #     bvec = dforb.altdiff_dem
+        #     # print(bvec)
+        #
+        #     solstd_old = np.linalg.lstsq(Amat, bvec, rcond=None)
+        #     print("Diff with old sol (no dR/dLonLat) for ", orb, ":", solstd_old[0] - solstd[0])
 
         if numer_sol:
             from scipy.optimize import fmin_powell, minimize
 
             print("Numerical sol:")
 
-            if local:
-                dem_xarr = import_dem(
-                    "/home/sberton2/Works/NASA/Mercury_tides/aux/HDEM_64.GRD")  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD")
-            else:
-                dem_xarr = import_dem(
-                    "/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD")
+            # if local:
+            #     dem_xarr = import_dem(
+            #         "/home/sberton2/Works/NASA/Mercury_tides/aux/HDEM_64.GRD")  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD")
+            # else:
+            #     dem_xarr = import_dem(
+            #         "/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD")
 
             # Preliminary data cleaning
             dorb = np.array([0., 0., 0.]) #, 0., 0.])  # ,0,0,0]  # range(-10,10,1) #np.array([10.3, 0.7, 10.8, 11.9, 1.2])
-            dr, dummy = get_demres_full(dorb, track, df_, dem_xarr)
+            dr, dummy = get_demres_full(dorb, track, df_, dem_file)
+            # print("dr", dr)
             print(track.name, "pre-clean (len, max, rms): ", len(dr), np.max(dr), np.round(np.sqrt(np.mean(dr ** 2)),2))
 
             df_.loc[:, 'dr_dem'] = dr
@@ -618,12 +632,12 @@ def fit_track_to_dem(df_in):
             dr_pre = df_.loc[:, 'dr_dem'].values
             dt_pre = df_['ET_TX'].values
 
-            dr_pre, dummy = get_demres_full(dorb, track, df_, dem_xarr)
+            dr_pre, dummy = get_demres_full(dorb, track, df_, dem_file)
             print(track.name, "pre-fit (len, max, rms): ", len(dr_pre), np.round(np.max(dr_pre),2), np.round(np.sqrt(np.mean(dr_pre ** 2)),2))
 
             # Fit orbit corrections to DEM
 
-            sol = minimize(get_demres, dorb, args=(track,df_,dem_xarr), method='SLSQP', #'L-BFGS-B', #'Nelder-Mead', #
+            sol = minimize(get_demres, dorb, args=(track,df_,dem_file), method='SLSQP', #'L-BFGS-B', #'Nelder-Mead', #
                            bounds=[(-0.5,0.5),(-0.5,0.5),(-0.1,0.1)], #,(-0.5,0.5),(-0.5,0.5)], #,(-1e-2,1e-2),(-1e-2,1e-2),(-1e-2,1e-2)],
                           jac='2-point',
                           options={'disp': False, 'eps': 0.0005, 'ftol': 1.e-6})
@@ -637,7 +651,7 @@ def fit_track_to_dem(df_in):
             # Convert solution to meters
             dorb = sol.x
             dorb[:3] *= 1000.
-            dr_post, dr_tidal = get_demres_full(dorb, track, df_, dem_xarr)
+            dr_post, dr_tidal = get_demres_full(dorb, track, df_, dem_file)
             df_.loc[:, 'altdiff_dem_data'] = dr_post
             df_.loc[:, 'dR_tid'] = dr_tidal
             df_ = mad_clean(df_, 'altdiff_dem_data')
@@ -651,8 +665,12 @@ def fit_track_to_dem(df_in):
             # print(df_)
 
         #            print_demfit(dr_post, dt_post, dorb, track.name, dr_pre, dt_pre)
+        df_ = df_.rename(columns={'altdiff_dem_data':'dr_post','dr_dem':'dr_pre'})
+        # print(pd.DataFrame([dr_pre,dr_post]).T)
+        print(df_)
+        # exit()
 
-        return dr_post, dorb, df_
+        return dr_post, dr_pre, dorb, df_
 
     else:
         print("No data in ", fil)

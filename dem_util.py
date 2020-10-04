@@ -8,13 +8,16 @@
 # Author: Stefano Bertone
 # Created: 16-Aug-2019
 import os
+import time
 
 import numpy as np
 import xarray as xr
 from scipy.interpolate import RectBivariateSpline
 
 import pickleIO
-from prOpt import tmpdir
+from prOpt import tmpdir, debug
+import pandas as pd
+
 
 
 def import_dem(filein):
@@ -66,3 +69,82 @@ def get_demz_diff_at(dem_xarr, lattmp, lontmp, axis='lon'):
     lon_ax = xr.DataArray(lontmp, dims='z')
 
     return diff_dem_xarr.interp(lat=lat_ax, lon=lon_ax).z.to_dataframe().loc[:, 'z'].values
+
+
+def get_demz_tiff(filin,lon,lat):
+
+    import pyproj
+
+    # Read the data
+    da = xr.open_rasterio(filin)
+
+    # Rasterio works with 1D arrays (but still need to pass whole mesh, flattened)
+    # convert lon/lat to xy using intrinsic crs, then generate additional dimension for
+    # advanced xarray interpolation
+    # print(da.crs)
+    p = pyproj.Proj(da.crs)
+    xi, yi = p(lon, lat, inverse=False)
+    xi = xr.DataArray(xi, dims="z")
+    yi = xr.DataArray(yi, dims="z")
+
+    if debug:
+        print(da)
+        print("x,y len:", len(xi),len(yi))
+
+    da_interp = da.interp(x=xi,y=yi)
+
+    return da_interp.data*1.e-3 # convert to km for compatibility with grd
+
+def get_demz_grd(filin,lon,lat):
+
+    da = xr.open_dataset(filin)
+    # for LDAM_8, rename coordinates
+    # da = da.rename({'x':'lon','y':'lat'})
+
+    lon[lon < 0] += 360.
+    lon = xr.DataArray(lon, dims="x")
+    lat = xr.DataArray(lat, dims="x")
+
+    if debug:
+        print(da)
+        print("lon,lat len:", len(lon),len(lat))
+
+    da_interp = da.interp(lon=lon,lat=lat)
+
+    return da_interp.z.values
+
+
+if __name__ == '__main__':
+
+    start = time.time()
+
+    method = 'xarray' # 'pygmt' #
+    number_of_samples = 100000
+    filin = '/home/sberton2/tmp/LDAM_8.GRD' # '/home/sberton2/Works/NASA/Mercury_tides/aux/HDEM_64.GRD' #
+
+    rng = np.random.default_rng()
+    lon = rng.random((number_of_samples))*360. # if grd lon is [0,360)
+    lat = (rng.random((number_of_samples))*2-1)*90. # if grd lat is [-90,90)
+
+    if method == 'xarray':
+        import xarray as xr
+        import pyproj
+
+        if filin.split('.')[-1] == 'GRD': # to read grd/netcdf files
+            z = get_demz_grd(filin, lon, lat)
+        elif filin.split('.')[-1] == 'TIF': # to read geotiffs usgs
+            z = np.squeeze(get_demz_tiff(filin, lon, lat))
+
+        out = pd.DataFrame([lon, lat, z],index=['lon','lat','z']).T
+
+    elif method == 'pygmt':
+        import pygmt  # needs GMT 6.1.1 installed, plus linking of GMTdir/lib64/libgmt.so to some general lib dir (see bottom of https://www.pygmt.org/dev/install.html)
+
+        points = pd.DataFrame([lon,lat],index=['lon','lat']).T
+        out = pygmt.grdtrack(points,filin,newcolname='z')
+
+    print(out)
+
+    end = time.time()
+    print("## Reading/interpolation of",number_of_samples,"samples finished after",str(np.round(end-start,2)),"sec!")
+    exit()
