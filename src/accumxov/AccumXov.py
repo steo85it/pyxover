@@ -43,7 +43,7 @@ import scipy.linalg as la
 # mylib
 # from mapcount import mapcount
 from examples.MLA.options import debug, outdir, tmpdir, local, partials, sol4_glo, sol4_orbpar, \
-    pert_cloop, OrbRep
+    pert_cloop, OrbRep, vecopts
 from src.pyxover.xov_setup import xov
 from src.accumxov.Amat import Amat
 
@@ -73,20 +73,20 @@ def prepro(dataset):
     ##############################################
 
     # Setup some useful options
-    vecopts = {'SCID': '-236',
-               'SCNAME': 'MESSENGER',
-               'SCFRAME': -236000,
-               'INSTID': (-236500, -236501),
-               'INSTNAME': ('MSGR_MLA', 'MSGR_MLA_RECEIVER'),
-               'PLANETID': '199',
-               'PLANETNAME': 'MERCURY',
-               'PLANETRADIUS': 2440.,
-               'PLANETFRAME': 'IAU_MERCURY',
-               'OUTPUTTYPE': 1,
-               'ALTIM_BORESIGHT': '',
-               'INERTIALFRAME': 'J2000',
-               'INERTIALCENTER': 'SSB',
-               'PARTDER': ''}
+    # vecopts = {'SCID': '-236',
+    #            'SCNAME': 'MESSENGER',
+    #            'SCFRAME': -236000,
+    #            'INSTID': (-236500, -236501),
+    #            'INSTNAME': ('MSGR_MLA', 'MSGR_MLA_RECEIVER'),
+    #            'PLANETID': '199',
+    #            'PLANETNAME': 'MERCURY',
+    #            'PLANETRADIUS': 2440.,
+    #            'PLANETFRAME': 'IAU_MERCURY',
+    #            'OUTPUTTYPE': 1,
+    #            'ALTIM_BORESIGHT': '',
+    #            'INERTIALFRAME': 'J2000',
+    #            'INERTIALCENTER': 'SSB',
+    #            'PARTDER': ''}
     return data_pth, vecopts
 
 # #@profile
@@ -1088,7 +1088,7 @@ def main(arg):
     endT = time.time()
     print('----- Runtime Amat = ' + str(endT - startT) + ' sec -----' + str(
         (endT - startT) / 60.) + ' min -----')
-    return
+    return xovi_amat
 
 ########################
 if __name__ == '__main__':

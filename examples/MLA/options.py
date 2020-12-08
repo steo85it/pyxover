@@ -12,7 +12,7 @@ local = 1
 # debug mode
 debug = 0
 # parallel processing?
-parallel = 1
+parallel = 0
 # compute partials?
 partials = 1
 
@@ -70,7 +70,7 @@ new_algo = True # False #
 # load input xov
 compute_input_xov = True
 
-# PyAltSim stuff
+# PyAltSim options
 # simulation mode
 sim_altdata = 0
 # recompute a priori
@@ -99,22 +99,19 @@ vecopts = {'SCID': '-236',
            'PARTDER': ''}
 
 
-# out and aux
+# useful directories for input/output
 if (local == 0): # if pgda
-    outdir = '/att/nobackup/sberton2/MLA/out/'
-    auxdir = '/att/nobackup/sberton2/MLA/aux/'
-    tmpdir = '/att/nobackup/sberton2/MLA/tmp/'
-    spauxdir = 'KX_spk/' # 'AG_A_spk/' # 'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    basedir = '/att/nobackup/sberton2/MLA/'
 else: # if local!!!
-#    outdir = '/home/sberton2/Works/NASA/Mercury_tides/out/'
-    basedir = '/home/sberton2/Works/NASA/Mercury_tides/pyxover_release/examples/MLA/'
-    rawdir = f'{basedir}data/raw/'
-    outdir = f'{basedir}data/out/'
-    auxdir = f'{basedir}data/aux/'
-    tmpdir = f'{basedir}data/tmp/'
-    spauxdir = 'KX_spk/' #'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
+    basedir = '/home/sberton2/Works/NASA/Mercury_tides/pyxover_release/examples/MLA/data/'
 
-# xovers options
+rawdir = f'{basedir}raw/'
+outdir = f'{basedir}out/'
+auxdir = f'{basedir}aux/'
+tmpdir = f'{basedir}tmp/'
+spauxdir = 'KX_spk/' #'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
+
+# pyxover options
 # set number of processors to use
 n_proc = mp.cpu_count() - 3
 import_proj = False

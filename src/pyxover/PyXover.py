@@ -29,7 +29,7 @@ import spiceypy as spice
 import time
 
 # mylib
-from examples.MLA.options import new_xov, vecopts, outdir, debug, monthly_sets, new_algo, compute_input_xov
+from examples.MLA.options import new_xov, vecopts, outdir, debug, monthly_sets, new_algo, compute_input_xov, basedir
 # from mapcount import mapcount
 from src.pygeoloc.ground_track import gtrack
 from src.pyxover.xov_setup import xov
@@ -189,22 +189,11 @@ def main(args):
     iter_in = args[-1]
 
     # locate data
-    if local == 0:
-        data_pth = '/att/nobackup/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-        dataset = indir_in  # 'test/' #'small_test/' #'1301/' #
-        data_pth += dataset
-
-        # load kernels
-        spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')  # 'aux/mymeta')
-    else:
-        data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'
-        # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-        dataset = indir_in  # 'SIM_1301/mlatimes/0res_35amp_tst/' #'1301' #SIM_1301/sphere/' #35-1024-1-8-5/'  #35-1024-32-4-5/' #  'small_dataset/' #''# "test1/"  #''  #
-        data_pth += dataset
-        # outdir += outdir_in #'sim_mlatimes/0res_35amp/'
-
-        # load kernels
-        spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
+    data_pth = basedir # '/att/nobackup/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+    dataset = indir_in  # 'test/' #'small_test/' #'1301/' #
+    data_pth += dataset
+    # # load kernels
+    # spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
 
     # set ncores
     ncores = mp.cpu_count() - 1  # 8

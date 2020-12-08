@@ -15,12 +15,12 @@ setuptools.setup(
     # install_requires=(
     #     'stringcase',
     # ),
-    # setup_requires=(
-    #     'pytest-runner',
-    # ),
-    # tests_require=(
-    #     'pytest-cov',
-    # ),
+    setup_requires=(
+        'pytest-runner',
+    ),
+    tests_require=(
+        'pytest-cov',
+    ),
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Natural Language :: English',

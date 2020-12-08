@@ -115,30 +115,19 @@ def main(args):
     iter_in = args[4]
 
     # locate data
-    if local == 0:
-        data_pth = rawdir  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-        dataset = indir_in  # 'test/' #'small_test/' #'1301/' #
-        data_pth += dataset
+    data_pth = f'{rawdir}'
+    dataset = indir_in
+    data_pth += dataset
 
-        # load kernels
-        spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'#])
-                      ,
-                      '/att/nobackup/sgoossen/MESSENGER/ORBITS/NEW_UNIT5/SPK/MSGR_UPD_PANEL_THERMAL.bsp', # new with NGF modif
-                      '/att/nobackup/sgoossen/MESSENGER/ORBITS/NEW_UNIT5/SPK/MSGR_UPD_PANEL_THERMAL_FLYBYS.bsp', # new with NGF modif 
-#                      '/att/nobackup/emazaric/MESSENGER/data/spk/msgr_20040803_20150328_od380sc_0.bsp',
-                      '/att/nobackup/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp'#,
-#                      '/att/nobackup/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp', # original AG orbit
-#                      '/att/nobackup/sgoossen/MESSENGER/ORBITS/SPK/MSGR_HGM008_ACCEL2_INTGCB.bsp' # AC acc OD
-#		      '/att/nobackup/sgoossen/MESSENGER/ORBITS/SPK/MSGR_HGM008_ACCEL_INTGCB.bsp' # A acc OD only
-                     ])
+    # load kernels
+    if not local:
+        spice.furnsh([f'{auxdir}furnsh.MESSENGER.def',
+                     f'{auxdir}mymeta_pgda'])
     else:
-        data_pth = f'{rawdir}'
-        dataset = indir_in  # 'SIM_1301/mlatimes/0res_35amp_tst/' #'1301' #SIM_1301/sphere/' #35-1024-1-8-5/'  #35-1024-32-4-5/' #  'small_dataset/' #''# "test1/"  #''  #
-        data_pth += dataset
-        #outdir += outdir_in  # 'sim_mlatimes/0res_35amp/'
-
-        # load kernels
-        spice.furnsh(auxdir + 'mymeta')
+        spice.furnsh(f'{auxdir}mymeta')
+    # or, add custom kernels
+    # load additional kernels
+    # spice.furnsh(['XXX.bsp'])
 
     # set ncores
     ncores = mp.cpu_count() - 1  # 8
