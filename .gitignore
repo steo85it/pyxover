@@ -1,7 +1,20 @@
 # ignore folders
-img/
+*.bin
+*.egg-info
+*.obj
+*.png
+*.txt
+*~
+.DS_Store
+__pycache__
+*.so
+*.pdf
+*.npy
+build
+env/
 mem/
-tmp/
+data/out/
+data/tmp/
 illumNG/
 __pycache__/
 slurm*
