@@ -21,8 +21,8 @@ if __name__ == '__main__':
                 # Preliminary step to fit orbits and pointing to current knowledge of topography (direct altimetry)
                 if iter == 0 and False:
                     start = time.time()
-                    for y in np.append([8],np.arange(11, 16, 1)):
-                        for m in np.arange(1, 13, 1):
+                    for y in [12,13]: #np.append([8],np.arange(11, 16, 1)):
+                        for m in [1]: # np.arange(1, 13, 1):
                             # print(["python3", "launch_test.py", str(rough_test), ' ', str(y), f'{m:02}', "1", str(i)])
                             # exit()
                             ym = f'{y:02}' + f'{m:02}'
@@ -44,8 +44,8 @@ if __name__ == '__main__':
                         (end - start) / 60.) + ' min -----')
 
                 start = time.time()
-                for y in np.append([8],np.arange(11, 16, 1)):
-                    for m in np.arange(1, 13, 1):
+                for y in [12,13]: #np.append([8],np.arange(11, 16, 1)):
+                    for m in [1]: #np.arange(1, 13, 1):
                         # print(["python3", "launch_test.py", str(rough_test), ' ', str(y), f'{m:02}', "1", str(i)])
                         # exit()
                         ym = f'{y:02}'+ f'{m:02}'
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
                 start = time.time()
     
-                for ymc in np.arange(0, 21, 1):
+                for ymc in [12]: #np.arange(0, 21, 1):
                     iostat = s.call(["python3", "launch_test.py", str(rt), str(ymc), "2", str(iter)])
                     if iostat != 0:
                         print("*** PyXover failed on iter", iter)
@@ -97,9 +97,9 @@ if __name__ == '__main__':
                 loadfile = open("loadPyGeoloc", "w")  # write mode
                 load_fit2dem = open("loadfit2dem", "w")  # write mode
 
-                for y in np.append([8],np.arange(11, 16, 1)):
+                for y in [12]: #np.append([8],np.arange(11, 16, 1)):
 
-                    for m in np.arange(1, 13, 1):
+                    for m in np.arange(1,2,1): #(1, 13, 1):
                         # print(('').join(
                         #     ['python3 launch_test.py ', str(rough_test), ' ', str(y), f'{m:02}', ' 1 ', str(i)]))
                         loadfile.write(('').join(
@@ -118,8 +118,8 @@ if __name__ == '__main__':
                 else:
                    loadfile = open("loadPyXover", "w")  # write mode
                    # prepend xov_analysis for years taking longer (to optimize cluster use)
-                   tmp = np.arange(0, 21, 1)
-                   xovlist = [16, 12, 13, 8, 15, 7, 9, 11, 17, 18, 14, 19, 10, 6, 20]
+                   tmp = np.arange(12,13,1) #(0, 21, 1)
+                   xovlist = [] #[16, 12, 13, 8, 15, 7, 9, 11, 17, 18, 14, 19, 10, 6, 20]
                    for el in tmp:
                           if el not in xovlist:
                             xovlist.append(el)

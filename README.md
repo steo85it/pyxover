@@ -1,5 +1,4 @@
-# pyxover - Altimetry Analysis For Planetary Geodesy
-[![DOI](https://zenodo.org/badge/191787378.svg)](https://zenodo.org/badge/latestdoi/191787378)
+# pyxover - Altimetry Analysis Tools For Planetary Geodesy
 
 Software suite for the analysis of laser altimetry data: from standard range data (PDS RDR) to planetary orientation and
  tides. Existing or simulated ranges (pyaltsim) are geolocated on the planetary surface
@@ -42,6 +41,10 @@ directory propagate immediately, run:
 ``` shell
 pip install -e .
 ```
+To test the installation, from the project directory, run:
+``` shell
+python setup.py test
+```
 
 ## Running the examples ##
 
@@ -55,5 +58,6 @@ The examples directory contains the setup to process altimetry ranges by the Mer
 cd examples
 python mla_iter.py
 ```
+Else, check out the `tests` directory for a "simpler" approach.
 
 For more details, refer to `docs/manual.stub` (in progress...)
