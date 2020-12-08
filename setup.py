@@ -12,9 +12,9 @@ setuptools.setup(
         '': 'src'
     },
     include_package_data=True,
-    # install_requires=(
-    #     'stringcase',
-    # ),
+    install_requires=(
+        'numpy',
+    ),
     setup_requires=(
         'pytest-runner',
     ),

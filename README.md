@@ -9,6 +9,11 @@ Software suite for the analysis of laser altimetry data: from standard range dat
  Crossovers residuals and partial derivatives contribute to the equations system solved by 
  least-squares in ``accumxov''. Statistics and plotting tools are also provided (xovutil).
  
+## Disclaimer
+
+This is scientific code in ongoing development: using it might be tricky, reading it can cause 
+ headaches and results need to be thoroughly checked and taken with an healthy degree of mistrust!
+Use it at your own risk and responsibility. 
  ## Installation ##
 
 ### Set up a virtual environment and clone the repository ###
@@ -29,6 +34,11 @@ anything else below.
 
 Install the rest of the dependencies by running `pip install -r
 requirements.txt`.
+
+!! Cartopy (`https://scitools.org.uk/cartopy/docs/latest/index.html`) and GDAL 
+(`https://gdal.org`) libraries might be required by some routines 
+(especially plotting and evaluation tools) and they need to be installed 
+separately !!
 
 ### Installing this package ###
 

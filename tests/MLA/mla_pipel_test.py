@@ -25,8 +25,12 @@ class MlaXoverTest(unittest.TestCase):
         except:
             val = val.load('tests/MLA/mla_pipel_test_out.pkl')
 
+        # round up to avoid issues with package updates
+        out = {key : round(out.sol_dict['sol'][key], 4) for key in out.sol_dict['sol']}
+        val = {key : round(val.sol_dict['sol'][key], 4) for key in val.sol_dict['sol']}
+
         # perform test
-        self.assertEqual(out.sol_dict, val.sol_dict)
+        self.assertEqual(out, val)
 
 
 if __name__ == '__main__':
