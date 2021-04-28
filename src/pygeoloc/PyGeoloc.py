@@ -119,15 +119,16 @@ def main(args):
     dataset = indir_in
     data_pth += dataset
 
-    # load kernels
-    if not local:
-        spice.furnsh([f'{auxdir}furnsh.MESSENGER.def',
-                     f'{auxdir}mymeta_pgda'])
-    else:
-        spice.furnsh(f'{auxdir}mymeta')
-    # or, add custom kernels
-    # load additional kernels
-    # spice.furnsh(['XXX.bsp'])
+    if SpInterp == 0:
+        # load kernels
+        if not local:
+            spice.furnsh([f'{auxdir}furnsh.MESSENGER.def',
+                         f'{auxdir}mymeta_pgda'])
+        else:
+            spice.furnsh(f'{auxdir}mymeta')
+        # or, add custom kernels
+        # load additional kernels
+        # spice.furnsh(['XXX.bsp'])
 
     # set ncores
     ncores = mp.cpu_count() - 1  # 8
@@ -149,7 +150,6 @@ def main(args):
     # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
     # for orbitA and orbitB.
     allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epo_in + '*.TAB'))
-
     endInit = time.time()
     print(
         '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(

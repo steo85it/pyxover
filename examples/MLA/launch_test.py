@@ -88,7 +88,7 @@ def main():
         # save options file to outdir
         if not os.path.exists(outdir+outdirnams[0]):
             os.makedirs(outdir+outdirnams[0], exist_ok=True)
-        shutil.copy(os.getcwd()+'/options.py', outdir+outdirnams[0])
+        shutil.copy(os.getcwd()+'/examples/MLA/options.py', outdir+outdirnams[0])
 
         # add option to spread over the cluster
         idx_tst = [i for i in range(len(cmb))]

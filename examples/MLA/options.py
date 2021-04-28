@@ -103,7 +103,7 @@ vecopts = {'SCID': '-236',
 if (local == 0): # if pgda
     basedir = '/att/nobackup/sberton2/MLA/'
 else: # if local!!!
-    basedir = '/home/sberton2/Works/NASA/Mercury_tides/pyxover_release/examples/MLA/data/'
+    basedir = 'data/'
 
 rawdir = f'{basedir}raw/'
 outdir = f'{basedir}out/'

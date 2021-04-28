@@ -138,3 +138,4 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+/tests/MLA/data/tmp/
