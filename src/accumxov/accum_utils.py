@@ -16,7 +16,9 @@ from scipy.sparse import csr_matrix, diags, issparse
 
 # from AccumXov import sigma_0, remove_3sigma_median, remove_max_dist
 from src.accumxov.accum_opt import sigma_0, remove_3sigma_median
-from examples.MLA.options import tmpdir, full_covar, debug, local, pert_cloop, parOrb, parGlo, OrbRep, vecopts, outdir
+# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("full_covar"), XovOpt.get("debug"), XovOpt.get("local"), pert_cloop, XovOpt.get("parOrb"), XovOpt.get("parGlo"), XovOpt.get("OrbRep"), XovOpt.get("vecopts"), XovOpt.get("outdir")
+from config import XovOpt
+
 import matplotlib.pyplot as plt
 
 from src.pyxover.xov_setup import xov
@@ -67,7 +69,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     # print(tracks_rms_df)
     # exit()
 
-    if plot_stuff and local: # and debug:
+    if plot_stuff and XovOpt.get("local"): # and debug:
         # plot histo
         plt.figure() #figsize=(8, 3))
         # plt.xlim(-1.*xlim, xlim)
@@ -81,7 +83,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
         # plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
         # # Tweak spacing to prevent clipping of ylabel
         plt.subplots_adjust(left=0.15)
-        plt.savefig(tmpdir + '/huber_weights_track.png')
+        plt.savefig(XovOpt.get("tmpdir") + '/huber_weights_track.png')
         plt.clf()
         # exit()
 
@@ -99,7 +101,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     cov_xov_tracks = cov_tracks * A_tracks.transpose()  # .round(2)
     # print(cov_xov_tracks)
     # print(cov_xov_tracks.getnnz(), np.prod(cov_xov_tracks.shape), cov_xov_tracks.getnnz() / np.prod(cov_xov_tracks.shape))
-    if full_covar:
+    if XovOpt.get("full_covar"):
         cov_xov_tracks = A_tracks * cov_xov_tracks
     else:
         cov_xov_tracks = diags(multiply_sparse_get_diag(A_tracks, cov_xov_tracks))
@@ -294,17 +296,17 @@ def get_stats(amat):
 
     print("Weighted a-posteriori RMS is ", m0.round(4), " - chi2 = ", (m0 / sigma_0).round(4))
 
-    if local and debug:
+    if XovOpt.get("local") and XovOpt.get("debug"):
         plt.figure()  # figsize=(8, 3))
         num_bins = 200  # 'auto'  #
         n, bins, patches = plt.hist((amat.weights @ (np.abs(w).reshape(-1, 1))).astype(np.float), bins=num_bins,
                                     cumulative=-1, range=[0.1, 50.])
         # n, bins, patches = plt.hist(w.astype(np.float), bins=num_bins, cumulative=True)
         # plt.xlabel('roughness@baseline700 (m/m)')
-        plt.savefig(tmpdir + '/histo_residuals.png')
+        plt.savefig(XovOpt.get("tmpdir") + '/histo_residuals.png')
         plt.clf()
 
-    if False and debug:
+    if False and XovOpt.get("debug"):
         print("xov_xovers_value_count:")
         nobs_tracks = xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(
             axis=1).sort_values(
@@ -346,16 +348,16 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
     print(glb_sol)
     print('-- -- -- -- ')
 
-    if len(pert_cloop['glo'])>0:
+    if len(XovOpt.get("pert_cloop")['glo'])>0:
         print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
-        print(pert_cloop['glo'])
+        print(XovOpt.get("pert_cloop")['glo'])
 
-    if debug and False:
+    if XovOpt.get("debug") and False:
         _ = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
         print(xov.xovers.columns)
         print(xov.xovers.loc[xov.xovers.orbA == '1301022345'])
         # print(xov.xovers.loc[xov.xovers.orbA == '1301022341' ].sort_values(by='R_A', ascending=True)[:10])
-        if np.sum([x.split('/')[1] in parOrb.keys() for x in xovi_amat.sol4_pars]) > 0:
+        if np.sum([x.split('/')[1] in XovOpt.get("parOrb").keys() for x in xovi_amat.sol4_pars]) > 0:
             print(orb_sol.reindex(orb_sol.sort_values(by='sol_dR/dR', ascending=False).index)[:10])
             print(orb_sol.loc[orb_sol.orb == '1301022345', :])
 
@@ -366,7 +368,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
         sol4_orb = set([i.split('_')[0] for i in track_names])
         sol4_orb = [x for x in sol4_orb if x.isdigit()]
         if sol4_orbpar == []:
-            sol4_orbpar = list(parOrb.keys())
+            sol4_orbpar = list(XovOpt.get("parOrb").keys())
         sol4_orb = [x + '_' + 'dR/' + y for x in sol4_orb for y in sol4_orbpar]
     elif sol4_orb == [None] or sol4_orbpar == [None]:
         sol4_orb = []
@@ -374,7 +376,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
         sol4_orb = [x + '_' + 'dR/' + y for x in sol4_orb for y in sol4_orbpar]
 
     if sol4_glo == []:
-        sol4_glo = list(parGlo.keys())
+        sol4_glo = list(XovOpt.get("parGlo").keys())
         sol4_glo = ['dR/'+x for x in sol4_glo]
     elif sol4_glo == [None]:
         sol4_glo = []
@@ -413,22 +415,22 @@ def analyze_sol(xovi_amat,xov,mode='full'):
                    ))
     sol_dict = {'sol': dict(zip(_[:,0],_[:,1].astype(float))), 'std': dict( zip( _[:,0],np.sqrt(_[:,2].astype(float))) ) }
 
-    if debug:
+    if XovOpt.get("debug"):
         print("sol_dict_analyze_sol")
         print(sol_dict)
 
     # Extract solution for global parameters
-    glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(parGlo.keys()) for x in _[:,0]]],columns=['par','sol','std'])
+    glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(XovOpt.get("parGlo").keys()) for x in _[:, 0]]], columns=['par', 'sol', 'std'])
     partemplate = set([x.split('/')[1] for x in sol_dict['sol'].keys()])
     # regex = re.compile(".*"+str(list(partemplate))+"$")
 
     # print(sol_dict)
 
     # Extract solution for orbit parameters
-    parOrbKeys = list(parOrb.keys())
+    parOrbKeys = list(XovOpt.get("parOrb").keys())
     solved4 = list(partemplate)
 
-    if OrbRep in ['lin','quad']:
+    if XovOpt.get("OrbRep") in ['lin', 'quad']:
         parOrbKeys = [x+str(y) for x in parOrbKeys for y in [0,1,2]]
     # solved4orb = list(filter(regex.match, list(parOrb.keys())))
     solved4orb = list(set(parOrbKeys)&set(solved4))
@@ -471,7 +473,7 @@ def analyze_sol(xovi_amat,xov,mode='full'):
             table = pd.merge(table.reset_index(),merged_Frame,on='orb')
 
         orb_sol = table
-        if debug:
+        if XovOpt.get("debug"):
             print(orb_sol)
 
     else:
@@ -518,9 +520,9 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
 
     # retrieve old solution
     if int(ext_iter) > 0:
-        previous_iter = Amat(vecopts)
+        previous_iter = Amat(XovOpt.get("vecopts"))
         # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-        previous_iter = previous_iter.load(('_').join((outdir + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+        previous_iter = previous_iter.load(('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
                                            '_' + str(ext_iter - 1) + '/' +
                                            ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
         print("initial sol dict=", len(previous_iter.sol_dict['sol']))
@@ -538,7 +540,7 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
         fit2dem_keys = [tr + '_dR/' + par for par in parsk for tr in trackk]
         fit2dem_dict = dict(zip(fit2dem_keys, fit2dem_sol))
 
-        previous_iter = Amat(vecopts)
+        previous_iter = Amat(XovOpt.get("vecopts"))
         previous_iter.sol_dict = {'sol': fit2dem_dict, 'std': dict(zip(fit2dem_keys, np.zeros(len(fit2dem_keys))))}
     # not first iter, nor pre-processing
     else:

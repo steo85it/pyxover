@@ -15,7 +15,8 @@ from math import pi
 
 import numpy as np
 
-from examples.MLA.options import vecopts
+# from examples.MLA.options import XovOpt.get("vecopts")
+from config import XovOpt
 
 
 def icrf2pbf(ET, rotpar):
@@ -58,9 +59,9 @@ def icrf2pbf(ET, rotpar):
 
     ## Longitude of the prime meridian
     # print("prime mer",W0,W1,W2,d, amplibtmp)
-    if vecopts['PM_ORIGIN'] == 'J2000':
+    if XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2000':
         W = W0 + W1 * d + W2 * np.square(d) / 2 + amplibtmp
-    elif vecopts['PM_ORIGIN'] == 'J2013.0':
+    elif XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2013.0':
         W = W0 + W1 * d2013 + W2 * np.square(d2013) / 2 + amplibtmp
     # # Bring PM0 J2000 --> J2013 (+365.25*2.)
     # d= 4748.5 # days 01012013 - J2000 (12h) # 13*365.25

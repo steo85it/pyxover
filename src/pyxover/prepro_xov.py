@@ -6,7 +6,8 @@ import pandas as pd
 from pygeoloc.ground_track import gtrack
 from pyxover.xov_utils import get_ds_attrib
 
-from examples.MLA.options import vecopts, cloop_sim, outdir, partials
+# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("cloop_sim"), XovOpt.get("outdir"), XovOpt.get("partials")
+from config import XovOpt
 
 
 def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
@@ -28,7 +29,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
         print("No tracks to be processed. Stop!")
         exit()
 
-    track = gtrack(vecopts)
+    track = gtrack(XovOpt.get("vecopts"))
     delta_pars, etbcs, pars = get_ds_attrib()
     # part_proj_dict = dict.fromkeys([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']], [])
     # print(part_proj_dict)
@@ -40,10 +41,10 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     for track_id in tracks_in_xovs[:]:
         # if track_id in ['1502130018','1502202222']:
         # print(track_id)
-        if cloop_sim:
-            trackfil = outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id[:-2] + '*.pkl'
+        if XovOpt.get("cloop_sim"):
+            trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id[:-2] + '*.pkl'
         else:
-            trackfil = outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
+            trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
         track = track.load(trackfil)
         mladata[track_id] = track.ladata_df
 
@@ -112,7 +113,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             mla_proj_df['partid'] = 'none'
             # print("len mla_df_proj",len(mla_df_proj))
 
-            if partials:
+            if XovOpt.get("partials"):
                 # do stuff
                 tmp_ladata_partials = tmp_ladata.loc[tmp_ladata.reset_index()['index'].isin(xov_extract.genid)][
                     ['seqid', 'LON', 'LAT', 'orbID'] + pars + etbcs]

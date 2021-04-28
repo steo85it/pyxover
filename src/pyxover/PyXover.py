@@ -29,8 +29,10 @@ import spiceypy as spice
 import time
 
 # mylib
-from examples.MLA.options import new_xov, vecopts, outdir, debug, monthly_sets, new_algo, compute_input_xov, basedir
+# from examples.MLA.options import XovOpt.get("new_xov"), XovOpt.get("vecopts"), XovOpt.get("outdir"), XovOpt.get("debug"), XovOpt.get("monthly_sets"), XovOpt.get("new_algo"), XovOpt.get("compute_input_xov"), XovOpt.get("basedir")
 # from mapcount import mapcount
+from config import XovOpt
+
 from src.pygeoloc.ground_track import gtrack
 from src.pyxover.xov_setup import xov
 
@@ -72,18 +74,18 @@ def launch_xov(
     mladata = args[4]
     outdir = args[5]
 
-    if new_xov:  # and track_id=='1301232350':
+    if XovOpt.get("new_xov"):  # and track_id=='1301232350':
         # print( "check", track_id, misycmb[par])
-        if not os.path.isfile(outdir + 'xov/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl') or new_xov == 2:
+        if not os.path.isfile(outdir + 'xov/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl') or XovOpt.get("new_xov") == 2:
 
             # print("Processing " + track_id + " ...")
 
             # try:
             #    trackA = track_id
             #    trackA = tracklist[str(track_id)]
-            trackA = gtrack(vecopts)
+            trackA = gtrack(XovOpt.get("vecopts"))
 
-            if monthly_sets:
+            if XovOpt.get("monthly_sets"):
                 trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_idA + '.pkl')
             else:
                 # trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
@@ -92,7 +94,7 @@ def launch_xov(
             if not trackA == None and len(trackA.ladata_df) > 0:
 
                 xov_tmp = track_idA
-                xov_tmp = xov(vecopts)
+                xov_tmp = xov(XovOpt.get("vecopts"))
 
                 # print(comb)
 
@@ -108,9 +110,9 @@ def launch_xov(
                         # try:
                         #        trackB = track_id
                         #        trackB = tracklist[str(gtrackB)]
-                        trackB = gtrack(vecopts)
+                        trackB = gtrack(XovOpt.get("vecopts"))
 
-                        if monthly_sets:
+                        if XovOpt.get("monthly_sets"):
                            trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + track_idB + '.pkl')
                         else:
                            # trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
@@ -127,13 +129,13 @@ def launch_xov(
                             # looping over all track combinations and updating the general df xov_tmp.xovers
                             xover_found = xov_tmp.setup([trackA,trackB])
 
-                    if new_algo and xover_found:
+                    if XovOpt.get("new_algo") and xover_found:
                         xovers_list.append(xov_tmp.xovtmp)
                     # except:
                     #     print(
                     #         'failed to load trackB ' + outdir + 'gtrack_' + gtrackB + '.pkl' + ' to process ' + outdir + 'gtrack_' + track_id + '.pkl')
 
-                if new_algo:
+                if XovOpt.get("new_algo"):
                     xov_tmp.xovers = pd.DataFrame(xovers_list)
                     xov_tmp.xovers.reset_index(drop=True, inplace=True)
                     xov_tmp.xovers['xOvID'] = xov_tmp.xovers.index
@@ -147,7 +149,7 @@ def launch_xov(
                     # Save to file
                     if not os.path.exists(outdir + 'xov/'):
                         os.mkdir(outdir + 'xov/')
-                    if new_algo:
+                    if XovOpt.get("new_algo"):
                         # Save to temporary folder
                         # if not os.path.exists(outdir + 'xov/tmp/'):
                         #     os.mkdir(outdir + 'xov/tmp/')
@@ -175,7 +177,8 @@ def launch_xov(
     ########################################
 # @profile
 def main(args):
-    from examples.MLA.options import parallel, outdir, auxdir, local, vecopts
+    # from examples.MLA.options import XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("vecopts")
+    from config import XovOpt
 
     print(args)
 
@@ -189,7 +192,7 @@ def main(args):
     iter_in = args[-1]
 
     # locate data
-    data_pth = basedir # '/att/nobackup/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+    data_pth = XovOpt.get("basedir") # '/att/nobackup/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
     dataset = indir_in  # 'test/' #'small_test/' #'1301/' #
     data_pth += dataset
     # # load kernels
@@ -198,7 +201,7 @@ def main(args):
     # set ncores
     ncores = mp.cpu_count() - 1  # 8
 
-    if parallel:
+    if XovOpt.get("parallel"):
         print('Process launched on ' + str(ncores) + ' CPUs')
 
     ##############################################
@@ -221,7 +224,7 @@ def main(args):
 
     # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
-    vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
     # print(vecopts['ALTIM_BORESIGHT'])
@@ -232,7 +235,7 @@ def main(args):
     # setup all combinations between years
     par = int(cmb_y_in)
 
-    if monthly_sets:
+    if XovOpt.get("monthly_sets"):
       misy = ['11', '12', '13', '14', '15']
       months = np.arange(1,13,1)
       misy = [x+f'{y:02}' for x in misy for y in months]
@@ -242,14 +245,14 @@ def main(args):
 
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
     # print(misycmb)
-    if debug:
+    if XovOpt.get("debug"):
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
 
     ###########################
     startInit = time.time()
 
-    if iter_in == 0 and compute_input_xov:
+    if iter_in == 0 and XovOpt.get("compute_input_xov"):
 
         # -------------------------------
         # File reading and ground-tracks computation
@@ -265,12 +268,12 @@ def main(args):
         # print(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
         # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*')))
 
-        if monthly_sets:
-          allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
-          allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1][:2] + '/gtrack_'+misycmb[par][1]+'*'))
+        if XovOpt.get("monthly_sets"):
+          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0][:2] + '/gtrack_' + misycmb[par][0] + '*'))
+          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1][:2] + '/gtrack_' + misycmb[par][1] + '*'))
         else:
-          allFilesA = glob.glob(os.path.join(outdir, indir_in + misycmb[par][0] + '/*'))
-          allFilesB = glob.glob(os.path.join(outdir, indir_in + misycmb[par][1] + '/*'))
+          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/*'))
+          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/*'))
 
         # if misycmb[par][0] == misycmb[par][1]:
         #     allFiles = allFilesA
@@ -313,12 +316,12 @@ def main(args):
         # print(comb)
         # print(comb.shape,np.ravel(comb).shape,len(set(np.ravel(comb))))
         # print(set(np.ravel(comb)))
-        track_obj = gtrack(vecopts)
+        track_obj = gtrack(XovOpt.get("vecopts"))
         mladata = {}
         cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
              'X_stgprj', 'Y_stgprj']
         for track_id in  set(np.ravel(comb)):
-            track_obj = track_obj.load(outdir + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+            track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
             mladata[track_id] =track_obj.ladata_df.loc[:,cols]
         # print(len(mladata))
         # exit()
@@ -338,14 +341,14 @@ def main(args):
 
         startXov2 = time.time()
 
-        args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in) for fil in allFilesA)
+        args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
         print("Looking for (potential) xovers within combinations of",len(allFilesA),"tracks (A) with",len(allFilesB),"tracks (B)...")
 
         # loop over all gtracks
         # parallel = 1
-        if parallel:
+        if XovOpt.get("parallel"):
             # close?join?
-            if local:
+            if XovOpt.get("local"):
                 # forks everything, if much memory needed, use the remote option with get_context
                 from tqdm.contrib.concurrent import process_map  # or thread_map
                 result = process_map(launch_xov, args, max_workers=ncores, total=len(allFilesA))
@@ -381,7 +384,7 @@ def main(args):
 
         else:
             result = []  # seq
-            if local:
+            if XovOpt.get("local"):
                 from tqdm import tqdm
                 for arg in tqdm(args, total=len(allFilesA)):
                     result.append(launch_xov(arg))
@@ -391,7 +394,7 @@ def main(args):
             # print(result)
 
         if len(result)>0:
-            if new_algo:
+            if XovOpt.get("new_algo"):
                 rough_xov = pd.concat(result).reset_index()
             else:
                 acttracks = np.unique(np.array([x for x in result if x is not None]).flatten())
@@ -408,7 +411,7 @@ def main(args):
         rough_xov = pd.DataFrame()
 
     # called either with results from xov_rough (iter=0) or with empty df and xovers from old solution
-    if new_algo:
+    if XovOpt.get("new_algo"):
         print("Calling a new awesome routine!!")
         xov_prc_iters_run(outdir_in, iter_in, misycmb[par], rough_xov)
 
@@ -423,8 +426,8 @@ def main(args):
 def select_useful_comb(comb, iter, outdir_in):
     outdir_old = outdir_in.replace('_' + str(iter) + '/', '_' + str(iter - 1) + '/')
     print(outdir_old, outdir_in)
-    tmp = Amat(vecopts)
-    tmp = tmp.load(glob.glob(outdir + outdir_old + 'Abmat*.pkl')[0])
+    tmp = Amat(XovOpt.get("vecopts"))
+    tmp = tmp.load(glob.glob(XovOpt.get("outdir") + outdir_old + 'Abmat*.pkl')[0])
 
     old_xov_orb = (tmp.xov.xovers['orbA'].map(str) + tmp.xov.xovers['orbB']).values
 

@@ -19,8 +19,10 @@ import spiceypy as spice
 from src.xovutil import astro_trans as astr, pickleIO
 from src.geolocate_altimetry import geoloc
 from src.xovutil.interp_obj import interp_obj
-from examples.MLA.options import debug, partials, parallel, SpInterp, auxdir, parOrb, parGlo, pert_cloop, pert_tracks, sim_altdata, \
-    local, pert_cloop_orb, OrbRep, spauxdir
+# from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("partials"), XovOpt.get("parallel"), XovOpt.get("SpInterp"), XovOpt.get("auxdir"), XovOpt.get("parOrb"), XovOpt.get("parGlo"), pert_cloop, XovOpt.get("pert_tracks"), XovOptgetsim_altdata, \
+#     XovOpt.get("local"), XovOpt.get("pert_cloop_orb"), XovOpt.get("OrbRep"), XovOpt.get("spauxdir")
+from config import XovOpt
+
 # from mapcount import mapcount
 from src.xovutil.project_coord import project_stereographic
 from src.tidal_deform import tidepart_h2
@@ -72,15 +74,15 @@ class gtrack:
     def setup(self, filnam):
 
         if len(self.ladata_df) > 0:
-            if self.SpObj == None and SpInterp == 2:
+            if self.SpObj == None and XovOpt.get("SpInterp") == 2:
                 # print(filnam)
                 # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
-            elif SpInterp > 0:
-                self.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
+            elif XovOpt.get("SpInterp") > 0:
+                self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
 
-            if debug:
+            if XovOpt.get("debug"):
                 pd.set_option('display.max_columns', 500)
 
             # set t0
@@ -113,28 +115,28 @@ class gtrack:
 
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
-            if self.SpObj == None and SpInterp == 2:
+            if self.SpObj == None and XovOpt.get("SpInterp") == 2:
                 # print(filnam)
                 # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
-            elif SpInterp > 0:
-                self.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
+            elif XovOpt.get("SpInterp") > 0:
+                self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
 
     def check_coverage(self):
         cover = spice.utils.support_types.SPICEDOUBLE_CELL(2000)
-        if local == 0:
-            spice.spkcov(auxdir + 'spk/MSGR_HGM008_INTGCB.bsp', -236, cover)
+        if XovOpt.get("local") == 0:
+            spice.spkcov(XovOpt.get("auxdir") + 'spk/MSGR_HGM008_INTGCB.bsp', -236, cover)
         else:
             spice.spkcov('/home/sberton2/Works/NASA/Mercury_tides/spktst/MSGR_HGM008_INTGCB.bsp', -236, cover)
 
         twind = [spice.wnfetd(cover, i) for i in range(spice.wncard(cover))]
         epo_in = np.sort(self.ladata_df.ET_TX.values)
         self.ladata_df['in_spk'] = np.array([np.sum([t[0] <= val <= t[1] for t in twind]) for val in epo_in]) > 0
-        if debug:
+        if XovOpt.get("debug"):
             print(len(self.ladata_df.loc[self.ladata_df['in_spk'] == False]))
             print("lensel", len(self.ladata_df), len(self.ladata_df.loc[self.ladata_df['in_spk']]))
         self.ladata_df = self.ladata_df.loc[self.ladata_df['in_spk']]
@@ -151,13 +153,13 @@ class gtrack:
 
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
-            if self.SpObj == None and SpInterp == 2:
+            if self.SpObj == None and XovOpt.get("SpInterp") == 2:
                 # print(filnam)
                 # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
             else:
-                self.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
+                self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
@@ -181,7 +183,7 @@ class gtrack:
             self = pickle.load(pklfile)
             pklfile.close()
         else:
-            if debug:
+            if XovOpt.get("debug"):
                 print("No " + filnam + " found")
             self = None
         # print('Groundtrack loaded from '+filnam)
@@ -204,7 +206,7 @@ class gtrack:
 
         # only select the required data (column)
         self.df_input = df.copy()
-        if (debug):
+        if (XovOpt.get("debug")):
             df = df.loc[:,
                  ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
         else:
@@ -224,7 +226,7 @@ class gtrack:
         # df = df.drop(['chn'], axis=1)  # .set_index('seqid')
 
         # Reorder columns and reindex
-        if debug:
+        if XovOpt.get("debug"):
             df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']
         else:
             df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']
@@ -333,16 +335,16 @@ class gtrack:
                       'MERv': self.MERv,
                       'SUNx': self.SUNx}
 
-        if not os.path.exists(auxdir + spauxdir):
-            os.mkdir(auxdir + spauxdir)
-        pickleIO.save(self.SpObj, auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
+        if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir")):
+            os.mkdir(XovOpt.get("auxdir") + XovOpt.get("spauxdir"))
+        pickleIO.save(self.SpObj, XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
 
         endSpInterp = time.time()
-        if (debug):
+        if (XovOpt.get("debug")):
             print('----- Runtime SpInterp = ' + str(endSpInterp - startSpInterp) + ' sec -----' + str(
                 (endSpInterp - startSpInterp) / 60.) + ' min -----')
 
-    def geoloc(self, get_partials=partials):
+    def geoloc(self, get_partials=XovOpt.get("partials")):
 
         # Compute geolocalisation and dxyz/dP, where P = (A,C,R,Rl,Pt)
         startGeoloc = time.time()
@@ -350,8 +352,8 @@ class gtrack:
         # Prepare
         if get_partials:
             param = {'': 1.}
-            param.update(parOrb)
-            param.update(parGlo)
+            param.update(XovOpt.get("parOrb"))
+            param.update(XovOpt.get("parGlo"))
         # \
         # 'dh2':0.1}
         else:
@@ -359,36 +361,36 @@ class gtrack:
 
         self.param = param
         # check if track has to be perturbed (else only apply global pars)
-        if self.name in pert_tracks or pert_tracks == []:
+        if self.name in XovOpt.get("pert_tracks") or XovOpt.get("pert_tracks") == []:
             _ = {}
             # get cloop sim perturbations from prOpt
-            [_.update(v) for k, v in pert_cloop.items()]
+            [_.update(v) for k, v in XovOpt.get("pert_cloop").items()]
             self.pert_cloop = _.copy()
         else:
             self.pert_cloop = {}
 
         # randomize and assign pert for closed loop sim IF orbit in pert_tracks
-        if self.name in pert_tracks or pert_tracks == []:
+        if self.name in XovOpt.get("pert_tracks") or XovOpt.get("pert_tracks") == []:
 
             # if first iter, generate random perturbations array
             if self.pert_cloop_0 is None:
                 np.random.seed(int(self.name))
-                rand_pert_orb = np.random.randn(len(pert_cloop_orb))
-                self.pert_cloop_0 = dict(zip(self.pert_cloop.keys(), list(pert_cloop_orb.values()) * rand_pert_orb))
-                if debug:
+                rand_pert_orb = np.random.randn(len(XovOpt.get("pert_cloop_orb")))
+                self.pert_cloop_0 = dict(zip(self.pert_cloop.keys(), list(XovOpt.get("pert_cloop_orb").values()) * rand_pert_orb))
+                if XovOpt.get("debug"):
                     print("random pert_cloop", self.pert_cloop)
             # copy to "local" perturbations df
             self.pert_cloop = self.pert_cloop_0.copy()
 
         # add global parameters (if perturbed)
-        self.pert_cloop = mergsum(self.pert_cloop.copy(), pert_cloop['glo'].copy())
+        self.pert_cloop = mergsum(self.pert_cloop.copy(), XovOpt.get("pert_cloop")['glo'].copy())
 
         # read solution from previous iteration and
         # add to self.pert_cloop (orb and glo)
         if self.sol_prev_iter != None:
             self.par_solupd()
 
-        if debug:
+        if XovOpt.get("debug"):
             print('check pert_cloop', self.name, self.pertPar)
             print('check pert_cloop', self.name, self.pert_cloop)
 
@@ -406,7 +408,7 @@ class gtrack:
         param_tmp = param
         # param_tmp = {k:v for k,v in param.items() if k not in ['dh2']} # issue with not having bounce time ET_BC for xov_setup
         if (
-                parallel and SpInterp > 0 and 1 == 2):  # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
+                XovOpt.get("parallel") and XovOpt.get("SpInterp") > 0 and 1 == 2):  # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
             # the orbit (single initial call) with an appropriate accuracy.
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count() - 1)
@@ -439,7 +441,7 @@ class gtrack:
             Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
             ladata_df['R'] = results[0][:, 2] - Rbase
 
-        if debug:
+        if XovOpt.get("debug"):
             print(ladata_df)
             print(results[0][0, :], list(param)[0], len(param))
 
@@ -487,7 +489,7 @@ class gtrack:
                 if self.pertPar != None: #self.sol_prev_iter != None:
                     # correcting for the perturbation applied for numerical partials
                     # getting current value of h2 (no effect since we divide by h2)
-                    self.pertPar['dh2'] += parGlo['dh2']
+                    self.pertPar['dh2'] += XovOpt.get("parGlo")['dh2']
                     ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.transpose(astr.sph2cart(
                 					  ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
                 					  ladata_df['LAT'].values, ladata_df['LON'].values)),
@@ -506,14 +508,14 @@ class gtrack:
         # update object attribute df
         self.ladata_df = ladata_df.copy()
 
-        if debug:
+        if XovOpt.get("debug"):
             print("print ladata_df")
             ladata_df['ET_TX'] = ladata_df['ET_TX'].astype('int64')
             print(ladata_df)
             # exit()
 
         endGeoloc = time.time()
-        if (debug):
+        if (XovOpt.get("debug")):
             print('----- Runtime Geoloc = ' + str(endGeoloc - startGeoloc) + ' sec -----' + str(
                 (endGeoloc - startGeoloc) / 60.) + ' min -----')
 
@@ -525,7 +527,7 @@ class gtrack:
 
         tmp_pertcloop = self.pert_cloop.copy()
 
-        if debug:
+        if XovOpt.get("debug"):
             print("pre-corr", tmp_pertcloop)
             print(self.sol_prev_iter)
 
@@ -537,7 +539,7 @@ class gtrack:
             # print(self.sol_prev_iter)
 
             # Check if linear representation and update parameter names to match
-            if OrbRep == 'lin':
+            if XovOpt.get("OrbRep") == 'lin':
                 regex = re.compile(".*d[A,C,R]0$")
                 for old_key in list(filter(regex.match, corr_orb)):
                     corr_orb[old_key[:-1]] = corr_orb.pop(old_key)
@@ -572,7 +574,7 @@ class gtrack:
 
         self.pert_cloop = tmp_pertcloop.copy()
 
-        if debug and len(self.pert_cloop)>0:
+        if XovOpt.get("debug") and len(self.pert_cloop)>0:
             print("sol prev iter", self.sol_prev_iter)
             print("postdit values", self.pert_cloop)
             exit()
@@ -596,7 +598,7 @@ class gtrack:
         self.vecopts['PARTDER'] = list(par)[0]
         diff_step = list(par)[1]
 
-        if (debug):
+        if (XovOpt.get("debug")):
             print('geoloc: ' + str(par))
             print('self.vecopts[PARTDER]', self.vecopts['PARTDER'])
             print(diff_step)
@@ -630,7 +632,7 @@ class gtrack:
             partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
 
             ####################################################################################
-            if debug:
+            if XovOpt.get("debug"):
                 print("Store perturbed tracks")
                 cols = [x + self.vecopts['PARTDER'] for x in ['LON_p_', 'LAT_p_', 'R_p_']]
                 print(geoloc_out[:, 0:3])
@@ -699,7 +701,7 @@ class gtrack:
         tmp_pertPar = mergsum(tmp_pertcloop, tmp_pertPar)
         self.pertPar = tmp_pertPar.copy()
 
-        if debug:
+        if XovOpt.get("debug"):
             print("tmp_percloop post pertpar (should be sum of cloop+prev_sol+part_pert")
             print(self.pertPar)
             # exit()
@@ -713,12 +715,12 @@ class gtrack:
         ladata_df = self.ladata_df.copy()
         param = self.param
 
-        if partials == 0:
+        if XovOpt.get("partials") == 0:
             param = dict([next(iter(param.items()))])
 
         startProj = time.time()
 
-        if (parallel and False):  # not convenient for small datasets (<5 orbits)
+        if (XovOpt.get("parallel") and False):  # not convenient for small datasets (<5 orbits)
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count() - 1)
             results = pool.map(self.launch_stereoproj, param.items())  # parallel
@@ -734,7 +736,7 @@ class gtrack:
 
         # prepare column names
         col_sim = np.array(['X_stgprj', 'Y_stgprj'])
-        if partials:
+        if XovOpt.get("partials"):
             col_der = np.hstack([['X_stgprj_' + par + '_m', 'Y_stgprj_' + par + '_m', 'X_stgprj_' + par + '_p',
                                   'Y_stgprj_' + par + '_p'] for par in list(param.keys())[1:]])
             # concatenate stgprj to ladata_df
@@ -746,7 +748,7 @@ class gtrack:
             self.ladata_df = ladata_df.copy()
 
         endProj = time.time()
-        if (debug):
+        if (XovOpt.get("debug")):
             print('----- Runtime Proj = ' + str(endProj - startProj) + ' sec -----' + str(
                 (endProj - startProj) / 60.) + ' min -----')
 
@@ -760,7 +762,7 @@ class gtrack:
         ladata_df = self.ladata_df
         vecopts = self.vecopts
 
-        if debug:
+        if XovOpt.get("debug"):
             print('proj: ' + str(par_d))
 
         # get dict values
@@ -780,7 +782,7 @@ class gtrack:
             # lon_tmp = [ladata_df['LON_' + k + '_' + par].values for k in ['m', 'p']]
             # lat_tmp = [ladata_df['LAT_' + k + '_' + par].values for k in ['m', 'p']]
 
-            if debug:
+            if XovOpt.get("debug"):
                 print('corr: diff_step', diff_step)
                 print('corr: lon lat', lon_tmp[:][:], lat_tmp[:][:])
                 print('corr: partials add (lon, lat)', ladata_df['dLON/' + par].values * diff_step,

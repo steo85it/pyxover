@@ -30,7 +30,8 @@ from astropy.constants import c as clight
 # mylib
 from src.xovutil import astro_trans as astr
 from src.xovutil.icrf2pbf import icrf2pbf
-from examples.MLA.options import SpInterp
+# from examples.MLA.options import XovOpt.get("SpInterp")
+from config import XovOpt
 from src.xovutil.orient_setup import orient_setup
 from src.tidal_deform import tidal_deform
 
@@ -83,7 +84,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # --------------------------------------------------
     et_bc = et_tx + tof / 2.
 
-    if (SpInterp > 0):
+    if (XovOpt.get("SpInterp") > 0):
         plapos_bc = np.transpose(SpObj['MERx'].eval(et_bc))
     else:
         plapos_bc, lt = spice.spkpos(vecopts['PLANETNAME'],
@@ -102,7 +103,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
 
     # compute s/c frame to inertial rotation (using np.frompyfunc to vectorize pxform)
     # ck+fk+sclk needed
-    if (SpInterp > 0):
+    if (XovOpt.get("SpInterp") > 0):
         cmat = SpObj['MGRa'].evalCmat(et_tx)
     else:
         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
@@ -243,7 +244,7 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
 
     # get probe CoM state at TX
     # --------------------------
-    if (SpInterp > 0):
+    if (XovOpt.get("SpInterp") > 0):
         x_sc = np.transpose(SpObj['MGRx'].eval(et))
         v_sc = np.transpose(SpObj['MGRv'].eval(et))
         # print(np.array(x_sc).shape)
@@ -320,7 +321,7 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
 
 def get_sc_pla(et, x_sc, v_sc, SpObj, vecopts):
 
-    if (SpInterp > 0):
+    if (XovOpt.get("SpInterp") > 0):
         x_pla = np.transpose(SpObj['MERx'].eval(et))
         v_pla = np.transpose(SpObj['MERv'].eval(et))
         scpv_p = np.concatenate((x_sc * 1.e-3 - x_pla, v_sc * 1.e-3 - v_pla), axis=1)

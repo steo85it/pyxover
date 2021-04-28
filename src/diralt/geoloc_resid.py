@@ -21,7 +21,9 @@ from src.pyaltsim.PyAltSim import sim_gtrack
 from src.xovutil.dem_util import get_demz_grd, get_demz_tiff
 from src.geolocate_altimetry import geoloc
 from src.pygeoloc.ground_track import gtrack
-from examples.MLA.options import vecopts, auxdir, SpInterp, tmpdir, local, debug, pert_cloop, spauxdir
+# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("auxdir"), XovOpt.get("SpInterp"), XovOpt.get("tmpdir"), XovOpt.get("local"), XovOpt.get("debug"), pert_cloop, XovOpt.get("spauxdir")
+from config import XovOpt
+
 from src.xovutil import astro_trans as astr, pickleIO
 import spiceypy as spice
 
@@ -59,9 +61,9 @@ def import_dem(filein):
         interp_spline = RectBivariateSpline(lats[:-1],
                                             lons[:-1],
                                             data[:-1, :-1], kx=1, ky=1)
-        pickleIO.save(interp_spline, tmpdir + "interp_dem.pkl")
+        pickleIO.save(interp_spline, XovOpt.get("tmpdir") + "interp_dem.pkl")
     else:
-        interp_spline = pickleIO.load(tmpdir + "interp_dem.pkl")
+        interp_spline = pickleIO.load(XovOpt.get("tmpdir") + "interp_dem.pkl")
 
     return interp_spline
 
@@ -174,11 +176,11 @@ def get_demres_full(dorb, track, df, dem_file,
     # retrieve spice data for geoloc
     # print(track.ladata_df)
 
-    if not hasattr(track, 'SpObj') and SpInterp == 2:
+    if not hasattr(track, 'SpObj') and XovOpt.get("SpInterp") == 2:
         # create interp for track
         track.interpolate()
-    elif SpInterp != 0:
-        track.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + track.name + '.pkl')
+    elif XovOpt.get("SpInterp") != 0:
+        track.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + track.name + '.pkl')
     else:
         track.SpObj = None
 
@@ -194,12 +196,12 @@ def get_demres_full(dorb, track, df, dem_file,
     # print("call geoloc",track.pertPar)
     # exit()
     # print("in demres_full", df_['altdiff_dem'].max())
-    geoloc_out, et_bc, dr_tidal, dummy = geoloc(df_, vecopts, tmp_pertPar, track.SpObj, t0=track.t0_orb)
+    geoloc_out, et_bc, dr_tidal, dummy = geoloc(df_, XovOpt.get("vecopts"), tmp_pertPar, track.SpObj, t0=track.t0_orb)
     # print(np.transpose(geoloc_out))
     # df_['LON'] = geoloc_out[:, 0]
     # df_['LAT'] = geoloc_out[:, 1]
     # print(len(results[0]))
-    Rbase = vecopts['PLANETRADIUS'] * 1.e3
+    Rbase = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
     # df_['R'] = geoloc_out[:, 2] - Rbase
 
     # Clean data --> commented out for consistency
@@ -210,7 +212,7 @@ def get_demres_full(dorb, track, df, dem_file,
     # print(track.ladata_df[['LON', 'LAT', 'R']].values)
     # exit()
     lontmp, lattmp, rtmp = np.transpose(geoloc_out)
-    rtmp = rtmp - vecopts['PLANETRADIUS'] * 1.e3
+    rtmp = rtmp - XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
     # r_bc = rtmp + vecopts['PLANETRADIUS'] * 1.e3
 
     # Call GrdTrk
@@ -426,7 +428,7 @@ def fit_track_to_dem(df_in,dem_file):
     # coeff_set_re = '^dR/d[A,C,R]'
     # n_per_orbit = [400]  # 100,800] #
 
-    vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
 
     # if local:
     #     dem_xarr = import_dem(
@@ -437,7 +439,7 @@ def fit_track_to_dem(df_in,dem_file):
 
     if len(df_) > 0:
 
-        track = sim_gtrack(vecopts, orbID=df_.orbID.values[0])
+        track = sim_gtrack(XovOpt.get("vecopts"), orbID=df_.orbID.values[0])
         # # track.SpObj = prel_track.SpObj
         #
         # gmt_in = 'gmt_' + track.name + '.in'
@@ -688,7 +690,7 @@ def get_lstsq_partials(dem_xarr, df_, dorb, track):
         dr_m, dummy = get_demres_full(dorb_tmp, track, df_, dem_xarr)
         dr_dorb.append((dr_p - dr_m) / (2 * step))
     # print(dr_dorb)
-    dr_dorb.append(tidepart_h2(track.vecopts, \
+    dr_dorb.append(tidepart_h2(track.XovOpt.get("vecopts"), \
                                np.transpose(astr.sph2cart(
                                    df_['R'].values + 2440 * 1.e3,
                                    df_['LAT'].values, df_['LON'].values)), \
@@ -786,21 +788,21 @@ def print_demfit(dr_post, dt_post, dorb='', orb='xxx', dr_pre='', dt_pre=''):
     ax2.plot(x, stats.norm.pdf(x, mean, sigma), label="post-fit")
 
     plt.legend()
-    plt.savefig(tmpdir + "dr_fit_" + orb + ".png")
+    plt.savefig(XovOpt.get("tmpdir") + "dr_fit_" + orb + ".png")
 
 
 if __name__ == '__main__':
 
     start = time.time()
 
-    vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
 
     #    if local:
     #      spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
     #    else:
     #      spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
 
-    if local:
+    if XovOpt.get("local"):
         dem_xarr = import_dem(
             "/home/sberton2/Works/NASA/Mercury_tides/aux/HDEM_64.GRD")  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD")
     else:
@@ -827,7 +829,7 @@ if __name__ == '__main__':
             print("Correction rms:", np.sqrt(np.mean(sol_df.values ** 2, axis=0)))
             exit()
 
-        if local:
+        if XovOpt.get("local"):
             path = '/home/sberton2/Works/NASA/Mercury_tides/out/mladata/' + epo + '_' + ex + '/gtrack_' + epo[
                                                                                                           :2] + '/' + '*.pkl'
         else:
@@ -840,7 +842,7 @@ if __name__ == '__main__':
         print("nfiles: ", len(allFiles))
         # print(allFiles)
 
-        prel_track = gtrack(vecopts)
+        prel_track = gtrack(XovOpt.get("vecopts"))
 
         sol_df = []
         # Prepare list of tracks to geolocalise

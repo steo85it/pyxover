@@ -6,14 +6,15 @@ import pandas as pd
 from pyxover.xov_utils import get_ds_attrib
 from xovutil.project_coord import project_stereographic
 
-from examples.MLA.options import local, parallel, partials, outdir, vecopts, n_proc
+# from examples.MLA.options import XovOpt.get("local"), XovOpt.get("parallel"), XovOpt.get("partials"), XovOpt.get("outdir"), XovOpt.get("vecopts"), XovOpt.get("n_proc")
+from config import XovOpt
 
 
 def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
     start_proj = time.time()
     # setting standard value (no chunks)
     # chunked_proj_dict = False
-    if local:
+    if XovOpt.get("local"):
         max_length_proj = 1.e5
     else:
         max_length_proj = 1.e7
@@ -22,7 +23,7 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
     if chunked_proj_dict:
         # n_proc = mp.cpu_count()-1
 
-        n_chunks = max(int(len(part_proj_dict['none']) // max_length_proj), n_proc)
+        n_chunks = max(int(len(part_proj_dict['none']) // max_length_proj), XovOpt.get("n_proc"))
         chunksize = int(len(part_proj_dict['none']) / n_chunks)
 
         print("Splitting a large array of", len(part_proj_dict['none']), "mla_data in", n_chunks, "chunks of",
@@ -43,10 +44,10 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
         # assert len(np.vstack(proc_chunks.values()))  == len(np.vstack(part_proj_dict.values()[:,0]))  # make sure all data is in the chunks
     else:
         proc_chunks = part_proj_dict
-    if parallel:
+    if XovOpt.get("parallel"):
 
         # distribute work to the worker processes
-        with mp.get_context("spawn").Pool(processes=n_proc) as pool:
+        with mp.get_context("spawn").Pool(processes=XovOpt.get("n_proc")) as pool:
             # starts the sub-processes without blocking
             # pass the chunk to each worker process
             proc_results = [pool.apply_async(project_chunk, args=(chunk,)) for chunk in proc_chunks.values()]
@@ -92,7 +93,7 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
             none_proj_df = pd.DataFrame(tmp_chunks['none_' + str(chunkid)][:, -2:], columns=['X_stgprj', 'Y_stgprj'])
             # print(mla_proj_df)
 
-            if partials:
+            if XovOpt.get("partials"):
                 partials_proj_df = []
                 for pder in ['_' + x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']]:
                     tmp = pd.DataFrame(tmp_chunks[pder[1:] + '_' + str(chunkid)][:, -4:],
@@ -133,7 +134,7 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
             [mla_proj_df, pd.DataFrame(result_chunks['none'][:, -2:], columns=['X_stgprj', 'Y_stgprj'])], axis=1)
         #
         # split and re-concatenate rows related to partial derivatives
-        if partials:
+        if XovOpt.get("partials"):
             partials_df_list = []
             for pder in ['_' + x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']]:
                 partials_proj_df = pd.DataFrame(result_chunks[pder[1:]],
@@ -153,10 +154,10 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
 
             mla_proj_df = pd.concat([mla_proj_df.reset_index(drop=True)] + partials_df_list, axis=1, sort=False)
     # Save intermediate result
-    proj_pkl_path = outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
+    proj_pkl_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
         cmb[1]) + '_project.pkl.gz'
     mla_proj_df.to_pickle(proj_pkl_path)
-    print("Projected df saved to:", outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
+    print("Projected df saved to:", XovOpt.get("outdir") + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
         cmb[1]) + '_project.pkl.gz')
     print("Len mla_proj_df after reordering:", len(mla_proj_df))
     ################################################
@@ -178,7 +179,7 @@ def project_chunk(proc_chunk):
                                       proc_chunk[:, 4],
                                       proc_chunk[:, 1],
                                       proc_chunk[:, 2],
-                                      R=vecopts['PLANETRADIUS'])
+                                      R=XovOpt.get("vecopts")['PLANETRADIUS'])
     # print(pd.DataFrame(chunk_res).T)
     # proc_chunk[['x','y']] = pd.DataFrame(chunk_res).T
 

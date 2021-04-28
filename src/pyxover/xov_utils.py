@@ -22,7 +22,9 @@ from statsmodels.tools.eval_measures import rmse
 # from accum_utils import analyze_dist_vs_dR
 # from AccumXov import remove_max_dist
 # from accum_utils import analyze_dist_vs_dR
-from examples.MLA.options import tmpdir, vecopts, local, debug, sol4_orbpar, parOrb, parGlo
+# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("vecopts"), XovOpt.get("local"), XovOpt.get("debug"), XovOpt.get("sol4_orbpar"), XovOpt.get("parOrb"), XovOpt.get("parGlo")
+from config import XovOpt
+
 from src.xovutil.project_coord import project_stereographic
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
@@ -33,7 +35,7 @@ from src.pyxover.xov_setup import xov
 
 def get_tracks_rms(xovers_df, plot_xov_tseries=False):
 
-    if debug:
+    if XovOpt.get("debug"):
         print("Checking tracks rms @ iter ...")
 
     if 'huber' in xovers_df.columns:
@@ -60,7 +62,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             df = xovtmp.loc[((xovtmp.orbA == int(tr)) | (xovtmp.orbB == int(tr))) & acceptif].sort_values(by='dtA',
                                                                                                              ascending=True)
             tmp = pd.DataFrame(
-        	np.vstack(project_stereographic(df.LON.values, df.LAT.values, 0, 90, vecopts['PLANETRADIUS'])).T,
+        	np.vstack(project_stereographic(df.LON.values, df.LAT.values, 0, 90, XovOpt.get("vecopts")['PLANETRADIUS'])).T,
         	columns=['x0', 'y0'])
             tmp['dist'] = np.linalg.norm(tmp.diff().values, axis=1)
             df = pd.concat([df.reset_index(drop=True), tmp], axis=1).dropna()
@@ -88,7 +90,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             rlm_model = sm.RLM(y, X, M=sm.robust.norms.HuberT())
             rlm_results = rlm_model.fit()
 
-            if False and debug:
+            if False and XovOpt.get("debug"):
                 # print("rlm_results")
                 # print(rlm_results.summary())
                 print("rlm_results (x1,const):",np.array(rlm_results.params).round(2))
@@ -105,7 +107,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
             # Rbias = rlm_results.params.round(1)[1]
             # Rdrift = rlm_results.params.round(1)[0]
 
-            if local and plot_xov_tseries and np.abs(Rbias) > 30.:
+            if XovOpt.get("local") and plot_xov_tseries and np.abs(Rbias) > 30.:
                 fig = plt.figure(figsize=(12, 8))
                 plt.style.use('seaborn-poster')
                 ax = fig.add_subplot(111)
@@ -123,7 +125,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
                 title = "sol: R bias : " + str(rlm_results.params.round(1)[0]) + " m -- RMSE : " + \
                         str(rmspre.round(1)) + " m"  # / "+ str(rmspost.round(1)) + "m"
                 ax.set_title(title)
-                plt.savefig(tmpdir + 'orb_res_xov_' + str(tr) + '.png')
+                plt.savefig(XovOpt.get("tmpdir") + 'orb_res_xov_' + str(tr) + '.png')
 
             trlist.append(tr)
             biaslist.append(Rbias)
@@ -149,7 +151,7 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
     return postfit
 
 
-def plot_tracks_histo(postfit_list, filename=tmpdir + '/histo_tracks_eval.png'):
+def plot_tracks_histo(postfit_list, filename=XovOpt.get("tmpdir") + '/histo_tracks_eval.png'):
     # plot histo
     # print(postfit_list)
 
@@ -215,7 +217,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
     test_pert = len(list(xov_list[0].pert_cloop_0.values())[0])
 
     pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
-    if test_pert>0 and len([v for x in pertdict for k,v in x.items() if v]) > 0 and sol4_orbpar != [None]:
+    if test_pert>0 and len([v for x in pertdict for k,v in x.items() if v]) > 0 and XovOpt.get("sol4_orbpar") != [None]:
         pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
         xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
         xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
@@ -259,7 +261,7 @@ def clean_partials(b, spA, glbpars, threshold = 1.e6):
 
     nglbpars = len(glbpars)
 
-    if debug:
+    if XovOpt.get("debug"):
         print("## clean_partials - size pre:", len(b), spA.shape)
         # print(sol4_glo)
         # print(len(sol4_glo))
@@ -278,7 +280,7 @@ def clean_partials(b, spA, glbpars, threshold = 1.e6):
             # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
             axlst.legend(loc='upper right')
         # i.plot(b)
-        plt.savefig(tmpdir + 'b_and_A_pre.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'b_and_A_pre.png')
     # exit()
 
     Nexcluded = 0
@@ -321,7 +323,7 @@ def clean_partials(b, spA, glbpars, threshold = 1.e6):
         # print("post= ", i, np.max(spA[:, -i - 1].data))
 
     print("## clean_partials - size excluded:", Nexcluded, Nexcluded/len(b)*100.,"%") #, len(keep))
-    if debug:
+    if XovOpt.get("debug"):
         plt.clf()
         fig, axlst = plt.subplots(nglbpars)
         if nglbpars>1:
@@ -333,7 +335,7 @@ def clean_partials(b, spA, glbpars, threshold = 1.e6):
             axlst.plot(spA[:, -nglbpars + 0].todense(), label=glbpars[0])
             # i.plot(spA[:, :-4].sum(axis=1).A1, label=sol4_glo[idx])
             axlst.legend(loc='upper right')
-        plt.savefig(tmpdir + 'b_and_A_post.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'b_and_A_post.png')
 
     # print(spla.norm(spA[:,-5:],axis=0))
     # exit()
@@ -344,7 +346,7 @@ def clean_partials(b, spA, glbpars, threshold = 1.e6):
 def get_ds_attrib():
     # prepare pars keys, lists and dicts
     pars = ['d' + x + '/' + y for x in ['LON', 'LAT', 'R'] for y in
-            list(parOrb.keys()) + list(parGlo.keys())]
-    delta_pars = {**parOrb, **parGlo}
-    etbcs = ['ET_BC_' + x + y for x in list(parOrb.keys()) + list(parGlo.keys()) for y in ['_p', '_m']]
+            list(XovOpt.get("parOrb").keys()) + list(XovOpt.get("parGlo").keys())]
+    delta_pars = {**XovOpt.get("parOrb"), **XovOpt.get("parGlo")}
+    etbcs = ['ET_BC_' + x + y for x in list(XovOpt.get("parOrb").keys()) + list(XovOpt.get("parGlo").keys()) for y in ['_p', '_m']]
     return delta_pars, etbcs, pars

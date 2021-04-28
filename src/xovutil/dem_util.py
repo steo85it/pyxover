@@ -15,7 +15,9 @@ import xarray as xr
 from scipy.interpolate import RectBivariateSpline
 
 from src.xovutil import pickleIO
-from examples.MLA.options import tmpdir, debug
+# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("debug")
+from config import XovOpt
+
 import pandas as pd
 
 
@@ -36,7 +38,7 @@ def import_dem(filein):
     # and 0<=lon<pi are accepted (checked that lon=0 has same values)
     # print(data[:,0]==data[:,-1])
     # kx=ky=1 required not to mess up results!!!!!!!!!! Higher interp orders mess up...
-    dem_interp_path = tmpdir+"interp_dem.pkl"
+    dem_interp_path = XovOpt.get("tmpdir") + "interp_dem.pkl"
     if not os.path.exists(dem_interp_path):
         interp_spline = RectBivariateSpline(lats[:-1],
                                             lons[:-1],
@@ -87,7 +89,7 @@ def get_demz_tiff(filin,lon,lat):
     xi = xr.DataArray(xi, dims="z")
     yi = xr.DataArray(yi, dims="z")
 
-    if debug:
+    if XovOpt.get("debug"):
         print(da)
         print("x,y len:", len(xi),len(yi))
 
@@ -105,7 +107,7 @@ def get_demz_grd(filin,lon,lat):
     lon = xr.DataArray(lon, dims="x")
     lat = xr.DataArray(lat, dims="x")
 
-    if debug:
+    if XovOpt.get("debug"):
         print(da)
         print("lon,lat len:", len(lon),len(lat))
 

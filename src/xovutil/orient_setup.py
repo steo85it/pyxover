@@ -11,7 +11,9 @@
 
 import numpy as np
 
-from examples.MLA.options import vecopts, debug
+# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("debug")
+from config import XovOpt
+
 from src.xovutil.units import as2deg
 
 AG = True
@@ -22,26 +24,26 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
     if AG:
         POLE_RA0 = np.array([281.0082, -0.0328, 0.])
         POLE_DEC0 = np.array([61.4164, -0.0049, 0.])
-        if vecopts['PM_ORIGIN'] == 'J2000':
+        if XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2000':
             PM0 = np.array([329.75, 6.1385054, 0.])
-        elif vecopts['PM_ORIGIN'] == 'J2013.0':
+        elif XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2013.0':
             PM0 = np.array([318.4455, 6.1385054, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
             #PM0 = np.array([318.2245, 6.1385054, 0.])
     elif ZAP:
         # from zero
         POLE_RA0 = np.array([0., -0.0328, 0.])
         POLE_DEC0 = np.array([0., -0.0049, 0.])
-        if vecopts['PM_ORIGIN'] == 'J2000':
+        if XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2000':
             PM0 = np.array([329.5469, 0., 0.])
-        elif vecopts['PM_ORIGIN'] == 'J2013.0':
+        elif XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2013.0':
             PM0 = np.array([318.2245, 0., 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
     else:
         # IAU
         POLE_RA0 = np.array([281.0103, -0.0328, 0.])
         POLE_DEC0 = np.array([61.4155, -0.0049, 0.])
-        if vecopts['PM_ORIGIN'] == 'J2000':
+        if XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2000':
             PM0 = np.array([329.5988, 6.1385108, 0.])
-        elif vecopts['PM_ORIGIN'] == 'J2013.0':
+        elif XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2013.0':
             PM0 = np.array([318.3201, 6.1385108, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
         #old weird mix
         #POLE_RA0 = np.array([281.0097, -0.0328, 0.])
@@ -81,7 +83,7 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
         upd_rotpar['NUT_PREC_PM'] = rotpar['NUT_PREC_PM0']
 
 
-    if debug:
+    if XovOpt.get("debug"):
         print("librations", rotpar['NUT_PREC_PM0'], offsetL * rotpar['NUT_PREC_PM0'])
         print(as2deg(offsetRA), as2deg(offsetDEC), as2deg(offsetPM)/365.25, as2deg(offsetL))
         # exit()

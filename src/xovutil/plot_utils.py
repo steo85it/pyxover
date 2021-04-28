@@ -3,7 +3,8 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from examples.MLA.options import tmpdir
+# from examples.MLA.options import XovOpt.get("tmpdir")
+from config import XovOpt
 
 
 def plt_histo_dR(idx, xov_df, xov_ref='', xlim=None):
@@ -34,9 +35,9 @@ def plt_histo_dR(idx, xov_df, xov_ref='', xlim=None):
     plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
     # Tweak spacing to prevent clipping of ylabel
     plt.subplots_adjust(left=0.15)
-    plt.savefig(tmpdir+'/histo_dR_' + str(idx) + '.png')
+    plt.savefig(XovOpt.get("tmpdir") + '/histo_dR_' + str(idx) + '.png')
     plt.clf()
-    print("### plt_histo_dR: Plot saved to ", tmpdir+'/histo_dR_' + str(idx) + '.png')
+    print("### plt_histo_dR: Plot saved to ", XovOpt.get("tmpdir") + '/histo_dR_' + str(idx) + '.png')
 
 
 def plt_geo_dR(sol, xov, truncation=None):
@@ -68,7 +69,7 @@ def plt_geo_dR(sol, xov, truncation=None):
     plt.tight_layout()
     ax1.invert_yaxis()
     #         ylabel='Topog ampl rms (1st octave, m)')
-    fig.savefig(tmpdir+'/mla_dR_' + sol + '.png')
+    fig.savefig(XovOpt.get("tmpdir") + '/mla_dR_' + sol + '.png')
     plt.clf()
     plt.close()
-    print("### plt_geo_dR: Plot saved to ", tmpdir+'/mla_dR_' + sol + '.png')
+    print("### plt_geo_dR: Plot saved to ", XovOpt.get("tmpdir") + '/mla_dR_' + sol + '.png')

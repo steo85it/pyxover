@@ -9,11 +9,11 @@ class XovOpt:
     __conf = {
         # env opt
         "debug": False,
-        "pgda": False,  # True #
+        "local": True, #
         "parallel": False,
-        "partials": False,
+        "partials": True,
         "body" : 'MERCURY', # 'BENNU' #'67P' #
-        "basedir": 'data/',
+        "basedir": 'MLA/data/',
         "rawdir": f'raw/',
         "outdir": f'out/',
         "auxdir": f'aux/',

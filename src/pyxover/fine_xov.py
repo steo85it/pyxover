@@ -8,20 +8,21 @@ from pygeoloc.ground_track import gtrack
 from pyxover.get_xov_latlon import get_xov_latlon
 from pyxover.xov_setup import xov
 
-from examples.MLA.options import vecopts, outdir, parallel, local, parGlo, debug, partials, n_proc
+# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("outdir"), XovOpt.get("parallel"), XovOpt.get("local"), XovOpt.get("parGlo"), XovOpt.get("debug"), XovOpt.get("partials"), XovOpt.get("n_proc")
+from config import XovOpt
 
 
 def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     start_finexov = time.time()
     # initialize xov object
     xovs_list = mla_proj_df.xovid.unique()
-    xov_tmp = xov(vecopts)
+    xov_tmp = xov(XovOpt.get("vecopts"))
     # pass measurements sampling to fine_xov computation through xov_tmp
     xov_tmp.msrm_sampl = msrm_smpl
 
     # store the imposed perturbation (if closed loop simulation) - get from any track uploaded in prepro step
-    track = gtrack(vecopts)
-    track = track.load(glob.glob(outdir + outdir_in + 'gtrack_' + str(cmb[0]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+    track = gtrack(XovOpt.get("vecopts"))
+    track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
     xov_tmp.pert_cloop = {'0': track.pert_cloop}
     xov_tmp.pert_cloop_0 = {'0': track.pert_cloop_0}
     # store the solution from the previous iteration
@@ -42,11 +43,11 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     # print(proj_df_tmp.columns)
     print("total memory proj_df_tmp:", proj_df_tmp.memory_usage(deep=True).sum() * 1.e-6)
 
-    if parallel:
+    if XovOpt.get("parallel"):
         # pool = mp.Pool(processes=ncores)  # mp.cpu_count())
         # xov_list = pool.map(fine_xov_proc, args)  # parallel
         # apply_async example
-        if local:
+        if XovOpt.get("local"):
             from tqdm import tqdm
             pbar = tqdm(total=len(xovs_list))
 
@@ -54,12 +55,12 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
                 pbar.update()
 
         xov_list = []
-        with mp.get_context("spawn").Pool(processes=n_proc) as pool:
+        with mp.get_context("spawn").Pool(processes=XovOpt.get("n_proc")) as pool:
             # for idx in range(len(xovs_list)):
             # xov_list.append(pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], xov_tmp), callback=update))
             for xovi in xovs_list:
 
-                if local:
+                if XovOpt.get("local"):
                     xov_list.append(pool.apply_async(fine_xov_proc, args=(
                         xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp), callback=update))
                 else:
@@ -86,7 +87,7 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
         xov_tmp.xovers = pd.concat(xov_list, axis=0)
 
     else:
-        if local:
+        if XovOpt.get("local"):
             from tqdm import tqdm
             for xovi in tqdm(xovs_list):
                 fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
@@ -98,15 +99,15 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
 
     # fill xov structure with info for LS solution
     xov_tmp.parOrb_xy = [x for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns]  # update partials list
-    xov_tmp.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(parGlo.keys())]
+    xov_tmp.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(XovOpt.get("parGlo").keys())]
     xov_tmp.par_xy = xov_tmp.parOrb_xy + xov_tmp.parGlo_xy  # update partials list
-    if debug:
+    if XovOpt.get("debug"):
         print("Parameters:", xov_tmp.parOrb_xy, xov_tmp.parGlo_xy, xov_tmp.par_xy)
     # update xovers table with LAT and LON
     xov_tmp = get_xov_latlon(xov_tmp, mla_proj_df.loc[mla_proj_df.partid == 'none'])
     xov_tmp.xovers.drop('xovid', axis=1).reset_index(inplace=True, drop=True)
     # print(xov_tmp.xovers.columns)
-    if debug:
+    if XovOpt.get("debug"):
         pd.set_option('display.max_columns', 500)
         pd.set_option('display.max_rows', 500)
 
@@ -128,7 +129,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
         xov_tmp.proj_center = {'lon': df['LON_proj'].values[0], 'lat': df['LAT_proj'].values[0]}
         df.drop(columns=['LON_proj', 'LAT_proj'], inplace=True)
     else:
-        if debug:
+        if XovOpt.get("debug"):
             print("### Empty proj_df_xovi on xov #", xovi)
             print(df)
         return  # continue
@@ -143,7 +144,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     try:
         x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
     except:
-        if debug:
+        if XovOpt.get("debug"):
             print("### get_xover_fine issue on xov #", xovi)
             print(xov_tmp.ladata_df)
         return  # continue
@@ -155,7 +156,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     # print(df)
     # print(out)
     if len(out) == 0:
-        if debug:
+        if XovOpt.get("debug"):
             print("### Empty out on xov #", xovi)
         return  # continue
 
@@ -164,7 +165,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     xovtmp = pd.DataFrame(xovtmp, index=[0])  # TODO possibly avoid, very time consuming
 
     if len(xovtmp) > 1:
-        if debug:
+        if XovOpt.get("debug"):
             print("### Bad multi-xov at xov#", xovi)
             print(xovtmp)
         return  # continue
@@ -178,7 +179,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     xov_tmp.set_xov_offnadir()
 
     # process partials from gtrack to xov, if required
-    if partials:
+    if XovOpt.get("partials"):
         xov_tmp.set_partials()
     else:
         # retrieve epoch to, e.g., trace tracks quality (else done inside set_partials)
@@ -193,7 +194,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     xov_tmp.xovtmp['xOvID'] = xovi
 
     # Update general df (serial only, does not work in parallel since not a shared object)
-    if not parallel:
+    if not XovOpt.get("parallel"):
         xov_tmp.xovers = xov_tmp.xovers.append(xov_tmp.xovtmp, sort=True)
 
     # import sys

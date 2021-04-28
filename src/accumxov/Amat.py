@@ -17,7 +17,8 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 
 # from mapcount import mapcount
-from examples.MLA.options import debug, cloop_sim
+# from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("cloop_sim")
+from config import XovOpt
 
 
 class Amat:
@@ -53,7 +54,7 @@ class Amat:
         self.xovpart_reorder()
         # print(self.A)
 
-        if cloop_sim:
+        if XovOpt.get("cloop_sim"):
             self.setup_cloop(xov)
 
     def setup_cloop(self, xov):
@@ -84,7 +85,7 @@ class Amat:
         pickle.dump(self, pklfile, protocol=-1)
         pklfile.close()
 
-        if debug:  # check if correctly saved
+        if XovOpt.get("debug"):  # check if correctly saved
             vecopts = {}
             tmp = Amat(vecopts)
             tmp = tmp.load(filnam)
@@ -162,7 +163,7 @@ class Amat:
             #     val *= 1.
             #     print(val)
 
-            if debug:
+            if XovOpt.get("debug"):
                 print("analyze df")
                 par_xy_loc = list(set([str(y).split('_')[0] for y in par_xy_loc]))
                 print(par_xy_loc)
@@ -197,7 +198,7 @@ class Amat:
 
         print(sparse_memory_usage(csr))
 
-        if debug:
+        if XovOpt.get("debug"):
             print(csr)
             print(list([np.array(map({v: k for k, v in dict_.items()}.get, csr.indices)), csr.data]))
             print(sys.getsizeof(csr))
@@ -206,7 +207,7 @@ class Amat:
         self.spA = csr
         self.b = xovers_df.dR.values
 
-        if (debug):
+        if (XovOpt.get("debug")):
             print(csr)
             print(xovers_df.dR)
 
@@ -280,7 +281,7 @@ class Amat:
 
         print(Amat_df)
 
-        if (debug):
+        if (XovOpt.get("debug")):
             print(Amat_df)
             print(xovers_df.dR)
 

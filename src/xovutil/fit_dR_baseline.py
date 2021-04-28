@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 
 from src.accumxov import accum_opt, AccumXov as xovacc, accum_utils
 from src.accumxov.Amat import Amat
-from examples.MLA.options import tmpdir, outdir
+# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("outdir")
+from config import XovOpt
+
 from src.xovutil.stat import rms
 
 
@@ -24,7 +26,7 @@ def fit_sols(sol,exp_list):
 
     for subexp in exp_list:
         tmp = Amat(vecopts)
-        tmp = tmp.load(outdir+'sim/'+sol+'/'+subexp+'/Abmat_sim_'+sol.split('_')[0]+'_'+str(int(sol.split('_')[-1])+1)+'_'+subexp+'.pkl')
+        tmp = tmp.load(XovOpt.get("outdir") + 'sim/' + sol + '/' + subexp + '/Abmat_sim_' + sol.split('_')[0] + '_' + str(int(sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
         if tmp.xov.xovers.filter(regex='^dist_.*$').empty==False:
 
@@ -86,7 +88,7 @@ def fit_sols(sol,exp_list):
     # ax1.loglog()
 
     fig.savefig(
-        tmpdir + 'test_roughn.png')
+        XovOpt.get("tmpdir") + 'test_roughn.png')
 	
 	
 if __name__ == '__main__':

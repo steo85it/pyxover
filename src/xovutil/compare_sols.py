@@ -15,7 +15,9 @@ from scipy.sparse import diags
 from scipy.linalg import pinv, pinvh
 
 from src.accumxov.Amat import Amat
-from examples.MLA.options import tmpdir, outdir, sol4_glo
+# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("outdir"), XovOpt.get("sol4_glo")
+from config import XovOpt
+
 from src.xovutil.iterables import mergsum
 from src.xovutil.units import as2deg
 
@@ -88,9 +90,9 @@ if __name__ == '__main__':
     for idx,(solnam, ap) in enumerate(sols):
         amat = Amat(vecopts)
         try:
-            amat = amat.load(outdir + 'sim/' + subfolder + solnam + '/' + subexp + '/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+            amat = amat.load(XovOpt.get("outdir") + 'sim/' + subfolder + solnam + '/' + subexp + '/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
         except:
-            amat = amat.load(outdir + 'Abmat/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
+            amat = amat.load(XovOpt.get("outdir") + 'Abmat/Abmat_sim_' + solnam.split('_')[0] + '_' + str(int(solnam.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
 
         print("rmse of solution at iter):", amat.resid_wrmse)
@@ -221,7 +223,7 @@ if __name__ == '__main__':
 
         ax.set_title('')
 
-        plt.savefig(tmpdir+fignam)
+        plt.savefig(XovOpt.get("tmpdir") + fignam)
         plt.clf()
 
         # fig, ax = plt.subplots()
@@ -358,7 +360,7 @@ if __name__ == '__main__':
         # plt.legend()
         # ax.tick_params(labelsize=10)
         # plt.figure(dpi=400)
-        plt.savefig(tmpdir+'RADEC.eps')
+        plt.savefig(XovOpt.get("tmpdir") + 'RADEC.eps')
         plt.clf()
 
         # fig, ax = plt.subplots()

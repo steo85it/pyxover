@@ -32,7 +32,8 @@ import time
 # mylib
 # from mapcount import mapcount
 from src.pygeoloc.ground_track import gtrack
-from examples.MLA.options import parallel, SpInterp, new_gtrack, outdir, auxdir, local, vecopts, debug, OrbRep, rawdir
+# from examples.MLA.options import XovOpt.get("parallel"), XovOpt.get("SpInterp"), XovOpt.get("new_gtrack"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("vecopts"), XovOpt.get("debug"), XovOpt.get("OrbRep"), XovOpt.get("rawdir")
+from config import XovOpt
 
 
 # from xovutil import lflatten
@@ -69,21 +70,21 @@ def launch_gtrack(args):
     track_id = 'gtrack_' + track.name
     # track = gtrack(vecopts)
 
-    if new_gtrack:
-        gtrack_out = outdir + outdir_in + '/' + track_id + '.pkl'
-        if os.path.isfile(gtrack_out) == False or new_gtrack == 2:
+    if XovOpt.get("new_gtrack"):
+        gtrack_out = XovOpt.get("outdir") + outdir_in + '/' + track_id + '.pkl'
+        if os.path.isfile(gtrack_out) == False or XovOpt.get("new_gtrack") == 2:
 
-            if not os.path.exists(outdir + outdir_in):
-                os.makedirs(outdir + outdir_in, exist_ok=True)
+            if not os.path.exists(XovOpt.get("outdir") + outdir_in):
+                os.makedirs(XovOpt.get("outdir") + outdir_in, exist_ok=True)
 
             track.setup(infil)
             #
-            if debug:
+            if XovOpt.get("debug"):
                 print("track#:", track.name)
                 print("max diff R",abs(track.ladata_df.loc[:,'R']-track.df_input.loc[:,'altitude']).max())
                 print("R",track.ladata_df.loc[:,'R'].max(),track.df_input.loc[:,'altitude'].max())
-                print("max diff LON", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.df_input.loc[:, 'geoc_long']).max())))
-                print("max diff LAT", vecopts['PLANETRADIUS']*1.e3*np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
+                print("max diff LON", XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 * np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.df_input.loc[:, 'geoc_long']).max())))
+                print("max diff LAT", XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 * np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
                 print("max elev sim", abs(track.df_input.loc[:,'altitude']).max())
             #exit()
             # pd.set_option('display.max_columns', None)
@@ -91,13 +92,13 @@ def launch_gtrack(args):
             # print(track.ladata_df)
             # exit()
             track.save(gtrack_out)
-            if not local or debug:
+            if not XovOpt.get("local") or XovOpt.get("debug"):
                 print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
         # except:
         #    print('failed to process ' + track_id)
         else:
             # track = track.load('out/'+track_id+'.pkl')
-            if not local or debug:
+            if not XovOpt.get("local") or XovOpt.get("debug"):
                 print('Gtrack file ' + gtrack_out + ' already existed!')
 
 
@@ -115,17 +116,17 @@ def main(args):
     iter_in = args[4]
 
     # locate data
-    data_pth = f'{rawdir}'
+    data_pth = f'{XovOpt.get("rawdir")}'
     dataset = indir_in
     data_pth += dataset
 
-    if SpInterp == 0:
+    if XovOpt.get("SpInterp") == 0:
         # load kernels
-        if not local:
-            spice.furnsh([f'{auxdir}furnsh.MESSENGER.def',
-                         f'{auxdir}mymeta_pgda'])
+        if not XovOpt.get("local"):
+            spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
+                         f'{XovOpt.get("auxdir")}mymeta_pgda'])
         else:
-            spice.furnsh(f'{auxdir}mymeta')
+            spice.furnsh(f'{XovOpt.get("auxdir")}mymeta')
         # or, add custom kernels
         # load additional kernels
         # spice.furnsh(['XXX.bsp'])
@@ -133,12 +134,12 @@ def main(args):
     # set ncores
     ncores = mp.cpu_count() - 1  # 8
 
-    if parallel:
+    if XovOpt.get("parallel"):
         print('Process launched on ' + str(ncores) + ' CPUs')
 
     ##############################################
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
-    vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
     # -------------------------------
@@ -160,12 +161,12 @@ def main(args):
     # Prepare list of tracks to geolocalise
     tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles[:]]
 
-    if new_gtrack:
+    if XovOpt.get("new_gtrack"):
 
         # Import solution at previous iteration
         if int(iter_in) > 0:
-            tmp = Amat(vecopts)
-            tmp = tmp.load(('_').join(((outdir + ('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1]) +
+            tmp = Amat(XovOpt.get("vecopts"))
+            tmp = tmp.load(('_').join(((XovOpt.get("outdir") + ('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1]) +
                            '_' + str(iter_in - 1) + '/' +
                            outdir_in.split('/')[-2] + '/Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
             import_prev_sol = hasattr(tmp,'sol4_pars')
@@ -176,7 +177,7 @@ def main(args):
         for track_id, infil in zip(tracknames, allFiles):
             track = track_id
 
-            track = gtrack(vecopts)
+            track = gtrack(XovOpt.get("vecopts"))
             # try:
             # Read and fill
             track.prepro(infil)
@@ -188,7 +189,7 @@ def main(args):
                 try:
                     track.pert_cloop_0 = tmp.pert_cloop_0.loc[str(track.name)].to_dict()
                 except:
-                    if debug:
+                    if XovOpt.get("debug"):
                         print("No pert_cloop_0 for ", track.name)
                     pass
 
@@ -199,7 +200,7 @@ def main(args):
                     stdtmp = [('std_' + x.split('_')[1], v) for x, v in tmp.sol_dict['std'].items() if regex.match(x)]
                     soltmp = pd.DataFrame(np.vstack([('orb', str(track.name)), soltmp, stdtmp])).set_index(0).T
 
-                    if debug:
+                    if XovOpt.get("debug"):
                         print("orbsol prev iter")
                         print(orb_sol.reset_index().orb.values)
                         print(orb_sol.columns)
@@ -214,8 +215,8 @@ def main(args):
             # if first iter, check if track has been pre-processed by fit2dem and import corrections
             elif int(iter_in) == 0:
                 try:
-                    gtrack_fit2dem = outdir+outdir_in+'/'+track_id+'.pkl'
-                    fit2dem_res = gtrack(vecopts)
+                    gtrack_fit2dem = XovOpt.get("outdir") + outdir_in + '/' + track_id + '.pkl'
+                    fit2dem_res = gtrack(XovOpt.get("vecopts"))
                     fit2dem_res = fit2dem_res.load(gtrack_fit2dem).sol_prev_iter
                     # if debug:
                     print("Solution of fit2dem for file",track_id+".pkl imported: \n", fit2dem_res['orb'])
@@ -232,7 +233,7 @@ def main(args):
         # print(np.sort(epo_in)[-1])
         # np.savetxt("tmp/epo_mla_1301.in", epo_in, fmt="%10.5f")
 
-        if SpInterp == 3:
+        if XovOpt.get("SpInterp") == 3:
             print(
                 'Orbit and attitude data loaded for years 20' + str(misycmb[par][0]) + ' and 20' + str(misycmb[par][1]))
             endPrepro = time.time()
@@ -249,9 +250,9 @@ def main(args):
     args = ((tr, fil, outdir_in) for (tr, fil) in zip(tracks,allFiles))
 
     # loop over all gtracks
-    if parallel:
+    if XovOpt.get("parallel"):
         # print((mp.cpu_count() - 1))
-        if local:
+        if XovOpt.get("local"):
             # forks everything, if much memory needed, use the remote option with get_context
             from tqdm.contrib.concurrent import process_map  # or thread_map
             _ = process_map(launch_gtrack, args, max_workers=ncores, total=len(allFiles))

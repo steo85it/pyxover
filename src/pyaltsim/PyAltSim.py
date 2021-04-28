@@ -29,7 +29,9 @@ import spiceypy as spice
 import matplotlib.pyplot as plt
 
 # mylib
-from examples.MLA.options import debug, parallel, outdir, auxdir, local, new_illumNG, apply_topo, vecopts, range_noise, SpInterp, spauxdir
+# from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("new_illumNG"), XovOpt.get("apply_topo"), XovOpt.get("vecopts"), XovOpt.get("range_noise"), XovOpt.get("SpInterp"), XovOpt.get("spauxdir")
+from config import XovOpt
+
 from src.xovutil import astro_trans as astr, pickleIO
 from src.pygeoloc.ground_track import gtrack
 from src.geolocate_altimetry import get_sc_ssb, get_sc_pla
@@ -62,17 +64,17 @@ class sim_gtrack(gtrack):
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
         # retrieve spice data for geoloc
-        if not os.path.exists(auxdir + spauxdir + 'spaux_' + self.name + '.pkl') or SpInterp == 2:
+        if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl') or XovOpt.get("SpInterp") == 2:
             # create interp for track
             self.interpolate()
         else:
-            self.SpObj = pickleIO.load(auxdir + spauxdir + 'spaux_' + self.name + '.pkl')
+            self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
 
         # actual processing
         self.lt_topo_corr(df=df_)
 
         # add range noise
-        if range_noise:
+        if XovOpt.get("range_noise"):
             mean = 0.
             std = 0.2
             self.add_range_noise(df_,mean,std)
@@ -90,7 +92,7 @@ class sim_gtrack(gtrack):
         np.random.seed(int(self.name))
         tof_noise = (std * np.random.randn(len(df_)) + mean) / clight
         df_.loc[:, 'TOF'] += tof_noise
-        if debug:
+        if XovOpt.get("debug"):
             plt.plot(df_.loc[:, 'ET_TX'], df_.TOF, 'bo', df_.loc[:, 'ET_TX'], df_.TOF - tof_noise, 'k')
             plt.savefig('tmp/noise.png')
 
@@ -122,7 +124,7 @@ class sim_gtrack(gtrack):
             # read just lat, lon, elev from geoloc (reads ET and TOF and updates LON, LAT, R in df)
             self.geoloc()
             lontmp, lattmp, rtmp = np.transpose(self.ladata_df[['LON', 'LAT', 'R']].values)
-            r_bc = rtmp + vecopts['PLANETRADIUS'] * 1.e3
+            r_bc = rtmp + XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
 
             # use lon and lat to get "real" elevation from map
             radius = self.get_topoelev(lattmp, lontmp)
@@ -168,7 +170,7 @@ class sim_gtrack(gtrack):
 
             percent_left = 100. - (len(df) - np.count_nonzero(abs(dr) > tol))/len(df)*100.
 
-            if debug:
+            if XovOpt.get("debug"):
                 print("it = " + str(it))
                 print("max resid:", max(abs(dr)), "# > tol:", np.count_nonzero(abs(dr) > tol), percent_left,' %')
 
@@ -200,13 +202,13 @@ class sim_gtrack(gtrack):
 
     def get_topoelev(self, lattmp, lontmp):
 
-        if apply_topo:
+        if XovOpt.get("apply_topo"):
             # st = time.time()
 
-            if local == 0:
+            if XovOpt.get("local") == 0:
                 dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
             else:
-                dem = auxdir + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+                dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
 
             # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
             gmt = False
@@ -242,10 +244,10 @@ class sim_gtrack(gtrack):
             # print("texture noise check",texture_noise,r_dem)
 
             # update Rmerc with r_dem/text (meters)
-            radius = vecopts['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
+            radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
             # print("radius etc",radius,r_dem,texture_noise)
         else:
-            radius = vecopts['PLANETRADIUS'] * 1.e3
+            radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
 
         return radius
 
@@ -286,7 +288,7 @@ class sim_gtrack(gtrack):
                                   'LON': 'geoc_long', 'LAT': 'geoc_lat', 'R': 'altitude',
                                   })
         df_ = df_.reset_index(drop=True)
-        if local:
+        if XovOpt.get("local"):
             self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
                                                   'UTC', 'TOF_ns_ET', 'chn', 'seqid']])[mlardr_cols]
         else:
@@ -349,7 +351,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     print('dirnam_in', dirnam_in)
     print('epos_in', epos_in)
 
-    if local == 0:
+    if XovOpt.get("local") == 0:
         data_pth = '/att/nobackup/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
         dataset = ''  # 'small_test/' #'test1/' #'1301/' #
         data_pth += dataset
@@ -360,20 +362,20 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # dataset = "test/"  # ''  # 'small_test/' #'1301/' #
         # data_pth += dataset
         # load kernels
-        spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
+        spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
 
-    if parallel:
+    if XovOpt.get("parallel"):
         # set ncores
         ncores = mp.cpu_count() - 1  # 8
         print('Process launched on ' + str(ncores) + ' CPUs')
 
     # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
-    vecopts['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
     # generate list of epochs
-    if new_illumNG and True:
+    if XovOpt.get("new_illumNG") and True:
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
         print("path+files")
@@ -385,7 +387,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         epo_in = []
         for track_id, infil in zip(tracknames, allFiles):
             track = track_id
-            track = gtrack(vecopts)
+            track = gtrack(XovOpt.get("vecopts"))
             track.prepro(infil)
             epo_in.extend(track.ladata_df.ET_TX.values)
 
@@ -402,8 +404,8 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         epo_tx = np.array([epo0 + i / subpnts for i in range(86400 * subpnts)])
 
     # pass to illumNG
-    if local:
-        if new_illumNG:
+    if XovOpt.get("local"):
+        if XovOpt.get("new_illumNG"):
             np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_tx, fmt="%4d")
             print("Do you have all of illumNG predictions?")
             exit()
@@ -411,7 +413,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         path = '../../../aux/illumNG/sph'  # mlatimes_'+epos_in # sph_7d_mla/'  # _1s/'  #  sph/' #grd/' # use your path
         illumNGf = glob.glob(path + "/bore*")
     else:
-        if new_illumNG:
+        if XovOpt.get("new_illumNG"):
             np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_in, fmt="%10.5f")
             print("illumNG call")
             if not os.path.exists("illumNG/"):
@@ -423,8 +425,8 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
                 ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
                 universal_newlines=True, cwd="../_MLA_Stefano/")  # illumNG/")
             for f in glob.glob("../_MLA_Stefano/bore*"):
-                shutil.move(f, auxdir + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
-        path = auxdir + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
+                shutil.move(f, XovOpt.get("auxdir") + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
+        path = XovOpt.get("auxdir") + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
         print('illumng dir', path)
         illumNGf = glob.glob(path + "/bore*")
 
@@ -433,7 +435,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     df = prepro_ilmNG(illumNGf)
     print('illumNGf', illumNGf)
 
-    if apply_topo:
+    if XovOpt.get("apply_topo"):
         # read and interpolate DEM
         # # open netCDF file
         # nc_file = "/home/sberton2/Works/NASA/Mercury_tides/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD"
@@ -464,8 +466,8 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print(tracks)
     # print([tr.name for tr in tracks])
 
-    if local:
-        outdir_ = outdir + dirnam_in
+    if XovOpt.get("local"):
+        outdir_ = XovOpt.get("outdir") + dirnam_in
     else:
         outdir_ = dirnam_in
 
@@ -476,9 +478,9 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
     # loop over all gtracks
     print('orbs = ', list(df.groupby('orbID').groups.keys()))
-    args = ((sim_gtrack(vecopts, i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
+    args = ((sim_gtrack(XovOpt.get("vecopts"), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
 
-    if parallel and False:  # incompatible with grdtrack call ...
+    if XovOpt.get("parallel") and False:  # incompatible with grdtrack call ...
         # print((mp.cpu_count() - 1))
         pool = mp.Pool(processes=ncores)  # mp.cpu_count())
         _ = pool.map(sim_track, args)  # parallel

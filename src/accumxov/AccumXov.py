@@ -42,8 +42,10 @@ import scipy.linalg as la
 
 # mylib
 # from mapcount import mapcount
-from examples.MLA.options import debug, outdir, tmpdir, local, partials, sol4_glo, sol4_orbpar, \
-    pert_cloop, OrbRep, vecopts
+# from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("outdir"), XovOpt.get("tmpdir"), XovOpt.get("local"), XovOpt.get("partials"), XovOpt.get("sol4_glo"), XovOpt.get("sol4_orbpar"), \
+#     pert_cloop, XovOpt.get("OrbRep"), XovOpt.get("vecopts")
+from config import XovOpt
+
 from src.pyxover.xov_setup import xov
 from src.accumxov.Amat import Amat
 
@@ -63,12 +65,12 @@ def prepro(dataset):
 
     # locate data
     # locate data
-    if local == 0:
-        data_pth = outdir
+    if XovOpt.get("local") == 0:
+        data_pth = XovOpt.get("outdir")
         data_pth += dataset
         # load kernels
     else:
-        data_pth = outdir
+        data_pth = XovOpt.get("outdir")
         data_pth += dataset
     ##############################################
 
@@ -87,7 +89,7 @@ def prepro(dataset):
     #            'INERTIALFRAME': 'J2000',
     #            'INERTIALCENTER': 'SSB',
     #            'PARTDER': ''}
-    return data_pth, vecopts
+    return data_pth, XovOpt.get("vecopts")
 
 # #@profile
 def prepare_Amat(xov, vecopts, par_list=''):
@@ -103,7 +105,7 @@ def prepare_Amat(xov, vecopts, par_list=''):
 
     xovtmp = xov.xovers.copy()
 
-    if partials:
+    if XovOpt.get("partials"):
         # simplify and downsize
         if par_list == '':
             par_list = xov.xovers.columns.filter(regex='^dR.*$')
@@ -111,11 +113,11 @@ def prepare_Amat(xov, vecopts, par_list=''):
         df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore') #, downcast='float')
         xov.xovers = pd.concat([df_orig, df_float], axis=1)
         xov.xovers.info(memory_usage='deep')
-        if debug:
+        if XovOpt.get("debug"):
             pd.set_option('display.max_columns', 500)
             print(xov.xovers)
 
-        if OrbRep in ['lin','quad']:
+        if XovOpt.get("OrbRep") in ['lin', 'quad']:
             xovtmp = xov.upd_orbrep(xovtmp)
             # print(xovi_amat.xov.xovers)
             xov.parOrb_xy = xovtmp.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values
@@ -137,7 +139,8 @@ def prepare_Amat(xov, vecopts, par_list=''):
 # #@profile
 def prepro_weights_constr(xovi_amat, previous_iter=None):
     from scipy.sparse import csr_matrix
-    from examples.MLA.options import par_constr, mean_constr, sol4_orb, sol4_glo
+    # from examples.MLA.options import XovOpt.get("par_constr"), XovOpt.get("mean_constr"), XovOpt.get("sol4_orb"), XovOpt.get("sol4_glo")
+    from config import XovOpt
 
     # Solve
     # if not local:
@@ -147,12 +150,12 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     #     print("Adding h2 to sol4_glo as solution converged...")
     #     sol4_glo.extend(['dR/dh2'])
 
-    sol4_pars = solve4setup(sol4_glo, sol4_orb, sol4_orbpar, xovi_amat.parNames.keys())
+    sol4_pars = solve4setup(XovOpt.get("sol4_glo"), XovOpt.get("sol4_orb"), XovOpt.get("sol4_orbpar"), xovi_amat.parNames.keys())
     # print(xovi_amat.parNames)
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
     #     print("{} : {}".format(key, value))
 
-    if OrbRep  in ['lin','quad']:
+    if XovOpt.get("OrbRep")  in ['lin', 'quad']:
         # xovi_amat.xov.xovers = xovi_amat.xov.upd_orbrep(xovi_amat.xov.xovers)
         # print(xovi_amat.xov.xovers)
         regex = re.compile(".*_dR/d[A,C,R]$")
@@ -168,7 +171,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     # exit()
 
     if sol4_pars != []:
-        if debug:
+        if XovOpt.get("debug"):
             print(sol4_pars)
             print(xovi_amat.parNames)
             print([xovi_amat.parNames[p] for p in sol4_pars])
@@ -184,9 +187,9 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     # print(spA_sol4)
 
     # screening of partial derivatives (downweights data)
-    nglbpars = len([i for i in sol4_glo if i])
+    nglbpars = len([i for i in XovOpt.get("sol4_glo") if i])
     if nglbpars>0 and clean_part:
-        xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6, glbpars=sol4_glo)
+        xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6, glbpars=XovOpt.get("sol4_glo"))
         # pass
 
     # WEIGHTING TODO refactor to separate method
@@ -218,7 +221,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             tmp = xovi_amat.xov.xovers.dR.abs().values
             huber_weights = np.where(tmp > huber_threshold, (huber_threshold / tmp) ** 1, 1.)
 
-        if debug and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
             print("Apply Huber weights (resid)")
             print(tmp[tmp > huber_threshold])
             print(np.sort(huber_weights[huber_weights<1.]),np.mean(huber_weights))
@@ -228,7 +231,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             tmp = xovi_amat.xov.xovers.dist_max.values
             huber_weights_dist = np.where(tmp > distmax_threshold, (distmax_threshold / tmp) ** 2, 1.)
 
-        if debug and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
             print("Apply Huber weights (dist)")
             print(tmp[tmp > distmax_threshold])
             print(np.sort(huber_weights_dist[huber_weights_dist<1.]),np.mean(huber_weights_dist))
@@ -239,7 +242,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             tmp = np.max(np.abs(tmp),axis=1)
             huber_weights_offnad = np.where(tmp > offnad_threshold, (offnad_threshold / tmp) ** 1, 1.)
 
-        if debug and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
             print("Apply Huber weights (offnad)")
             print(tmp[tmp > offnad_threshold])
             print(len(huber_weights_offnad[huber_weights_offnad<1.]),len(huber_weights_offnad))
@@ -256,7 +259,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         # get quality of tracks and apply huber weights
         if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
             tmp = xovi_amat.xov.xovers.copy()[['xOvID','LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]#.astype('float16')
-            if debug:
+            if XovOpt.get("debug"):
                 print("pre xovcov types",tmp.dtypes)
 
             weights_xov_tracks = get_xov_cov_tracks(df=tmp,plot_stuff=True)
@@ -264,7 +267,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
 
 
             # the histogram of weight distribution
-            if False and local and debug:
+            if False and XovOpt.get("local") and XovOpt.get("debug"):
                 tmp = weights_xov_tracks.diagonal()
 
                 plt.figure() #figsize=(8, 3))
@@ -272,12 +275,12 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
                 n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins)
                 plt.xlabel('dR (m)')
                 plt.ylabel('# tracks')
-                plt.savefig(tmpdir + '/histo_tracks_weights.png')
+                plt.savefig(XovOpt.get("tmpdir") + '/histo_tracks_weights.png')
                 plt.clf()
 
             # xovi_amat.xov.xovers['huber'] *= huber_weights_track
 
-            if debug and False:
+            if XovOpt.get("debug") and False:
                 tmp['track_weights'] = weights_xov_tracks.diagonal()
                 tmp = tmp[['orbA', 'orbB', 'dR', 'track_weights']]
                 print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
@@ -296,12 +299,12 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
                 tmp = np.where(tmp > limit_h2_sep, (limit_h2_sep / tmp) ** 4, 1.)
                 huber_penal *= tmp
 
-                if debug and local:
+                if XovOpt.get("debug") and XovOpt.get("local"):
                     num_bins = 100 #'auto'
                     plt.clf()
                     n, bins, patches = plt.hist(np.where(huber_penal < 1., huber_penal, 1.).astype(np.float), bins=num_bins,cumulative=True)
                     plt.xlabel('huber_penal')
-                    plt.savefig(tmpdir + '/histo_huber_h2.png')
+                    plt.savefig(XovOpt.get("tmpdir") + '/histo_huber_h2.png')
                     plt.clf()
 
     #######
@@ -335,7 +338,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         obs_weights = weights_xov_tracks.multiply(obs_weights)
         print("Observations weights re-evaluated, solution has not converged yet")
 
-        if debug and local:
+        if XovOpt.get("debug") and XovOpt.get("local"):
             print("tracks weights", weights_xov_tracks.diagonal().mean(), np.sort(weights_xov_tracks.diagonal()))
             tmp = obs_weights.diagonal()
             tmp = np.where(tmp>1.e-9,tmp,0.)
@@ -352,7 +355,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             plt.title('Resid+distance+offnadir+interp+weights: $\mu=' + str(np.mean(tmp)) + ', \sigma=' + str(np.std(tmp)) + '$')
             # # Tweak spacing to prevent clipping of ylabel
             plt.subplots_adjust(left=0.15)
-            plt.savefig(tmpdir+'/data_weights.png')
+            plt.savefig(XovOpt.get("tmpdir") + '/data_weights.png')
             plt.clf()
             # exit()
 
@@ -363,7 +366,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
 
     ## DIRECT SOLUTION FOR DEBUG AND SMALL PROBLEMS (e.g., global only)
-    if len(sol4_pars)<50 and debug:
+    if len(sol4_pars)<50 and XovOpt.get("debug"):
 
         print('B', xovi_amat.b)
         print('maxB', np.abs(xovi_amat.b).max(),np.abs(xovi_amat.b).mean())
@@ -400,7 +403,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         # plt.savefig(tmpdir+'b_and_A.png')
 
     # analysis of residuals vs h2 partials
-    if h2_limit_on and debug and local:
+    if h2_limit_on and XovOpt.get("debug") and XovOpt.get("local"):
         print(xovi_amat.xov.xovers.columns)
         tmp = xovi_amat.xov.xovers[['dR','dR/dh2','LON','LAT','weights']]
         # print("truc0",tmp['weights'].abs().min(),tmp['weights'].abs().max())
@@ -421,7 +424,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         # plt.legend()
         # plt.ylabel('# of obs')
         # plt.xlabel('meters/[par]')
-        plt.savefig(tmpdir+"discr_vs_dwdh2.png")
+        plt.savefig(XovOpt.get("tmpdir") + "discr_vs_dwdh2.png")
 
         plt.clf()
         piv = pd.pivot_table(tmp.round({'LON':0,'LAT':0}), values="dR/dh2", index=["LAT"], columns=["LON"],
@@ -429,11 +432,11 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         ax = sns.heatmap(piv, xticklabels=10, yticklabels=10, cmap="YlGnBu") #, square=False, annot=True)
         plt.tight_layout()
         ax.invert_yaxis()
-        plt.savefig(tmpdir+"geo_dwdh2.png")
+        plt.savefig(XovOpt.get("tmpdir") + "geo_dwdh2.png")
         # exit()
 
     # analysis of partial derivatives to check power in obs & param
-    if debug and local:
+    if XovOpt.get("debug") and XovOpt.get("local"):
 
         tmp = spla.norm(spA_sol4,axis=0)
         print("partials analysis",tmp.shape)
@@ -464,7 +467,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         plt.legend()
         plt.ylabel('# of obs')
         plt.xlabel('meters/[par]')
-        plt.savefig(tmpdir+"partials_histo_weighted.png")
+        plt.savefig(XovOpt.get("tmpdir") + "partials_histo_weighted.png")
 
         plt.clf()
         for idx,par in enumerate([dw_dpm,dw_dl,dw_ddec,dw_dra,dw_dh2]):
@@ -475,11 +478,11 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         plt.legend()
         plt.ylabel('# of obs')
         plt.xlabel('meters/[par]')
-        plt.savefig(tmpdir+"partials_histo.png")
+        plt.savefig(XovOpt.get("tmpdir") + "partials_histo.png")
         # exit()
 
     # svd analysis of parameters (eigenvalues and eigenvectors)
-    if debug and local: #len(sol4_pars) < 50 and debug:
+    if XovOpt.get("debug") and XovOpt.get("local"): #len(sol4_pars) < 50 and debug:
 
         # Compute the covariance matrix
         # print("full sparse",np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
@@ -511,13 +514,13 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             print(S)
             plt.clf()
             plt.semilogy(S)
-            plt.savefig(tmpdir+"test_lambdaS_"+str(idx)+".png")
+            plt.savefig(XovOpt.get("tmpdir") + "test_lambdaS_" + str(idx) + ".png")
             print('Vh transp')
             print(Vh.T)
             plt.clf()
             plt.imshow(Vh.T,cmap='bwr')
             plt.colorbar()
-            plt.savefig(tmpdir+"test_svd_"+str(idx)+".png")
+            plt.savefig(XovOpt.get("tmpdir") + "test_svd_" + str(idx) + ".png")
 
             print("Pars:",list(xovi_amat.parNames.keys())[-5:])
             for i in range(5):
@@ -569,12 +572,12 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
 
     # select constrains for processed parameters (TODO should go in sol4pars)
     mod_par = [your_key.split('_')[1] if len(your_key.split('_'))>1 else your_key for your_key in sol4_pars ]
-    if OrbRep in ['lin','quad'] :
+    if XovOpt.get("OrbRep") in ['lin', 'quad'] :
         for par in ['dA','dC','dR']:
-            if par in sol4_orbpar:
-                par_constr['dR/'+par+'0'] = par_constr.pop('dR/'+par)
+            if par in XovOpt.get("sol4_orbpar"):
+                XovOpt.get("par_constr")['dR/' + par + '0'] = XovOpt.get("par_constr").pop('dR/' + par)
 
-    par_constr = { your_key: par_constr[your_key] for your_key in mod_par }
+    par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par}
 
     csr = []
     for constrain in par_constr.items():
@@ -600,7 +603,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         # to_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 1].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
 
         xovi_amat.to_constrain = to_constrain
-        if debug:
+        if XovOpt.get("debug"):
             print("number of constrained pars", len(to_constrain))
             print(to_constrain)
             print([dict(zip(xovi_amat.parNames.values(), xovi_amat.parNames.keys()))[x] for x in to_constrain])
@@ -628,7 +631,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     # if len(sol4_orb)>1 and True:
     if True:
         csr_avg = []
-        for constrain in mean_constr.items():
+        for constrain in XovOpt.get("mean_constr").items():
             regex = re.compile(".*"+constrain[0]+"0{0,1}$")
 
             if list(filter(regex.match, sol4_pars)):
@@ -783,12 +786,12 @@ def main(arg):
         # print(_.dtypes)
         # exit()
 
-        if partials:
+        if XovOpt.get("partials"):
             # load previous iter from disk (orbs, sols, etc) if available
             previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
-            if ext_iter > 0 and previous_iter.converged and 'dR/dh2' not in sol4_glo:
+            if ext_iter > 0 and previous_iter.converged and 'dR/dh2' not in XovOpt.get("sol4_glo"):
                 print("Adding h2 to sol4_glo as solution converged...")
-                sol4_glo.extend(['dR/dh2'])
+                XovOpt.get("sol4_glo").extend(['dR/dh2'])
 
             # solve dataset
             par_list = ['orbA', 'orbB', 'xOvID']
@@ -886,7 +889,7 @@ def main(arg):
                 orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb, mode='iter')
 
                 # check std of orbital parameters for systematics
-                if debug:
+                if XovOpt.get("debug"):
                     testA = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dA', axis=0).loc[:,'std']
                     testC = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dC', axis=0).loc[:,'std']
                     testR = pd.DataFrame.from_dict(sol_dict).filter(like='dR/dR', axis=0).loc[:,'std']
@@ -899,7 +902,7 @@ def main(arg):
                     # plt.title(r'Histogram of dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
                     # # Tweak spacing to prevent clipping of ylabel
                     # plt.subplots_adjust(left=0.15)
-                    plt.savefig(tmpdir + '/orbpart_vs_time.png')
+                    plt.savefig(XovOpt.get("tmpdir") + '/orbpart_vs_time.png')
                     plt.clf()
 
                 # remove corrections OF SINGLE ITER if "unreasonable" (larger than 100 meters in any direction, or 50 meters/day, or 20 arcsec)
@@ -940,9 +943,9 @@ def main(arg):
                     std_dict_iter_clean.append(stdtmp)
 
                 # add back global parameters
-                if len(sol4_glo)>0:
-                    sol_dict_iter_clean.append(dict([(x,v) for x, v in sol_dict_iter['sol'].items() if x in sol4_glo]))
-                    std_dict_iter_clean.append(dict([(x,v) for x, v in sol_dict_iter['std'].items() if x in sol4_glo]))
+                if len(XovOpt.get("sol4_glo"))>0:
+                    sol_dict_iter_clean.append(dict([(x,v) for x, v in sol_dict_iter['sol'].items() if x in XovOpt.get("sol4_glo")]))
+                    std_dict_iter_clean.append(dict([(x,v) for x, v in sol_dict_iter['std'].items() if x in XovOpt.get("sol4_glo")]))
 
                 sol_dict_iter_clean = {k: v for d in sol_dict_iter_clean for k, v in d.items()}
                 std_dict_iter_clean = {k: v for d in std_dict_iter_clean for k, v in d.items()}
@@ -952,7 +955,7 @@ def main(arg):
                 xovi_amat.sol_dict = sol_dict_iter_clean
                 # exit()
 
-                if debug:
+                if XovOpt.get("debug"):
                     pd.set_option('display.max_rows', None)
                     pd.set_option('display.max_columns', None)
                     pd.set_option('display.width', None)
@@ -1056,7 +1059,7 @@ def main(arg):
     #print("len xov_cmb post getstats", len(xov_cmb_lst[0].xovers))
 
     # set as converged if relative improvement of residuals RMSE lower than convergence criteria
-    if ext_iter > 0 and partials:
+    if ext_iter > 0 and XovOpt.get("partials"):
         # print(xovi_amat.resid_wrmse,previous_iter.resid_wrmse)
         relative_improvement = np.abs((xovi_amat.resid_wrmse - previous_iter.resid_wrmse)/xovi_amat.resid_wrmse)
         print("Relative improvement at ", (relative_improvement*100.).round(2), "% at iteration", ext_iter)

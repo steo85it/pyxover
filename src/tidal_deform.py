@@ -30,13 +30,15 @@ from scipy.special import lpmv
 
 from src.xovutil import astro_trans as astr
 # mylib
-from examples.MLA.options import SpInterp, tmpdir, debug, local
+# from examples.MLA.options import XovOpt.get("SpInterp"), XovOpt.get("tmpdir"), XovOpt.get("debug"), XovOpt.get("local")
+from config import XovOpt
 
 
 ##############################################
 
 def set_const(h2_sol):
-    from examples.MLA.options import pert_cloop
+    # from examples.MLA.options import pert_cloop
+    from config import XovOpt
 
     h2 = 1.e-6 # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
     l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
@@ -47,8 +49,8 @@ def set_const(h2_sol):
     Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
 
     # # check if h2 is perturbed
-    if 'dh2' in pert_cloop['glo'].keys():
-        h2 += pert_cloop['glo']['dh2']
+    if 'dh2' in XovOpt.get("pert_cloop")['glo'].keys():
+        h2 += XovOpt.get("pert_cloop")['glo']['dh2']
     h2 += h2_sol
     #print('h2tot',h2)
 
@@ -95,7 +97,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     frame = vecopts['PLANETFRAME']
 
     # get Sun position and distance from body
-    if (SpInterp > 0):
+    if (XovOpt.get("SpInterp") > 0):
         sunpos = np.transpose(SpObj['SUNx'].eval(ET-tau))
         merpos = np.transpose(SpObj['MERx'].eval(ET-tau))
         sunpos -= merpos
@@ -128,7 +130,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     # print(h2)
     # exit()
     ##################################################
-    if debug and local:
+    if XovOpt.get("debug") and XovOpt.get("local"):
         import matplotlib.pyplot as plt
         fig, axes = plt.subplots(3)
 
@@ -142,7 +144,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
         axes[2].plot(ET,urtot)
         axes[2].set(xlabel='ET (secJ2000)', ylabel='ur_tid (m)')
         # axes[2].plot(ET,(GMsun / (dSUN))*np.power(plarad/dSUN,2))
-        plt.savefig(tmpdir+'test_tid.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'test_tid.png')
 
         import matplotlib.pyplot as plt
         from matplotlib import cm
@@ -162,7 +164,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
         h = plt.contourf(np.rad2deg(lon), np.rad2deg(lat), urtot, cmap=cm.coolwarm)
         # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
         cbar = fig.colorbar(h)
-        plt.savefig(tmpdir+'test_tid2.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'test_tid2.png')
 
         #loop on all Sun positions (176 Earth days)
         def plot_tides(d):
@@ -210,9 +212,9 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
                  title='Amplitude range of vertical tides over Mercury solar year')
         # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
         cbar = fig.colorbar(h, label='ur (meters)')
-        plt.savefig(tmpdir + 'test_tid3.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'test_tid3.png')
 
-        imageio.mimsave(tmpdir+'powers.gif', tmp[:,0], fps=1)
+        imageio.mimsave(XovOpt.get("tmpdir") + 'powers.gif', tmp[:, 0], fps=1)
 
 
         exit()
