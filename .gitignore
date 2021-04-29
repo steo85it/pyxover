@@ -3,6 +3,7 @@
 examples/*/data/aux/
 examples/*/data/out/
 examples/*/data/tmp/
+examples/*/out/
 pip-wheel-metadata/
 */*.egg-info
 *.obj
@@ -29,6 +30,8 @@ loadPyXover*
 loadfit2dem*
 *~
 .idea/
+.*
+*.lprof
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

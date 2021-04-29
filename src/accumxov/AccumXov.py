@@ -12,8 +12,12 @@ import itertools
 
 import seaborn as sns
 
-from src.accumxov.accum_opt import remove_max_dist, remove_3sigma_median, remove_dR200, downsize, clean_part, huber_threshold, \
-    distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling,compute_vce
+from config import XovOpt
+
+from src.accumxov.accum_opt import remove_max_dist, remove_3sigma_median, remove_dR200, downsize, clean_part, \
+    huber_threshold, \
+    distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling, compute_vce, \
+    use_advanced_weighting, get_cov_only
 from src.accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
     analyze_sol, subsample_xovers, load_previous_iter_if_any
 from src.xovutil.iterables import mergsum
@@ -44,7 +48,6 @@ import scipy.linalg as la
 # from mapcount import mapcount
 # from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("outdir"), XovOpt.get("tmpdir"), XovOpt.get("local"), XovOpt.get("partials"), XovOpt.get("sol4_glo"), XovOpt.get("sol4_orbpar"), \
 #     pert_cloop, XovOpt.get("OrbRep"), XovOpt.get("vecopts")
-from config import XovOpt
 
 from src.pyxover.xov_setup import xov
 from src.accumxov.Amat import Amat
@@ -117,7 +120,7 @@ def prepare_Amat(xov, vecopts, par_list=''):
             pd.set_option('display.max_columns', 500)
             print(xov.xovers)
 
-        if XovOpt.get("OrbRep") in ['lin', 'quad']:
+        if XovOpt.get("OrbRep") in ['lin', 'quad','per']:
             xovtmp = xov.upd_orbrep(xovtmp)
             # print(xovi_amat.xov.xovers)
             xov.parOrb_xy = xovtmp.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns.values
@@ -155,12 +158,18 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     # for key, value in sorted(xovi_amat.parNames.items(), key=lambda x: x[0]):
     #     print("{} : {}".format(key, value))
 
-    if XovOpt.get("OrbRep")  in ['lin', 'quad']:
+    if XovOpt.get("OrbRep")  in ['lin', 'quad', 'per']:
         # xovi_amat.xov.xovers = xovi_amat.xov.upd_orbrep(xovi_amat.xov.xovers)
         # print(xovi_amat.xov.xovers)
         regex = re.compile(".*_dR/d[A,C,R]$")
         const_pars = [x for x in sol4_pars if not regex.match(x)]
-        sol4_pars = [x+str(y) for y in range(2) for x in list(filter(regex.match, sol4_pars))]
+        if XovOpt.get("OrbRep") in ['lin']:
+            sol4_pars = [x+str(y) for y in ['0','1'] for x in list(filter(regex.match, sol4_pars))]
+        if XovOpt.get("OrbRep") in ['quad']:
+            sol4_pars = [x+str(y) for y in ['0','1','2'] for x in list(filter(regex.match, sol4_pars))]
+        elif XovOpt.get("OrbRep") in ['per']:
+            sol4_pars = [x+str(y) for y in ['C','S'] for x in list(filter(regex.match, sol4_pars))]
+
         sol4_pars.extend(const_pars)
 
     # Initialize list of solved for parameters (first one will be updated with full list
@@ -193,177 +202,189 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         # pass
 
     # WEIGHTING TODO refactor to separate method
-    # after convergence of residuals RMS at 1%, fix weights and bring parameters to convergence
-    if previous_iter != None and previous_iter.converged:
-        print("Weights are fixed as solution converged to 5%")
-        # associate weights of old solution to corresponding xov of current one (id by tracks, supposing uniqueness)
-        if True: # only if issues with duplicates
-            previous_iter.xov.xovers = previous_iter.xov.xovers.drop(columns=['xOvID', 'xovid'],errors='ignore').drop_duplicates().reset_index().rename(columns={"index": "xOvID"})
-        tmp_prev_trk = pd.DataFrame(previous_iter.xov.xovers['orbA']+previous_iter.xov.xovers['orbB'],columns = ['trksid'])
-        tmp_prev_trk['weights'] = previous_iter.xov.xovers.weights.values
-        if True: # only if issues with duplicates
-            tmp_prev_trk.drop_duplicates(inplace=True)
+    if use_advanced_weighting:
+
+        # after convergence of residuals RMS at 1%, fix weights and bring parameters to convergence
+        if previous_iter != None and previous_iter.converged:
+            print("Weights are fixed as solution converged to 5%")
+            # associate weights of old solution to corresponding xov of current one (id by tracks, supposing uniqueness)
+            if True: # only if issues with duplicates
+                previous_iter.xov.xovers = previous_iter.xov.xovers.drop(columns=['xOvID', 'xovid'],errors='ignore').drop_duplicates().reset_index().rename(columns={"index": "xOvID"})
+            tmp_prev_trk = pd.DataFrame(previous_iter.xov.xovers['orbA']+previous_iter.xov.xovers['orbB'],columns = ['trksid'])
+            tmp_prev_trk['weights'] = previous_iter.xov.xovers.weights.values
+            if True: # only if issues with duplicates
+                tmp_prev_trk.drop_duplicates(inplace=True)
+            else:
+                tmp_prev_trk['weights'] = previous_iter.weights.diagonal().T
+                print("len(tmp_prev_trk)",len(tmp_prev_trk))
+                print("len(xovi_amat.xov.xovers)",len(xovi_amat.xov.xovers))
+
+            tmp_xov_trk = pd.DataFrame(xovi_amat.xov.xovers['orbA']+xovi_amat.xov.xovers['orbB'],columns = ['trksid'])
+
+            obs_weights = pd.merge(tmp_xov_trk, tmp_prev_trk, how='left', on=['trksid'])
+            obs_weights = diags(obs_weights['weights'].fillna(0).values)
+
+            # unsafe if list of xov is different or ordered differently
+            # obs_weights = previous_iter.weights
         else:
-            tmp_prev_trk['weights'] = previous_iter.weights.diagonal().T
-            print("len(tmp_prev_trk)",len(tmp_prev_trk))
-            print("len(xovi_amat.xov.xovers)",len(xovi_amat.xov.xovers))
-
-        tmp_xov_trk = pd.DataFrame(xovi_amat.xov.xovers['orbA']+xovi_amat.xov.xovers['orbB'],columns = ['trksid'])
-
-        obs_weights = pd.merge(tmp_xov_trk, tmp_prev_trk, how='left', on=['trksid'])
-        obs_weights = diags(obs_weights['weights'].fillna(0).values)
-
-        # unsafe if list of xov is different or ordered differently
-        # obs_weights = previous_iter.weights
-    else:
-        # compute huber weights (1 if x<huber_threshold, (huber_threshold/abs(dR))**2 if abs(dR)>huber_threshold)
-        if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            tmp = xovi_amat.xov.xovers.dR.abs().values
-            huber_weights = np.where(tmp > huber_threshold, (huber_threshold / tmp) ** 1, 1.)
-
-        if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            print("Apply Huber weights (resid)")
-            print(tmp[tmp > huber_threshold])
-            print(np.sort(huber_weights[huber_weights<1.]),np.mean(huber_weights))
-
-        # same but w.r.t. distance
-        if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            tmp = xovi_amat.xov.xovers.dist_max.values
-            huber_weights_dist = np.where(tmp > distmax_threshold, (distmax_threshold / tmp) ** 2, 1.)
-
-        if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            print("Apply Huber weights (dist)")
-            print(tmp[tmp > distmax_threshold])
-            print(np.sort(huber_weights_dist[huber_weights_dist<1.]),np.mean(huber_weights_dist))
-
-        # same but w.r.t. offnadir
-        if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            tmp = np.nan_to_num(xovi_amat.xov.xovers.filter(regex='offnad').values)
-            tmp = np.max(np.abs(tmp),axis=1)
-            huber_weights_offnad = np.where(tmp > offnad_threshold, (offnad_threshold / tmp) ** 1, 1.)
-
-        if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            print("Apply Huber weights (offnad)")
-            print(tmp[tmp > offnad_threshold])
-            print(len(huber_weights_offnad[huber_weights_offnad<1.]),len(huber_weights_offnad))
-            print(np.sort(huber_weights_offnad[huber_weights_offnad<1.]),np.mean(huber_weights_offnad))
-
-        # combine weights
-        if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            tmp=huber_weights*huber_weights_dist*huber_weights_offnad
-            huber_penal = tmp
-            # should use weights or measurement error threshold, but using huber-threshold-like criteria for now
-            # to mimic what I was doing without weights
-            xovi_amat.xov.xovers['huber'] = huber_penal
-
-        # get quality of tracks and apply huber weights
-        if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            tmp = xovi_amat.xov.xovers.copy()[['xOvID','LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]#.astype('float16')
-            if XovOpt.get("debug"):
-                print("pre xovcov types",tmp.dtypes)
-
-            weights_xov_tracks = get_xov_cov_tracks(df=tmp,plot_stuff=True)
-            xovi_amat.xov.xovers['huber_trks'] = weights_xov_tracks.diagonal()
-
-
-            # the histogram of weight distribution
-            if False and XovOpt.get("local") and XovOpt.get("debug"):
-                tmp = weights_xov_tracks.diagonal()
-
-                plt.figure() #figsize=(8, 3))
-                num_bins = 100 # 'auto'  # 40  # v
-                n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins)
-                plt.xlabel('dR (m)')
-                plt.ylabel('# tracks')
-                plt.savefig(XovOpt.get("tmpdir") + '/histo_tracks_weights.png')
-                plt.clf()
-
-            # xovi_amat.xov.xovers['huber'] *= huber_weights_track
-
-            if XovOpt.get("debug") and False:
-                tmp['track_weights'] = weights_xov_tracks.diagonal()
-                tmp = tmp[['orbA', 'orbB', 'dR', 'track_weights']]
-                print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
-
-    #######
-            # additional for h2 tests
-            if h2_limit_on:
-                # cut based on residuals
-                limit_h2 = 20.
+            # compute huber weights (1 if x<huber_threshold, (huber_threshold/abs(dR))**2 if abs(dR)>huber_threshold)
+            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
                 tmp = xovi_amat.xov.xovers.dR.abs().values
-                tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 4, 1.)
-                huber_penal *= tmp
-                # cut based on mean min separation
-                limit_h2_sep = 10.*1.e-3 # km based
-                tmp = xovi_amat.xov.xovers.dist_min_mean.values
-                tmp = np.where(tmp > limit_h2_sep, (limit_h2_sep / tmp) ** 4, 1.)
-                huber_penal *= tmp
+                huber_weights = np.where(tmp > huber_threshold, (huber_threshold / tmp) ** 1, 1.)
 
-                if XovOpt.get("debug") and XovOpt.get("local"):
-                    num_bins = 100 #'auto'
+            if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                print("Apply Huber weights (resid)")
+                print(tmp[tmp > huber_threshold])
+                print(np.sort(huber_weights[huber_weights<1.]),np.mean(huber_weights))
+
+            # same but w.r.t. distance
+            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                tmp = xovi_amat.xov.xovers.dist_max.values
+                huber_weights_dist = np.where(tmp > distmax_threshold, (distmax_threshold / tmp) ** 2, 1.)
+
+            if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                print("Apply Huber weights (dist)")
+                print(tmp[tmp > distmax_threshold])
+                print(np.sort(huber_weights_dist[huber_weights_dist<1.]),np.mean(huber_weights_dist))
+
+            # same but w.r.t. offnadir
+            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                tmp = np.nan_to_num(xovi_amat.xov.xovers.filter(regex='offnad').values)
+                tmp = np.max(np.abs(tmp),axis=1)
+                huber_weights_offnad = np.where(tmp > offnad_threshold, (offnad_threshold / tmp) ** 1, 1.)
+
+            if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                print("Apply Huber weights (offnad)")
+                print(tmp[tmp > offnad_threshold])
+                print(len(huber_weights_offnad[huber_weights_offnad<1.]),len(huber_weights_offnad))
+                print(np.sort(huber_weights_offnad[huber_weights_offnad<1.]),np.mean(huber_weights_offnad))
+
+            # combine weights
+            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                tmp=huber_weights*huber_weights_dist*huber_weights_offnad
+                huber_penal = tmp
+                # should use weights or measurement error threshold, but using huber-threshold-like criteria for now
+                # to mimic what I was doing without weights
+                xovi_amat.xov.xovers['huber'] = huber_penal
+
+            # get quality of tracks and apply huber weights
+            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                tmp = xovi_amat.xov.xovers.copy()[['xOvID','LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]#.astype('float16')
+                if XovOpt.get("debug"):
+                    print("pre xovcov types",tmp.dtypes)
+
+                weights_xov_tracks = get_xov_cov_tracks(df=tmp,plot_stuff=False)
+                xovi_amat.xov.xovers['huber_trks'] = weights_xov_tracks.diagonal()
+
+
+                # the histogram of weight distribution
+                if False and XovOpt.get("local") and XovOpt.get("debug"):
+                    tmp = weights_xov_tracks.diagonal()
+
+                    plt.figure() #figsize=(8, 3))
+                    num_bins = 100 # 'auto'  # 40  # v
+                    n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins)
+                    plt.xlabel('dR (m)')
+                    plt.ylabel('# tracks')
+                    plt.savefig(XovOpt.get("tmpdir") + '/histo_tracks_weights.png')
                     plt.clf()
-                    n, bins, patches = plt.hist(np.where(huber_penal < 1., huber_penal, 1.).astype(np.float), bins=num_bins,cumulative=True)
-                    plt.xlabel('huber_penal')
-                    plt.savefig(XovOpt.get("tmpdir") + '/histo_huber_h2.png')
-                    plt.clf()
 
-    #######
+                # xovi_amat.xov.xovers['huber'] *= huber_weights_track
 
-        # interp_weights = get_weight_regrough(xovi_amat.xov).reset_index()  ### old way using residuals to extract roughness
-        #
-        # get interpolation error based on roughness map (if available at given latitude) + minimal distance
-        interp_weights = get_interpolation_weight(xovi_amat.xov).reset_index()
+                if XovOpt.get("debug") and False:
+                    tmp['track_weights'] = weights_xov_tracks.diagonal()
+                    tmp = tmp[['orbA', 'orbB', 'dR', 'track_weights']]
+                    print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
 
-        val = interp_weights['weight'].values # np.ones(len(interp_weights['weight'].values)) #
-        # print("interp error values", np.sort(val))
-        xovi_amat.xov.xovers['interp_weight'] = val
+        #######
+                # additional for h2 tests
+                if h2_limit_on:
+                    # cut based on residuals
+                    limit_h2 = 20.
+                    tmp = xovi_amat.xov.xovers.dR.abs().values
+                    tmp = np.where(tmp > limit_h2, (limit_h2 / tmp) ** 4, 1.)
+                    huber_penal *= tmp
+                    # cut based on mean min separation
+                    limit_h2_sep = 10.*1.e-3 # km based
+                    tmp = xovi_amat.xov.xovers.dist_min_mean.values
+                    tmp = np.where(tmp > limit_h2_sep, (limit_h2_sep / tmp) ** 4, 1.)
+                    huber_penal *= tmp
 
-        # apply huber weights
-        if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
-            val *= huber_penal
-            # print("after huber", np.sort(val), np.mean(val))
-            # val *= huber_weights_dist
-            # print(val)
-            # exit()
-        # print(np.max(np.abs(val)))
-        # val /= np.max(np.abs(val))
-        row = col = interp_weights.index.values
+                    if XovOpt.get("debug") and XovOpt.get("local"):
+                        num_bins = 100 #'auto'
+                        plt.clf()
+                        n, bins, patches = plt.hist(np.where(huber_penal < 1., huber_penal, 1.).astype(np.float), bins=num_bins,cumulative=True)
+                        plt.xlabel('huber_penal')
+                        plt.savefig(XovOpt.get("tmpdir") + '/histo_huber_h2.png')
+                        plt.clf()
 
-        # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(interp_weights), len(interp_weights)))
-        obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(interp_weights), len(interp_weights)))
+        #######
 
-        # combine with off-diag terms from tracks
-        #========================================
-        # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights) # to apply only the diagonal
-        obs_weights = weights_xov_tracks.multiply(obs_weights)
-        print("Observations weights re-evaluated, solution has not converged yet")
+            # interp_weights = get_weight_regrough(xovi_amat.xov).reset_index()  ### old way using residuals to extract roughness
+            #
+            # get interpolation error based on roughness map (if available at given latitude) + minimal distance
+            interp_weights = get_interpolation_weight(xovi_amat.xov).reset_index()
 
-        if XovOpt.get("debug") and XovOpt.get("local"):
-            print("tracks weights", weights_xov_tracks.diagonal().mean(), np.sort(weights_xov_tracks.diagonal()))
-            tmp = obs_weights.diagonal()
-            tmp = np.where(tmp>1.e-9,tmp,0.)
-            print(np.sort(tmp),np.median(tmp),np.mean(tmp))
-            # plot histo
-            plt.figure() #figsize=(8,3))
-            # plt.xlim(-1.*xlim, xlim)
-            # the histogram of the data
-            num_bins = 200 #'auto'
-            n, bins, patches = plt.hist(tmp, bins=num_bins, range=[1.e-4,4.e-2]) #, cumulative=-1) #, density=True, facecolor='blue',
-            # alpha=0.7, range=[-1.*xlim, xlim])
-            plt.xlabel('obs weights')
-            plt.ylabel('# tracks')
-            plt.title('Resid+distance+offnadir+interp+weights: $\mu=' + str(np.mean(tmp)) + ', \sigma=' + str(np.std(tmp)) + '$')
-            # # Tweak spacing to prevent clipping of ylabel
-            plt.subplots_adjust(left=0.15)
-            plt.savefig(XovOpt.get("tmpdir") + '/data_weights.png')
-            plt.clf()
-            # exit()
+            val = interp_weights['weight'].values # np.ones(len(interp_weights['weight'].values)) #
+            # print("interp error values", np.sort(val))
+            xovi_amat.xov.xovers['interp_weight'] = val
 
-    # Combine and store weights
-    xovi_amat.weights = obs_weights
-    print(len(xovi_amat.xov.xovers))
-    print(obs_weights.shape)
-    xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
+            # apply huber weights
+            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+                val *= huber_penal
+                # print("after huber", np.sort(val), np.mean(val))
+                # val *= huber_weights_dist
+                # print(val)
+                # exit()
+            # print(np.max(np.abs(val)))
+            # val /= np.max(np.abs(val))
+            row = col = interp_weights.index.values
+
+            # obs_weights = csr_matrix((np.ones(len(val)), (row, col)), dtype=np.float32, shape=(len(interp_weights), len(interp_weights)))
+            obs_weights = csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(interp_weights), len(interp_weights)))
+
+            # combine with off-diag terms from tracks
+            #========================================
+            # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights) # to apply only the diagonal
+            obs_weights = weights_xov_tracks.multiply(obs_weights)
+            print("Observations weights re-evaluated, solution has not converged yet")
+
+            if XovOpt.get("debug") and XovOpt.get("local"):
+                print("tracks weights", weights_xov_tracks.diagonal().mean(), np.sort(weights_xov_tracks.diagonal()))
+                tmp = obs_weights.diagonal()
+                tmp = np.where(tmp>1.e-9,tmp,0.)
+                print(np.sort(tmp),np.median(tmp),np.mean(tmp))
+                # plot histo
+                plt.figure() #figsize=(8,3))
+                # plt.xlim(-1.*xlim, xlim)
+                # the histogram of the data
+                num_bins = 200 #'auto'
+                n, bins, patches = plt.hist(tmp, bins=num_bins, range=[1.e-4,4.e-2]) #, cumulative=-1) #, density=True, facecolor='blue',
+                # alpha=0.7, range=[-1.*xlim, xlim])
+                plt.xlabel('obs weights')
+                plt.ylabel('# tracks')
+                plt.title('Resid+distance+offnadir+interp+weights: $\mu=' + str(np.mean(tmp)) + ', \sigma=' + str(np.std(tmp)) + '$')
+                # # Tweak spacing to prevent clipping of ylabel
+                plt.subplots_adjust(left=0.15)
+                plt.savefig(XovOpt.get("tmpdir") + '/data_weights.png')
+                plt.clf()
+                # exit()
+
+            # Combine and store weights
+            xovi_amat.weights = obs_weights
+            # print(len(xovi_amat.xov.xovers))
+            # print(obs_weights.shape)
+            xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
+    # if Erwan's lidar test
+    else:
+        from scipy.sparse import diags
+        print("!!! DANGEROUS MOD TO KEEP SIMU WEIGHTS !!!")
+        xovi_amat.weights = diags(xovi_amat.xov.xovers['weights'].values,0)
+        obs_weights = xovi_amat.weights
+        # print(obs_weights)
+        # print(xovi_amat.xov.xovers['weights'])
+        # exit()
+
 
     ## DIRECT SOLUTION FOR DEBUG AND SMALL PROBLEMS (e.g., global only)
     if len(sol4_pars)<50 and XovOpt.get("debug"):
@@ -568,11 +589,13 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     #print("len trucs")
     #print(len(sol4_pars))
 
-    spA_sol4 = xovi_amat.weights * spA_sol4
+    # TODO clean-up: applying weights at this point makes it impossible to get covariance matrix
+    if XovOpt.get("instrument") != "pawstel":
+        spA_sol4 = xovi_amat.weights * spA_sol4
 
     # select constrains for processed parameters (TODO should go in sol4pars)
     mod_par = [your_key.split('_')[1] if len(your_key.split('_'))>1 else your_key for your_key in sol4_pars ]
-    if XovOpt.get("OrbRep") in ['lin', 'quad'] :
+    if XovOpt.get("OrbRep") in ['lin', 'quad', 'per'] :
         for par in ['dA','dC','dR']:
             if par in XovOpt.get("sol4_orbpar"):
                 XovOpt.get("par_constr")['dR/' + par + '0'] = XovOpt.get("par_constr").pop('dR/' + par)
@@ -827,9 +850,15 @@ def main(arg):
             if previous_iter != None and previous_iter.vce != None:
                 xovi_amat.vce = previous_iter.vce
             else:
-                weight_obs = 1.e-3
-                weight_constr = 5.
-                weight_constr_avg = 1.e-2
+                # TODO move to options
+                if XovOpt.get("instrument") == "pawstel":
+                    weight_obs = 1.  # .e-3
+                    weight_constr = 1.
+                    weight_constr_avg = 1.  # e-2
+                else:
+                    weight_obs = 1.e-3
+                    weight_constr = 5.
+                    weight_constr_avg = 1.e-2
 
                 xovi_amat.vce = [weight_obs, weight_constr, weight_constr_avg]
                 # xovi_amat.vce = [0.0002247404434024504, 5.0025679108113685, 0.0010878786212904351]
@@ -837,7 +866,7 @@ def main(arg):
             keep_iterating_vce = True
             for i in (i for i in range(10) if keep_iterating_vce):
 
-                print("iter+weights obs/constr", i, xovi_amat.vce)
+                print("iter+weights obs/constr vce", i, xovi_amat.vce)
 
                 ######################### MAKE NEW SOLVE ROUTINE (rename the one above as prepro_weights_constr())
                 weight_obs = xovi_amat.vce[0]
@@ -867,22 +896,41 @@ def main(arg):
                                          -1. * np.zeros(len(xovi_amat.sol4_pars_iter))])
 
                 # add penalisation to partials matrix
+                weights_penal = diags(np.concatenate([xovi_amat.weights.diagonal(),np.ones(Q.shape[0])]),0)
                 spA_sol4_penal = scipy.sparse.vstack([sqrt_weight_obs * xovi_amat.spA_weight_clean, 1. * csr_matrix(Q)])
+                # spA_sol4_penal[np.abs(spA_sol4_penal) < 1.e-10] = 0
 
                 # save penalised matrices
                 xovi_amat.spA_penal = spA_sol4_penal
                 xovi_amat.b_penal = b_penal
 
-                # solve using lsqr
-                xovi_amat.sol = lsqr(xovi_amat.spA_penal, xovi_amat.b_penal, damp=0, show=False, iter_lim=100000, atol=1.e-8 / sigma_0,
-                                     btol=1.e-8 / sigma_0, calc_var=True)
-                # xovi_amat.sol = lsqr(xovi_amat.spA, xovi_amat.b,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
+                if get_cov_only:
+                    try:
+                        std_par_unconstrained = np.sqrt(scipy.sparse.linalg.inv(xovi_amat.spA.transpose() * xovi_amat.weights * xovi_amat.spA).diagonal())
+                    except:
+                        print("** Factor is exactly singular, need some constraints")
+                        std_par_unconstrained = np.tile(0.,len(xovi_amat.parNames))
 
-                # print("sol sparse: ",xovi_amat.sol[0])
-                # print('to_be_recovered', pert_cloop['glo'])
-                print("Solution iters terminated with ", xovi_amat.sol[1])
-                if xovi_amat.sol[1] != 2:
-                    exit(2)
+                    try:
+                        std_par = np.sqrt(scipy.sparse.linalg.inv(xovi_amat.spA_penal.transpose() * weights_penal * xovi_amat.spA_penal).diagonal())
+                    except:
+                        print("** Matrix not positive definite, modify constraints.")
+                        print("** Passing unconstrained formal errors")
+                        std_par = std_par_unconstrained
+
+                    return xovi_amat.parNames, std_par, std_par_unconstrained
+
+                else:
+                    # solve using lsqr
+                    xovi_amat.sol = lsqr(xovi_amat.spA_penal, xovi_amat.b_penal, damp=0, show=True, iter_lim=100000, atol=1.e-8 / sigma_0,
+                                         btol=1.e-8 / sigma_0, calc_var=True)
+                    # xovi_amat.sol = lsqr(xovi_amat.spA, xovi_amat.b,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
+
+                    print("sol sparse: ",xovi_amat.sol)
+                    # print('to_be_recovered', pert_cloop['glo'])
+                    print("Solution iters terminated with ", xovi_amat.sol[1])
+                    if xovi_amat.sol[1] > 2:
+                        exit(2)
                 #############################################
 
                 # Save to pkl

@@ -94,8 +94,9 @@ def generate_periodic_fractal_noise_2d(amplitude, shape, res, octaves=1, persist
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    from scipy.interpolate import RectBivariateSpline
+    # from scipy.interpolate import RectBivariateSpline
     from hillshade import hill_shade
+    import seaborn as sns
 
     #np.random.seed(0)
     #noise = generate_perlin_noise_2d((256, 256), (8, 8))
@@ -115,7 +116,18 @@ if __name__ == '__main__':
     #                                    np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
     #                                    noise)
     #
+    sns.set_context('notebook')
     plt.figure()
-    plt.imshow(noise, cmap='cubehelix', interpolation='None', extent=(0, 0.25, 0, 0.25))
-    plt.colorbar()
-    plt.savefig("tmp/test_fract_noise_res1.pdf")
+    ax = plt.imshow(noise, cmap='viridis', interpolation='None', extent=(0, 0.25, 0, 0.25))
+
+    plt.xlabel('degrees')
+    plt.ylabel('degrees')
+    plt.title('Simulated small-scale topography',pad=10)
+
+    cbar = plt.colorbar()
+    cbar.set_label('elevation (m)')
+    cbar.set_ticks([0.1,0.3,0.5,0.7,0.9])
+    cbar.set_ticklabels([-40,-20,0,20, 40])
+
+    plt.tight_layout()
+    plt.savefig("/home/sberton2/tmp/test_fract_noise_res1.pdf")

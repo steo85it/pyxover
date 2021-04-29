@@ -105,7 +105,7 @@ go back to gtrack2dem for last step
 Profiling
 ---------
 Decorate routines with #@profile; then launch with, e.g.,
-kernprof -v -l launch_test.py 0 0 3 0   # for time profiling
+kernprof -v -l launch_test.py 0 0 3 0   # for time profiling (spack load py-line-profiler)
 python3 -m memory_profiler launch_test.py 0 0 3 0   # for memory profiling
 mprof run --include-children --multiprocess launch_test.py 0 20 2 1 # time-wise memory profiling
 N.B.: does not work when launching from within pycharm (or would need config - maybe just include memory_profile)

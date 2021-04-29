@@ -117,7 +117,7 @@ class Amat:
         xovers_df.fillna(0,inplace=True)
 
         # Retrieve all orbits involved in xovers
-        orb_unique = self.xov.tracks
+        orb_unique = [str(x) for x in self.xov.tracks]
 
         # select cols
         OrbParFull = [x + '_' + y.split('_')[0] for x in orb_unique for y in parOrb_xy]
@@ -178,7 +178,7 @@ class Amat:
             # exit()
 
             csr.append(csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(orb_loc), len(Amat_col))))
-            print("done")
+            # print("done")
 
         csr = sum(csr)
 	
@@ -188,7 +188,8 @@ class Amat:
             except AttributeError:
                 return -1
 
-        print("Memory of csr:",sparse_memory_usage(csr))
+        if XovOpt.get("debug"):
+            print("Memory of csr:",sparse_memory_usage(csr))
 
         def sparse_memory_usage(mat):
             try:
@@ -281,7 +282,7 @@ class Amat:
 
         print(Amat_df)
 
-        if (XovOpt.get("debug")):
+        if XovOpt.get("debug"):
             print(Amat_df)
             print(xovers_df.dR)
 

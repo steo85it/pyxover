@@ -327,7 +327,7 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
 
     partemplate = set([x.split('/')[1] for x in xovi_amat.sol_dict['sol'].keys()])
 
-    regex = re.compile('.*_dR/d([ACR]|(Rl)|(Pt))[0,1,2]?$')
+    regex = re.compile(".*_dR/d([ACR]|(Rl)|(Pt))[0,1,2,'C','S']?$")
     soltmp = [(x.split('_')[0], 'sol_' + x.split('_')[1], v) for x, v in xovi_amat.sol_dict['sol'].items() if regex.match(x)]
 
     print('-- Solutions -- ')
@@ -430,8 +430,8 @@ def analyze_sol(xovi_amat,xov,mode='full'):
     parOrbKeys = list(XovOpt.get("parOrb").keys())
     solved4 = list(partemplate)
 
-    if XovOpt.get("OrbRep") in ['lin', 'quad']:
-        parOrbKeys = [x+str(y) for x in parOrbKeys for y in [0,1,2]]
+    if XovOpt.get("OrbRep") in ['lin', 'quad','per']:
+        parOrbKeys = [x+str(y) for x in parOrbKeys for y in [0,1,2,'C','S']]
     # solved4orb = list(filter(regex.match, list(parOrb.keys())))
     solved4orb = list(set(parOrbKeys)&set(solved4))
 
@@ -470,7 +470,10 @@ def analyze_sol(xovi_amat,xov,mode='full'):
             merged_Frame.columns = ['orb','dist_max']
 
             table.columns = ['_'.join(col).strip() for col in table.columns.values]
-            table = pd.merge(table.reset_index(),merged_Frame,on='orb')
+            try:
+                table = pd.merge(table.reset_index(),merged_Frame,on='orb')
+            except:
+                table = pd.concat([table.reset_index(),merged_Frame])
 
         orb_sol = table
         if XovOpt.get("debug"):

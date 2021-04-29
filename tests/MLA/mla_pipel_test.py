@@ -32,6 +32,7 @@ class MlaXoverTest(unittest.TestCase):
             val = val.load('tests/MLA/mla_pipel_test_out.pkl')
 
         # check xovers residuals
+        print(out)
         # round up to avoid issues with package updates
         res_out = [round(x, 4) for x in out.b]
         res_val = [round(x, 4) for x in val.b]

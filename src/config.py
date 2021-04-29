@@ -1,5 +1,4 @@
-# Options configuration for flux applications
-# TODO add setters and getters
+# Options configuration for pyxover applications
 import multiprocessing as mp
 import numpy as np
 from src.xovutil.units import deg2as
@@ -12,7 +11,11 @@ class XovOpt:
         "local": True, #
         "parallel": False,
         "partials": True,
-        "body" : 'MERCURY', # 'BENNU' #'67P' #
+
+        "body" : 'MERCURY', #
+        "instrument" : "pawstel", #"MLA", #
+
+        # dirs
         "basedir": 'MLA/data/',
         "rawdir": f'raw/',
         "outdir": f'out/',
@@ -30,7 +33,7 @@ class XovOpt:
         "expopt" : 'BS0',
         "resopt" : [0],
         "amplopt" : [1],
-        "tree_kind" : 'quad', #'oct'
+
         "parOrb": {'dA': 20., 'dC': 20., 'dR': 5.},  # ,'dRl':0.2, 'dPt':0.2} #
         "parGlo": {'dRA': [0.2, 0.000, 0.000], 'dDEC': [0.36, 0.000, 0.000], 'dPM': [0, 0.013, 0.000],
               'dL': 1.e-3 * deg2as(1.) * np.linalg.norm([0.00993822, -0.00104581, -0.00010280, -0.00002364, -0.00000532]), 'dh2': 0.1},
@@ -47,7 +50,7 @@ class XovOpt:
         "pert_cloop_orb": {},  # 'dA':50., 'dC':50., 'dR':20.,'dRl':0.5, 'dPt':0.5} #} #, 'dA1':20., 'dC1':20., 'dR1':5.
         # in deg and deg/day as reminder pert_cloop_glo": {'dRA':[0.0015deg, 0.000, 0.000], 'dDEC':[0.0015deg, 0.000, 0.000],'dPM':[0, 2.e-6deg/day, 0.000],'dL':~3*1.5as, 'dh2':-1.} # compatible with current uncertitudes
         "pert_cloop_glo": {},  # 'dRA':[3.*5., 0.000, 0.000], 'dDEC':[3.*5., 0.000, 0.000],'dPM':[0, 3.*3., 0.000],'dL':3.*deg2as(1.5*0.03)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]), 'dh2':-1.} #
-        "pert_cloop": {},
+        "pert_cloop": {}, # initialized by check_consistency below
         # perturb individual tracks
         "pert_tracks": [],  # '1107021838','1210192326','1403281002','1503191143'] #
 
@@ -108,7 +111,7 @@ class XovOpt:
                    'PM_ORIGIN': 'J2013.0',
                    'PARTDER': ''}
     }
-    __setters = list(__conf.keys()) # ["body","frame","tree_kind","use_distant_topo","new_FF","use_spice","is_crater","feature"]
+    __setters = list(__conf.keys())
 
     @staticmethod
     def check_consistency():
@@ -129,9 +132,6 @@ class XovOpt:
                             f" is inconsistent with vecopts attr "
                             f"{XovOpt.get('vecopts')['PLANETNAME']}."
                             f" Please update vecopts via XovOpt.set.")
-        #     XovOpt.set("is_crater", True)
-        # else:
-        #     XovOpt.set("is_crater", False)
 
     @staticmethod
     def get(name):
@@ -163,9 +163,3 @@ if __name__ == '__main__':
 
     opt.check_consistency()
     print(opt.get("tmpdir"))
-
-    # opt.set("frame","IAU_BENNU")
-    # # I cannot set this option (also, I don't know how to update dependent opts
-    # # without reinitialising)
-    # opt.set("is_crater",False)
-    # print(opt.get("tree_kind"))

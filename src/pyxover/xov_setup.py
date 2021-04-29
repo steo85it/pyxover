@@ -1318,19 +1318,31 @@ class xov:
         """
         # project d/dACR on linear expansion parameters
         # if A = A0 + A1*dt --> ddR/dA0 = ddR/dA*dA/dA0, with ddR/dA numerically computed and dA/dA0=1, etc...
-        dt = sec2day(xovers_df.loc[:,['dtA','dtB']].values)
-        xovers_df[[strng.partition('_')[0] + '0_' + strng.partition('_')[2] for strng in
+        dt = sec2day(xovers_df.loc[:,['dtA','dtB']].values) # dt in days
+        if XovOpt.get("OrbRep") in ['cnt','lin', 'quad']:
+            xovers_df[[strng.partition('_')[0] + '0_' + strng.partition('_')[2] for strng in
                    xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]] = \
-            xovers_df[xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]  # ddR/dA0
-        xovers_df[[strng.partition('_')[0] + '1_' + strng.partition('_')[2] for strng in
-                   xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]] = \
-            xovers_df.filter(regex='^dR/d[A,C,R]_.*$') * np.tile(dt, int(
-                0.5 * len(xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns)))  # ddR/dA1
+                xovers_df[xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]  # ddR/dA0
+        if XovOpt.get("OrbRep") in ['lin', 'quad']:
+            xovers_df[[strng.partition('_')[0] + '1_' + strng.partition('_')[2] for strng in
+                       xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]] = \
+                xovers_df.filter(regex='^dR/d[A,C,R]_.*$') * np.tile(dt, int(
+                    0.5 * len(xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns)))  # ddR/dA1
         # project d/dACR on quadratic expansion parameters
         if (XovOpt.get("OrbRep") == 'quad'):
             xovers_df[[strng.partition('_')[0] + '2_' + strng.partition('_')[2] for strng in
                        xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]] = \
                 xovers_df.filter(regex='^dR/d[A,C,R]_.*$') * np.tile(0.5 * np.square(dt), int(
+                    0.5 * len(xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns)))  # ddR/dA2
+        # TODO the orbital period should be taken automatically from input, not manually set
+        if XovOpt.get("OrbRep") == 'per':
+            xovers_df[[strng.partition('_')[0] + 'C_' + strng.partition('_')[2] for strng in
+                       xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]] = \
+                xovers_df.filter(regex='^dR/d[A,C,R]_.*$') * np.tile(np.cos(2.*np.pi*dt/(2./24.)), int(
+                    0.5 * len(xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns)))  # ddR/dA2
+            xovers_df[[strng.partition('_')[0] + 'S_' + strng.partition('_')[2] for strng in
+                       xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns.values]] = \
+                xovers_df.filter(regex='^dR/d[A,C,R]_.*$') * np.tile(np.sin(2.*np.pi*dt/(2./24.)), int(
                     0.5 * len(xovers_df.filter(regex='^dR/d[A,C,R]_.*$').columns)))  # ddR/dA2
 
         xovers_df = xovers_df.drop(columns=xovers_df.filter(regex='^dR/d[A,C,R]_.*$'))  # drop ddR/dA

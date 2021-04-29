@@ -1,4 +1,5 @@
 # pyxover - Altimetry Analysis Tools For Planetary Geodesy
+[![DOI](https://zenodo.org/badge/319753409.svg)](https://zenodo.org/badge/latestdoi/319753409)
 
 Software suite for the analysis of laser altimetry data: from standard range data (PDS RDR) to planetary orientation and
  tides. Existing or simulated ranges (pyaltsim) are geolocated on the planetary surface
