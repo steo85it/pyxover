@@ -212,16 +212,48 @@ class sim_gtrack(gtrack):
 
             # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
             gmt = False
-            if not gmt:
+
+            if XovOpt.get("instrument") == 'BELA':
+                if local:
+                    geotiff = ['/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                           '/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_SPole_665m_v2.tif']
+                else:
+                    geotiff = [auxdir+'Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                               auxdir+'Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif']
+
+                df = pd.DataFrame(zip(lattmp,lontmp),columns=['LAT','LON'])#.reset_index()
+                # nice but not broadcasted... slow
+                # df['r_dem'] = df.apply(lambda x: get_demz_tiff(geotiff[0],lat=x.LAT,lon=x.LON) if x.LAT > 30
+                #                         else get_demz_grd(filin=dem,lon=x.LON,lat=x.LAT), axis=1)
+
+                mask_np = (df['LAT'] >= 40)
+                mask_equat = (df['LAT'] < 40) & (df['LAT'] > -55)
+                mask_sp = (df['LAT'] <= -55)
+
+                df['r_dem'] = 0
+                # NP (MLA DEM)
+                if len(df.loc[mask_np,:])>0:
+                    df.loc[mask_np, 'r_dem'] = get_demz_grd(filin=dem,lon=df.loc[mask_np,'LON'].values,lat=df.loc[mask_np,'LAT'].values).T
+                # EQUAT (USGS)
+                if len(df.loc[mask_equat,:])>0:
+                    df.loc[mask_equat, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[0],lon=df.loc[mask_equat,'LON'].values,lat=df.loc[mask_equat,'LAT'].values).T)
+                # SP (USGS)
+                if len(df.loc[mask_sp,:])>0:
+                    df.loc[mask_sp, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[1],lon=df.loc[mask_sp,'LON'].values,lat=df.loc[mask_sp,'LAT'].values).T)
+
+                r_dem = df.r_dem.values
+
+            elif not gmt:
+
                 if self.dem == None:
-                    self.dem = import_dem(dem)
+                    self.dem = import_dem(filein=dem,filout="interp_dem.pkl")
                 else:
                     #print("DEM already read")
                     pass
             else:
                 print("Using grdtrack")
 
-            if gmt:
+            if gmt and XovOpt.get("instrument") != 'BELA':
                 gmt_in = 'gmt_' + self.name + '.in'
                 if os.path.exists('tmp/' + gmt_in):
                     os.remove('tmp/' + gmt_in)
@@ -231,9 +263,10 @@ class sim_gtrack(gtrack):
                 ['grdtrack', gmt_in, '-G' + dem],
                 universal_newlines=True, cwd='tmp')
                 r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-            else:
+            elif XovOpt.get("instrument") != 'BELA':
                 lontmp[lontmp < 0] += 360.
                 r_dem = get_demz_at(self.dem, lattmp, lontmp)
+
                 # Works but slower (interpolates each time, could be improved by https://github.com/JiaweiZhuang/xESMF/issues/24)
                 # radius_xarr = dem_xarr.interp(lon=xr.DataArray(lontmp, dims='z'), lat= xr.DataArray(lattmp, dims='z')).z.values * 1.e3 #
 
@@ -329,6 +362,64 @@ def prepro_ilmNG(illumNGf):
 
     return df_
 
+def prepro_BELA_sim(epo_in):
+
+    scpv, lt = spice.spkezr(vecopts['SCNAME'],
+                               epo_in,
+                               vecopts['PLANETFRAME'],
+                               'LT',
+                               vecopts['PLANETNAME'])
+    scpos = np.array(scpv)[:,:3]
+    range = np.linalg.norm(scpos,axis=1) - vecopts['PLANETRADIUS']
+
+    scplavec = scpos/np.linalg.norm(scpos,axis=1)[:,None]
+    approx_bounce_point = scplavec*vecopts['PLANETRADIUS'] #range[:,None]
+
+    df_ = pd.DataFrame(approx_bounce_point,columns=['x','y','z'])
+    df_['epo_tx'] = epo_in
+    df_['rng'] = range
+
+    approx_bounce_point_sph = astr.cart2sph(approx_bounce_point)
+    df_['lat']= np.rad2deg(approx_bounce_point_sph[1]) # pd.DataFrame(approx_bounce_point_sph,columns=['r','lat','lon'])
+
+    # apply altitude cutoff (PFD too high)
+    df_ = df_[df_.rng < 1600]
+    df_ = df_.rename(columns={"xyzd": "epo_tx"})
+    # print(df_.dtypes)
+
+    ### used for MLA ###
+    # df_['diff'] = df_.epo_tx.diff().fillna(0)
+    # # print(df_[df_['diff'] > 1].index.values)
+    # arcbnd = [df_.index.min()]
+    # # new arc if observations separated by more than 1h
+    # arcbnd.extend(df_[df_['diff'] > 3600].index.values)
+
+    # for BELA, new arc at every upwards passage of equator
+    df_['diff'] = df_.lat.diff().fillna(0)
+    # print(df_[(df_['diff'] > 0)])
+    # print(df_[(df_['diff'] > 0) & (df_['lat'].round(1) == 0)])
+
+    def ranges(nums):
+        nums = sorted(set(nums))
+        gaps = [[s, e] for s, e in zip(nums, nums[1:]) if s + 1 < e]
+        edges = iter(nums[:1] + sum(gaps, []) + nums[-1:])
+        return list(zip(edges, edges))
+
+    # set up arc boundaries (and remove consecutive indexes due to approx)
+    arcbnd = [df_.index.min()]
+    arcbnd.extend(df_[(df_['diff'] > 0) & (df_['lat'].round(0) == 0)].index.values)
+    arcbnd = [x[0] for x in ranges(arcbnd)]
+    arcbnd.extend([df_.index.max() + 1])
+    # print(arcbnd)
+
+    df_['orbID'] = 0
+    for i, j in zip(arcbnd, arcbnd[1:]):
+        orbid = (datetime.datetime(2000, 1, 1, 12, 0) + datetime.timedelta(seconds=df_.loc[i, 'epo_tx'])).strftime(
+            "%y%m%d%H%M")
+        df_.loc[df_.index.isin(np.arange(i, j)), 'orbID'] = orbid
+
+    return df_
+
 
 def sim_track(args):
     track, df, i, outdir_ = args
@@ -355,8 +446,17 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         data_pth = '/att/nobackup/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
         dataset = ''  # 'small_test/' #'test1/' #'1301/' #
         data_pth += dataset
+        # TODO Avoid/remove explicit paths!!!
         # load kernels
-        spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')  # 'aux/mymeta')
+        if XovOpt.get("instrument") == "BELA":
+            spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'
+                         ,
+                         '/att/nobackup/sberton2/MLA/aux/spk/bc_sci_v06.tf',
+                         '/att/nobackup/sberton2/MLA/aux/spk/bc_mpo_mlt_50037_20260314_20280529_v03.bsp']
+            )  # 'aux/mymeta')
+        else:
+            spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')
+
     else:
         # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
         # dataset = "test/"  # ''  # 'small_test/' #'1301/' #
@@ -375,7 +475,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     ###########################
 
     # generate list of epochs
-    if XovOpt.get("new_illumNG") and True:
+    if XovOpt.get("new_illumNG") and XovOpt.get("instrument") != "BELA":
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
         print("path+files")
@@ -397,43 +497,79 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
     # print(np.sort(epo_in)[-1])
 
-    else:
-        epo0 = 410270400  # get as input parameter
-        # epo_tx = np.array([epo0+i for i in range(86400*7)])
-        subpnts = 10
-        epo_tx = np.array([epo0 + i / subpnts for i in range(86400 * subpnts)])
+    else: # if BELA
+        # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
+        from calendar import monthrange
+        import datetime as dt
+
+        days_in_month = monthrange(int('20'+epos_in[:2]), int(epos_in[2:]))
+
+        d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),00,00,00)
+        d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
+
+        dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
+
+        sec_j2000_first = (d_first - dj2000).total_seconds()
+        sec_j2000_last = (d_last - dj2000).total_seconds()
+        # print(sec_j2000_first,sec_j2000_last)
+        # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
+        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1)
 
     # pass to illumNG
-    if XovOpt.get("local"):
-        if XovOpt.get("new_illumNG"):
-            np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_tx, fmt="%4d")
-            print("Do you have all of illumNG predictions?")
-            exit()
-        # path = '../aux/illumNG/'+epos_in+'_32ppd/' # sph_7d_mla/'  # _1s/'  #  sph/' #grd/' # use your path
-        path = '../../../aux/illumNG/sph'  # mlatimes_'+epos_in # sph_7d_mla/'  # _1s/'  #  sph/' #grd/' # use your path
-        illumNGf = glob.glob(path + "/bore*")
-    else:
-        if XovOpt.get("new_illumNG"):
-            np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_in, fmt="%10.5f")
-            print("illumNG call")
-            if not os.path.exists("illumNG/"):
-                print('*** create and copy required files to ./illumNG')
-                exit()
+    if instr != 'BELA':
+        if local:
+            if new_illumNG:
+                np.savetxt(tmpdir+"epo_mla_" + epos_in + ".in", epo_tx, fmt="%10.2f")
+                print("illumNG call")
+                if not os.path.exists("illumNG/"):
+                    print('*** create and copy required files to ./illumNG')
+                    exit()
 
-            shutil.copy("tmp/epo_mla_" + epos_in + ".in", '../_MLA_Stefano/epo.in')
-            illumNG_call = subprocess.call(
-                ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
-                universal_newlines=True, cwd="../_MLA_Stefano/")  # illumNG/")
-            for f in glob.glob("../_MLA_Stefano/bore*"):
-                shutil.move(f, XovOpt.get("auxdir") + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
-        path = XovOpt.get("auxdir") + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
-        print('illumng dir', path)
-        illumNGf = glob.glob(path + "/bore*")
+                shutil.copy(tmpdir+"epo_mla_" + epos_in + ".in", '../_MLA_Stefano/epo.in')
+                illumNG_call = subprocess.call(
+                    ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
+                    universal_newlines=True, cwd="../_MLA_Stefano/")  # illumNG/")
+                for f in glob.glob("../_MLA_Stefano/bore*"):
+                    shutil.move(f, auxdir + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
+            path = auxdir + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
+            print('illumng dir', path)
+            illumNGf = glob.glob(path + "/bore*")
+        else:
+            if new_illumNG:
+                np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_in, fmt="%10.5f")
+                print("illumNG call")
+                if not os.path.exists("illumNG/"):
+                    print('*** create and copy required files to ./illumNG')
+                    exit()
 
-    # else:
-    # launch illumNG directly
-    df = prepro_ilmNG(illumNGf)
-    print('illumNGf', illumNGf)
+                shutil.copy("tmp/epo_mla_" + epos_in + ".in", '../_MLA_Stefano/epo.in')
+                illumNG_call = subprocess.call(
+                    ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
+                    universal_newlines=True, cwd="../_MLA_Stefano/")  # illumNG/")
+                for f in glob.glob("../_MLA_Stefano/bore*"):
+                    shutil.move(f, XovOpt.get("auxdir") + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
+            path = XovOpt.get("auxdir") + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
+            print('illumng dir', path)
+            illumNGf = glob.glob(path + "/bore*")
+
+        # else:
+        # launch illumNG directly
+        df = prepro_ilmNG(illumNGf)
+        print('illumNGf', illumNGf)
+
+    else: # if BELA
+        illumpklf = tmpdir+'bela_illumNG_'+epos_in+'.pkl'
+
+        if new_illumNG:
+            start_BELA_prepro = time.time()
+            df = prepro_BELA_sim(epo_in=epo_tx)
+            end_BELA_prepro = time.time()
+            print("BELA prepro (simil illumNG) completed after ", end_BELA_prepro - start_BELA_prepro, "sec")
+            df.to_pickle(illumpklf)
+        else:
+            df = pd.read_pickle(illumpklf)
+            print("simil-illumNG prediction read from ", illumpklf)
+        # print(df)
 
     if XovOpt.get("apply_topo"):
         # read and interpolate DEM

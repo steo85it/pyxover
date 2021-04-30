@@ -9,10 +9,15 @@ from config import XovOpt
 
 # PyTest requires parallel = False
 class MlaXoverTest(unittest.TestCase):
+
+    # # add simulation test for BELA data
+    # def test_sim_pipeline(self):
+
     def test_proc_pipeline(self):
 
         # update paths and check options
         XovOpt.set("basedir", 'data/')
+        XovOpt.set("instrument", 'MLA')
         XovOpt.check_consistency()
 
         # run full pipeline on a few MLA test data
@@ -47,7 +52,6 @@ class MlaXoverTest(unittest.TestCase):
 
         # perform test
         self.assertEqual(out, val)
-
 
 if __name__ == '__main__':
     unittest.main()

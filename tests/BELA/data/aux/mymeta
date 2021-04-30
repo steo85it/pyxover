@@ -1,0 +1,31 @@
+\begintext
+
+\begindata
+KERNELS_TO_LOAD = (
+
+\begintext
+generic kernels
+'/home/sberton2/Works/NASA/toolkit/data/de421.bsp',
+
+\begindata
+'/home/sberton2/Works/NASA/toolkit/data/spk/de432s.bsp',
+'/home/sberton2/Works/NASA/toolkit/data/naif0011.tls',
+'/home/sberton2/Works/NASA/toolkit/data/pck/pck00010_msgr_v23.tpc',
+
+\begintext
+MESSENGER kernels
+'/home/sberton2/Works/NASA/Mercury_tides/aux/Genovaetal_DE432_Mercury_05min.bsp',
+'/home/sberton2/Works/NASA/Mercury_tides/aux/MSGR_HGM008_INTGCB.bsp',
+'/home/sberton2/Works/NASA/toolkit/data/msgr_040803_150430_150430_od431sc_2.bsp',
+'/home/sberton2/Works/NASA/Mercury_tides/aux/msgr_20141126_20150430_recon011.bsp',
+'/home/sberton2/Works/NASA/Mercury_tides/aux/msgr_20130814_20141126_recon010.bsp',
+'/home/sberton2/Works/NASA/Mercury_tides/aux/msgr_20120426_20130814_recon009.bsp',
+'/home/sberton2/Works/NASA/Mercury_tides/aux/msgr_20110101_20120426_recon008.bsp',
+
+
+\begindata
+'/home/sberton2/Works/NASA/Mercury_tides/aux/bc_mpo_20260314_20280529_v03.bsp',
+'/home/sberton2/Works/NASA/Mercury_tides/aux/bc_sci_v06.tf',
+'/home/sberton2/Works/NASA/Mercury_tides/aux/bc_mpo_sc_20250327_20270612_v01.bc'
+	)
+\begintext

@@ -74,7 +74,10 @@ class xov:
         # map tracks to 0 and 1
         self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
 
-        self.msrm_sampl = 4
+        if XovOpt.get("instrument") == 'BELA':
+            self.msrm_sampl = 20
+        else:
+            self.msrm_sampl = 4
 
         # store the imposed perturbation (if closed loop simulation)
         self.pert_cloop = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop, list(self.tracks.keys())[1]:gtracks[1].pert_cloop}
@@ -168,7 +171,7 @@ class xov:
             self.xovers = pd.concat([x.xovers for x in xov_list], sort=True)
             # check for duplicate rows
             print("len xovers (pre duplicate search):", len(self.xovers))
-            self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'],errors='ignore').drop_duplicates()
+            self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'],errors='ignore').round(6).drop_duplicates()
                 # .reset_index().rename(
                 # columns={"index": "xOvID"})
             print("new len xovers (post duplicates):", len(self.xovers))
@@ -804,7 +807,7 @@ class xov:
             ymin = -2
         plt.ylim(ymin, ymax)
 
-        plt.savefig('tmp/img/intersect_' + tmp[0] + '_' + tmp[1] + '_' + param + '.png')
+        plt.savefig(XovOpt.get("tmpdir")+'intersect_' + tmp[0] + '_' + tmp[1] + '_' + param + '.png')
         plt.clf()
         plt.close()
         # exit()

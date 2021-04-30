@@ -3,6 +3,8 @@ from config import XovOpt
 
 sim_altdata = 0
 
+# print(XovOpt.get("instrument"))
+
 if XovOpt.get("instrument") == "pawstel":
     get_cov_only = True
 else:

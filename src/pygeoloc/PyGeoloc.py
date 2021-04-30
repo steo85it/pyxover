@@ -120,7 +120,7 @@ def main(args):
     dataset = indir_in
     data_pth += dataset
 
-    if XovOpt.get("SpInterp") == 0:
+    if XovOpt.get("SpInterp") in [0,2]:
         # load kernels
         if not XovOpt.get("local"):
             spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
@@ -139,7 +139,10 @@ def main(args):
 
     ##############################################
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
-    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    if XovOpt.get("instrument") == 'BELA':
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.,0.,1.]
+    else:
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
     # -------------------------------

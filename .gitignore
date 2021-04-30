@@ -143,3 +143,9 @@ venv.bak/
 .mypy_cache/
 /tests/MLA/data/tmp/
 /tests/MLA/data/out/*
+/tests/BELA/data/out/
+/tests/BELA/data/tmp/
+/tests/lidar_moon/out/
+/examples/BELA/data/out/
+/examples/BELA/data/tmp/
+/examples/BELA/data/raw/

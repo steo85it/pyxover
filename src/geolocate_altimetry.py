@@ -98,20 +98,24 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
 
     # compute SSB to bounce point vector
 
-    # get altimeter boresight in S/C frame
-    zpt = np.tile(vecopts['ALTIM_BORESIGHT'], np.size(scpos_tx, 0)).reshape(-1, 3)
-
-    # compute s/c frame to inertial rotation (using np.frompyfunc to vectorize pxform)
-    # ck+fk+sclk needed
-    if (XovOpt.get("SpInterp") > 0):
-        cmat = SpObj['MGRa'].evalCmat(et_tx)
+    if XovOpt.get("instrument") == 'BELA':
+        # project tof along radial dir between s/c and planet (=nadir pointing)
+        zpt = (-scpos_tx+plapos_bc)/(np.linalg.norm(scpos_tx-plapos_bc,axis=1)[:, np.newaxis])
     else:
-        pxform_array = np.frompyfunc(spice.pxform, 3, 1)
-        cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)
+        # get altimeter boresight in S/C frame
+        zpt = np.tile(XovOpt.get("vecopts")['ALTIM_BORESIGHT'], np.size(scpos_tx, 0)).reshape(-1, 3)
 
-    # rotate boresight dir to inertial frame
-    zpt = [np.dot(cmat[i], zpt[i]) for i in range(0, np.size(zpt, 0))]
-    # print(np.array(vmbf).reshape(-1,3))
+        # compute s/c frame to inertial rotation (using np.frompyfunc to vectorize pxform)
+        # ck+fk+sclk needed
+        if (XovOpt.get("SpInterp") > 0):
+            cmat = SpObj['MGRa'].evalCmat(et_tx)
+        else:
+            pxform_array = np.frompyfunc(spice.pxform, 3, 1)
+            cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)
+
+        # rotate boresight dir to inertial frame
+        zpt = [np.dot(cmat[i], zpt[i]) for i in range(0, np.size(zpt, 0))]
+        # print(np.array(vmbf).reshape(-1,3))
 
     if ([tmp_pertPar[k] for k in ['dRl', 'dPt']] != [0, 0]):
         # Apply roll and pitch offsets to zpt (converted to radians)

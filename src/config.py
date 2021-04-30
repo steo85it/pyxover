@@ -13,7 +13,8 @@ class XovOpt:
         "partials": True,
 
         "body" : 'MERCURY', #
-        "instrument" : "pawstel", #"MLA", #
+        "instrument" : "BELA", # "MLA", # "pawstel", #
+        "selected_hemisphere" : 'N',
 
         # dirs
         "basedir": 'MLA/data/',

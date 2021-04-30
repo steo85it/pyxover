@@ -71,7 +71,16 @@ def launch_xov(
     comb = args[1]
     misycmb = args[2]
     par = args[3]
-    mladata = args[4]
+    if XovOpt.get("instrument") == 'BELA':
+        mladata_pkl_fn = args[4]
+        with open(mladata_pkl_fn, 'rb') as handle:
+            #start_unpickle = time.time()
+            import pickle
+            mladata = pickle.load(handle)
+            #end_unpickle = time.time()
+            #print("mladata unpickled after",end_unpickle-start_unpickle,"sec")
+    else:
+        mladata = args[4]
     outdir = args[5]
 
     if XovOpt.get("new_xov"):  # and track_id=='1301232350':
@@ -224,7 +233,10 @@ def main(args):
 
     # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
-    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    if XovOpt.get("instrument") == 'BELA':
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.,0.,1.]
+    else:
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
     # print(vecopts['ALTIM_BORESIGHT'])
@@ -236,12 +248,20 @@ def main(args):
     par = int(cmb_y_in)
 
     if XovOpt.get("monthly_sets"):
-      misy = ['11', '12', '13', '14', '15']
-      months = np.arange(1,13,1)
-      misy = [x+f'{y:02}' for x in misy for y in months]
-      misy = ['0801','0810']+misy[2:-8]
+        if XovOpt.get("instrument") == 'BELA':
+            misy = ['26','27']
+        else:
+            misy = ['11', '12', '13', '14', '15']
+
+        months = np.arange(1,13,1)
+        misy = [x+f'{y:02}' for x in misy for y in months]
+        if instr != 'BELA':
+            misy = ['0801','0810']+misy[2:-8]
     else:
-      misy = ['08','11', '12', '13', '14', '15']
+        if XovOpt.get("instrument") == 'BELA':
+            misy = ['26','27'] #+str("{:02}".format(i)) for i in range(1,13,1)]
+        else:
+            misy = ['08','11', '12', '13', '14', '15']
 
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
     # print(misycmb)
@@ -253,6 +273,13 @@ def main(args):
     startInit = time.time()
 
     if iter_in == 0 and XovOpt.get("compute_input_xov"):
+
+        # check if input_xov already exists, if yes don't recreate it (should be conditional...)
+        input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(misycmb[par][0]) + '_' + str(misycmb[par][1]) + '.pkl.gz'
+        if os.path.exists(input_xov_path) and XovOpt.get("instrument") == 'BELA':
+            print("input xov file already exists in", input_xov_path)
+            print("Rerun without computing this cumbersome input, be smart!")
+            exit(0)
 
         # -------------------------------
         # File reading and ground-tracks computation
@@ -322,6 +349,17 @@ def main(args):
              'X_stgprj', 'Y_stgprj']
         for track_id in  set(np.ravel(comb)):
             track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+
+            # resurrect as soon as got also south part of obs track
+            #if instr == 'BELA':
+            #     print(track_obj.ladata_df['LAT'].max(axis=0))
+            #     print(track_obj.ladata_df['LAT'].min(axis=0))
+            #     exit()
+            #
+            #     # print("presel",len(track_obj.ladata_df))
+            #     mladata[track_id] =track_obj.ladata_df.loc[track_obj.ladata_df['LAT']>=0,cols]
+            #     # print("postsel",len(mladata[track_id]))
+            # else:
             mladata[track_id] =track_obj.ladata_df.loc[:,cols]
         # print(len(mladata))
         # exit()
@@ -341,8 +379,38 @@ def main(args):
 
         startXov2 = time.time()
 
-        args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
+        print("Memory of mladata (Mb):",sum([mladata[x].memory_usage(deep=True).sum() for x in mladata])/1.e6)
+        # mladata_1 = dict(list(mladata.items())[:len(mladata) // 3])
+        # mladata_2 = dict(list(mladata.items())[len(mladata) // 3:2*(len(mladata) // 3)])
+        # mladata_3 = dict(list(mladata.items())[2*(len(mladata) // 3):])
+        #
+        # print(mladata_1.keys())
+        # print(comb)
+        # # mask = np.all(np.any(comb[..., None] == np.array(list(mladata_1.keys()))[None, None], axis=1), axis=1)
+        # # print(mask)
+        # # print(comb[mask])
+        # mask = np.isin(comb, list(mladata_1.keys()))
+        # print(mask)
+        # print(np.all(mask,axis=1))
+        # comb_1 = comb[np.all(mask,axis=1),:]
+        # exit()
+        if XovOpt.get("instrument") =='BELA':
+            os.makedirs(XovOpt.get("tmpdir"), exist_ok=True)
+            mladata_pkl_fn = XovOpt.get("tmpdir") + 'mladata_tmp_'+cmb_y_in+'.pkl'
+            with open(mladata_pkl_fn, 'wb') as handle:
+                import pickle
+                pickle.dump(mladata, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata_pkl_fn, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
+        else:
+            # args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in) for fil in allFilesA)
+            args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
         print("Looking for (potential) xovers within combinations of",len(allFilesA),"tracks (A) with",len(allFilesB),"tracks (B)...")
+
+        # print(XovOpt.get("outdir")+indir_in[:-7]+'xov/tmp/xovin_'+misycmb[par][0]+'_'+misycmb[par][1]+'.pkl.gz')
+        if XovOpt.get("instrument") == 'BELA' and \
+                os.path.exists(XovOpt.get("outdir")+indir_in[:-7]+'xov/tmp/xovin_'+misycmb[par][0]+'_'+misycmb[par][1]+'.pkl.gz'):
+            print("Xovin exists. Exit.")
+            exit()
 
         # loop over all gtracks
         # parallel = 1
@@ -393,6 +461,8 @@ def main(args):
                     result.append(launch_xov(arg))
             # print(result)
 
+        # remove None from list
+        result = [x for x in result if x is not None]
         if len(result)>0:
             if XovOpt.get("new_algo"):
                 rough_xov = pd.concat(result).reset_index()

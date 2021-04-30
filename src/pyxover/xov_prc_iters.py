@@ -61,11 +61,22 @@ def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
         else:
             input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl.gz'
             if not XovOpt.get("compute_input_xov"):
-                input_xov = pd.read_pickle(input_xov_path)
+                if XovOpt.get("instrument") == 'BELA' and not XovOpt.get("monthly_sets"):
+                    input_xov_path = glob.glob(
+                        XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(cmb[0]) + '??_' + str(cmb[1]) + '??.pkl.gz')
+                    input_xov = pd.concat([pd.read_pickle(x) for x in input_xov_path]).reset_index()
+                else:
+                    input_xov = pd.read_pickle(input_xov_path)
                 print("Input xovs read from", input_xov_path, ". Done!")
             else:
                 # save to file (just in case...)
                 input_xov.to_pickle(input_xov_path)
+                if XovOpt.get("instrument") == 'BELA' and XovOpt.get("monthly_sets"):
+                    XovOpt.set("monthly_sets", False) # this should be enough
+                    # print("Sorry, you'll have to switch prOpt.monthly_sets to False and rerun when done! Will improve this...")
+                    # exit()
+
+            # reindex and keep only useful columns
             old_xovs = input_xov[useful_columns]
             old_xovs = old_xovs.drop('xOvID', axis=1).rename_axis('xOvID').reset_index()
 

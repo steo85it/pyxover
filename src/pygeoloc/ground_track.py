@@ -7,6 +7,7 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 08-Feb-2019
+import logging
 import os
 import pickle
 import re
@@ -89,8 +90,11 @@ class gtrack:
             self.t0_orb = self.ladata_df.ET_TX.iloc[0]
             # geolocate observations in orbit
             self.geoloc()
-            # project observations
-            self.project()
+            # project observations (polar stereo, choose pole N/S depending on data selection)
+            if XovOpt.get("selected_hemisphere") == 'S':
+                self.project(lat0=-90)
+            else:
+                self.project(lat0=90)
             # update df
 
             self.ladata_df['dt'] = self.ladata_df.ET_TX - self.t0_orb
@@ -121,7 +125,11 @@ class gtrack:
                 # create interp for track
                 self.interpolate()
             elif XovOpt.get("SpInterp") > 0:
-                self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
+                try:
+                    self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
+                except:
+                    print("No SpObj associated with track")
+                    self.ladata_df = None
         else:
             print('No data selected for orbit ' + str(self.name))
         # print(self.MGRx.tck)
@@ -206,7 +214,7 @@ class gtrack:
 
         # only select the required data (column)
         self.df_input = df.copy()
-        if (XovOpt.get("debug")):
+        if (XovOpt.get("debug")) or (XovOpt.get("instrument") == "BELA"):
             df = df.loc[:,
                  ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
         else:
@@ -218,6 +226,17 @@ class gtrack:
 
         # remove bad data (chn > 4)
         df = df[df['chn'] < 5]
+
+        # select only one hemisphere
+        if XovOpt.get("instrument") == 'BELA':
+            if XovOpt.get("selected_hemisphere") == 'N':
+                df = df[df['geoc_lat']>=0]
+            elif XovOpt.get("selected_hemisphere") == 'S':
+                df = df[df['geoc_lat']<0]
+
+            if not XovOpt.get("debug"):
+                df.drop(['geoc_long', 'geoc_lat', 'altitude'],axis=1,inplace=True)
+
         # df = df[df['frm'] == 1]
         df.drop('frm', axis=1, inplace=True)
         # to compare to Mike's selection (chn >= 5 only ... )
@@ -289,7 +308,11 @@ class gtrack:
         # print("Start pxform MGR")
         # attitude
         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
-        cmat = pxform_array('MSGR_SPACECRAFT', self.vecopts['INERTIALFRAME'], t_spc)
+        if XovOpt.get("instrument") == 'BELA':
+            pass
+            # cmat = pxform_array('MPO', self.vecopts['INERTIALFRAME'], t_spc)
+        else:
+            cmat = pxform_array('MSGR_SPACECRAFT', self.vecopts['INERTIALFRAME'], t_spc)
         # m2q_array = np.frompyfunc(spice.m2q, 1, 1)
         # quat = m2q_array(cmat)
         # quat = np.reshape(np.concatenate(quat), (-1, 4))
@@ -298,7 +321,8 @@ class gtrack:
 
         self.MGRx.interp([xv_spc[:, i] for i in range(0, 3)], t_spc)
         self.MGRv.interp([xv_spc[:, i] for i in range(3, 6)], t_spc)
-        self.MGRa.interpCmat(cmat, t_spc)
+        if XovOpt.get("instrument") != 'BELA':
+            self.MGRa.interpCmat(cmat, t_spc)
 
         # print("Start spkezr MER")
 
@@ -338,6 +362,7 @@ class gtrack:
         if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir")):
             os.mkdir(XovOpt.get("auxdir") + XovOpt.get("spauxdir"))
         pickleIO.save(self.SpObj, XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
+        logging.info(f"Probe trajectory saved to {XovOpt.get('auxdir') + XovOpt.get('spauxdir') + 'spaux_' + self.name + '.pkl'}")
 
         endSpInterp = time.time()
         if (XovOpt.get("debug")):
