@@ -13,6 +13,7 @@ Software suite for the analysis of laser altimetry data: from standard range dat
 
 This is scientific code in ongoing development: using it might be tricky, reading it can cause 
  headaches and results need to be thoroughly checked and taken with an healthy degree of mistrust!
+A major clean-up and merging with concurrent local versions is pending, waiting for funding approval.
 Use it at your own risk and responsibility. 
  ## Installation ##
 
