@@ -49,6 +49,7 @@ class sim_gtrack(gtrack):
         self.orbID = orbID
         self.name = str(orbID)
         self.outdir = None
+        self.slewdir = None
         # self.ran_noise = None
 
     def setup(self, df):
@@ -253,7 +254,53 @@ class sim_gtrack(gtrack):
             else:
                 print("Using grdtrack")
 
-            if gmt and XovOpt.get("instrument") != 'BELA':
+            if gmt and XovOpt.get("instrument") == 'LOLA':
+                gmt_in = 'gmt_' + self.name + '.in'
+                if os.path.exists('tmp/' + gmt_in):
+                    os.remove('tmp/' + gmt_in)
+
+                np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp, self.ladata_df.seqid.values)))
+
+                if local == 0:
+                    if instr == 'LOLA':
+                        if local_dem:
+                            dem = self.slewdir + "/SLDEM2015_512PPD.GRD"
+                        else:
+                            dem = "/att/projrepo/PGDA/LOLA/data/LOLA_GDR/CYLINDRICAL/raw/LDEM_4.GRD"
+                    else:
+                        dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+                #             r_dem = subprocess.check_output(
+                #                 ['grdtrack', gmt_in,
+                #                  '-G' + dem],
+                #                 universal_newlines=True, cwd='tmp')
+                #             r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+                # # np.savetxt('gmt_'+self.name+'.out', r_dem)
+
+                else:
+                    dem = auxdir + 'SLDEM2015_512PPD.GRD'
+                    # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
+
+                # print(['grdtrack', gmt_in, '-G' + dem,'-R0.0/360.0/-50.0/50.0'])
+                if local_dem:
+                    r_dem = subprocess.check_output(
+                        ['grdtrack', gmt_in, '-G' + dem],
+                        universal_newlines=True, cwd='tmp')
+                else:  # replace -RLON0/LONMAX/LAT0/LATMAX with appropriate bbox
+                    r_dem = subprocess.check_output(
+                        ['grdtrack', gmt_in, '-G' + dem, '-R0.0/360.0/-50.0/50.0'],
+                        universal_newlines=True, cwd='tmp')
+                if len(r_dem) == 0:
+                    print("Weird empty grdtrack output, please check")
+                    exit()
+
+                # r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+                r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 4)[:, 2:]
+
+                df_ = pd.DataFrame(r_dem, columns=['seqid', 'elevation']).set_index('seqid')
+                new_index = self.ladata_df.seqid.values
+                r_dem = np.transpose(df_.reindex(new_index).fillna(0).values).flatten()
+
+            elif gmt and XovOpt.get("instrument") != 'BELA':
                 gmt_in = 'gmt_' + self.name + '.in'
                 if os.path.exists('tmp/' + gmt_in):
                     os.remove('tmp/' + gmt_in)
@@ -424,6 +471,10 @@ def prepro_BELA_sim(epo_in):
 def sim_track(args):
     track, df, i, outdir_ = args
     # print(track.name)
+
+    if XovOpt.get("instrument") == "LOLA":
+        track.slewdir = auxdir + outdir_.split('/')[-3]
+
     if os.path.isfile(outdir_ + 'MLASIMRDR' + track.name + '.TAB') == False:
         track.setup(df[df['orbID'] == i])
         track.rdr_df.to_csv(outdir_ + 'MLASIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
@@ -438,6 +489,9 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     res_in = list(arg)[1]
     dirnam_in = list(arg)[2]
     epos_in = list(arg)[3]
+
+    if XovOpt.get("instrument") == "LOLA":
+        path_illumng = '../aux/'+epos_in+'/slewcheck_'+str(ampl_in)+'/'
 
     print('dirnam_in', dirnam_in)
     print('epos_in', epos_in)
@@ -471,7 +525,10 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
     # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
-    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+    if XovOpt.get("instrument") == 'LOLA':
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(glob.glob(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')[0])
+    else:
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
     # generate list of epochs

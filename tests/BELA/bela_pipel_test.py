@@ -9,7 +9,11 @@ from pyxover import PyXover
 from config import XovOpt
 
 # PyTest requires parallel = False
-class MlaXoverTest(unittest.TestCase):
+class BelaXoverTest(unittest.TestCase):
+
+    # # add simulation test for BELA data
+    # def test_sim_pipeline(self):
+
     def test_proc_pipeline(self):
 
         # update paths and check options

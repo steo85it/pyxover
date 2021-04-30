@@ -13,7 +13,7 @@ class XovOpt:
         "partials": True,
 
         "body" : 'MERCURY', #
-        "instrument" : "BELA", # "MLA", # "pawstel", #
+        "instrument" : "BELA", # "pawstel", #"MLA", #
         "selected_hemisphere" : 'N',
 
         # dirs
@@ -22,6 +22,7 @@ class XovOpt:
         "outdir": f'out/',
         "auxdir": f'aux/',
         "tmpdir": f'tmp/',
+        "inpdir": f'',
         "spauxdir": 'KX_spk/',  # 'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
 
         # pyxover options

@@ -1,6 +1,8 @@
 from astropy import units as u
 import numpy as np
 
+from config import XovOpt
+
 
 def sind(x):
     return np.sin(np.deg2rad(x))
@@ -55,7 +57,11 @@ def get_rotmat_xyz_2_rsw(r_vec, v_vec, vec_in):
     # print("rot_mat xyz2rsw", rot_mat, "det", np.linalg.det(rot_mat))
     # print("vec_out xyz2rsw", np.einsum('ijk,ik->ij', rot_mat, vec_in))
     # print("vec_out_norm xyz2rsw", np.linalg.norm(vec_in, axis=1))
-
+    # if XovOpt.get("instrument") == "LOLA":
+    #     # TODO check if this makes sense
+    #     # multiply along the right axes (good luck!^^)
+    #     return np.einsum('ijk,ij->ik', rot_mat, vec_in)
+    # else:
     return rot_mat
 
 

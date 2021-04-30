@@ -46,6 +46,7 @@ class gtrack:
         self.MGRa = None
         self.MGRv = None
         self.MGRx = None
+        self.SUNx = None
         self.param = None
         # Set-up empty offset arrays at init (sim only)
         self.pertPar = {'dA': 0.,
@@ -308,9 +309,12 @@ class gtrack:
         # print("Start pxform MGR")
         # attitude
         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
+        # TODO update to get instrument from vecopts
         if XovOpt.get("instrument") == 'BELA':
             pass
             # cmat = pxform_array('MPO', self.vecopts['INERTIALFRAME'], t_spc)
+        elif XovOpt.get("instrument") == "LOLA":
+            cmat = pxform_array('LRO_SC_BUS', self.vecopts['INERTIALFRAME'], t_spc)
         else:
             cmat = pxform_array('MSGR_SPACECRAFT', self.vecopts['INERTIALFRAME'], t_spc)
         # m2q_array = np.frompyfunc(spice.m2q, 1, 1)
