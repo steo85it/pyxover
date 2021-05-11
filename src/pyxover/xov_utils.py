@@ -23,6 +23,7 @@ from statsmodels.tools.eval_measures import rmse
 # from AccumXov import remove_max_dist
 # from accum_utils import analyze_dist_vs_dR
 # from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("vecopts"), XovOpt.get("local"), XovOpt.get("debug"), XovOpt.get("sol4_orbpar"), XovOpt.get("parOrb"), XovOpt.get("parGlo")
+from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
 from src.xovutil.project_coord import project_stereographic
@@ -232,7 +233,7 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
 
 def clean_xov(xov, par_list=[]):
     from src.accumxov.accum_utils import analyze_dist_vs_dR
-    from src.accumxov.accum_opt import remove_max_dist
+    # from src.accumxov.accum_opt import remove_max_dist
 
     # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
     # plus remove outliers with median method
@@ -250,7 +251,7 @@ def clean_xov(xov, par_list=[]):
 
         analyze_dist_vs_dR(xov)
 
-        if remove_max_dist:
+        if AccOpt.get("remove_max_dist"):
             print(len(xov.xovers[xov.xovers.dist_max < 0.4]),
               'xovers removed by dist from obs > 0.4km out of ', len(xov.xovers))
             xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]

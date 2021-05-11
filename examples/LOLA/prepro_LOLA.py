@@ -13,19 +13,21 @@ import numpy as np
 import sys
 import time
 
-from prOpt import local, instr, inpdir
+# from prOpt import local, instr, inpdir
+from config import XovOpt
+
 
 def prepro_LOLA(args, borefil, grdfil):
 
-    print(inpdir+args)
-    if local:
+    print(XovOpt.get("inpdir")+args)
+    if XovOpt.get("local"):
        basedir = 'data/' #'/home/sberton2/Works/NASA/LOLA/aux/'+args+'/'
-       indir = inpdir+args+'/'
+       indir = XovOpt.get("inpdir")+args+'/'
        print(basedir+'_boresights_LOLA_ch12345_'+borefil+'_laser2_fov.inc')
        bores = np.loadtxt(basedir+'_boresights_LOLA_ch12345_'+borefil+'_laser2_fov.inc')
        bores = np.vsplit(bores, np.shape(bores)[0])
     else:
-       indir = inpdir+args+'/'
+       indir = XovOpt.get("inpdir")+args+'/'
        basedir = '/att/nobackup/sberton2/LOLA/aux/'+args+'/'
        bores = np.loadtxt('/att/nobackup/sberton2/LOLA/aux/_boresights_LOLA_ch12345_'+borefil+'_laser2_fov.inc')
        bores = np.vsplit(bores, np.shape(bores)[0])
@@ -40,7 +42,7 @@ def prepro_LOLA(args, borefil, grdfil):
     posz = np.loadtxt(indir+'boresight_position_slewcheck.z')
     posz = np.hsplit(posz, np.shape(posz)[1])
 
-    if local:
+    if XovOpt.get("local"):
         outdir0_ = f'{basedir}out/{args}/slewcheck_'
     else:
         outdir0_ = basedir+'slewcheck_'
@@ -63,7 +65,7 @@ def prepro_LOLA(args, borefil, grdfil):
                    outdir_+'/boresight_time_slewcheck.xyzd')
 
     # copy selected grid to experiment folder
-    if local:
+    if XovOpt.get("local"):
         os.symlink(indir+'../'+grdfil+'_SLDEM2015_512PPD.GRD',
                    basedir+"out/args/SLDEM2015_512PPD.GRD")
     else:

@@ -411,16 +411,16 @@ def prepro_ilmNG(illumNGf):
 
 def prepro_BELA_sim(epo_in):
 
-    scpv, lt = spice.spkezr(vecopts['SCNAME'],
+    scpv, lt = spice.spkezr(XovOpt.get("vecopts")['SCNAME'],
                                epo_in,
-                               vecopts['PLANETFRAME'],
+                               XovOpt.get("vecopts")['PLANETFRAME'],
                                'LT',
-                               vecopts['PLANETNAME'])
+                               XovOpt.get("vecopts")['PLANETNAME'])
     scpos = np.array(scpv)[:,:3]
-    range = np.linalg.norm(scpos,axis=1) - vecopts['PLANETRADIUS']
+    range = np.linalg.norm(scpos,axis=1) - XovOpt.get("vecopts")['PLANETRADIUS']
 
     scplavec = scpos/np.linalg.norm(scpos,axis=1)[:,None]
-    approx_bounce_point = scplavec*vecopts['PLANETRADIUS'] #range[:,None]
+    approx_bounce_point = scplavec*XovOpt.get("vecopts")['PLANETRADIUS'] #range[:,None]
 
     df_ = pd.DataFrame(approx_bounce_point,columns=['x','y','z'])
     df_['epo_tx'] = epo_in
@@ -496,27 +496,28 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     print('dirnam_in', dirnam_in)
     print('epos_in', epos_in)
 
-    if XovOpt.get("local") == 0:
-        data_pth = '/att/nobackup/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-        dataset = ''  # 'small_test/' #'test1/' #'1301/' #
-        data_pth += dataset
+    # if not XovOpt.get("local"):
+        # data_pth = '/att/nobackup/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+        # dataset = ''  # 'small_test/' #'test1/' #'1301/' #
+        # data_pth += dataset
         # TODO Avoid/remove explicit paths!!!
         # load kernels
-        if XovOpt.get("instrument") == "BELA":
-            spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'
-                         ,
-                         '/att/nobackup/sberton2/MLA/aux/spk/bc_sci_v06.tf',
-                         '/att/nobackup/sberton2/MLA/aux/spk/bc_mpo_mlt_50037_20260314_20280529_v03.bsp']
-            )  # 'aux/mymeta')
-        else:
-            spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')
+        # if XovOpt.get("instrument") == "BELA":
+        #     spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'
+        #                  ,
+        #                  '/att/nobackup/sberton2/MLA/aux/spk/bc_sci_v06.tf',
+        #                  '/att/nobackup/sberton2/MLA/aux/spk/bc_mpo_mlt_50037_20260314_20280529_v03.bsp']
+        #     )  # 'aux/mymeta')
+        # else:
+        #     spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')
 
-    else:
+    # else:
         # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
         # dataset = "test/"  # ''  # 'small_test/' #'1301/' #
         # data_pth += dataset
-        # load kernels
-        spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
+    # load kernels
+    # TODO adapt for pgda w/o mentioning paths
+    spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
 
     if XovOpt.get("parallel"):
         # set ncores
@@ -534,6 +535,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # generate list of epochs
     if XovOpt.get("new_illumNG") and XovOpt.get("instrument") != "BELA":
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
+        data_pth = XovOpt.get("rawdir")
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
         print("path+files")
         print(data_pth, epos_in)
@@ -562,7 +564,12 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         days_in_month = monthrange(int('20'+epos_in[:2]), int(epos_in[2:]))
 
         d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),00,00,00)
-        d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
+
+        # if test, avoid computing tons of files
+        if XovOpt.get("unittest"):
+            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),5,00,00) # for testing
+        else:
+            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
 
         dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
 
@@ -573,26 +580,26 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1)
 
     # pass to illumNG
-    if instr != 'BELA':
-        if local:
-            if new_illumNG:
-                np.savetxt(tmpdir+"epo_mla_" + epos_in + ".in", epo_tx, fmt="%10.2f")
+    if XovOpt.get("instrument") != 'BELA':
+        if XovOpt.get("local"):
+            if XovOpt.get("new_illumNG"):
+                np.savetxt(XovOpt.get("tmpdir")+"epo_mla_" + epos_in + ".in", epo_tx, fmt="%10.2f")
                 print("illumNG call")
                 if not os.path.exists("illumNG/"):
                     print('*** create and copy required files to ./illumNG')
                     exit()
 
-                shutil.copy(tmpdir+"epo_mla_" + epos_in + ".in", '../_MLA_Stefano/epo.in')
+                shutil.copy(XovOpt.get("tmpdir")+"epo_mla_" + epos_in + ".in", '../_MLA_Stefano/epo.in')
                 illumNG_call = subprocess.call(
                     ['sbatch', 'doslurmEM', 'MLA_raytraces.cfg'],
                     universal_newlines=True, cwd="../_MLA_Stefano/")  # illumNG/")
                 for f in glob.glob("../_MLA_Stefano/bore*"):
-                    shutil.move(f, auxdir + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
-            path = auxdir + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
+                    shutil.move(f, XovOpt.get("auxdir") + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
+            path = XovOpt.get("auxdir") + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
             print('illumng dir', path)
             illumNGf = glob.glob(path + "/bore*")
         else:
-            if new_illumNG:
+            if XovOpt.get("new_illumNG"):
                 np.savetxt("tmp/epo_mla_" + epos_in + ".in", epo_in, fmt="%10.5f")
                 print("illumNG call")
                 if not os.path.exists("illumNG/"):
@@ -615,9 +622,9 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         print('illumNGf', illumNGf)
 
     else: # if BELA
-        illumpklf = tmpdir+'bela_illumNG_'+epos_in+'.pkl'
+        illumpklf = XovOpt.get("tmpdir")+'bela_illumNG_'+epos_in+'.pkl'
 
-        if new_illumNG:
+        if XovOpt.get("new_illumNG"):
             start_BELA_prepro = time.time()
             df = prepro_BELA_sim(epo_in=epo_tx)
             end_BELA_prepro = time.time()

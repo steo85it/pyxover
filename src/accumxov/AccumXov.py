@@ -12,12 +12,14 @@ import itertools
 
 import seaborn as sns
 
+# from accumxov.accum_opt import downsize, sampling, clean_part, use_advanced_weighting
+from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
-from src.accumxov.accum_opt import remove_max_dist, remove_3sigma_median, remove_dR200, downsize, clean_part, \
-    huber_threshold, \
-    distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling, compute_vce, \
-    use_advanced_weighting, get_cov_only
+# from src.accumxov.accum_opt import remove_max_dist, remove_3sigma_median, remove_dR200, downsize, clean_part, \
+#     huber_threshold, \
+#     distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling, compute_vce, \
+#     use_advanced_weighting, get_cov_only
 from src.accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
     analyze_sol, subsample_xovers, load_previous_iter_if_any
 from src.xovutil.iterables import mergsum
@@ -197,12 +199,12 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
 
     # screening of partial derivatives (downweights data)
     nglbpars = len([i for i in XovOpt.get("sol4_glo") if i])
-    if nglbpars>0 and clean_part:
+    if nglbpars>0 and AccOpt.get("clean_part"):
         xovi_amat.b, spA_sol4 = clean_partials(xovi_amat.b, spA_sol4, threshold = 1.e6, glbpars=XovOpt.get("sol4_glo"))
         # pass
 
     # WEIGHTING TODO refactor to separate method
-    if use_advanced_weighting:
+    if AccOpt.get("use_advanced_weighting"):
 
         # after convergence of residuals RMS at 1%, fix weights and bring parameters to convergence
         if previous_iter != None and previous_iter.converged:
@@ -228,39 +230,40 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             # obs_weights = previous_iter.weights
         else:
             # compute huber weights (1 if x<huber_threshold, (huber_threshold/abs(dR))**2 if abs(dR)>huber_threshold)
-            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 tmp = xovi_amat.xov.xovers.dR.abs().values
-                huber_weights = np.where(tmp > huber_threshold, (huber_threshold / tmp) ** 1, 1.)
+                huber_weights = np.where(tmp > AccOpt.get("huber_threshold"), (AccOpt.get("huber_threshold") / tmp) ** 1, 1.)
 
-            if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if XovOpt.get("debug") and not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 print("Apply Huber weights (resid)")
-                print(tmp[tmp > huber_threshold])
+                print(tmp[tmp > AccOpt.get("huber_threshold")])
                 print(np.sort(huber_weights[huber_weights<1.]),np.mean(huber_weights))
 
             # same but w.r.t. distance
-            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 tmp = xovi_amat.xov.xovers.dist_max.values
-                huber_weights_dist = np.where(tmp > distmax_threshold, (distmax_threshold / tmp) ** 2, 1.)
+                huber_weights_dist = np.where(tmp > AccOpt.get("distmax_threshold"), (AccOpt.get("distmax_threshold") / tmp) ** 2, 1.)
 
-            if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if XovOpt.get("debug") and not AccOpt.get("remove_max_dist") and \
+                    not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 print("Apply Huber weights (dist)")
-                print(tmp[tmp > distmax_threshold])
+                print(tmp[tmp > AccOpt.get("distmax_threshold")])
                 print(np.sort(huber_weights_dist[huber_weights_dist<1.]),np.mean(huber_weights_dist))
 
             # same but w.r.t. offnadir
-            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 tmp = np.nan_to_num(xovi_amat.xov.xovers.filter(regex='offnad').values)
                 tmp = np.max(np.abs(tmp),axis=1)
-                huber_weights_offnad = np.where(tmp > offnad_threshold, (offnad_threshold / tmp) ** 1, 1.)
+                huber_weights_offnad = np.where(tmp > AccOpt.get("offnad_threshold"), (AccOpt.get("offnad_threshold") / tmp) ** 1, 1.)
 
-            if XovOpt.get("debug") and not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if XovOpt.get("debug") and not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 print("Apply Huber weights (offnad)")
-                print(tmp[tmp > offnad_threshold])
+                print(tmp[tmp > AccOpt.get("offnad_threshold")])
                 print(len(huber_weights_offnad[huber_weights_offnad<1.]),len(huber_weights_offnad))
                 print(np.sort(huber_weights_offnad[huber_weights_offnad<1.]),np.mean(huber_weights_offnad))
 
             # combine weights
-            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 tmp=huber_weights*huber_weights_dist*huber_weights_offnad
                 huber_penal = tmp
                 # should use weights or measurement error threshold, but using huber-threshold-like criteria for now
@@ -268,7 +271,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
                 xovi_amat.xov.xovers['huber'] = huber_penal
 
             # get quality of tracks and apply huber weights
-            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 tmp = xovi_amat.xov.xovers.copy()[['xOvID','LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]#.astype('float16')
                 if XovOpt.get("debug"):
                     print("pre xovcov types",tmp.dtypes)
@@ -298,7 +301,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
 
         #######
                 # additional for h2 tests
-                if h2_limit_on:
+                if AccOpt.get("h2_limit_on"):
                     # cut based on residuals
                     limit_h2 = 20.
                     tmp = xovi_amat.xov.xovers.dR.abs().values
@@ -330,7 +333,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             xovi_amat.xov.xovers['interp_weight'] = val
 
             # apply huber weights
-            if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+            if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
                 val *= huber_penal
                 # print("after huber", np.sort(val), np.mean(val))
                 # val *= huber_weights_dist
@@ -424,11 +427,11 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         # plt.savefig(tmpdir+'b_and_A.png')
 
     # analysis of residuals vs h2 partials
-    if h2_limit_on and XovOpt.get("debug") and XovOpt.get("local"):
+    if AccOpt.get("h2_limit_on") and XovOpt.get("debug") and XovOpt.get("local"):
         print(xovi_amat.xov.xovers.columns)
         tmp = xovi_amat.xov.xovers[['dR','dR/dh2','LON','LAT','weights']]
         # print("truc0",tmp['weights'].abs().min(),tmp['weights'].abs().max())
-        tmp = tmp.loc[(tmp.dR.abs() < limit_h2) & (tmp['dR/dh2'].abs() > 0.3) & (tmp['weights'].abs() > 0.5 * sigma_0)]
+        tmp = tmp.loc[(tmp.dR.abs() < limit_h2) & (tmp['dR/dh2'].abs() > 0.3) & (tmp['weights'].abs() > 0.5 * AccOpt.get("sigma_0"))]
         # print("truc",tmp)
 
         w = np.abs(tmp[['dR']].abs().values)
@@ -483,7 +486,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             tmp = np.abs(par)
             n, bins, patches = plt.hist(tmp, bins=num_bins, density=False,
                                         alpha=0.8,label=parnam[idx],weights=obs_weights.diagonal())
-        plt.ylim(bottom=sigma_0)
+        plt.ylim(bottom=AccOpt.get("sigma_0"))
         plt.semilogy()
         plt.legend()
         plt.ylabel('# of obs')
@@ -609,7 +612,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         parindex = np.array([[idx,float(constrain[1])] for idx,p in enumerate(sol4_pars) if regex.match(p)])
 
         # Constrain tightly to 0 those parameters with few observations (or with few GOOD observations)
-        if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+        if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
             # TODO should use weights or measurement error threshold, but using huber-threshold-like criteria for now
             # TODO to mimic what I was doing without weights
             # nobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.xov.xovers.huber > 0.5][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
@@ -645,7 +648,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
         row = col = parindex[:,0]
 
         csr.append(
-                csr_matrix((np.power(sigma_0 / val, 2), (row, col)), dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
+                csr_matrix((np.power(AccOpt.get("sigma_0") / val, 2), (row, col)), dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
     # combine all constraints
     penalty_matrix = sum(csr)
     # print(penalty_matrix)
@@ -682,11 +685,11 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
                     rowcols_nodiag = np.array(list(set(itertools.permutations(parindex[:,0], 2))))
                     rowcols_diag = np.array(list([(x,x) for x in parindex[:,0]]))
                     vals = - 1/len(parindex[:,0]) * np.ones(len(parindex[:,0])*len(parindex[:,0])-len(parindex[:,0]))
-                    csr_avg.append(csr_matrix((vals*np.power(sigma_0 / constrain[1], 2),
+                    csr_avg.append(csr_matrix((vals*np.power(AccOpt.get("sigma_0") / constrain[1], 2),
                                                (rowcols_nodiag[:,0],rowcols_nodiag[:,1])),
                                               dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
                     vals = (1 - 1/len(parindex[:,0])) * np.ones(len(parindex[:,0]))
-                    csr_avg.append(csr_matrix((vals*np.power(sigma_0 / constrain[1], 2),
+                    csr_avg.append(csr_matrix((vals*np.power(AccOpt.get("sigma_0") / constrain[1], 2),
                                                (rowcols_diag[:,0],rowcols_diag[:,1])),
                                               dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
         # print(sum(csr_avg))
@@ -702,7 +705,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
     # store cleaned and weighted spA
     xovi_amat.spA_weight_clean = spA_sol4
 
-    if not remove_max_dist and not remove_3sigma_median and not remove_dR200:
+    if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
         tmp = obs_weights.diagonal()
         avg_weight = np.mean(tmp)
         print("Weights (avg, med, std):", avg_weight, np.median(tmp), np.std(tmp))
@@ -820,11 +823,11 @@ def main(arg):
             par_list = ['orbA', 'orbB', 'xOvID']
             xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
 
-            if (downsize or sampling) and ext_iter==0:
+            if (AccOpt.get("downsize") or AccOpt.get("sampling")) and ext_iter==0:
                 # downsize dataset by removing worst weighted data (mostly at high latitudes)
                 # also removes very bad xovers with dR > 1km
                 max_xovers = 8.5e5 # 3.e6
-                if downsize and len(xovi_amat.xov.xovers)>max_xovers:
+                if AccOpt.get("downsize") and len(xovi_amat.xov.xovers)>max_xovers:
                     # actually preparing weights and constraints for the solution (weights are needed for downsampling)
                     prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
                     # downsize
@@ -835,7 +838,7 @@ def main(arg):
                     xovi_amat = prepare_Amat(xovi_amat.xov, vecopts, par_list)
 
                 # subsample with replacement for bootstrap test
-                if sampling and ext_iter==0:
+                if AccOpt.get("sampling") and ext_iter==0:
                     # get seed as experiment name
                     rand_seed = int(datasets[0].split('/')[-3].split('_')[0][-1])
                     xovi_amat.xov.xovers = subsample_xovers(xovi_amat.xov.xovers, size_samples=5.e5, rand_seed=rand_seed)
@@ -904,7 +907,7 @@ def main(arg):
                 xovi_amat.spA_penal = spA_sol4_penal
                 xovi_amat.b_penal = b_penal
 
-                if get_cov_only:
+                if AccOpt.get("get_cov_only"):
                     try:
                         std_par_unconstrained = np.sqrt(scipy.sparse.linalg.inv(xovi_amat.spA.transpose() * xovi_amat.weights * xovi_amat.spA).diagonal())
                     except:
@@ -922,8 +925,8 @@ def main(arg):
 
                 else:
                     # solve using lsqr
-                    xovi_amat.sol = lsqr(xovi_amat.spA_penal, xovi_amat.b_penal, damp=0, show=True, iter_lim=100000, atol=1.e-8 / sigma_0,
-                                         btol=1.e-8 / sigma_0, calc_var=True)
+                    xovi_amat.sol = lsqr(xovi_amat.spA_penal, xovi_amat.b_penal, damp=0, show=True, iter_lim=100000, atol=1.e-8 / AccOpt.get("sigma_0"),
+                                         btol=1.e-8 / AccOpt.get("sigma_0"), calc_var=True)
                     # xovi_amat.sol = lsqr(xovi_amat.spA, xovi_amat.b,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
 
                     print("sol sparse: ",xovi_amat.sol)
@@ -1053,7 +1056,7 @@ def main(arg):
                         print("previous_iter.sol_dict=",previous_iter.sol_dict)
 
                 # VCE
-                if compute_vce:
+                if AccOpt.get("compute_vce"):
                     sigma2_obs, sigma2_constr, sigma2_constr_avg = compute_vce_weights(amat=xovi_amat)
 
                     keep_iterating_vce = (np.abs(weight_obs-1./sigma2_obs)/weight_obs > 0.01)+\

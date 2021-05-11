@@ -15,8 +15,9 @@ from matplotlib import pyplot as plt
 from scipy.sparse import csr_matrix, diags, issparse
 
 # from AccumXov import sigma_0, remove_3sigma_median, remove_max_dist
-from src.accumxov.accum_opt import sigma_0, remove_3sigma_median
+# from src.accumxov.accum_opt import sigma_0, remove_3sigma_median
 # from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("full_covar"), XovOpt.get("debug"), XovOpt.get("local"), pert_cloop, XovOpt.get("parOrb"), XovOpt.get("parGlo"), XovOpt.get("OrbRep"), XovOpt.get("vecopts"), XovOpt.get("outdir")
+from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
 import matplotlib.pyplot as plt
@@ -294,7 +295,7 @@ def get_stats(amat):
     # m0 = np.linalg.norm(np.sqrt((vTPv + xTlPx) / nobs))
     amat.resid_wrmse = m0
 
-    print("Weighted a-posteriori RMS is ", m0.round(4), " - chi2 = ", (m0 / sigma_0).round(4))
+    print("Weighted a-posteriori RMS is ", m0.round(4), " - chi2 = ", (m0 / AccOpt.get("sigma_0")).round(4))
 
     if XovOpt.get("local") and XovOpt.get("debug"):
         plt.figure()  # figsize=(8, 3))
@@ -390,7 +391,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
 
 def analyze_sol(xovi_amat,xov,mode='full'):
-    from src.accumxov.accum_opt import remove_max_dist
+    # from src.accumxov.accum_opt import remove_max_dist
 
     # print('xovi_amat.sol',xovi_amat.sol)
 
@@ -512,9 +513,9 @@ def analyze_sol(xovi_amat,xov,mode='full'):
     print(glb_sol['std'].values)
 
     # sol_dict['std'] *= sigma_0
-    glb_sol['std'] = glb_sol['std'].astype('float').values/sigma_0
+    glb_sol['std'] = glb_sol['std'].astype('float').values/AccOpt.get("sigma_0")
     for col in orb_sol.filter(regex='std_*').columns:
-        orb_sol[col] = orb_sol[col].astype('float').values/sigma_0
+        orb_sol[col] = orb_sol[col].astype('float').values/AccOpt.get("sigma_0")
 
     return orb_sol, glb_sol, sol_dict
 

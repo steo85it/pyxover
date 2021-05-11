@@ -17,7 +17,6 @@ from tqdm import tqdm
 from config import XovOpt
 from src.accumxov import AccumXov
 
-basedir = ""
 #basedir = "/home/sberton2/Works/NASA/Mercury_tides/pyxover_release/examples/lidar_moon/"
 generate_data = False
 remove_poles = False # True
@@ -231,9 +230,9 @@ def plot_std(df_, fname, df_geotrg, unconstr = False):
 
     plt.tight_layout()
     if unconstr == False:
-        plt.savefig(f"{basedir}{figname}.png")
+        plt.savefig(f"{XovOpt.get('basedir')}{figname}.png")
     else:
-        plt.savefig(f"{basedir}{figname}_unconstr.png")
+        plt.savefig(f"{XovOpt.get('basedir')}{figname}_unconstr.png")
 
 def get_numbers_from_str(fname):
     name_to_parse = fname.split('/')[-1].split('.')[0]
@@ -269,13 +268,13 @@ def prepare_accum_out(par_names, std_pars, df_obs_per_orb):
 #@profile
 def main():
 
-
     if generate_data:
         df_geotrg, df_xovers = gen_simdata()
     else:
-        input_dir = f"{basedir}data/raw/"
+        input_dir = f"{XovOpt.get('rawdir')}"
         print(f'{input_dir}crossovers_21012?_dlon{dlon_in}_*.txt',f'{input_dir}landmarks_21012?_dlon{dlon_in}.txt')
         input_data = glob.glob(f'{input_dir}crossovers_21012?_dlon{dlon_in}_*.txt')
+        print(f'{input_dir}landmarks_21012?_dlon{dlon_in}.txt')
         input_landmarks = glob.glob(f'{input_dir}landmarks_21012?_dlon{dlon_in}.txt')[0]
 
         #input_data = glob.glob(f'/home/sberton2/tmp/testLIDAR/crossovers_21012?_dlon{dlon_in}_*.txt')
@@ -291,12 +290,12 @@ def main():
 
             # prepare directories
             soldir = f"BS{idx}_0"
-            xovdir = f'{basedir}data/out/sim/{soldir}/0res_1amp/xov/'
+            xovdir = f'{XovOpt.get("basedir")}data/out/sim/{soldir}/0res_1amp/xov/'
             os.makedirs(xovdir, exist_ok=True)
             if remove_poles:
-                outdir = f'{basedir}out/{orb_freq}/{XovOpt.get("OrbRep")}_nopole/'
+                outdir = f'{XovOpt.get("basedir")}out/{orb_freq}/{XovOpt.get("OrbRep")}_nopole/'
             else:
-                outdir = f'{basedir}out/{orb_freq}/{XovOpt.get("OrbRep")}/'
+                outdir = f'{XovOpt.get("basedir")}out/{orb_freq}/{XovOpt.get("OrbRep")}/'
 
             os.makedirs(outdir, exist_ok=True)
 

@@ -11,13 +11,14 @@ class XovOpt:
         "local": True, #
         "parallel": False,
         "partials": True,
+        "unittest": False,
 
         "body" : 'MERCURY', #
-        "instrument" : "BELA", # "pawstel", #"MLA", #
+        "instrument" : "MLA", #"pawstel", #"BELA", #
         "selected_hemisphere" : 'N',
 
         # dirs
-        "basedir": 'MLA/data/',
+        "basedir": 'pawstel/data/',
         "rawdir": f'raw/',
         "outdir": f'out/',
         "auxdir": f'aux/',
