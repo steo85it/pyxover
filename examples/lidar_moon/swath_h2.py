@@ -290,7 +290,7 @@ def main():
 
             # prepare directories
             soldir = f"BS{idx}_0"
-            xovdir = f'{XovOpt.get("basedir")}data/out/sim/{soldir}/0res_1amp/xov/'
+            xovdir = f'{XovOpt.get("basedir")}out/sim/{soldir}/0res_1amp/xov/'
             os.makedirs(xovdir, exist_ok=True)
             if remove_poles:
                 outdir = f'{XovOpt.get("basedir")}out/{orb_freq}/{XovOpt.get("OrbRep")}_nopole/'
@@ -328,12 +328,12 @@ def main():
             # except:
             #     print(f"Failed on iter {idx} and file {fname}... Next!")
 
-        print(dlon_dlat_offmax)
-        print(np.vstack([error_orbs_rms,error_h2]).T)
+        # print(dlon_dlat_offmax)
+        # print(np.vstack([error_orbs_rms,error_h2]).T)
         df_results = pd.DataFrame(np.hstack([dlon_dlat_offmax,np.vstack([error_orbs_rms,error_h2]).T]))
         df_results.columns = ['dlon','dlat','doffmax','rms_orb_err','h2_err']
         df_results['rms_orb_err'] *= 1.e3
-        print(df_results)
+
         df_results.to_pickle(f'{outdir}df_results_dlon{dlon_in}.pkl')
         df_results.to_csv(f'{outdir}df_results_dlon{dlon_in}.csv')
 

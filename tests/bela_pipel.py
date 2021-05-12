@@ -19,6 +19,7 @@ class TestBelaXover(unittest.TestCase):
 
     def setUp(self) -> None:
         # update paths and check options
+        XovOpt.set("body", 'MERCURY')
         XovOpt.set("basedir", 'BELA/data/')
         XovOpt.set("instrument", 'BELA')
 
@@ -43,6 +44,11 @@ class TestBelaXover(unittest.TestCase):
                    'PARTDER': ''}
         XovOpt.set("vecopts", vecopts)
 
+        XovOpt.set("par_constr",{'dR/dRA': 1.e2, 'dR/dDEC': 1.e2, 'dR/dL': 1.e2, 'dR/dPM': 1.e2, 'dR/dh2': 3.e-1, 'dR/dA': 1.e2,
+                  'dR/dC': 1.e2, 'dR/dR': 2.e1})  # , 'dR/dRl':5.e1, 'dR/dPt':5.e1} #
+        # 'dR/dA1':1.e-1, 'dR/dC1':1.e-1,'dR/dR1':1.e-1, 'dR/dA2':1.e-2, 'dR/dC2':1.e-2,'dR/dR2':1.e-2} #, 'dR/dA2':1.e-4, 'dR/dC2':1.e-4,'dR/dR2':1.e-2} # 'dR/dA':100., 'dR/dC':100.,'dR/dR':100.} #, 'dR/dh2': 1} #
+        XovOpt.set("mean_constr",{'dR/dA': 1.e0, 'dR/dC': 1.e0, 'dR/dR': 1.e0})
+
         XovOpt.set("expopt", 'BE0')
         XovOpt.set("resopt", 3)
         XovOpt.set("amplopt", 20)
@@ -53,6 +59,7 @@ class TestBelaXover(unittest.TestCase):
 
         XovOpt.check_consistency()
 
+        # remove output from previous run
         if os.path.exists(XovOpt.get("outdir")):
             shutil.rmtree(XovOpt.get("outdir"))
 
@@ -90,7 +97,8 @@ class TestBelaXover(unittest.TestCase):
             outdir_in = f'sim/{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/gtrack_{monyea[:2]}'
             # geolocation step
             PyGeoloc.main([f'{monyea}', indir_in, outdir_in, 'MLASCIRDR', 0])
-        # crossovers location step
+        # # crossovers location step
+        XovOpt.set("parallel", False) # not sure why, but parallel gets crazy
         PyXover.main(['0', f'sim/{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/gtrack_',
                       f'sim/{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/', 'MLASIMRDR', 0])
         # # lsqr solution step

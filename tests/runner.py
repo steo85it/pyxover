@@ -10,7 +10,7 @@ import unittest
 from tests import mla_pipel, lidar_pipel, bela_pipel
 
 loader = unittest.TestLoader()
-suite  = unittest.TestSuite()
+suite = unittest.TestSuite()
 
 # add tests to the test suite
 suite.addTests(loader.loadTestsFromModule(mla_pipel))

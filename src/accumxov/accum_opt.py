@@ -49,7 +49,7 @@ class AccOpt:
             AccOpt.set("get_cov_only", True)
             AccOpt.set("clean_part", False)
             AccOpt.set("use_advanced_weighting", False)
-        elif XovOpt.get('instrument') == "MLA":
+        else:
             AccOpt.set("get_cov_only", False)
             AccOpt.set("clean_part", True)
             AccOpt.set("use_advanced_weighting", True)
