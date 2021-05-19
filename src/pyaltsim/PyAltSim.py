@@ -206,8 +206,11 @@ class sim_gtrack(gtrack):
         if XovOpt.get("apply_topo"):
             # st = time.time()
 
-            if XovOpt.get("local") == 0:
-                dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            if not XovOpt.get("local"):
+                if XovOpt.get("instrument") == "LOLA":
+                    dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
+                else:
+                    dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
             else:
                 dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
 
@@ -247,7 +250,8 @@ class sim_gtrack(gtrack):
             elif not gmt:
 
                 if self.dem == None:
-                    self.dem = import_dem(filein=dem,filout="interp_dem.pkl")
+                    print(dem)
+                    self.dem = import_dem(filein=dem) #,filout="interp_dem.pkl")
                 else:
                     #print("DEM already read")
                     pass
@@ -320,10 +324,14 @@ class sim_gtrack(gtrack):
             # Convert to meters (if DEM given in km)
             r_dem *= 1.e3
 
-            texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
-            # print("texture noise check",texture_noise,r_dem)
-
-            # update Rmerc with r_dem/text (meters)
+            # TODO replace with "small_scale_topo/texture_noise" option
+            if XovOpt.get("instrument") != "LOLA":
+                texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
+                # print("texture noise check",texture_noise,r_dem)
+            else:
+                texture_noise = 0.
+                
+                # update Rmerc with r_dem/text (meters)
             radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
             # print("radius etc",radius,r_dem,texture_noise)
         else:
@@ -336,9 +344,13 @@ class sim_gtrack(gtrack):
         et_tx = df.loc[:, 'ET_TX'].values
         sc_pos, sc_vel = get_sc_ssb(et_tx, self.SpObj, self.pertPar, self.vecopts)
         scpos_tx_p, _ = get_sc_pla(et_tx, sc_pos, sc_vel, self.SpObj, self.vecopts)
-        rotpar, upd_rotpar = orient_setup(self.pertPar['dRA'], self.pertPar['dDEC'], self.pertPar['dPM'],
+        if XovOpt.get('body') == 'MOON':
+            pxform_array = np.frompyfunc(spice.pxform, 3, 1)
+            tsipm = pxform_array(XovOpt.get("vecopts")['INERTIALFRAME'],XovOpt.get("vecopts")['PLANETFRAME'],et_tx) 
+        else:
+            rotpar, upd_rotpar = orient_setup(self.pertPar['dRA'], self.pertPar['dDEC'], self.pertPar['dPM'],
                                           self.pertPar['dL'])
-        tsipm = icrf2pbf(et_tx, upd_rotpar)
+            tsipm = icrf2pbf(et_tx, upd_rotpar)
         scxyz_tx_pbf = np.vstack([np.dot(tsipm[i], scpos_tx_p[i]) for i in range(0, np.size(scpos_tx_p, 0))])
         return scxyz_tx_pbf
 
@@ -473,8 +485,11 @@ def sim_track(args):
     # print(track.name)
 
     if XovOpt.get("instrument") == "LOLA":
-        track.slewdir = auxdir + outdir_.split('/')[-3]
+        track.slewdir = XovOpt.get("auxdir") + outdir_.split('/')[-3]
 
+    print("track.slewdir",track.slewdir)
+    print(outdir_)
+    
     if os.path.isfile(outdir_ + 'MLASIMRDR' + track.name + '.TAB') == False:
         track.setup(df[df['orbID'] == i])
         track.rdr_df.to_csv(outdir_ + 'MLASIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
@@ -491,7 +506,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     epos_in = list(arg)[3]
 
     if XovOpt.get("instrument") == "LOLA":
-        path_illumng = '../aux/'+epos_in+'/slewcheck_'+str(ampl_in)+'/'
+        path_illumng = f'{XovOpt.get("auxdir")}{epos_in}/slewcheck_{ampl_in}/'
 
     print('dirnam_in', dirnam_in)
     print('epos_in', epos_in)
@@ -517,7 +532,8 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # data_pth += dataset
     # load kernels
     # TODO adapt for pgda w/o mentioning paths
-    spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
+    if not XovOpt.get("instrument") == 'LOLA':
+        spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
 
     if XovOpt.get("parallel"):
         # set ncores
@@ -527,6 +543,8 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
     if XovOpt.get("instrument") == 'LOLA':
+        print(path_illumng)
+        print(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(glob.glob(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')[0])
     else:
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
@@ -556,7 +574,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
     # print(np.sort(epo_in)[-1])
 
-    else: # if BELA
+    elif XovOpt.get("instrument") != "LOLA":
         # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
         from calendar import monthrange
         import datetime as dt
@@ -612,9 +630,12 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
                     universal_newlines=True, cwd="../_MLA_Stefano/")  # illumNG/")
                 for f in glob.glob("../_MLA_Stefano/bore*"):
                     shutil.move(f, XovOpt.get("auxdir") + '/illumNG/grd/' + epos_in + "_" + f.split('/')[1])
-            path = XovOpt.get("auxdir") + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
+            if XovOpt.get("instrument") == 'LOLA':
+                path = path_illumng
+            else:
+                path = XovOpt.get("auxdir") + 'illumng/mlatimes_' + epos_in + '/'  # sph/' # use your path
             print('illumng dir', path)
-            illumNGf = glob.glob(path + "/bore*")
+            illumNGf = glob.glob(path + "bore*")
 
         # else:
         # launch illumNG directly
@@ -635,7 +656,8 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
             print("simil-illumNG prediction read from ", illumpklf)
         # print(df)
 
-    if XovOpt.get("apply_topo"):
+    # TODO replace with "small_scale_topo" option
+    if XovOpt.get("apply_topo") and XovOpt.get("instrument") != "LOLA":
         # read and interpolate DEM
         # # open netCDF file
         # nc_file = "/home/sberton2/Works/NASA/Mercury_tides/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD"

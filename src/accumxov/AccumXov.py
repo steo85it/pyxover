@@ -20,13 +20,13 @@ from config import XovOpt
 #     huber_threshold, \
 #     distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling, compute_vce, \
 #     use_advanced_weighting, get_cov_only
-from src.accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
+from accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
     analyze_sol, subsample_xovers, load_previous_iter_if_any
-from src.xovutil.iterables import mergsum
-from src.xovutil.stat import rms
-from src.xovutil.xovres2weights import get_interpolation_weight
+from xovutil.iterables import mergsum
+from xovutil.stat import rms
+from xovutil.xovres2weights import get_interpolation_weight
 # from xov_utils import get_tracks_rms
-from src.pyxover.xov_utils import load_combine, clean_xov, clean_partials
+from pyxover.xov_utils import load_combine, clean_xov, clean_partials
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 

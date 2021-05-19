@@ -1,14 +1,14 @@
 # Options configuration for pyxover applications
 import multiprocessing as mp
 import numpy as np
-from src.xovutil.units import deg2as
+from xovutil.units import deg2as
 
 class XovOpt:
 
     __conf = {
         # env opt
         "debug": False,
-        "local": True, #
+        "local": False, #
         "parallel": False,
         "partials": True,
         "unittest": False,
@@ -91,6 +91,8 @@ class XovOpt:
         "sim_altdata": 0,
         # recompute a priori
         "new_illumNG": 0,
+        # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
+        "new_sim" : 2,
         # use topo
         "apply_topo": 0,
         # range noise

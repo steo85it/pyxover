@@ -16,7 +16,7 @@ from config import XovOpt
 
 from src.xovutil.units import as2deg
 
-AG = True
+AG = False # True
 ZAP = False
 
 def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):

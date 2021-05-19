@@ -21,17 +21,22 @@ from config import XovOpt
 import pandas as pd
 
 
-
+# TODO retrieve outfil = dem_interp_path as it was for LOLA (or just switch LOLA to other routines)
 def import_dem(filein):
     # grid point lists
 
+    
     # open netCDF file
     # nc_file = "/home/sberton2/Downloads/sresa1b_ncar_ccsm3-example.nc"
     nc_file = filein
     dem_xarr = xr.open_dataset(nc_file)
 
-    lats = np.deg2rad(dem_xarr.lat.values)+np.pi/2.
-    lons = np.deg2rad(dem_xarr.lon.values)#-np.pi
+    try:
+        lats = np.deg2rad(dem_xarr.lat.values)+np.pi/2.
+        lons = np.deg2rad(dem_xarr.lon.values)#-np.pi
+    except:
+        lats = np.deg2rad(dem_xarr.y.values)+np.pi/2.
+        lons = np.deg2rad(dem_xarr.x.values)#-np.pi
     data = dem_xarr.z.values
 
     # Exclude last column because only 0<=lat<pi

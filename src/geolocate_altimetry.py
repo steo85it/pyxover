@@ -111,7 +111,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
             cmat = SpObj['MGRa'].evalCmat(et_tx)
         else:
             pxform_array = np.frompyfunc(spice.pxform, 3, 1)
-            cmat = pxform_array('MSGR_SPACECRAFT', vecopts['INERTIALFRAME'], et_tx)
+            cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
 
         # rotate boresight dir to inertial frame
         zpt = [np.dot(cmat[i], zpt[i]) for i in range(0, np.size(zpt, 0))]
@@ -149,10 +149,10 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     offndr = get_offnadir(plapos_bc, scpos_tx, vbore)
 
     # compute inertial to body-fixed frame rotation
-    if (1 == 2):
+    if XovOpt.get("body") == "MOON":
         # (using np.frompyfunc to vectorize pxform)
         tsipm = pxform_array(vecopts['INERTIALFRAME'], vecopts['PLANETFRAME'], et_bc)
-    else:
+    else: # TODO only works for Mercury!!!!!
         # (using custom implementation)
         # print("tmp_pertPar['dL']", tmp_pertPar['dL'])
         rotpar, upd_rotpar = orient_setup(tmp_pertPar['dRA'], tmp_pertPar['dDEC'], tmp_pertPar['dPM'], tmp_pertPar['dL'])
