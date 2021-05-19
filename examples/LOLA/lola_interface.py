@@ -11,6 +11,8 @@ from accumxov import AccumXov
 from config import XovOpt
 from pyaltsim import PyAltSim
 from pyxover import PyXover
+from config import XovOpt
+from setup_lola import setup_lola
 
 if __name__ == '__main__':
 
@@ -22,8 +24,10 @@ if __name__ == '__main__':
     #    Arg_list = collections.namedtuple('Arg_list', arg_names)
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
+    setup_lola()
+    
     data_sim = 'sim'  # 'data' #
-    exp = 'lola/' # '' #  '1s' #'mladata' #
+    exp = '' # 'lola/' # '' #  '1s' #'mladata' #
     ext_iter = 0  # external iteration
     # exp += '_'+str(ext_iter)
 
@@ -58,47 +62,28 @@ if __name__ == '__main__':
     cmb = list(
         itert.product(ampl, res))
 
-    if data_sim == 'sim':
-        if XovOpt.get("local"):
-            dirnams = ['../data/SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in
-                       cmb]
-        else:
-            dirnams = ['/att/nobackup/sberton2/LOLA/data/SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(
-                x[0]) + 'amp/' for x in cmb]
+    dirnams = [f'{XovOpt.get("rawdir")}SIM_{subarg[:2]}/{exp}/{str(x[1])}res_{x[0]}amp/' for x in cmb]
 
-        args_pyaltsim = [(i, j, k, subarg) for ((i, j), k) in zip(cmb, dirnams)]
+    args_pyaltsim = [(i, j, k, subarg) for ((i, j), k) in zip(cmb, dirnams)]
 
-        indirnams = ['SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
-        outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_'+ subarg[:2] for x in cmb]
-        args_pygeoloc = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
+    indirnams = ['SIM_' + subarg[:2] + f'/{exp}/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
+    outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_'+ subarg[:2] for x in cmb]
+    args_pygeoloc = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
 
-        indirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_' for x in cmb]
-        outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
-        args_pyxover = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
-
-    else:
-    
-        indirnams = ['MLA_' + subarg[:2] + '/']
-        outdirnams = ['mladata/' + exp + 'gtrack_'+ subarg[:2]]
-        args_pygeoloc = [(subarg, k, l, 'MLASCIRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
-    
-        indirnams = ['mladata/' + exp + 'gtrack_']
-        outdirnams = ['mladata/'+exp]
-        args_pyxover = [(subarg, k, l, 'MLASCIRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
+    indirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_' for x in cmb]
+    outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
+    args_pyxover = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
 
     # load spice kernels
     if XovOpt.get("local") == 0:
         # load kernels
-        if XovOpt.get("instrument")=='LOLA':
-           _ = ["/att/projrepo/PGDA/LRO/data/furnsh/furnsh.LRO.def.spkonly.LOLA"]
-           _.extend(glob.glob("/att/nobackup/mkbarker/common/data/generic/GSE_LRO.tf"))
-           _.extend(glob.glob(XovOpt.get("inpdir")+"targeting_slews.furnsh"))
-           _.extend(["/att/nobackup/mkbarker/common/data/generic/RSSD0000.TF"])
+        _ = ["/att/projrepo/PGDA/LRO/data/furnsh/furnsh.LRO.def.spkonly.LOLA"]
+        _.extend(glob.glob("/att/nobackup/mkbarker/common/data/generic/GSE_LRO.tf"))
+        _.extend(glob.glob(XovOpt.get("inpdir")+"targeting_slews.furnsh"))
+        _.extend(["/att/nobackup/mkbarker/common/data/generic/RSSD0000.TF"])
 	   
-           #print(_)
-           spice.furnsh(_)
-        else:
-           spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')  # 'aux/mymeta')
+        #print(_)
+        spice.furnsh(_)
     else:
         spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
 

@@ -15,11 +15,24 @@ import time
 
 # from prOpt import local, instr, inpdir
 from config import XovOpt
-
+from setup_lola import setup_lola
 
 def prepro_LOLA(args, borefil, grdfil):
 
-    print(XovOpt.get("inpdir")+args)
+
+    
+    #XovOpt.set("basedir","data/") #"/att/nobackup/sberton2/LOLA/PyXover/examples/LOLA/"
+    #    XovOpt.set("outdir",f'{basedir}out/')
+    #    XovOpt.set("auxdir",f'{basedir}aux/')
+    #XovOpt.set("inpdir",'/att/nobackup/dmao1/LOLA/slew_check/')
+    #XovOpt.check_consistency()    
+
+    setup_lola()
+    
+    print(XovOpt.get("inpdir"))
+    print(XovOpt.get("auxdir")+args+'/')
+    
+    print(args)
     if XovOpt.get("local"):
        basedir = 'data/' #'/home/sberton2/Works/NASA/LOLA/aux/'+args+'/'
        indir = XovOpt.get("inpdir")+args+'/'
@@ -28,8 +41,8 @@ def prepro_LOLA(args, borefil, grdfil):
        bores = np.vsplit(bores, np.shape(bores)[0])
     else:
        indir = XovOpt.get("inpdir")+args+'/'
-       basedir = '/att/nobackup/sberton2/LOLA/aux/'+args+'/'
-       bores = np.loadtxt('/att/nobackup/sberton2/LOLA/aux/_boresights_LOLA_ch12345_'+borefil+'_laser2_fov.inc')
+       basedir = f'{XovOpt.get("auxdir")}/{args}/' #XovOpt.get("auxdir")+args+'/'
+       bores = np.loadtxt(f'{XovOpt.get("auxdir")}_boresights_LOLA_ch12345_{borefil}_laser2_fov.inc')
        bores = np.vsplit(bores, np.shape(bores)[0])
 
     rngs = np.loadtxt(indir+'boresight_range_slewcheck.rng')

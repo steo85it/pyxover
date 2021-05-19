@@ -3,6 +3,7 @@
 examples/*/data/aux/
 examples/*/data/out/
 examples/*/data/tmp/
+examples/*/data/raw/ 
 examples/*/out/
 pip-wheel-metadata/
 */*.egg-info
@@ -16,7 +17,7 @@ __pycache__
 *.pdf
 *.npy
 build
-env/
+env*/
 mem/
 illumNG/
 __pycache__/

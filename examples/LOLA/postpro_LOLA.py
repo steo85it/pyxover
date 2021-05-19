@@ -13,12 +13,14 @@ import time
 import pandas as pd
 import numpy as np
 
-from ground_track import gtrack
-import astro_trans as astr
-from PyAltSim import prepro_ilmNG
+from pygeoloc.ground_track import gtrack
+import xovutil.astro_trans as astr
+from pyaltsim.PyAltSim import prepro_ilmNG
 import matplotlib.pyplot as plt
 import sys
-from prOpt import local, inpdir
+from config import XovOpt
+#from prOpt import local, inpdir
+from setup_lola import setup_lola
 
 if __name__ == '__main__':
 
@@ -26,21 +28,24 @@ if __name__ == '__main__':
     # launch program and clock
     # -----------------------------
     start = time.time()
-
+    
     if len(sys.argv) > 1:
         args = sys.argv[1]
     else:
         print("Specify dir or test")
         exit(2)
 
+    setup_lola()
+    XovOpt.set("debug", True)
+
     # read originals and save nrows
 
-    if local:
+#    if XovOpt.get("local"):
       # files = glob.glob('/home/sberton2/Works/NASA/LOLA/aux/'+args+'/slewcheck_1000/boresight_*.?')
-      files = glob.glob('/home/sberton2/Works/NASA/LOLA/aux/'+args+'/slewcheck_0/boresight_position_*.?')
-    else:
+#      files = glob.glob('/home/sberton2/Works/NASA/LOLA/aux/'+args+'/slewcheck_0/boresight_position_*.?')
+#    else:
       #files = glob.glob('/att/nobackup/sberton2/LOLA/aux/'+args+'/slewcheck_0/boresight_*.?')
-      files = glob.glob(inpdir+args+'/boresight_position_*.?')
+    files = glob.glob(f'{XovOpt.get("inpdir")}{args}/boresight_position_*.?')
 
     li = {}
     for f in files:
@@ -55,17 +60,15 @@ if __name__ == '__main__':
     print(len(df_xin))
     len_table = len(df_xin)
 
-
-
     print("Processing "+args)
 
-    if local:
-      dirs = glob.glob('/home/sberton2/Works/NASA/LOLA/data/SIM_'+args[:2]+'/lola/'+args+'/0res_*amp/*') # lro_iaumoon_spice/0res_*')
-      files = glob.glob('/home/sberton2/Works/NASA/LOLA/data/SIM_'+args[:2]+'/lola/'+args+'/0res_*amp/MLA*.TAB') # lro_iaumoon_spice/0res_*/MLA*.TAB')
-    else:
-      dirs = glob.glob('/att/nobackup/sberton2/LOLA/data/SIM_'+args[:2]+'/lola/'+args+'/0res_*amp/*') # lro_iaumoon_spice/0res_*')
-      files = glob.glob('/att/nobackup/sberton2/LOLA/data/SIM_'+args[:2]+'/lola/'+args+'/0res_*amp/MLA*.TAB') # lro_iaumoon_spice/0res_*/MLA*.TAB')
-
+    #    if local:
+    #      dirs = glob.glob('/home/sberton2/Works/NASA/LOLA/data/SIM_'+args[:2]+'/lola/'+args+'/0res_*amp/*') # lro_iaumoon_spice/0res_*')
+    #      files = glob.glob('/home/sberton2/Works/NASA/LOLA/data/SIM_'+args[:2]+'/lola/'+args+'/0res_*amp/MLA*.TAB') # lro_iaumoon_spice/0res_*/MLA*.TAB')
+    #    else:
+    print(XovOpt.get("rawdir")+'SIM_'+args[:2]+'/'+args+'/0res_*amp/*')
+    dirs = glob.glob(XovOpt.get("rawdir")+'SIM_'+args[:2]+'/'+args+'/0res_*amp/*') # lro_iaumoon_spice/0res_*')
+    files = glob.glob(XovOpt.get("rawdir")+'SIM_'+args[:2]+'/'+args+'/0res_*amp/MLA*.TAB') # lro_iaumoon_spice/0res_*/MLA*.TAB')
 
     ncols = len(dirs)
     print(ncols)
@@ -79,10 +82,12 @@ if __name__ == '__main__':
         bores.append(int(f.split('/')[-2].split('_')[1][:-3]))
         vecopts = {}
         track = gtrack(vecopts)
+        #print(f)
         track.read_fill(f)
         tracks.append(track)
 
-    # print(track.ladata_df.columns)
+        #print(track.ladata_df)
+        #exit()
 
     dfx = []
     dfy = []
@@ -136,10 +141,10 @@ if __name__ == '__main__':
         dflon = dflon[list(range(ncols))]
         dfelv = dfelv[list(range(ncols))]
 
-    if local:
-       outdir_ = '/home/sberton2/Works/NASA/LOLA/out/'+args
-    else:
-       outdir_ = '/att/nobackup/sberton2/LOLA/out/'+args
+#    if local:
+#       outdir_ = '/home/sberton2/Works/NASA/LOLA/out/'+args
+#    else:
+    outdir_ = XovOpt.get("outdir")+args
 
     if not os.path.exists(outdir_):
         os.makedirs(outdir_, exist_ok=True)
