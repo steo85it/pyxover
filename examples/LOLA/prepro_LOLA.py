@@ -8,6 +8,7 @@
 
 import os
 import shutil
+import logging
 
 import numpy as np
 import sys
@@ -41,7 +42,7 @@ def prepro_LOLA(args, borefil, grdfil):
        bores = np.vsplit(bores, np.shape(bores)[0])
     else:
        indir = XovOpt.get("inpdir")+args+'/'
-       basedir = f'{XovOpt.get("auxdir")}/{args}/' #XovOpt.get("auxdir")+args+'/'
+       basedir = f'{XovOpt.get("auxdir")}{args}/' #XovOpt.get("auxdir")+args+'/'
        bores = np.loadtxt(f'{XovOpt.get("auxdir")}_boresights_LOLA_ch12345_{borefil}_laser2_fov.inc')
        bores = np.vsplit(bores, np.shape(bores)[0])
 
@@ -74,9 +75,12 @@ def prepro_LOLA(args, borefil, grdfil):
         np.savetxt(outdir_+'/_boresights_LOLA_ch12345_'+borefil+'_laser2_fov_bs'+str(i)+'.inc',x)
         # shutil.copy(indir+'boresight_time_slewcheck.xyzd',
         #             outdir_)
-        os.symlink(indir+'boresight_time_slewcheck.xyzd',
+        try:
+            os.symlink(indir+'boresight_time_slewcheck.xyzd',
                    outdir_+'/boresight_time_slewcheck.xyzd')
-
+        except:
+            logging.warning(f"{outdir_}/boresight_time_slewcheck.xyzd already exists!")
+            
     # copy selected grid to experiment folder
     if XovOpt.get("local"):
         os.symlink(indir+'../'+grdfil+'_SLDEM2015_512PPD.GRD',
@@ -84,9 +88,12 @@ def prepro_LOLA(args, borefil, grdfil):
     else:
         # shutil.copy(indir+'../'+grdfil+'_SLDEM2015_512PPD.GRD',
         #                 basedir+"SLDEM2015_512PPD.GRD")
-        os.symlink(indir+'../'+grdfil+'_SLDEM2015_512PPD.GRD',
+        try:
+            os.symlink(indir+'../'+grdfil+'_SLDEM2015_512PPD.GRD',
                    basedir+"SLDEM2015_512PPD.GRD")
-
+        except:
+            logging.warning(f"{basedir}SLDEM2015_512PPD.GRD already exists!")
+                            
     # stop clock and print runtime
     # -----------------------------
     end = time.time()
