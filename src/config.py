@@ -97,7 +97,9 @@ class XovOpt:
         "apply_topo": 0,
         # range noise
         "range_noise": 0,
-
+        # local/global DEM (LOLA)
+        "local_dem": True,
+        
         # vecopts
         # Setup some useful options
         "vecopts": {'SCID': '-236',
