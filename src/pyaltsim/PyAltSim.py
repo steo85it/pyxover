@@ -251,9 +251,9 @@ class sim_gtrack(gtrack):
 
                 if self.dem == None:
                     print(dem)
-                    self.dem = import_dem(filein=dem) #,filout="interp_dem.pkl")
+                    self.dem = import_dem(filein=dem,outdir=f"{self.slewdir}/")
                 else:
-                    #print("DEM already read")
+                    print("DEM already read")
                     pass
             else:
                 print("Using grdtrack")
@@ -315,6 +315,7 @@ class sim_gtrack(gtrack):
                 universal_newlines=True, cwd='tmp')
                 r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
             elif XovOpt.get("instrument") != 'BELA':
+                print("coming here")
                 lontmp[lontmp < 0] += 360.
                 r_dem = get_demz_at(self.dem, lattmp, lontmp)
 

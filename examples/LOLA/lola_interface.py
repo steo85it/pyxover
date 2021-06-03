@@ -9,10 +9,10 @@ import glob
 
 from accumxov import AccumXov
 from config import XovOpt
+from examples.LOLA.setup_lola import setup_lola
 from pyaltsim import PyAltSim
 from pyxover import PyXover
 from config import XovOpt
-from setup_lola import setup_lola
 
 if __name__ == '__main__':
 
@@ -25,6 +25,9 @@ if __name__ == '__main__':
     #    args = Arg_list(*(args.get(arg, None) for arg in arg_names))
 
     setup_lola()
+    if sys.argv[2] == "211300102":
+        XovOpt.set("local_dem", False)
+        XovOpt.check_consistency()
     
     data_sim = 'sim'  # 'data' #
     exp = '' # 'lola/' # '' #  '1s' #'mladata' #

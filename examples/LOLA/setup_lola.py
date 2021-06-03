@@ -15,6 +15,7 @@ def setup_lola():
     XovOpt.set("new_sim", 2)
     XovOpt.set("apply_topo", True)
     XovOpt.set("SpInterp", 0)
+    XovOpt.set("local_dem", True)
     
     vecopts = {'SCID': '-85',
                'SCNAME': 'LRO',

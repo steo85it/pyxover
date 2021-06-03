@@ -4,9 +4,9 @@ import pandas as pd
 import subprocess as s
 
 from config import XovOpt
-from prepro_LOLA import prepro_LOLA
+from examples.LOLA.prepro_LOLA import prepro_LOLA
 from pygeoloc import PyGeoloc
-from setup_lola import setup_lola
+from examples.LOLA.setup_lola import setup_lola
 
 # add to PYTHONPATH before running (should work with setup.py, but it doesn't...)
 # export PYTHONPATH=/att/nobackup/sberton2/LOLA/PyXover/src:/att/nobackup/sberton2/LOLA/PyXover:$PYTHONPATH

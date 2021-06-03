@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import sys
 from config import XovOpt
 #from prOpt import local, inpdir
-from setup_lola import setup_lola
+from examples.LOLA.setup_lola import setup_lola
 
 if __name__ == '__main__':
 
