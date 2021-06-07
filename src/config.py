@@ -8,7 +8,7 @@ class XovOpt:
     __conf = {
         # env opt
         "debug": False,
-        "local": False, #
+        "local": True, #
         "parallel": False,
         "partials": True,
         "unittest": False,

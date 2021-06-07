@@ -11,6 +11,7 @@ def setup_lola():
 
     XovOpt.set("instrument", 'LOLA')
     XovOpt.set("body", 'MOON')
+    XovOpt.set("local", False)
     XovOpt.set("partials", False)
     XovOpt.set("new_sim", 2)
     XovOpt.set("apply_topo", True)
