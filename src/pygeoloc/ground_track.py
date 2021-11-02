@@ -203,10 +203,20 @@ class gtrack:
 
     def read_fill(self, infil):
 
-        df = pd.read_csv(infil, sep=',', header=0)
-        # print(df)
-        # exit()
-        df['orbID'] = infil.split('.')[0][-10:]
+        if infil.split(".")[-1]=="TAB":
+            df = pd.read_csv(infil, sep=',', header=0)
+        elif infil.split(".")[-1]=="pkl":
+            print("what should I do?")
+            df = pd.read_pickle(infil)
+        else:
+            print("*** ground_track.read_fill: only .TAB (MLA-like) and .pkl formats (also MLA-like) are accepted.")
+            exit(1)
+
+        if 'rdr_name' in df.columns:
+            df['orbID'] = df.rdr_name.str.split('_',expand=True).values[:,-1]
+        else:
+            df['orbID'] = infil.split('.')[0][-10:]
+
         self.name = df['orbID'].unique().squeeze()
 
         # strip and lower case all column names
