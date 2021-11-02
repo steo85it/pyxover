@@ -141,6 +141,33 @@ def main(args):
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
     if XovOpt.get("instrument") == 'BELA':
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.,0.,1.]
+    elif XovOpt.get("instrument") == 'LOLA':
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(
+            glob.glob(f'{XovOpt.get("auxdir")}{epo_in}/slewcheck_0/' + '_boresights_LOLA_ch12345_*_laser2_fov_bs0.inc')[0])
+    #             data det1/0.000839737903394d0, -0.00457961230781711d0, 0.999989000131539d0, !day laser 1
+    #      &            0.000856137903d0,       -0.004609612308d0,  0.999989004837226d0,  !day laser 2
+    #      &            0.000937737903394d0, -0.00453461230781711d0,0.99998900013153902d0, !day
+    #      &            0.00076189248005d0,  -0.00431815664221d0, 0.99998900013153902d0/ !2 night + 5 night - 1 night completes square
+    #
+    #         data det2/0.000383964851735d0, -0.00436155174587546d0, 0.999990433217333d0,
+    #      &            0.000400364852d0,       -0.004391551746d0, 0.999989891939858d0,
+    #      &            0.000481964851735d0, -0.00431655174587546d0, 0.999989891939858d0,
+    #      &            0.00030611942839d0,   -0.00410009608028d0, 0.999989891939858d0/ ! offset 2 squares
+    #
+    #        data det3/0.000626524101387d0, -0.00504023006379987d0,0.99998664896001d0,
+    #      &            0.000642924101d0,       -0.005070230064d0, 0.999986483343407d0,
+    #      &            0.000724524101387d0, -0.00499523006379987d0, 0.99998664896000999d0,
+    #      &            0.000553524100735d0, -0.00476423006387546d0,0.999989891939858d0/ !2 nightside
+    #
+    #         data det4/0.001290665162689d0,  -0.00480736878596984d0, 0.999987131025527d0,
+    #      &            0.001307065163d0,       -0.004837368786d0, 0.999986961502879d0,
+    #      &            0.001388665162689d0,  -0.00476236878596984d0, 0.999986961502879d0,
+    #      &            0.001217665531707d0,  -0.00453621720415891d0, 0.999990352590072d0/!5 nightside
+    #
+    #        data det5/0.001048106282707d0,  -0.00413353888615891d0, 0.999990497919053d0,
+    #      &            0.001064506283d0,      -0.004163538886d0, 0.999990352590072d0,
+    #      &            0.001146106282707d0,  -0.00408853888615891d0, 0.999990352590072d0,
+    #      &            0.00097026085936d0,  -0.00387208322056d0, 0.999990352590072d0/ ! offset 2 squares
     else:
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
@@ -153,7 +180,7 @@ def main(args):
 
     # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
     # for orbitA and orbitB.
-    allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epo_in + '*.TAB'))
+    allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}RDR*' + epo_in + '*.*'))
     endInit = time.time()
     print(
         '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
