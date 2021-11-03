@@ -33,7 +33,7 @@ if __name__ == '__main__':
     filnamout = f'loadPyAltSim'
 
     bin_rdrs = glob.glob(f"{XovOpt.get('rawdir')}/LOLARDR_*.DAT")
-    if True:
+    if False:
         for f in bin_rdrs[:10]:
             f = f.split('/')[-1].split('.')[0]
             df=process_rdr(f"{XovOpt.get('rawdir')}",f)
@@ -71,6 +71,8 @@ if __name__ == '__main__':
     for rdr_id in bin_rdrs:
         rdr_id = rdr_id.split('/')[-1].split('.')[0].split('_')[-1]
         print(rdr_id)
+        os.makedirs(f"{XovOpt.get('auxdir')}{rdr_id}/slewcheck_0", exist_ok=True)
+        print("0. 0. 0.", file=open(f"{XovOpt.get('auxdir')}{rdr_id}/slewcheck_0/_boresights_LOLA_ch12345_night_laser2_fov_bs0.inc", 'w'))
         f.write((' ').join([f'python3 lola_interface.py 0 {rdr_id} 1', '\n']))
     f.close()
     exit()
