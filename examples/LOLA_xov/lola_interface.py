@@ -39,7 +39,7 @@ if __name__ == '__main__':
     # res = [0, 1, 2, 3, 4, 5, 6]
     # ampl = [1, 5, 10, 25, 50]
     res = [0]
-    ampl = range(0,725,1)
+    ampl = range(1,6,1)
     # ampl = [0]
 
     if len(sys.argv) > 1:
@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     if data_sim == 'data':
         res = [0]
-        ampl = [1]
+        ampl = range(6)[1:]
 
     cmb = list(
         itert.product(ampl, res))
@@ -102,7 +102,7 @@ if __name__ == '__main__':
                     print("Running PyAltSim with ", args_pyaltsim[ie], "...")
                     PyAltSim.main(args_pyaltsim[ie])
                 print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
-                # PyGeoloc.main(args_pygeoloc[ie])
+                PyGeoloc.main(args_pygeoloc[ie])
         #
         else:
 

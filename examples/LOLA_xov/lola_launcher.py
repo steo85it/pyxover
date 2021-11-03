@@ -33,29 +33,35 @@ if __name__ == '__main__':
     filnamout = f'loadPyAltSim'
 
     bin_rdrs = glob.glob(f"{XovOpt.get('rawdir')}/LOLARDR_*.DAT")
-    # for f in bin_rdrs:
-    #     f = f.split('/')[-1].split('.')[0]
-    #     df=process_rdr(f"{XovOpt.get('rawdir')}",f)
-    #     # pd.set_option('max_columns', None)
-    #     # print(df.head())
-    #     # print(df.columns)
-    #
-    #     df['met']=df[['met_seconds']].values + df[['subseconds']].values
-    #     df.reset_index(inplace=True)
-    #
-    #     # dflist=[]
-    #     for i in range(6)[1:]:
-    #         tmp=df.rename(columns={f"longitude_{i}":"geoc_long",f"latitude_{i}":"geoc_lat",f"radius_{i}":"altitude",
-    #                                "transmit_time":"EphemerisTime","met":"MET",
-    #                            f"shot_flag_{i}":"chn","threshold_1":"thrsh",f"gain_{i}":"gain",f"range_{i}":"TOF_ns_ET",
-    #                            "sc_longitude":"Sat_long","sc_latitude":"Sat_lat","sc_radius":"Sat_alt","offnadir_angle":"Offnad",
-    #                            "solar_phase":"Phase","solar_incidence":"Sol_inc","index":"seqid"},errors='raise')
-    #         tmp[['frm', 'Pulswd', '1way_range', 'Emiss', 'TXmJ', 'UTC', 'SCRNGE']] = None
-    #         tmp[["TOF_ns_ET"]]/=clight
-    #
-    #         mla_cols = ['geoc_long','geoc_lat','altitude','EphemerisTime','MET','frm','chn','Pulswd','thrsh','gain','1way_range','Emiss','TXmJ','UTC','TOF_ns_ET','Sat_long','Sat_lat','Sat_alt','Offnad','Phase','Sol_inc','SCRNGE','seqid']
-    #
-    #         tmp.to_pickle(f"{XovOpt.get('tmpdir')}/{f}_{i}.pkl")
+    if True:
+        for f in bin_rdrs[:10]:
+            f = f.split('/')[-1].split('.')[0]
+            df=process_rdr(f"{XovOpt.get('rawdir')}",f)
+            # pd.set_option('max_columns', None)
+            # print(df.head())
+            # print(df.columns)
+
+            df['met']=df[['met_seconds']].values + df[['subseconds']].values
+            df.reset_index(inplace=True)
+
+            # dflist=[]
+            print(f"Converting {f} to ascii...")
+
+            for i in range(6)[1:]:
+                tmp=df.rename(columns={f"longitude_{i}":"geoc_long",f"latitude_{i}":"geoc_lat",f"radius_{i}":"altitude",
+                                       "transmit_time":"EphemerisTime","met":"MET",
+                                   f"shot_flag_{i}":"chn","threshold_1":"thrsh",f"gain_{i}":"gain",f"range_{i}":"TOF_ns_ET",
+                                   "sc_longitude":"Sat_long","sc_latitude":"Sat_lat","sc_radius":"Sat_alt","offnadir_angle":"Offnad",
+                                   "solar_phase":"Phase","solar_incidence":"Sol_inc","index":"seqid"},errors='raise')
+                tmp[['frm', 'Pulswd', '1way_range', 'Emiss', 'TXmJ', 'UTC', 'SCRNGE']] = None
+                # tmp[["TOF_ns_ET"]]/=clight
+
+                mla_cols = ['geoc_long','geoc_lat','altitude','EphemerisTime','MET','frm','chn','Pulswd','thrsh','gain','1way_range','Emiss','TXmJ','UTC','TOF_ns_ET','Sat_long','Sat_lat','Sat_alt','Offnad','Phase','Sol_inc','SCRNGE','seqid']
+
+                rdr_year = tmp.rdr_name[0].split('_')[1][:2]
+                prepro_outdir = f"{XovOpt.get('rawdir')}SIM_{rdr_year}/{XovOpt.get('expopt')}/0res_{i}amp/"
+                os.makedirs(prepro_outdir, exist_ok=True)
+                tmp.to_pickle(f"{prepro_outdir}{f}.pkl")
 
     # processing
     print("Processing started...")
