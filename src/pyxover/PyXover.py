@@ -255,11 +255,13 @@ def main(args):
 
         months = np.arange(1,13,1)
         misy = [x+f'{y:02}' for x in misy for y in months]
-        if instr != 'BELA':
+        if XovOpt.get("instrument") != 'BELA':
             misy = ['0801','0810']+misy[2:-8]
     else:
         if XovOpt.get("instrument") == 'BELA':
             misy = ['26','27'] #+str("{:02}".format(i)) for i in range(1,13,1)]
+        elif XovOpt.get("instrument") == 'LOLA':
+            misy = ['09', '10']
         else:
             misy = ['08','11', '12', '13', '14', '15']
 
@@ -315,7 +317,7 @@ def main(args):
         # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
         # comb=np.array(list(itert.combinations([fil.split('.')[0][-10:] for fil in allFiles], 2))) # this computes comb btw ALL files
         comb = list(
-            itert.product([fil.split('.')[0][-10:] for fil in allFilesA], [fil.split('.')[0][-10:] for fil in allFilesB]))
+            itert.product([fil.split('.')[0].split('_')[-1] for fil in allFilesA], [fil.split('.')[0].split('_')[-1] for fil in allFilesB]))
         comb = np.array([c for c in comb if c[0] != c[1]])
 
         # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
@@ -347,7 +349,8 @@ def main(args):
         mladata = {}
         cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
              'X_stgprj', 'Y_stgprj']
-        for track_id in  set(np.ravel(comb)):
+
+        for track_id in set(np.ravel(comb)):
             track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
 
             # resurrect as soon as got also south part of obs track
@@ -400,10 +403,10 @@ def main(args):
             with open(mladata_pkl_fn, 'wb') as handle:
                 import pickle
                 pickle.dump(mladata, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata_pkl_fn, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
+            args = ((fil.split('.')[0].split('_')[-1], comb, misycmb, par, mladata_pkl_fn, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
         else:
             # args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in) for fil in allFilesA)
-            args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
+            args = ((fil.split('.')[0].split('_')[-1], comb, misycmb, par, mladata, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
         print("Looking for (potential) xovers within combinations of",len(allFilesA),"tracks (A) with",len(allFilesB),"tracks (B)...")
 
         # print(XovOpt.get("outdir")+indir_in[:-7]+'xov/tmp/xovin_'+misycmb[par][0]+'_'+misycmb[par][1]+'.pkl.gz')
