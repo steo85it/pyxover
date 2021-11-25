@@ -33,7 +33,7 @@ if __name__ == '__main__':
     filnamout = f'loadPyAltSim'
 
     bin_rdrs = glob.glob(f"{XovOpt.get('rawdir')}/LOLARDR_*.DAT")
-    if False:
+    if True:
         for f in bin_rdrs[:10]:
             f = f.split('/')[-1].split('.')[0]
             df=process_rdr(f"{XovOpt.get('rawdir')}",f)
@@ -43,6 +43,9 @@ if __name__ == '__main__':
 
             df['met']=df[['met_seconds']].values + df[['subseconds']].values
             df.reset_index(inplace=True)
+
+            # select only data from RoI
+            df = df.loc[df["latitude_1"]<-87.].reset_index(drop=True)
 
             # dflist=[]
             print(f"Converting {f} to ascii...")
@@ -56,12 +59,12 @@ if __name__ == '__main__':
                 tmp[['frm', 'Pulswd', '1way_range', 'Emiss', 'TXmJ', 'UTC', 'SCRNGE']] = None
                 # tmp[["TOF_ns_ET"]]/=clight
 
-                mla_cols = ['geoc_long','geoc_lat','altitude','EphemerisTime','MET','frm','chn','Pulswd','thrsh','gain','1way_range','Emiss','TXmJ','UTC','TOF_ns_ET','Sat_long','Sat_lat','Sat_alt','Offnad','Phase','Sol_inc','SCRNGE','seqid']
+                mla_cols = ['rdr_name','geoc_long','geoc_lat','altitude','EphemerisTime','MET','frm','chn','Pulswd','thrsh','gain','1way_range','Emiss','TXmJ','UTC','TOF_ns_ET','Sat_long','Sat_lat','Sat_alt','Offnad','Phase','Sol_inc','SCRNGE','seqid']
 
-                rdr_year = tmp.rdr_name[0].split('_')[1][:2]
+                rdr_year = tmp.rdr_name.values[0].split('_')[-1][:2]
                 prepro_outdir = f"{XovOpt.get('rawdir')}SIM_{rdr_year}/{XovOpt.get('expopt')}/0res_{i}amp/"
                 os.makedirs(prepro_outdir, exist_ok=True)
-                tmp.to_pickle(f"{prepro_outdir}{f}.pkl")
+                tmp[mla_cols].to_pickle(f"{prepro_outdir}{f}.pkl")
 
     # processing
     print("Processing started...")

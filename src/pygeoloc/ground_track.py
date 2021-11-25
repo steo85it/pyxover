@@ -212,7 +212,7 @@ class gtrack:
             print("*** ground_track.read_fill: only .TAB (MLA-like) and .pkl formats (also MLA-like) are accepted.")
             exit(1)
 
-        if 'rdr_name' in df.columns:
+        if 'rdr_name' in df.columns: # if LOLA rdr
             df['orbID'] = df.rdr_name.str.split('_',expand=True).values[:,-1]
         else:
             df['orbID'] = infil.split('.')[0][-10:]
@@ -273,6 +273,8 @@ class gtrack:
 
         # Convert TOF to seconds
         df.TOF *= 1.e-9
+
+        print(df)
 
         # copy cleaned data to attribute df
         self.ladata_df = df

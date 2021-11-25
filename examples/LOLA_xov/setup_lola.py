@@ -18,7 +18,10 @@ def setup_lola():
     XovOpt.set("apply_topo", True)
     XovOpt.set("SpInterp", 0)
     XovOpt.set("local_dem", True)
-    
+    XovOpt.set("debug", False)
+
+    XovOpt.set("selected_hemisphere", 'S')
+
     vecopts = {'SCID': '-85',
                'SCNAME': 'LRO',
                'SCFRAME': 'LRO_SC_BUS', # '-85000',
