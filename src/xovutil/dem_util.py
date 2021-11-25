@@ -133,9 +133,9 @@ if __name__ == '__main__':
 
     start = time.time()
 
-    method = 'xarray' # 'pygmt' #
+    method = 'pygmt' # 'xarray' #
     number_of_samples = 100000
-    filin = '/home/sberton2/tmp/LDAM_8.GRD' # '/home/sberton2/Works/NASA/Mercury_tides/aux/HDEM_64.GRD' #
+    filin = '/home/sberton2/tmp/mercury_SP/interp_craters/SP8_with_SP9mask_250km_interpolated_v2s.grd' # '/home/sberton2/tmp/LDAM_8.GRD' # '/home/sberton2/Works/NASA/Mercury_tides/aux/HDEM_64.GRD' #
 
     rng = np.random.default_rng()
     lon = rng.random((number_of_samples))*360. # if grd lon is [0,360)
@@ -145,9 +145,9 @@ if __name__ == '__main__':
         import xarray as xr
         import pyproj
 
-        if filin.split('.')[-1] == 'GRD': # to read grd/netcdf files
+        if filin.split('.')[-1] in ['grd','GRD']: # to read grd/netcdf files
             z = get_demz_grd(filin, lon, lat)
-        elif filin.split('.')[-1] == 'TIF': # to read geotiffs usgs
+        elif filin.split('.')[-1] in ['tif','TIF']: # to read geotiffs usgs
             z = np.squeeze(get_demz_tiff(filin, lon, lat))
 
         out = pd.DataFrame([lon, lat, z],index=['lon','lat','z']).T

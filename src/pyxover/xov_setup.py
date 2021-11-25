@@ -577,7 +577,7 @@ class xov:
         # plt.xlim([t_ldB[_], t_ldB[_]])
         plt.xlim([-0.5,0.5])
         plt.ylim([fB_interp(tB_interp(ind_B))-100,fB_interp(tB_interp(ind_B))+100])
-        plt.savefig('tmp/test_elev_prof_'+self.tracks[0]+'_'+self.tracks[1]+'_'+param+'.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'test_elev_prof_'+self.tracks[0]+'_'+self.tracks[1]+'_'+param+'.png')
         plt.clf()
         plt.close()
         print(self.tracks)
@@ -608,7 +608,7 @@ class xov:
         Y_stgB = 'Y_stgprj'
 
         # when computing partials, update variable names to retrieve column in ladata
-        if param is not '':
+        if param != '':
             #msrm_sampl = self.msrm_sampl  # to reduce processing time, just check close to unperturbed xover
             # if orbit related parameter
             if any(key in param for key in ['dA_', 'dC_', 'dR_', 'dRl_', 'dPt_']):
@@ -746,7 +746,7 @@ class xov:
 
             # plot and check intersections (rough, fine, ...)
             # if (debug):
-            if XovOpt.get("debug") and len(intersec_x) > 0 and param is '':
+            if XovOpt.get("debug") and len(intersec_x) > 0 and param == '':
                 print("intersec_x, intersec_y",intersec_x, intersec_y)
                 self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB, param)
                 # exit()
@@ -893,9 +893,32 @@ class xov:
             ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[::msrm_sampl],
             ladata_df.loc[ladata_df['orbID'] == arg[1]]['X_stgprj'].values[::msrm_sampl],
             ladata_df.loc[ladata_df['orbID'] == arg[1]]['Y_stgprj'].values[::msrm_sampl])
+
+        # plots
         if XovOpt.get("debug"):
-            print("rough intersection")
+            import geopandas as gpd
+            print(f"rough intersection")
+            crs_moon_lonlat = "+proj=lonlat +units=m +a=1737.4e3 +b=1737.4e3 +no_defs"
+            crs_stereo_km = '+proj=stere +lat_0=-90 +lon_0=0 +lat_ts=-90 +k=1 +x_0=0 +y_0=0 +units=km +a=1737.4e3 +b=1737.4e3 +no_defs'
             print(x, y, ind_A, ind_B)
+            df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]]#.values[::msrm_sampl]
+            gdf0= gpd.GeoDataFrame(
+                df0, geometry=gpd.points_from_xy(df0.LON, df0.LAT),crs=crs_moon_lonlat)
+            print(gdf0[['X_stgprj','Y_stgprj']])
+            print(gdf0.to_crs(crs_stereo_km))
+            df1 = ladata_df.loc[ladata_df['orbID'] == arg[1]]#.values[::msrm_sampl]
+            gdf1 = gpd.GeoDataFrame(
+                df1, geometry=gpd.points_from_xy(df1.LON, df1.LAT),crs=crs_moon_lonlat)
+            print(gdf1[['X_stgprj','Y_stgprj']])
+            print(gdf1.to_crs(crs_stereo_km))
+            ax = plt.subplot()
+            gdf0.to_crs(crs_stereo_km).plot(ax=ax) #, label=gdf0.orbID[0])  # , color='red')
+            gdf1.to_crs(crs_stereo_km).plot(ax=ax) #, label=gdf1.orbID[0])  # , color='red')
+            plt.xlim(-40, 40)
+            plt.ylim(-40, 40)
+            # plt.legend()
+            plt.show()
+            # exit()
         return ind_A, ind_B, x, y
 
     ###@profile
@@ -1001,7 +1024,6 @@ class xov:
             results = [[x[0] for x in [x,y,rough_indA,rough_indB,np.zeros(len(x)),np.zeros(len(x))]]]
         else:
             results = None
-
 
         if results is not None:
             xovtmp = self.postpro_xov_elev(ladata_df, results)

@@ -180,7 +180,7 @@ def main(args):
 
     # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
     # for orbitA and orbitB.
-    allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}RDR*' + epo_in + '*.*'))
+    allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
     endInit = time.time()
     print(
         '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
