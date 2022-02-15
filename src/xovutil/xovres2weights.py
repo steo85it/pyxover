@@ -11,7 +11,7 @@ import pickle
 import seaborn as sns
 # from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("debug"), XovOpt.get("outdir"), XovOpt.get("vecopts"), XovOpt.get("roughn_map")
 from config import XovOpt
-from src.xovutil.stat import rms
+from xovutil.stat import rms
 
 import pyproj
 import xarray as xr
@@ -20,8 +20,8 @@ import matplotlib.pyplot as plt
 
 from scipy.interpolate import RectBivariateSpline #, interpolate, interp2d
 
-from src.xovutil import pickleIO
-from src.pyxover.xov_setup import xov
+from xovutil import pickleIO
+from pyxover.xov_setup import xov
 import pandas as pd
 
 # use roughness map from Kreslavski et al, GRL, 2014

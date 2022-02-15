@@ -16,7 +16,7 @@ import seaborn as sns
 from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
-# from src.accumxov.accum_opt import remove_max_dist, remove_3sigma_median, remove_dR200, downsize, clean_part, \
+# from accumxov.accum_opt import remove_max_dist, remove_3sigma_median, remove_dR200, downsize, clean_part, \
 #     huber_threshold, \
 #     distmax_threshold, offnad_threshold, h2_limit_on, sigma_0, convergence_criteria, sampling, compute_vce, \
 #     use_advanced_weighting, get_cov_only
@@ -51,8 +51,8 @@ import scipy.linalg as la
 # from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("outdir"), XovOpt.get("tmpdir"), XovOpt.get("local"), XovOpt.get("partials"), XovOpt.get("sol4_glo"), XovOpt.get("sol4_orbpar"), \
 #     pert_cloop, XovOpt.get("OrbRep"), XovOpt.get("vecopts")
 
-from src.pyxover.xov_setup import xov
-from src.accumxov.Amat import Amat
+from pyxover.xov_setup import xov
+from accumxov.Amat import Amat
 
 ########################################
 # test space
@@ -333,8 +333,14 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             xovi_amat.xov.xovers['interp_weight'] = val
 
             # apply huber weights
+            print(val)
+            print(huber_penal)
+            print(len(val), len(huber_penal))
+            print(val.dtype, huber_penal.dtype)
+            print(val.shape)
+            print(huber_penal.shape)
             if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
-                val *= huber_penal
+                val *= np.hstack(huber_penal) # hstack converts array of objects (not sure why) to array of floats
                 # print("after huber", np.sort(val), np.mean(val))
                 # val *= huber_weights_dist
                 # print(val)

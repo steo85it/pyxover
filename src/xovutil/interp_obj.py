@@ -16,8 +16,8 @@ import numpy.polynomial.chebyshev as cheby
 from scipy import interpolate
 #from scipy.spatial.transform import Slerp
 #from scipy.spatial.transform import Rotation as R
-from src.xovutil.rotation import Slerp
-from src.xovutil.rotation import Rotation as R
+from xovutil.rotation import Slerp
+from xovutil.rotation import Rotation as R
 
 class interp_obj:
 

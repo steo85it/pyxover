@@ -9,7 +9,7 @@
 # Created: 18-Feb-2019
 import warnings
 
-from src.pyaltsim import perlin2d
+from pyaltsim import perlin2d
 from scipy.interpolate import RectBivariateSpline
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -24,14 +24,14 @@ import subprocess
 # from memory_profiler import profile
 
 # from mapcount import mapcount
-from src.xovutil.unproject_coord import unproject_stereographic
-from src.pyxover.intersection import intersection
+from xovutil.unproject_coord import unproject_stereographic
+from pyxover.intersection import intersection
 # from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("partials"), XovOpt.get("OrbRep"), XovOpt.get("parGlo"), XovOpt.get("parOrb"), XovOpt.get("tmpdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("multi_xov"), XovOpt.get("new_algo")
 from config import XovOpt
 
-from src.xovutil.iterables import lflatten
-from src.xovutil.stat import rms
-from src.xovutil.units import sec2day
+from xovutil.iterables import lflatten
+from xovutil.stat import rms
+from xovutil.units import sec2day
 
 
 class xov:
@@ -1113,7 +1113,7 @@ class xov:
         :param xovtmp: x-over dataframe
         :return: updated x-over dataframe with distance of xover from the 4 altimetry bounce points used to locate it
         """
-        from src.xovutil.project_coord import project_stereographic
+        from xovutil.project_coord import project_stereographic
 
         xovtmp = self.xovtmp.copy()
         xovtmp.reset_index(drop=True, inplace=True)

@@ -1,10 +1,11 @@
 # ignore folders
 *.bin
-examples/*/data/aux/
-examples/*/data/out/
-examples/*/data/tmp/
-examples/*/data/raw/ 
-examples/*/out/
+examples/*/data/aux/*
+examples/*/data/out/*
+examples/*/data/tmp/*
+examples/*/data/raw/*
+examples/*/out/*
+examples/MLA/log_slurm/*
 pip-wheel-metadata/
 */*.egg-info
 *.obj

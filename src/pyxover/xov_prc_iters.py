@@ -8,7 +8,7 @@ from pyxover.fine_xov import compute_fine_xov
 from pyxover.prepro_xov import prepro_mla_xov
 from pyxover.project_gtracks import project_mla
 
-from src.accumxov.Amat import Amat
+from accumxov.Amat import Amat
 # from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("vecopts"), XovOpt.get("compute_input_xov"), XovOpt.get("new_xov"), XovOpt.get("import_proj"), XovOpt.get("import_abmat")
 from config import XovOpt
 

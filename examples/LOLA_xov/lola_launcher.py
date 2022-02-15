@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 # import numpy as np
 import pandas as pd
@@ -33,6 +34,9 @@ if __name__ == '__main__':
     filnamout = f'loadPyAltSim'
 
     bin_rdrs = glob.glob(f"{XovOpt.get('rawdir')}/LOLARDR_*.DAT")
+    if len(bin_rdrs) == 0:
+        logging.error(f"No files found following the path `{XovOpt.get('rawdir')}/LOLARDR_*.DAT`")
+
     if True:
         for f in bin_rdrs[:10]:
             f = f.split('/')[-1].split('.')[0]

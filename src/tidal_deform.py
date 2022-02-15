@@ -28,7 +28,7 @@ import pandas as pd
 import spiceypy as spice
 from scipy.special import lpmv
 
-from src.xovutil import astro_trans as astr
+from xovutil import astro_trans as astr
 # mylib
 # from examples.MLA.options import XovOpt.get("SpInterp"), XovOpt.get("tmpdir"), XovOpt.get("debug"), XovOpt.get("local")
 from config import XovOpt

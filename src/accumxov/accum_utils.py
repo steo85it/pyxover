@@ -15,16 +15,16 @@ from matplotlib import pyplot as plt
 from scipy.sparse import csr_matrix, diags, issparse
 
 # from AccumXov import sigma_0, remove_3sigma_median, remove_max_dist
-# from src.accumxov.accum_opt import sigma_0, remove_3sigma_median
+# from accumxov.accum_opt import sigma_0, remove_3sigma_median
 # from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("full_covar"), XovOpt.get("debug"), XovOpt.get("local"), pert_cloop, XovOpt.get("parOrb"), XovOpt.get("parGlo"), XovOpt.get("OrbRep"), XovOpt.get("vecopts"), XovOpt.get("outdir")
 from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
 import matplotlib.pyplot as plt
 
-from src.pyxover.xov_setup import xov
-from src.pyxover.xov_utils import get_tracks_rms
-from src.xovutil.iterables import multiply_sparse_get_diag
+from pyxover.xov_setup import xov
+from pyxover.xov_utils import get_tracks_rms
+from xovutil.iterables import multiply_sparse_get_diag
 
 # @profile
 def get_xov_cov_tracks(df, plot_stuff=False):
@@ -224,8 +224,8 @@ def get_stats(amat):
     nobs = len(w)
     npar = len(amat.sol_dict['sol'].values())
 
-    lTP = w.reshape(1, -1) @ amat.weights
-    lTPl = lTP @ w.reshape(-1, 1)
+    lTP = np.hstack(w).reshape(1, -1) @ amat.weights # hstack converts "object" to "float" for product
+    lTPl = lTP @ np.hstack(w).reshape(-1, 1)
 
     xsol = []
     xstd = []
@@ -391,7 +391,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
 
 def analyze_sol(xovi_amat,xov,mode='full'):
-    # from src.accumxov.accum_opt import remove_max_dist
+    # from accumxov.accum_opt import remove_max_dist
 
     # print('xovi_amat.sol',xovi_amat.sol)
 
@@ -453,7 +453,7 @@ def analyze_sol(xovi_amat,xov,mode='full'):
             tmp['dist_min_mean'] = tmp.filter(regex='^dist_min.*$').mean(axis=1)
             xov.xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
 
-            if remove_max_dist:
+            if AccOpt.get("remove_max_dist"):
                 xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
                 #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
@@ -520,7 +520,7 @@ def analyze_sol(xovi_amat,xov,mode='full'):
     return orb_sol, glb_sol, sol_dict
 
 def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
-    from src.accumxov.Amat import Amat
+    from accumxov.Amat import Amat
 
     # retrieve old solution
     if int(ext_iter) > 0:
