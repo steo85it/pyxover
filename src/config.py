@@ -152,6 +152,19 @@ class XovOpt:
         else:
             raise NameError("Name not accepted in XovOpt.set() method")
 
+    @staticmethod
+    def display():
+        print(XovOpt.__conf)
+
+    @staticmethod
+    def to_dict():
+        return XovOpt.__conf
+
+    @staticmethod
+    def clone(opts):
+        print("- Updating XovOpt")
+        XovOpt.__conf = opts.copy()
+        
 # example, suppose importing
 # from config import Options
 if __name__ == '__main__':

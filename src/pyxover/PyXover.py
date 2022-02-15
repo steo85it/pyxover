@@ -7,8 +7,8 @@
 #
 import warnings
 
-from src.accumxov.Amat import Amat
-from src.pyxover.xov_prc_iters import xov_prc_iters_run
+from accumxov.Amat import Amat
+from pyxover.xov_prc_iters import xov_prc_iters_run
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -19,6 +19,7 @@ import pandas as pd
 import itertools as itert
 # from itertools import izip, count
 import multiprocessing as mp
+
 # from geopy.distance import vincenty
 
 import spiceypy as spice
@@ -33,9 +34,8 @@ import time
 # from mapcount import mapcount
 from config import XovOpt
 
-from src.pygeoloc.ground_track import gtrack
-from src.pyxover.xov_setup import xov
-
+from pygeoloc.ground_track import gtrack
+from pyxover.xov_setup import xov
 
 # from xovutil import lflatten
 ########################################
@@ -198,8 +198,13 @@ def main(args):
     cmb_y_in = args[0]
     indir_in = args[1]
     outdir_in = args[2]
-    iter_in = args[-1]
+    dum = args[3]
+    iter_in = args[4]
+    opts = args[5]
 
+    # update options (needed when sending to slurm)
+    XovOpt.clone(opts)
+        
     # locate data
     data_pth = XovOpt.get("basedir") # '/att/nobackup/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
     dataset = indir_in  # 'test/' #'small_test/' #'1301/' #
@@ -266,8 +271,8 @@ def main(args):
             misy = ['08','11', '12', '13', '14', '15']
 
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
-    # print(misycmb)
-    if XovOpt.get("debug"):
+    print(f"combs:{misycmb}")
+    if True: #XovOpt.get("debug"):
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
 
@@ -352,7 +357,9 @@ def main(args):
 
         for track_id in set(np.ravel(comb)):
             track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
-
+            #print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+            #print(track_obj.ladata_df)
+            #print(track_obj.ladata_df.loc[:,cols])
             # resurrect as soon as got also south part of obs track
             #if instr == 'BELA':
             #     print(track_obj.ladata_df['LAT'].max(axis=0))
@@ -363,7 +370,14 @@ def main(args):
             #     mladata[track_id] =track_obj.ladata_df.loc[track_obj.ladata_df['LAT']>=0,cols]
             #     # print("postsel",len(mladata[track_id]))
             # else:
-            mladata[track_id] =track_obj.ladata_df.loc[:,cols]
+            # print(track_id, XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+            # print(track_obj.ladata_df)
+
+            try:
+                mladata[track_id] = track_obj.ladata_df.loc[:,cols]
+            except:
+                print(f"*** PyXover: Issue with {track_id}. Skip.")
+                exit()
         # print(len(mladata))
         # exit()
             # transform to df to get memory
@@ -428,6 +442,7 @@ def main(args):
                 # print(filnams_loop)
                 # print((mp.cpu_count() - 1))
                 pool = mp.get_context("spawn").Pool(processes=ncores)  # mp.cpu_count())
+                #pool = mp.Pool(processes=ncores)
                 # store list of tracks with xovs
                 result = pool.map(launch_xov, args)  # parallel
 # ######################################

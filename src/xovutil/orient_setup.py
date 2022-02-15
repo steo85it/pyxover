@@ -14,7 +14,7 @@ import numpy as np
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("debug")
 from config import XovOpt
 
-from src.xovutil.units import as2deg
+from xovutil.units import as2deg
 
 AG = False # True
 ZAP = False

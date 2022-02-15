@@ -10,8 +10,8 @@ import warnings
 
 import pandas as pd
 
-from src.accumxov.Amat import Amat
-from src.accumxov import AccumXov as xovacc, accum_utils
+from accumxov.Amat import Amat
+from accumxov import AccumXov as xovacc, accum_utils
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -31,7 +31,7 @@ import time
 
 # mylib
 # from mapcount import mapcount
-from src.pygeoloc.ground_track import gtrack
+from pygeoloc.ground_track import gtrack
 # from examples.MLA.options import XovOpt.get("parallel"), XovOpt.get("SpInterp"), XovOpt.get("new_gtrack"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("vecopts"), XovOpt.get("debug"), XovOpt.get("OrbRep"), XovOpt.get("rawdir")
 from config import XovOpt
 
@@ -64,7 +64,6 @@ from config import XovOpt
 
 ########################################
 
-
 def launch_gtrack(args):
     track, infil, outdir_in = args
     track_id = 'gtrack_' + track.name
@@ -91,16 +90,18 @@ def launch_gtrack(args):
 
             # print(track.ladata_df)
             # exit()
-            track.save(gtrack_out)
-            if not XovOpt.get("local") or XovOpt.get("debug"):
-                print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
+            if len(track.ladata_df) > 0:
+                track.save(gtrack_out)
+                if not XovOpt.get("local") or XovOpt.get("debug"):
+                    print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
+            else:
+                print(f"Orbit {track_id.split('_')[1]} contains no valid data. No gtrack created.")    
         # except:
         #    print('failed to process ' + track_id)
         else:
             # track = track.load('out/'+track_id+'.pkl')
             if not XovOpt.get("local") or XovOpt.get("debug"):
                 print('Gtrack file ' + gtrack_out + ' already existed!')
-
 
 def main(args):
 
@@ -114,7 +115,12 @@ def main(args):
     indir_in = args[1]
     outdir_in = args[2]
     iter_in = args[4]
+#    if len(args) > 4: # passing a fct to slurm doesn't pass these updated Opt
+    opts = args[5]
 
+    # update options (needed when sending to slurm)
+    XovOpt.clone(opts)
+    
     # locate data
     data_pth = f'{XovOpt.get("rawdir")}'
     dataset = indir_in
@@ -181,6 +187,9 @@ def main(args):
     # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
     # for orbitA and orbitB.
     allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
+    if len(allFiles) == 0:
+        print("# No files found in", os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*') )
+        
     endInit = time.time()
     print(
         '----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
