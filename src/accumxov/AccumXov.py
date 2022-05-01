@@ -795,7 +795,11 @@ def main(arg):
     datasets = arg[0]  # ['sim_mlatimes/0res_35amp']
     data_sim = arg[1]
     ext_iter = arg[2]
+    opts = arg[3]
 
+    # update options (needed when sending to slurm)
+    XovOpt.clone(opts)
+    
     if data_sim == 'sim':
         _ = [x.split('/')[-2] for x in datasets]
         resval = [10. / 2 ** int(''.join(filter(str.isdigit, strng.split('_')[0]))) for strng in _]

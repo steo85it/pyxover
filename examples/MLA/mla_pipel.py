@@ -31,10 +31,9 @@ AccOpt.check_consistency()
 # os.chdir("MLA/")
 
 # run full pipeline on a few MLA test data
-PyGeoloc.main(['1206', 'SIM_12/KX5/0res_1amp/', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack_12', 'MLASCIRDR', 0, XovOpt.to_dict()])
+#PyGeoloc.main(['1206', 'SIM_12/KX5/0res_1amp/', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack_12', 'MLASCIRDR', 0, XovOpt.to_dict()])
 #PyGeoloc.main(['1301', 'SIM_13/KX5/0res_1amp/', 'sim/BS0_0/0res_1amp/gtrack_13', 'MLASCIRDR', 0])
 #PyXover.main(['7', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack_', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/', 'MLASIMRDR', 0, XovOpt.to_dict()])
-exit()
 
 # generate new template (when needed)
 # out.save('mla_pipel_test_out.pkl')
