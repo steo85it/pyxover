@@ -310,11 +310,18 @@ class gtrack:
 
         # print("Start spkezr MGR")
         # trajectory
-        xv_spc = np.array([spice.spkezr(self.vecopts['SCNAME'],
-                                        t,
-                                        self.vecopts['INERTIALFRAME'],
-                                        'NONE',
-                                        self.vecopts['INERTIALCENTER'])[0] for t in t_spc])
+        try:
+            xv_spc = np.array([spice.spkezr(self.vecopts['SCNAME'],
+                                            t,
+                                            self.vecopts['INERTIALFRAME'],
+                                            'NONE',
+                                            self.vecopts['INERTIALCENTER'])[0] for t in t_spc])
+        except:
+            xv_spc = np.array([spice.spkez(self.vecopts['SCID'],
+                                            t,
+                                            self.vecopts['INERTIALFRAME'],
+                                            'NONE',
+                                            self.vecopts['PLANETID'])[0] for t in t_spc]) # TODO hack for CALA case
 
         xv_spc = np.reshape(np.concatenate(xv_spc), (-1, 6))
 
@@ -322,7 +329,7 @@ class gtrack:
         # attitude
         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
         # TODO update to get instrument from vecopts
-        if XovOpt.get("instrument") == 'BELA':
+        if XovOpt.get("instrument") in ['BELA','CALA']:
             pass
             # cmat = pxform_array('MPO', self.vecopts['INERTIALFRAME'], t_spc)
         elif XovOpt.get("instrument") == "LOLA":
@@ -337,7 +344,7 @@ class gtrack:
 
         self.MGRx.interp([xv_spc[:, i] for i in range(0, 3)], t_spc)
         self.MGRv.interp([xv_spc[:, i] for i in range(3, 6)], t_spc)
-        if XovOpt.get("instrument") != 'BELA':
+        if not XovOpt.get("instrument") in ['BELA','CALA']:
             self.MGRa.interpCmat(cmat, t_spc)
 
         # print("Start spkezr MER")

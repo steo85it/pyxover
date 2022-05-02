@@ -63,7 +63,6 @@ from pyxover.xov_setup import xov
 #
 # exit()
 
-# @profile
 def launch_xov(
         args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
     track_idA = args[0]
@@ -265,6 +264,8 @@ def main(args):
     else:
         if XovOpt.get("instrument") == 'BELA':
             misy = ['26','27'] #+str("{:02}".format(i)) for i in range(1,13,1)]
+        elif XovOpt.get("instrument") == 'CALA':
+            misy = ['31'] #+str("{:02}".format(i)) for i in range(1,13,1)]
         elif XovOpt.get("instrument") == 'LOLA':
             misy = ['09', '10']
         else:

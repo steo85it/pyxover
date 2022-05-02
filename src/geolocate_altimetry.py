@@ -97,7 +97,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # print(plapos_bc)
 
     # compute SSB to bounce point vector
-    if XovOpt.get("instrument") == 'BELA':
+    if XovOpt.get("instrument") in ['BELA','CALA']:
         # project tof along radial dir between s/c and planet (=nadir pointing)
         zpt = (-scpos_tx+plapos_bc)/(np.linalg.norm(scpos_tx-plapos_bc,axis=1)[:, np.newaxis])
     else:
@@ -258,11 +258,20 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
         # print(scpv.shape)
         # exit()
     else:
-        scpv, lt = spice.spkezr(vecopts['SCNAME'],
-                                   et,
-                                   vecopts['INERTIALFRAME'],
-                                   'NONE',
-                                   vecopts['INERTIALCENTER'])
+        try:
+            scpv, lt = spice.spkezr(vecopts['SCNAME'],
+                                       et,
+                                       vecopts['INERTIALFRAME'],
+                                       'NONE',
+                                       vecopts['INERTIALCENTER'])
+        except:
+            scpv = np.array([spice.spkez(vecopts['SCID'],
+                                       t,
+                                       vecopts['INERTIALFRAME'],
+                                       'NONE',
+                                       vecopts['PLANETID'])[0] for t in et])
+
+
         scpv = np.atleast_2d(np.squeeze(scpv))
 
     # print('check scpv', scpv)
@@ -330,11 +339,18 @@ def get_sc_pla(et, x_sc, v_sc, SpObj, vecopts):
         v_pla = np.transpose(SpObj['MERv'].eval(et))
         scpv_p = np.concatenate((x_sc * 1.e-3 - x_pla, v_sc * 1.e-3 - v_pla), axis=1)
     else:
-        scpv_p, lt = spice.spkezr(vecopts['SCNAME'],
-                                  et,
-                                  vecopts['INERTIALFRAME'],
-                                  'NONE',
-                                  vecopts['PLANETNAME'])
+        try:
+            scpv_p, lt = spice.spkezr(vecopts['SCNAME'],
+                                      et,
+                                      vecopts['INERTIALFRAME'],
+                                      'NONE',
+                                      vecopts['PLANETNAME'])
+        except:
+            scpv_p = np.array([spice.spkez(vecopts['SCID'],
+                                      t,
+                                      vecopts['INERTIALFRAME'],
+                                      'NONE',
+                                      vecopts['PLANETID'])[0] for t in et])
 
     scpos_p = 1.e3 * np.array(scpv_p)[:, :3]
     scvel_p = 1.e3 * np.array(scpv_p)[:, 3:]

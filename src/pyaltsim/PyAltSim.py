@@ -508,7 +508,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     ###########################
 
     # generate list of epochs
-    if XovOpt.get("new_illumNG") and XovOpt.get("instrument") != "BELA":
+    if XovOpt.get("new_illumNG") and not XovOpt.get("instrument") in ["BELA","CALA"]:
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         data_pth = XovOpt.get("rawdir")
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
@@ -538,11 +538,11 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
         days_in_month = monthrange(int('20'+epos_in[:2]), int(epos_in[2:]))
 
-        d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),00,00,00)
+        d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),1,00,00) # TODO avoiding issues with 30-Apr 23:59:59 ... extend spk
 
         # if test, avoid computing tons of files
         if XovOpt.get("unittest"):
-            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),5,00,00) # for testing
+            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('03'),5,00,00) # for testing
         else:
             d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
 
@@ -555,7 +555,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1)
 
     # pass to illumNG
-    if XovOpt.get("instrument") != 'BELA':
+    if not XovOpt.get("instrument") in ['BELA','CALA']:
         if XovOpt.get("local"):
             if XovOpt.get("new_illumNG"):
                 np.savetxt(XovOpt.get("tmpdir")+"epo_mla_" + epos_in + ".in", epo_tx, fmt="%10.2f")
