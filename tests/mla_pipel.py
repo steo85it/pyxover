@@ -19,22 +19,30 @@ class MlaXoverTest(unittest.TestCase):
         # update paths and check options
         XovOpt.set("basedir", 'MLA/data/')
         XovOpt.set("instrument", 'MLA')
+        XovOpt.set("local", True)
+        XovOpt.set("parallel", False)
+        XovOpt.set("expopt", 'BS0')
+
+        XovOpt.set("new_gtrack", 2)
+        vecopts = XovOpt.get('vecopts')
+        vecopts['SCFRAME'] = 'MSGR_SPACECRAFT'
+        XovOpt.set('vecopts', vecopts)
+        XovOpt.set("SpInterp", 0)
         XovOpt.check_consistency()
         AccOpt.check_consistency()
-
-        # os.chdir("MLA/")
+        # if downloading kernels is needed, refer to examples/MLA/data/aux dir
 
     def test_proc_pipeline(self):
 
         # run full pipeline on a few MLA test data
-        PyGeoloc.main(['1201', 'SIM_12/BS0/0res_1amp/', 'sim/BS0_0/0res_1amp/gtrack_12', 'MLASCIRDR', 0])
-        PyGeoloc.main(['1301', 'SIM_13/BS0/0res_1amp/', 'sim/BS0_0/0res_1amp/gtrack_13', 'MLASCIRDR', 0])
-        PyXover.main(['12', 'sim/BS0_0/0res_1amp/gtrack_', 'sim/BS0_0/0res_1amp/', 'MLASIMRDR', 0])
+        PyGeoloc.main(['1201', 'SIM_12/BS0/0res_1amp/', 'sim/BS0_0/0res_1amp/gtrack_12', 'MLASCIRDR', 0, XovOpt.to_dict()])
+        PyGeoloc.main(['1301', 'SIM_13/BS0/0res_1amp/', 'sim/BS0_0/0res_1amp/gtrack_13', 'MLASCIRDR', 0, XovOpt.to_dict()])
+        PyXover.main(['12', 'sim/BS0_0/0res_1amp/gtrack_', 'sim/BS0_0/0res_1amp/', 'MLASIMRDR', 0, XovOpt.to_dict()])
 
         # generate new template (when needed)
         # out.save('mla_pipel_test_out.pkl')
 
-        out = AccumXov.main([['sim/BS0_0/0res_1amp/'], 'sim', 0])
+        out = AccumXov.main([['sim/BS0_0/0res_1amp/'], 'sim', 0, XovOpt.to_dict()])
 
         # load template test results
         val = Amat(vecopts=XovOpt.get("vecopts"))

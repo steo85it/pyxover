@@ -654,7 +654,7 @@ class gtrack:
         geoloc_out, et_bc, dr_tidal, offndr = geoloc(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
 
         # print(self.ladata_df)
-        if self.vecopts['PARTDER'] is not '':
+        if self.vecopts['PARTDER'] != '':
             tmp_df['ET_BC_' + self.vecopts['PARTDER']+'_p'] = et_bc
         else:
             tmp_df.loc[:, 'ET_BC'] = et_bc
@@ -662,7 +662,7 @@ class gtrack:
             tmp_df.loc[:, 'offnadir'] = offndr
 
         # Compute partial derivatives if required
-        if self.vecopts['PARTDER'] is not '':
+        if self.vecopts['PARTDER'] != '':
 
             # Read self.vecopts[partder] and apply perturbation
             # if needed (for partials AND for closed loop sim)
@@ -808,7 +808,7 @@ class gtrack:
 
         # get dict values
         par = list(par_d)[0]
-        if par is not '':
+        if par != '':
             diff_step = np.linalg.norm(list(par_d)[1])
 
         # setting up as 2D arrays to be able to access np.shape(lon_tmp)[0]
@@ -817,7 +817,7 @@ class gtrack:
         lat_tmp = [ladata_df['LAT'].values]
 
         # Apply position correction
-        if par is not '':
+        if par != '':
             lon_tmp = [lon_tmp[:][0] + ladata_df['dLON/' + par].values * k * diff_step for k in [-1, 1]]
             lat_tmp = [lat_tmp[:][0] + ladata_df['dLAT/' + par].values * k * diff_step for k in [-1, 1]]
             # lon_tmp = [ladata_df['LON_' + k + '_' + par].values for k in ['m', 'p']]
@@ -839,7 +839,7 @@ class gtrack:
 
         # stg_proj_cols = {}
 
-        if (par is ''):
+        if (par == ''):
             # proj=project_stereographic(lon_tmp,lat_tmp,0,90,2440)
             # ladata_df['X_stgprj']=proj[:,0]
             # ladata_df['Y_stgprj']=proj[:,1]

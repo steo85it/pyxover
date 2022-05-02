@@ -22,11 +22,11 @@ options.set("local", False)
 options.set("parallel", False)
 options.set("expopt", 'AA2')
 
-options.set("new_gtrack", 1)
+options.set("new_gtrack", 0)
 vecopts = options.get('vecopts')
 vecopts['SCFRAME'] = 'MSGR_SPACECRAFT'
 options.set('vecopts', vecopts)
-options.set("SpInterp", 0)
+options.set("SpInterp", 2)
 
 options.check_consistency()
 AccOpt.check_consistency()
