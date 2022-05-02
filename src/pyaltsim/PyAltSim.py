@@ -7,6 +7,7 @@
 #
 import warnings
 
+from src.pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
 from src.xovutil.dem_util import get_demz_at, import_dem
 from src.xovutil.icrf2pbf import icrf2pbf
 from src.xovutil.orient_setup import orient_setup
@@ -16,7 +17,6 @@ import os
 import shutil
 import glob
 import time
-import datetime
 
 import numpy as np
 import pandas as pd
@@ -51,6 +51,7 @@ class sim_gtrack(gtrack):
         self.outdir = None
         self.slewdir = None
         # self.ran_noise = None
+        self.rdr_df = None
 
     def setup(self, df):
         df_ = df.copy()
@@ -381,104 +382,15 @@ class sim_gtrack(gtrack):
                                   'LON': 'geoc_long', 'LAT': 'geoc_lat', 'R': 'altitude',
                                   })
         df_ = df_.reset_index(drop=True)
-        if XovOpt.get("local"):
-            self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
-                                                  'UTC', 'TOF_ns_ET', 'chn', 'seqid']])[mlardr_cols]
-        else:
-            self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
-                                                  'UTC', 'TOF_ns_ET', 'chn', 'seqid']], sort=True)[mlardr_cols]
+        # if XovOpt.get("local"):
+        self.rdr_df = pd.concat([self.rdr_df,df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
+                                              'UTC', 'TOF_ns_ET', 'chn', 'seqid']]])[mlardr_cols]
+        # else:
+        #     self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
+        #                                           'UTC', 'TOF_ns_ET', 'chn', 'seqid']], sort=True)[mlardr_cols]
 
 
 ##############################################
-
-def prepro_ilmNG(illumNGf):
-    li = []
-    for f in illumNGf:
-        print("Processing", f)
-        df = pd.read_csv(f, index_col=None, header=0, names=[f.split('.')[-1]])
-        li.append(df)
-
-    # df_ = dfin.copy()
-    df_ = pd.concat(li, axis=1)
-    df_ = df_.apply(pd.to_numeric, errors='coerce')
-    # print(df_.rng.min())
-
-    df_ = df_[df_.rng < 1600]
-    df_ = df_.rename(columns={"xyzd": "epo_tx"})
-    # print(df_.dtypes)
-
-    df_['diff'] = df_.epo_tx.diff().fillna(0)
-    # print(df_[df_['diff'] > 1].index.values)
-    arcbnd = [df_.index.min()]
-    # new arc if observations separated by more than 1h
-    arcbnd.extend(df_[df_['diff'] > 3600].index.values)
-    arcbnd.extend([df_.index.max() + 1])
-    # print(arcbnd)
-    df_['orbID'] = 0
-    for i, j in zip(arcbnd, arcbnd[1:]):
-        orbid = (datetime.datetime(2000, 1, 1, 12, 0) + datetime.timedelta(seconds=df_.loc[i, 'epo_tx'])).strftime(
-            "%y%m%d%H%M")
-        df_.loc[df_.index.isin(np.arange(i, j)), 'orbID'] = orbid
-
-    return df_
-
-def prepro_BELA_sim(epo_in):
-
-    scpv, lt = spice.spkezr(XovOpt.get("vecopts")['SCNAME'],
-                               epo_in,
-                               XovOpt.get("vecopts")['PLANETFRAME'],
-                               'LT',
-                               XovOpt.get("vecopts")['PLANETNAME'])
-    scpos = np.array(scpv)[:,:3]
-    range = np.linalg.norm(scpos,axis=1) - XovOpt.get("vecopts")['PLANETRADIUS']
-
-    scplavec = scpos/np.linalg.norm(scpos,axis=1)[:,None]
-    approx_bounce_point = scplavec*XovOpt.get("vecopts")['PLANETRADIUS'] #range[:,None]
-
-    df_ = pd.DataFrame(approx_bounce_point,columns=['x','y','z'])
-    df_['epo_tx'] = epo_in
-    df_['rng'] = range
-
-    approx_bounce_point_sph = astr.cart2sph(approx_bounce_point)
-    df_['lat']= np.rad2deg(approx_bounce_point_sph[1]) # pd.DataFrame(approx_bounce_point_sph,columns=['r','lat','lon'])
-
-    # apply altitude cutoff (PFD too high)
-    df_ = df_[df_.rng < 1600]
-    df_ = df_.rename(columns={"xyzd": "epo_tx"})
-    # print(df_.dtypes)
-
-    ### used for MLA ###
-    # df_['diff'] = df_.epo_tx.diff().fillna(0)
-    # # print(df_[df_['diff'] > 1].index.values)
-    # arcbnd = [df_.index.min()]
-    # # new arc if observations separated by more than 1h
-    # arcbnd.extend(df_[df_['diff'] > 3600].index.values)
-
-    # for BELA, new arc at every upwards passage of equator
-    df_['diff'] = df_.lat.diff().fillna(0)
-    # print(df_[(df_['diff'] > 0)])
-    # print(df_[(df_['diff'] > 0) & (df_['lat'].round(1) == 0)])
-
-    def ranges(nums):
-        nums = sorted(set(nums))
-        gaps = [[s, e] for s, e in zip(nums, nums[1:]) if s + 1 < e]
-        edges = iter(nums[:1] + sum(gaps, []) + nums[-1:])
-        return list(zip(edges, edges))
-
-    # set up arc boundaries (and remove consecutive indexes due to approx)
-    arcbnd = [df_.index.min()]
-    arcbnd.extend(df_[(df_['diff'] > 0) & (df_['lat'].round(0) == 0)].index.values)
-    arcbnd = [x[0] for x in ranges(arcbnd)]
-    arcbnd.extend([df_.index.max() + 1])
-    # print(arcbnd)
-
-    df_['orbID'] = 0
-    for i, j in zip(arcbnd, arcbnd[1:]):
-        orbid = (datetime.datetime(2000, 1, 1, 12, 0) + datetime.timedelta(seconds=df_.loc[i, 'epo_tx'])).strftime(
-            "%y%m%d%H%M")
-        df_.loc[df_.index.isin(np.arange(i, j)), 'orbID'] = orbid
-
-    return df_
 
 
 def sim_track(args):
@@ -487,30 +399,50 @@ def sim_track(args):
 
     if XovOpt.get("instrument") == "LOLA":
         track.slewdir = XovOpt.get("auxdir") + outdir_.split('/')[-3]
-
-    print("track.slewdir",track.slewdir)
-    print(outdir_)
-    
-    if os.path.isfile(outdir_ + 'MLASIMRDR' + track.name + '.TAB') == False:
-        track.setup(df[df['orbID'] == i])
-        track.rdr_df.to_csv(outdir_ + 'MLASIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
-        print('Simulated observations written to', outdir_ + 'MLASIMRDR' + track.name + '.TAB')
     else:
-        print('Simulated observations ', outdir_ + 'MLASIMRDR' + track.name + '.TAB already exists. Skip.')
+        assert track.slewdir == None
 
 
-def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
+    if os.path.isfile(outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB') == False:
+        track.setup(df[df['orbID'] == i])
+        track.rdr_df.to_csv(outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
+        print('Simulated observations written to', outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB')
+    else:
+        print('Simulated observations ', outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB already exists. Skip.')
 
-    ampl_in = list(arg)[0]
-    res_in = list(arg)[1]
-    dirnam_in = list(arg)[2]
-    epos_in = list(arg)[3]
+
+def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
+
+    ampl_in = args[0]
+    res_in = args[1]
+    dirnam_in = args[2]
+    epos_in = args[3]
+    opts = args[4]
+
+    # update options (needed when sending to slurm)
+    XovOpt.clone(opts)
+
+    # locate data
+    data_pth = f'{XovOpt.get("rawdir")}'
+    dataset = dirnam_in
+    data_pth += dataset
+
+    if XovOpt.get("SpInterp") in [0, 2]:
+        # load kernels
+        if not XovOpt.get("local"):
+            spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
+                          f'{XovOpt.get("auxdir")}mymeta_pgda'])
+        else:
+            spice.furnsh(f'{XovOpt.get("auxdir")}mymeta')
 
     if XovOpt.get("instrument") == "LOLA":
         path_illumng = f'{XovOpt.get("auxdir")}{epos_in}/slewcheck_{ampl_in}/'
 
     print('dirnam_in', dirnam_in)
     print('epos_in', epos_in)
+
+    if not os.path.exists(XovOpt.get('tmpdir')):
+        os.makedirs(XovOpt.get('tmpdir'))
 
     # if not XovOpt.get("local"):
         # data_pth = '/att/nobackup/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
@@ -714,7 +646,7 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print([tr.name for tr in tracks])
 
     if XovOpt.get("local"):
-        outdir_ = XovOpt.get("outdir") + dirnam_in
+        outdir_ = XovOpt.get("rawdir") + dirnam_in
     else:
         outdir_ = dirnam_in
 

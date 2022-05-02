@@ -314,7 +314,7 @@ class gtrack:
                                         t,
                                         self.vecopts['INERTIALFRAME'],
                                         'NONE',
-                                        self.vecopts['INERTIALCENTER']) for t in t_spc])[:, 0]
+                                        self.vecopts['INERTIALCENTER'])[0] for t in t_spc])
 
         xv_spc = np.reshape(np.concatenate(xv_spc), (-1, 6))
 
@@ -346,7 +346,7 @@ class gtrack:
                                         t,
                                         self.vecopts['INERTIALFRAME'],
                                         'NONE',
-                                        self.vecopts['INERTIALCENTER']) for t in t_spc])[:, 0]
+                                        self.vecopts['INERTIALCENTER'])[0] for t in t_spc])
         xv_pla = np.reshape(np.concatenate(xv_pla), (-1, 6))
 
         # print("Start MER interpolation")
@@ -360,7 +360,7 @@ class gtrack:
                                         t,
                                         self.vecopts['INERTIALFRAME'],
                                         'NONE',
-                                        self.vecopts['INERTIALCENTER']) for t in t_spc])[:, 0]
+                                        self.vecopts['INERTIALCENTER'])[0] for t in t_spc])
         xv_sun = np.reshape(np.concatenate(xv_sun), (-1, 6))
 
         # print("Start SUN interpolation")

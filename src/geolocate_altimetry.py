@@ -198,7 +198,8 @@ def get_offnadir(plapos_bc, scpos_tx, vbore):
     vbore_normed = vbore / np.linalg.norm(vbore, axis=1)[:, np.newaxis]
     scxyz_tx = (scpos_tx - plapos_bc)
     scxyz_tx_pbf_normed = np.array(scxyz_tx) / np.linalg.norm(scxyz_tx, axis=1)[:, np.newaxis]
-    offndr = np.arccos(np.einsum('ij,ij->i', vbore_normed, scxyz_tx_pbf_normed))
+    cos_offndr = np.einsum('ij,ij->i', vbore_normed, scxyz_tx_pbf_normed)
+    offndr = np.arccos(np.round(cos_offndr, 10)) # else, when nadir pointing, getting 1.+1.e-12 and throwing warnings
     if np.max(np.abs(offndr)) <= 1:
         offndr = np.rad2deg(offndr)
     else:
