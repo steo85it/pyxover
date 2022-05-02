@@ -1,0 +1,17 @@
+\begindata
+
+PATH_VALUES  = ( '../examples/MLA/data/aux/kernels' )
+
+PATH_SYMBOLS = ( 'A' )
+
+KERNELS_TO_LOAD = ( '$A/msgr_110716_120430_recon_gsfc_1.bsp',
+                    '$A/msgr_120501_130430_recon_gsfc_1.bsp',
+                    '$A/de405.bsp',
+                    '$A/msgr_1201_v01.bc',
+                    '$A/msgr_1301_v01.bc',
+                    '$A/pck00010_msgr_v23.tpc',
+                    '$A/naif0011.tls',
+                    '$A/msgr_v231.tf',
+                    '$A/messenger_2548.tsc')
+
+\begintext
