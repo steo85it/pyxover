@@ -81,7 +81,7 @@ XovOpt.set("unittest", True) # this restricts simulated data to the first day of
 # generate a few BELA test data
 for monyea in months_to_process:
     indir_in = f'SIM_{monyea[:2]}/{XovOpt.get("expopt")}/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/'
-    # PyAltSim.main([XovOpt.get("amplopt"), XovOpt.get("resopt"), indir_in, f'{monyea}', XovOpt.to_dict()])
+    PyAltSim.main([XovOpt.get("amplopt"), XovOpt.get("resopt"), indir_in, f'{monyea}', XovOpt.to_dict()])
 
 XovOpt.set("sim_altdata", False)
 XovOpt.set("partials", True)
@@ -93,7 +93,7 @@ for monyea in months_to_process:
     indir_in = f'SIM_{monyea[:2]}/{XovOpt.get("expopt")}/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/'
     outdir_in = f'sim/{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/gtrack_{monyea[:2]}'
     # geolocation step
-    # PyGeoloc.main([f'{monyea}', indir_in, outdir_in, 'BELASCIRDR', 0, XovOpt.to_dict()])
+    PyGeoloc.main([f'{monyea}', indir_in, outdir_in, 'BELASCIRDR', 0, XovOpt.to_dict()])
 # # crossovers location step
 XovOpt.set("parallel", False)  # not sure why, but parallel gets crazy
 PyXover.main(['0', f'sim/{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/gtrack_',

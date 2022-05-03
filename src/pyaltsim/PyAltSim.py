@@ -542,7 +542,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
         # if test, avoid computing tons of files
         if XovOpt.get("unittest"):
-            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('03'),5,00,00) # for testing
+            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('02'),5,00,00) # for testing
         else:
             d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
 
