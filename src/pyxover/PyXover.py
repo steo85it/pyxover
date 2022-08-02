@@ -91,7 +91,7 @@ def launch_xov(
             # try:
             #    trackA = track_id
             #    trackA = tracklist[str(track_id)]
-            trackA = gtrack(XovOpt.get("vecopts"))
+            trackA = gtrack(XovOpt.to_dict())
 
             if XovOpt.get("monthly_sets"):
                 trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_idA + '.pkl')
@@ -118,7 +118,7 @@ def launch_xov(
                         # try:
                         #        trackB = track_id
                         #        trackB = tracklist[str(gtrackB)]
-                        trackB = gtrack(XovOpt.get("vecopts"))
+                        trackB = gtrack(XovOpt.to_dict())
 
                         if XovOpt.get("monthly_sets"):
                            trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + track_idB + '.pkl')
@@ -307,8 +307,11 @@ def main(args):
           allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0][:2] + '/gtrack_' + misycmb[par][0] + '*'))
           allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1][:2] + '/gtrack_' + misycmb[par][1] + '*'))
         else:
-          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/*'))
-          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/*'))
+          # TODO removed check on orbid for this test
+          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/*'))
+          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/*'))
+          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
+          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
 
         # if misycmb[par][0] == misycmb[par][1]:
         #     allFiles = allFilesA
@@ -351,13 +354,15 @@ def main(args):
         # print(comb)
         # print(comb.shape,np.ravel(comb).shape,len(set(np.ravel(comb))))
         # print(set(np.ravel(comb)))
-        track_obj = gtrack(XovOpt.get("vecopts"))
+        track_obj = gtrack(XovOpt.to_dict())
         mladata = {}
         cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
              'X_stgprj', 'Y_stgprj']
 
         for track_id in set(np.ravel(comb)):
-            track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+            # track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+            track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
+
             #print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
             #print(track_obj.ladata_df)
             #print(track_obj.ladata_df.loc[:,cols])
