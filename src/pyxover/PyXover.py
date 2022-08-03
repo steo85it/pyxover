@@ -360,9 +360,12 @@ def main(args):
              'X_stgprj', 'Y_stgprj']
 
         for track_id in set(np.ravel(comb)):
+            # print(track_id, XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
             # track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
-            track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
-
+            try:
+                track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
+            except:
+                print(f"* Issue with {XovOpt.get('outdir') + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'}")
             #print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
             #print(track_obj.ladata_df)
             #print(track_obj.ladata_df.loc[:,cols])

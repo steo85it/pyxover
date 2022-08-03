@@ -28,6 +28,7 @@ import numpy as np
 # import mpl_toolkits.basemap as basemap
 
 import time
+from tqdm import tqdm
 
 # mylib
 # from mapcount import mapcount
@@ -218,7 +219,7 @@ def main(args):
                 orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
         # epo_in=[]
         tracks = []
-        for track_id, infil in zip(tracknames, allFiles):
+        for track_id, infil in tqdm(zip(tracknames, allFiles), total=len(allFiles)):
             track = track_id
 
             track = gtrack(XovOpt.to_dict())
@@ -306,8 +307,8 @@ def main(args):
             pool.close()
             pool.join()
     else:
-        from tqdm import tqdm
-        for arg in tqdm(args):
+#        from tqdm import tqdm
+        for arg in tqdm(args, total=len(allFiles)):
             launch_gtrack(arg)  # seq
 
     endGeoloc = time.time()

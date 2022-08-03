@@ -8,14 +8,14 @@ import numpy as np
 import pandas as pd
 import spiceypy as spice
 
-from src.config import XovOpt
-from src.geolocate_altimetry import geoloc
-from src.pygeoloc.PyGeoloc import launch_gtrack
-from src.pygeoloc.ground_track import gtrack
-from src.config import XovOpt
+from config import XovOpt
+from geolocate_altimetry import geoloc
+from pygeoloc.PyGeoloc import launch_gtrack
+from pygeoloc.ground_track import gtrack
+from config import XovOpt
 
 # update paths and check options
-from src.xovutil.project_coord import project_stereographic
+from xovutil.project_coord import project_stereographic
 
 XovOpt.set("basedir", 'data/')
 XovOpt.set("instrument", 'MLA')
@@ -50,7 +50,7 @@ print(list(zip(tracknames, allFiles)))
 for track_id, infil in zip(tracknames, allFiles):
     track = track_id
     print(track_id)
-    track = gtrack(XovOpt)
+    track = gtrack(XovOpt.to_dict())
     # Read and fill
     track.prepro(infil, read_all=True)
     tracks.append(track)
@@ -91,5 +91,7 @@ for track in tracks:
         diff = pd.DataFrame(np.vstack([track.ladata_df.loc[:,'geoc_lat'].values,dxy,dr]).T, columns=["lat","dxy","dr"])
         diff.plot(x="lat", y=["dxy","dr"])
     plt.title(track.name)
-    plt.savefig(f'out/plt/pyx/drdr_{track.name}_{version}.png')
-    plt.show()
+    pltfil = f'out/plt/pyx/drdr_{track.name}_{version}.png'
+    plt.savefig(pltfil)
+    print(f"- Geoloc residuals saved to {pltfil}")
+    #    plt.show()

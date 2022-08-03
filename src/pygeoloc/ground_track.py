@@ -220,14 +220,14 @@ class gtrack:
             df['orbID'] = infil.split('.')[0][-10:]
 
         self.name = df['orbID'].unique().squeeze()
-
+        
         # strip and lower case all column names
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.lower()
 
         # only select the required data (column)
         self.df_input = df.copy()
-        self.XovOpt.display()
+        #self.XovOpt.display()
 
         if (self.XovOpt.get("debug")) or (self.XovOpt.get("instrument") == "BELA") or read_all:
             df = df.loc[:,

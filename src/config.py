@@ -162,7 +162,7 @@ class XovOpt:
 
     @staticmethod
     def clone(opts):
-        print("- Updating XovOpt")
+        # print("- Updating XovOpt")
         XovOpt.__conf = opts.copy()
         
 # example, suppose importing
