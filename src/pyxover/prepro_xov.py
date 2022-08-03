@@ -14,10 +14,10 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     start_prepro = time.time()
 
     # TODO remove check on orbits for this test
-    # old_xovs = old_xovs.loc[
-    #     (old_xovs['orbA'].str.startswith(str(cmb[0]))) & (old_xovs['orbB'].str.startswith(str(cmb[1])))]
+    old_xovs = old_xovs.loc[
+        (old_xovs['orbA'].str.startswith(str(cmb[0]))) & (old_xovs['orbB'].str.startswith(str(cmb[1])))]
 
-    print(old_xovs)
+    # print(old_xovs)
 
     tracks_in_xovs = np.unique(old_xovs[['orbA', 'orbB']].values)
     print("Processing", len(tracks_in_xovs), "tracks, previously resulting in", len(old_xovs), "xovers.")
@@ -46,10 +46,10 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'
         track = track.load(trackfil)
         mladata[track_id] = track.ladata_df
-        print(mladata)
+        # print(mladata)
 
     for track_id in tracks_in_xovs[:]:
-        print(track_id)
+        # print(track_id)
         # if track_id in ['1502130018','1502202222']:
 
         for idx, orb in enumerate(['orbA', 'orbB']):

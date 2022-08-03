@@ -1,23 +1,17 @@
-import logging
-import os
-import unittest
+import glob
 
-from accumxov.accum_opt import AccOpt
+import numpy as np
+import submitit
+
+import matplotlib.pyplot as plt
 from config import XovOpt
 
-from accumxov import AccumXov
-from accumxov.Amat import Amat
 from pygeoloc import PyGeoloc
 from pyxover import PyXover
-# from examples.MLA.options import XovOpt.get("vecopts")
 import spiceypy as spice
-from pyxover.xov_setup import xov
-import pandas as pd
-from matplotlib import pyplot as plt
 
-# PyTest requires parallel = False
+from src.pyxover.xov_setup import xov
 
-# update paths and check options
 XovOpt.display()
 XovOpt.set("debug", False)
 XovOpt.set("basedir", 'data/')
@@ -26,6 +20,7 @@ XovOpt.set("local", True)
 XovOpt.set("parallel", False)
 XovOpt.set("partials", False)
 XovOpt.set("expopt", 'PAM')
+XovOpt.set("monthly_sets", True)
 
 XovOpt.set("new_gtrack", 2)
 vecopts = XovOpt.get('vecopts')
@@ -33,26 +28,50 @@ vecopts['ALTIM_BORESIGHT'] = [2.2104999983228e-3, 2.9214999977833e-3, 9.99993289
 vecopts['SCFRAME'] = 'MSGR_SPACECRAFT'
 XovOpt.set('vecopts', vecopts)
 XovOpt.set("SpInterp", 0)
-XovOpt.set("compute_input_xov", False)
+XovOpt.set("compute_input_xov", True)
 
 XovOpt.check_consistency()
 
 spice.furnsh(f'{XovOpt.get("auxdir")}mymeta')
 
+# executor is the submission interface (logs are dumped in the folder)
+executor = submitit.AutoExecutor(folder="log_slurm", cluster='local')
+# executor = submitit.LocalExecutor(folder="log_slurm")
+# set timeout in min, and partition for running the job
+executor.update_parameters( #slurm_account='j1010',
+                           slurm_name="pyxover",
+                           slurm_cpus_per_task=1,
+                           slurm_nodes=1,
+                           slurm_time=60*99, # minutes
+                           slurm_mem='8G',
+                           slurm_array_parallelism=5)
+
 # run full pipeline on a few MLA test data
-# PyGeoloc.main(['1', '2001/', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack', 'MLASCIRDR', 0, XovOpt.to_dict()])
-# PyGeoloc.main(['1', 'pgda11/', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack', 'MLASCIRDR', 0, XovOpt.to_dict()])
-PyXover.main(['2', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/', 'MLASCIRDR', 0, XovOpt.to_dict()])
-exit()
+# PyGeoloc.main(['1', '2101/', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack', 'MLASCIRDR', 0, XovOpt.to_dict()])
+# PyGeoloc.main(['1', 'pgda/', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack', 'MLASCIRDR', 0, XovOpt.to_dict()])
+pyxover_in = [[comb, f'sim/{XovOpt.get("expopt")}_0/0res_1amp/gtrack', f'sim/{XovOpt.get("expopt")}_0/0res_1amp/', 'MLASIMRDR', 0, XovOpt.to_dict()]
+              for comb in np.arange(162,167)]
+
+if False:
+    # job = executor.submit(PyXover.main, pyxover_in[0]) # single job
+    jobs = executor.map_array(PyXover.main, pyxover_in)
+    for job in jobs:
+        print(job.result())
+# exit()
 
 xov_ = xov(XovOpt.get('vecopts'))
-xov_ = xov_.load(f"data/out/sim/{XovOpt.get('expopt')}_0/0res_1amp/xov/xov_08_08.pkl")
-print(xov_.xovers)
-xov_.xovers['dR'] = xov_.xovers['dR'].apply(pd.to_numeric, errors='coerce')
-xov_.xovers.hist('dR')
-pltfil = f"data/out/sim/{XovOpt.get('expopt')}_0/0res_1amp/xov/histo_w.png"
-plt.savefig(pltfil)
-print(f"- Xovers residuals plot saved to {pltfil}.")
+xov_list = [xov_.load(x) for x in glob.glob("data/out/sim/PAM_0/0res_1amp/xov/xov_1*_1*.pkl")]
+xov_cmb = xov(XovOpt.get('vecopts'))
+xov_cmb.combine(xov_list)
+print(xov_cmb.xovers)
+print(xov_cmb.xovers.loc[:,['orbA','orbB','dR']])
+# xov_ = xov_.load("data/out/sim/PAM_0/0res_1amp/xov/xov_08_08.pkl")
+# print(xov_.xovers)
+# print(xov_.xovers.loc[:,['orbA','orbB','dR']])
+# exit()
+print(xov_cmb.xovers.loc[:,['orbA','orbB']])
+xov_cmb.xovers.hist('dR')
+plt.show()
 
 # generate new template (when needed)
 # out.save('mla_pipel_test_out.pkl')

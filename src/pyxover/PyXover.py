@@ -65,6 +65,8 @@ from pyxover.xov_setup import xov
 
 def launch_xov(
         args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
+
+    # print(args)
     track_idA = args[0]
     # print(track_id)
     comb = args[1]
@@ -93,8 +95,10 @@ def launch_xov(
             #    trackA = tracklist[str(track_id)]
             trackA = gtrack(XovOpt.to_dict())
 
+            # TODO removed check on orbit for this test
             if XovOpt.get("monthly_sets"):
-                trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_idA + '.pkl')
+                # trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_idA + '.pkl')
+                trackA = trackA.load(outdir + 'gtrack' + '/gtrack_' + track_idA + '.pkl')
             else:
                 # trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
                 trackA.ladata_df = mladata[track_idA]   # faster and less I/O which overloads PGDA
@@ -120,8 +124,10 @@ def launch_xov(
                         #        trackB = tracklist[str(gtrackB)]
                         trackB = gtrack(XovOpt.to_dict())
 
+                        # TODO removed check on orbit for this test
                         if XovOpt.get("monthly_sets"):
-                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + track_idB + '.pkl')
+                           # trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + track_idB + '.pkl')
+                           trackB = trackB.load(outdir + 'gtrack' + '/gtrack_' + track_idB + '.pkl')
                         else:
                            # trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
                            trackB.ladata_df = mladata[track_idB]  # faster and less I/O which overloads PGDA
@@ -187,9 +193,6 @@ def launch_xov(
 def main(args):
     # from examples.MLA.options import XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("vecopts")
     from config import XovOpt
-
-    print(args)
-
     # read input args
     print('Number of arguments:', len(args), 'arguments.')
     print('Argument List:', str(args))
@@ -212,7 +215,7 @@ def main(args):
     # spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
 
     # set ncores
-    ncores = mp.cpu_count() - 1  # 8
+    ncores = 2 # mp.cpu_count() - 1  # 8
 
     if XovOpt.get("parallel"):
         print('Process launched on ' + str(ncores) + ' CPUs')
@@ -303,11 +306,13 @@ def main(args):
         # print(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
         # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*')))
 
+        # TODO remove check on orbid for this test
         if XovOpt.get("monthly_sets"):
-          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0][:2] + '/gtrack_' + misycmb[par][0] + '*'))
-          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1][:2] + '/gtrack_' + misycmb[par][1] + '*'))
+          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0][:2] + '/gtrack_' + misycmb[par][0] + '*'))
+          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1][:2] + '/gtrack_' + misycmb[par][1] + '*'))
+          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][0] + '*'))
+          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][1] + '*'))
         else:
-          # TODO removed check on orbid for this test
           # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/*'))
           # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/*'))
           allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
@@ -360,14 +365,12 @@ def main(args):
              'X_stgprj', 'Y_stgprj']
 
         for track_id in set(np.ravel(comb)):
-            # print(track_id, XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
+            # TODO removed check on orbid for this test
             # track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
-            try:
-                track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
-            except:
-                print(f"* Issue with {XovOpt.get('outdir') + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'}")
+            track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
+
             #print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
-            #print(track_obj.ladata_df)
+            # print(track_obj.ladata_df)
             #print(track_obj.ladata_df.loc[:,cols])
             # resurrect as soon as got also south part of obs track
             #if instr == 'BELA':
@@ -497,7 +500,7 @@ def main(args):
                 acttracks = np.unique(np.array([x for x in result if x is not None]).flatten())
         else:
             print("### PyXover: no xovers between the available tracks")
-            exit()
+            return
 
         endXov2 = time.time()
         print(

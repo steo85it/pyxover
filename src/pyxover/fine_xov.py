@@ -25,7 +25,7 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     # TODO removed check on orbid for this test
     # track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
     print(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + str(cmb[0]) + '*.pkl')
-    track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_*.pkl')[0])
+    track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
 
     xov_tmp.pert_cloop = {'0': track.pert_cloop}
     xov_tmp.pert_cloop_0 = {'0': track.pert_cloop_0}
