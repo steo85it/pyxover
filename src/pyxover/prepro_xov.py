@@ -42,8 +42,8 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id[:-2] + '*.pkl'
         else:
             # TODO removed check on orbid for this test
-            # trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
-            trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'
+            trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
+            # trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'
         track = track.load(trackfil)
         mladata[track_id] = track.ladata_df
         # print(mladata)

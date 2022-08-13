@@ -29,7 +29,6 @@ import spiceypy as spice
 import matplotlib.pyplot as plt
 
 # mylib
-# from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("new_illumNG"), XovOpt.get("apply_topo"), XovOpt.get("vecopts"), XovOpt.get("range_noise"), XovOpt.get("SpInterp"), XovOpt.get("spauxdir")
 from config import XovOpt
 
 from src.xovutil import astro_trans as astr, pickleIO
@@ -44,8 +43,8 @@ start = time.time()
 
 ##############################################
 class sim_gtrack(gtrack):
-    def __init__(self, vecopts, orbID):
-        gtrack.__init__(self, vecopts)
+    def __init__(self, opts, orbID):
+        gtrack.__init__(self, opts)
         self.orbID = orbID
         self.name = str(orbID)
         self.outdir = None
@@ -65,12 +64,16 @@ class sim_gtrack(gtrack):
         # copy to self
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
-        # retrieve spice data for geoloc
-        if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl') or XovOpt.get("SpInterp") == 2:
-            # create interp for track
-            self.interpolate()
-        else:
-            self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
+        # retrieve spice data for geoloc from interp, if desired
+        if XovOpt.get("SpInterp") > 0:
+            if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") +
+                               'spaux_' + self.name + '.pkl') or \
+                    XovOpt.get("SpInterp") == 2:
+                # create interp for track
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") +
+                                       'spaux_' + self.name + '.pkl')
 
         # actual processing
         self.lt_topo_corr(df=df_)
@@ -395,20 +398,19 @@ class sim_gtrack(gtrack):
 
 def sim_track(args):
     track, df, i, outdir_ = args
-    # print(track.name)
 
-    if XovOpt.get("instrument") == "LOLA":
-        track.slewdir = XovOpt.get("auxdir") + outdir_.split('/')[-3]
+    if track.XovOpt.get("instrument") == "LOLA":
+        track.slewdir = track.XovOpt.get("auxdir") + outdir_.split('/')[-3]
     else:
         assert track.slewdir == None
 
 
-    if os.path.isfile(outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB') == False:
+    if os.path.isfile(outdir_ + f'{track.XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB') == False:
         track.setup(df[df['orbID'] == i])
-        track.rdr_df.to_csv(outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
-        print('Simulated observations written to', outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB')
+        track.rdr_df.to_csv(outdir_ + f'{track.XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
+        print('Simulated observations written to', outdir_ + f'{track.XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB')
     else:
-        print('Simulated observations ', outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB already exists. Skip.')
+        print('Simulated observations ', outdir_ + f'{track.XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB already exists. Skip.')
 
 
 def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
@@ -657,7 +659,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
     # loop over all gtracks
     print('orbs = ', list(df.groupby('orbID').groups.keys()))
-    args = ((sim_gtrack(XovOpt.get("vecopts"), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
+    args = ((sim_gtrack(XovOpt.to_dict(), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
 
     if XovOpt.get("parallel") and False:  # incompatible with grdtrack call ...
         # print((mp.cpu_count() - 1))

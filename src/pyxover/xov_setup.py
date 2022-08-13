@@ -75,7 +75,7 @@ class xov:
         self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
 
         if XovOpt.get("instrument") in ['BELA', 'CALA']: # TODO split the orbit to check with a smaller msrm_sampl w/o breaking memory
-            self.msrm_sampl = 20
+            self.msrm_sampl = 15
         else:
             self.msrm_sampl = 4
 

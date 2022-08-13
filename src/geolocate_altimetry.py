@@ -100,6 +100,7 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # print(plapos_bc)
 
     # compute SSB to bounce point vector
+    pxform_array = np.frompyfunc(spice.pxform, 3, 1)
     if XovOpt.get("instrument") in ['BELA','CALA']:
         # project tof along radial dir between s/c and planet (=nadir pointing)
         zpt = (-scpos_tx+plapos_bc)/(np.linalg.norm(scpos_tx-plapos_bc,axis=1)[:, np.newaxis])
@@ -112,7 +113,6 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
         if (XovOpt.get("SpInterp") > 0):
             cmat = SpObj['MGRa'].evalCmat(et_tx)
         else:
-            pxform_array = np.frompyfunc(spice.pxform, 3, 1)
             cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
 
         # rotate boresight dir to inertial frame

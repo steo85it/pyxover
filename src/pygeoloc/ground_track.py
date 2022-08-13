@@ -84,7 +84,8 @@ class gtrack:
                 # create interp for track
                 self.interpolate()
             elif self.XovOpt.get("SpInterp") > 0:
-                self.SpObj = pickleIO.load(self.XovOpt.get("auxdir") + self.XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
+                self.SpObj = pickleIO.load(self.XovOpt.get("auxdir") + self.XovOpt.get("spauxdir") +
+                                           'spaux_' + self.name + '.pkl')
 
             if self.XovOpt.get("debug"):
                 pd.set_option('display.max_columns', 500)
@@ -243,7 +244,7 @@ class gtrack:
         df = df[df['chn'] < 5]
 
         # select only one hemisphere
-        if self.XovOpt.get("instrument") == 'BELA':
+        if self.XovOpt.get("instrument") in ['BELA','CALA']:
             if self.XovOpt.get("selected_hemisphere") == 'N':
                 df = df[df['geoc_lat']>=0]
             elif self.XovOpt.get("selected_hemisphere") == 'S':

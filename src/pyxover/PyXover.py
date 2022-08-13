@@ -97,8 +97,8 @@ def launch_xov(
 
             # TODO removed check on orbit for this test
             if XovOpt.get("monthly_sets"):
-                # trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_idA + '.pkl')
-                trackA = trackA.load(outdir + 'gtrack' + '/gtrack_' + track_idA + '.pkl')
+                trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_idA + '.pkl')
+                # trackA = trackA.load(outdir + 'gtrack' + '/gtrack_' + track_idA + '.pkl')
             else:
                 # trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
                 trackA.ladata_df = mladata[track_idA]   # faster and less I/O which overloads PGDA
@@ -126,8 +126,8 @@ def launch_xov(
 
                         # TODO removed check on orbit for this test
                         if XovOpt.get("monthly_sets"):
-                           # trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + track_idB + '.pkl')
-                           trackB = trackB.load(outdir + 'gtrack' + '/gtrack_' + track_idB + '.pkl')
+                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + track_idB + '.pkl')
+                           # trackB = trackB.load(outdir + 'gtrack' + '/gtrack_' + track_idB + '.pkl')
                         else:
                            # trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
                            trackB.ladata_df = mladata[track_idB]  # faster and less I/O which overloads PGDA
@@ -279,7 +279,7 @@ def main(args):
     if True: #XovOpt.get("debug"):
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
-
+    # exit()
     ###########################
     startInit = time.time()
 
@@ -308,22 +308,23 @@ def main(args):
 
         # TODO remove check on orbid for this test
         if XovOpt.get("monthly_sets"):
-          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0][:2] + '/gtrack_' + misycmb[par][0] + '*'))
-          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1][:2] + '/gtrack_' + misycmb[par][1] + '*'))
-          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][0] + '*'))
-          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][1] + '*'))
+          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0][:2] + '/gtrack_' + misycmb[par][0] + '*'))
+          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1][:2] + '/gtrack_' + misycmb[par][1] + '*'))
+          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][0] + '*'))
+          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][1] + '*'))
         else:
-          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/*'))
-          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/*'))
-          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
-          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
+          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/*'))
+          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/*'))
+          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
+          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
 
-        # if misycmb[par][0] == misycmb[par][1]:
-        #     allFiles = allFilesA
-        # else:
-        #     allFiles = allFilesA + allFilesB
-
-        # print(allFiles)
+        if XovOpt.get('debug'):
+            if misycmb[par][0] == misycmb[par][1]:
+                allFiles = allFilesA
+            else:
+                allFiles = allFilesA + allFilesB
+            print(allFiles)
+            # exit()
 
         # xovnames = ['xov_' + fil.split('.')[0][-10:] for fil in allFiles]
         # trackxov_list = []
@@ -366,8 +367,12 @@ def main(args):
 
         for track_id in set(np.ravel(comb)):
             # TODO removed check on orbid for this test
-            # track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
-            track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
+            # try:
+            track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] +
+                                           '/gtrack_' + track_id + '.pkl')
+            # track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
+            # except:
+            #     print(f"* Issue with {XovOpt.get('outdir') + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'}")
 
             #print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
             # print(track_obj.ladata_df)
@@ -425,7 +430,7 @@ def main(args):
         # exit()
         if XovOpt.get("instrument") =='BELA':
             os.makedirs(XovOpt.get("tmpdir"), exist_ok=True)
-            mladata_pkl_fn = XovOpt.get("tmpdir") + 'mladata_tmp_'+cmb_y_in+'.pkl'
+            mladata_pkl_fn = f"{XovOpt.get('tmpdir')}mladata_tmp_{cmb_y_in}.pkl"
             with open(mladata_pkl_fn, 'wb') as handle:
                 import pickle
                 pickle.dump(mladata, handle, protocol=pickle.HIGHEST_PROTOCOL)
