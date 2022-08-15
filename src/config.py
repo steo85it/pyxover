@@ -87,7 +87,7 @@ class XovOpt:
         "compute_input_xov": True,
 
         # PyAltSim options
-        # simulation mode
+        # simulation mode ! WD: possible option to (0:no, 1:yes, use, 2: yes, create)
         "sim_altdata": 0,
         # recompute a priori
         "new_illumNG": 0,

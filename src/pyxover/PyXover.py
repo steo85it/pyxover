@@ -188,7 +188,7 @@ def main(args):
     # from examples.MLA.options import XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("vecopts")
     from config import XovOpt
 
-    print(args)
+    # print(args)
 
     # read input args
     print('Number of arguments:', len(args), 'arguments.')
@@ -548,7 +548,7 @@ if __name__ == '__main__':
     start = time.time()
 
     args = sys.argv[1:]
-    print(args)
+    # print(args)
     main(args)
 
     # stop clock and print runtime

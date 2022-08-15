@@ -258,18 +258,18 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
         # print(scpv.shape)
         # exit()
     else:
-        try:
-            scpv, lt = spice.spkezr(vecopts['SCNAME'],
+        # try:
+        scpv, lt = spice.spkezr(vecopts['SCNAME'],
                                        et,
                                        vecopts['INERTIALFRAME'],
                                        'NONE',
                                        vecopts['INERTIALCENTER'])
-        except:
-            scpv = np.array([spice.spkez(vecopts['SCID'],
-                                       t,
-                                       vecopts['INERTIALFRAME'],
-                                       'NONE',
-                                       vecopts['PLANETID'])[0] for t in et])
+        # except:
+        #     scpv = np.array([spice.spkez(vecopts['SCID'],
+        #                                t,
+        #                                vecopts['INERTIALFRAME'],
+        #                                'NONE',
+        #                                vecopts['PLANETID'])[0] for t in et])
 
 
         scpv = np.atleast_2d(np.squeeze(scpv))

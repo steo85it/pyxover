@@ -38,15 +38,19 @@ class gtrack:
 
         self.vecopts = vecopts
         self.dr_simit = None
+        # Laser Altimeter Data (dataframe) ?
         self.ladata_df = None
         self.df_input = None
         self.name = None
-        self.MERv = None
-        self.MERx = None
-        self.MGRa = None
-        self.MGRv = None
-        self.MGRx = None
-        self.SUNx = None
+        # Mercury (central body)
+        self.MERv = None # Velocity
+        self.MERx = None # Position
+        # Messenger (probe)
+        self.MGRa = None # acceleration
+        self.MGRv = None # velocity
+        self.MGRx = None # position
+        # Sun
+        self.SUNx = None # position
         self.param = None
         # Set-up empty offset arrays at init (sim only)
         self.pertPar = {'dA': 0.,
@@ -72,7 +76,8 @@ class gtrack:
         # spice data (if interp used)
         self.SpObj = None
 
-    # create groundtrack from data and save to file
+    # create groundtrack object from data and save to file
+    # contain interpolated s/c and planets orbits for covered timespan
     def setup(self, filnam):
 
         if len(self.ladata_df) > 0:
@@ -239,7 +244,7 @@ class gtrack:
         df = df[df['chn'] < 5]
 
         # select only one hemisphere
-        if XovOpt.get("instrument") == 'BELA':
+        if XovOpt.get("instrument")  in ['BELA','CALA']:
             if XovOpt.get("selected_hemisphere") == 'N':
                 df = df[df['geoc_lat']>=0]
             elif XovOpt.get("selected_hemisphere") == 'S':
@@ -294,13 +299,13 @@ class gtrack:
         tstep = 1
 
         # Define call times for the SPICE
+        t_spc = self.ladata_df['ET_TX'].values
         try:
             t_spc = self.ladata_df['ET_TX'].values
             # t_spc = np.array(
             #     [x for x in np.arange(self.ladata_df['ET_TX'].min(), self.ladata_df['ET_TX'].max(), tstep)])
             # add 1000s to each side of track to avoid boundary effects
             t_spc = np.hstack([t_spc[0] + np.arange(-1000, -1, 1), t_spc, t_spc[-1] + np.arange(1, 1000, 1)])
-
         except:
             print("*** ground_track.py: Issue interpolating ..." + self.name)
             print(self.ladata_df)
@@ -308,22 +313,16 @@ class gtrack:
             print(self.ladata_df['ET_TX'].max())
             exit(2)
 
+        print("ground_track: interpolating from " + str(t_spc[0]) + " to " + str(t_spc[-1]))
+        print("ground_track: interpolating for " + str(t_spc[-1] - t_spc[0]) + " s")
         # print("Start spkezr MGR")
         # trajectory
-        try:
-            xv_spc = np.array([spice.spkezr(self.vecopts['SCNAME'],
-                                            t,
-                                            self.vecopts['INERTIALFRAME'],
-                                            'NONE',
-                                            self.vecopts['INERTIALCENTER'])[0] for t in t_spc])
-        except:
-            xv_spc = np.array([spice.spkez(self.vecopts['SCID'],
-                                            t,
-                                            self.vecopts['INERTIALFRAME'],
-                                            'NONE',
-                                            self.vecopts['PLANETID'])[0] for t in t_spc]) # TODO hack for CALA case
-
-        xv_spc = np.reshape(np.concatenate(xv_spc), (-1, 6))
+        xv_spc, lt = spice.spkezr(self.vecopts['SCNAME'],
+                              t_spc,
+                              self.vecopts['INERTIALFRAME'],
+                              'NONE',
+                              self.vecopts['INERTIALCENTER'])
+        xv_spc = np.array(xv_spc)[:,:6]
 
         # print("Start pxform MGR")
         # attitude
@@ -349,12 +348,12 @@ class gtrack:
 
         # print("Start spkezr MER")
 
-        xv_pla = np.array([spice.spkezr(self.vecopts['PLANETNAME'],
-                                        t,
-                                        self.vecopts['INERTIALFRAME'],
-                                        'NONE',
-                                        self.vecopts['INERTIALCENTER'])[0] for t in t_spc])
-        xv_pla = np.reshape(np.concatenate(xv_pla), (-1, 6))
+        xv_pla, lt = spice.spkezr(self.vecopts['PLANETNAME'],
+                              t_spc,
+                              self.vecopts['INERTIALFRAME'],
+                              'NONE',
+                              self.vecopts['INERTIALCENTER'])
+        xv_pla = np.array(xv_pla)[:,:6]
 
         # print("Start MER interpolation")
 
@@ -362,13 +361,12 @@ class gtrack:
         self.MERv.interp([xv_pla[:, i] for i in range(3, 6)], t_spc)
 
         # print("Start spkezr SUN")
-
-        xv_sun = np.array([spice.spkezr('SUN',
-                                        t,
-                                        self.vecopts['INERTIALFRAME'],
-                                        'NONE',
-                                        self.vecopts['INERTIALCENTER'])[0] for t in t_spc])
-        xv_sun = np.reshape(np.concatenate(xv_sun), (-1, 6))
+        xv_sun,lt = spice.spkezr('SUN',
+                              t_spc,
+                              self.vecopts['INERTIALFRAME'],
+                              'NONE',
+                              self.vecopts['INERTIALCENTER'])
+        xv_sun = np.array(xv_sun)[:,:6]
 
         # print("Start SUN interpolation")
 

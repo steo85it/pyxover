@@ -75,7 +75,7 @@ class xov:
         self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
 
         if XovOpt.get("instrument") in ['BELA', 'CALA']: # TODO split the orbit to check with a smaller msrm_sampl w/o breaking memory
-            self.msrm_sampl = 20
+            self.msrm_sampl = 20 # WD: try 10
         else:
             self.msrm_sampl = 4
 
@@ -914,8 +914,8 @@ class xov:
             ax = plt.subplot()
             gdf0.to_crs(crs_stereo_km).plot(ax=ax) #, label=gdf0.orbID[0])  # , color='red')
             gdf1.to_crs(crs_stereo_km).plot(ax=ax) #, label=gdf1.orbID[0])  # , color='red')
-            plt.xlim(-40, 40)
-            plt.ylim(-40, 40)
+            # plt.xlim(-40, 40)
+            # plt.ylim(-40, 40)
             # plt.legend()
             plt.show()
             # exit()

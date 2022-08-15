@@ -5,6 +5,8 @@ PATH_VALUES  = ( 'data/aux/kernels' )
 PATH_SYMBOLS = ( 'A' )
 
 KERNELS_TO_LOAD = ( '$A/CALAg531121.SPK',
+                    '$A/CALAg531137.SPK',
+                    '$A/CALAg531154.SPK',
                     '$A/jup365.bsp',
                     '$A/de432s.bsp',
                     '$A/pck00010_msgr_v23.tpc',

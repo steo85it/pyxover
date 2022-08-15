@@ -5,12 +5,13 @@
 # Author: Stefano Bertone
 # Created: 16-Oct-2018
 #
+from fileinput import filename
 import warnings
 
-from src.pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
-from src.xovutil.dem_util import get_demz_at, import_dem
-from src.xovutil.icrf2pbf import icrf2pbf
-from src.xovutil.orient_setup import orient_setup
+from pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
+from xovutil.dem_util import get_demz_at, import_dem
+from xovutil.icrf2pbf import icrf2pbf
+from xovutil.orient_setup import orient_setup
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -32,10 +33,10 @@ import matplotlib.pyplot as plt
 # from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("new_illumNG"), XovOpt.get("apply_topo"), XovOpt.get("vecopts"), XovOpt.get("range_noise"), XovOpt.get("SpInterp"), XovOpt.get("spauxdir")
 from config import XovOpt
 
-from src.xovutil import astro_trans as astr, pickleIO
-from src.pygeoloc.ground_track import gtrack
-from src.geolocate_altimetry import get_sc_ssb, get_sc_pla
-from src.pyaltsim import perlin2d
+from xovutil import astro_trans as astr, pickleIO
+from pygeoloc.ground_track import gtrack
+from geolocate_altimetry import get_sc_ssb, get_sc_pla
+from pyaltsim import perlin2d
 
 ########################################
 # start clock
@@ -65,12 +66,15 @@ class sim_gtrack(gtrack):
         # copy to self
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
-        # retrieve spice data for geoloc
-        if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl') or XovOpt.get("SpInterp") == 2:
-            # create interp for track
-            self.interpolate()
-        else:
-            self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
+        if XovOpt.get("SpInterp") != 0:
+            # retrieve spice data for geoloc (if exist, you don't care about interpolation option??)
+            filename = XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl'
+            if not os.path.exists(filename) or XovOpt.get("SpInterp") == 2:
+                # create interp for track
+                print("PyAltSim.py: interpolation")
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(filename)
 
         # actual processing
         self.lt_topo_corr(df=df_)
@@ -394,6 +398,10 @@ class sim_gtrack(gtrack):
 
 
 def sim_track(args):
+    # tracks: (sim_gtrack(XovOpt.get("vecopts"), i)
+    # df: "simil-illumNG prediction data frame
+    # i: i in list(df.groupby('orbID').groups.keys()))
+    # outdir_: Input/Output directory?
     track, df, i, outdir_ = args
     # print(track.name)
 
@@ -402,22 +410,22 @@ def sim_track(args):
     else:
         assert track.slewdir == None
 
-
-    if os.path.isfile(outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB') == False:
+    filename = outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB'
+    if os.path.isfile(filename) == False:
         track.setup(df[df['orbID'] == i])
-        track.rdr_df.to_csv(outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
-        print('Simulated observations written to', outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB')
+        track.rdr_df.to_csv(filename, index=False, sep=',', na_rep='NaN')
+        print('Simulated observations written to', filename)
     else:
-        print('Simulated observations ', outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB already exists. Skip.')
+        print('Simulated observations ', filename + ' already exists. Skip.')
 
 
 def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
-    ampl_in = args[0]
-    res_in = args[1]
-    dirnam_in = args[2]
-    epos_in = args[3]
-    opts = args[4]
+    ampl_in = args[0]   # Ampl directory?
+    res_in = args[1]    # Result directory?
+    dirnam_in = args[2] # Input directory? 
+    epos_in = args[3]   # Month to simulate (format: YYMM)
+    opts = args[4]      # Options (dictionnary)
 
     # update options (needed when sending to slurm)
     XovOpt.clone(opts)
@@ -429,7 +437,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
     if XovOpt.get("SpInterp") in [0, 2]:
         # load kernels
-        if not XovOpt.get("local"):
+        if not XovOpt.get("local"): # WD: Messenger related??
             spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
                           f'{XovOpt.get("auxdir")}mymeta_pgda'])
         else:
@@ -507,7 +515,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
-    # generate list of epochs
+    # Generate list of epochs
+    #########################
     if XovOpt.get("new_illumNG") and not XovOpt.get("instrument") in ["BELA","CALA"]:
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         data_pth = XovOpt.get("rawdir")
@@ -531,7 +540,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
     # print(np.sort(epo_in)[-1])
 
-    elif XovOpt.get("instrument") != "LOLA":
+    elif XovOpt.get("instrument") != "LOLA":  # if BELA/CALA
         # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
         from calendar import monthrange
         import datetime as dt
@@ -540,11 +549,14 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
         d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),1,00,00) # TODO avoiding issues with 30-Apr 23:59:59 ... extend spk
 
+
+        # WD: exclude maneuver time (using datetime functions)
         # if test, avoid computing tons of files
         if XovOpt.get("unittest"):
             d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('02'),5,00,00) # for testing
         else:
             d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
+            # d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('17'),23,59,59)
 
         dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
 
@@ -552,7 +564,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         sec_j2000_last = (d_last - dj2000).total_seconds()
         # print(sec_j2000_first,sec_j2000_last)
         # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
-        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1)
+        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
 
     # pass to illumNG
     if not XovOpt.get("instrument") in ['BELA','CALA']:
@@ -599,7 +611,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         df = prepro_ilmNG(illumNGf)
         print('illumNGf', illumNGf)
 
-    else: # if BELA
+    else: # if BELA/CALA
+        # WD: name to be changed ...
         illumpklf = XovOpt.get("tmpdir")+'bela_illumNG_'+epos_in+'.pkl'
 
         if XovOpt.get("new_illumNG"):
@@ -656,6 +669,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         os.makedirs(outdir_, exist_ok=True)
 
     # loop over all gtracks
+    # initializze objects
     print('orbs = ', list(df.groupby('orbID').groups.keys()))
     args = ((sim_gtrack(XovOpt.get("vecopts"), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
 
