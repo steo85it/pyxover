@@ -256,7 +256,7 @@ def main(args):
 
     if XovOpt.get("monthly_sets"):
         if XovOpt.get("instrument") == 'BELA':
-            misy = ['26','27']
+            misy = ['26'] #,'27']
         else:
             misy = ['11', '12', '13', '14', '15']
 
@@ -279,7 +279,7 @@ def main(args):
     if True: #XovOpt.get("debug"):
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
-    # exit()
+    exit()
     ###########################
     startInit = time.time()
 

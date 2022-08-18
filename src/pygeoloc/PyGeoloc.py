@@ -72,7 +72,7 @@ def launch_gtrack(args):
 
     if XovOpt.get("new_gtrack"):
         gtrack_out = XovOpt.get("outdir") + outdir_in + '/' + track_id + '.pkl'
-        if os.path.isfile(gtrack_out) == False or XovOpt.get("new_gtrack") == 2:
+        if not os.path.isfile(gtrack_out) or XovOpt.get("new_gtrack") == 2:
 
             if not os.path.exists(XovOpt.get("outdir") + outdir_in):
                 os.makedirs(XovOpt.get("outdir") + outdir_in, exist_ok=True)

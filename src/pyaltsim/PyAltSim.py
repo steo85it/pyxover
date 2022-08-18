@@ -7,10 +7,10 @@
 #
 import warnings
 
-from src.pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
-from src.xovutil.dem_util import get_demz_at, import_dem
-from src.xovutil.icrf2pbf import icrf2pbf
-from src.xovutil.orient_setup import orient_setup
+from pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
+from xovutil.dem_util import get_demz_at, import_dem, get_demz_tiff
+from xovutil.icrf2pbf import icrf2pbf
+from xovutil.orient_setup import orient_setup
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -31,10 +31,10 @@ import matplotlib.pyplot as plt
 # mylib
 from config import XovOpt
 
-from src.xovutil import astro_trans as astr, pickleIO
-from src.pygeoloc.ground_track import gtrack
-from src.geolocate_altimetry import get_sc_ssb, get_sc_pla
-from src.pyaltsim import perlin2d
+from xovutil import astro_trans as astr, pickleIO
+from pygeoloc.ground_track import gtrack
+from geolocate_altimetry import get_sc_ssb, get_sc_pla
+from pyaltsim import perlin2d
 
 ########################################
 # start clock
@@ -210,52 +210,60 @@ class sim_gtrack(gtrack):
         if XovOpt.get("apply_topo"):
             # st = time.time()
 
-            if not XovOpt.get("local"):
-                if XovOpt.get("instrument") == "LOLA":
-                    dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
-                else:
-                    dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-            else:
-                dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-
-            # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
+            # if not XovOpt.get("local"):
+            #     if XovOpt.get("instrument") == "LOLA":
+            #         dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
+            #     else:
+            #         dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            # else:
+            #     dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            #
+            # # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
             gmt = False
 
             if XovOpt.get("instrument") == 'BELA':
-                if local:
-                    geotiff = ['/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                           '/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_SPole_665m_v2.tif']
+                if XovOpt.get("local"):
+                    geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                               'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
+                               'SP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif'}
                 else:
-                    geotiff = [auxdir+'Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                               auxdir+'Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif']
+                    geotiff = [f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                               f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif']
 
-                df = pd.DataFrame(zip(lattmp,lontmp),columns=['LAT','LON'])#.reset_index()
+                df = pd.DataFrame(zip(lattmp, lontmp), columns=['LAT', 'LON']) #.reset_index()
                 # nice but not broadcasted... slow
                 # df['r_dem'] = df.apply(lambda x: get_demz_tiff(geotiff[0],lat=x.LAT,lon=x.LON) if x.LAT > 30
                 #                         else get_demz_grd(filin=dem,lon=x.LON,lat=x.LAT), axis=1)
 
-                mask_np = (df['LAT'] >= 40)
-                mask_equat = (df['LAT'] < 40) & (df['LAT'] > -55)
-                mask_sp = (df['LAT'] <= -55)
+                mask_np = (df['LAT'] >= 70)
+                mask_equat = (df['LAT'] < 70) & (df['LAT'] > -70)
+                mask_sp = (df['LAT'] <= -70)
 
                 df['r_dem'] = 0
                 # NP (MLA DEM)
                 if len(df.loc[mask_np,:])>0:
-                    df.loc[mask_np, 'r_dem'] = get_demz_grd(filin=dem,lon=df.loc[mask_np,'LON'].values,lat=df.loc[mask_np,'LAT'].values).T
+                    # df.loc[mask_np, 'r_dem'] = get_demz_grd(filin=dem,lon=df.loc[mask_np,'LON'].values,lat=df.loc[mask_np,'LAT'].values).T
+                    df.loc[mask_np, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['NP'],
+                                                                           lon=df.loc[mask_np,'LON'].values,
+                                                                           lat=df.loc[mask_np,'LAT'].values).T)
                 # EQUAT (USGS)
                 if len(df.loc[mask_equat,:])>0:
-                    df.loc[mask_equat, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[0],lon=df.loc[mask_equat,'LON'].values,lat=df.loc[mask_equat,'LAT'].values).T)
+                    df.loc[mask_equat, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['global'],
+                                                                           lon=df.loc[mask_equat,'LON'].values,
+                                                                           lat=df.loc[mask_equat,'LAT'].values).T)
                 # SP (USGS)
                 if len(df.loc[mask_sp,:])>0:
-                    df.loc[mask_sp, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[1],lon=df.loc[mask_sp,'LON'].values,lat=df.loc[mask_sp,'LAT'].values).T)
+                    df.loc[mask_sp, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['SP'],
+                                                                        lon=df.loc[mask_sp,'LON'].values,
+                                                                        lat=df.loc[mask_sp,'LAT'].values).T)
 
                 r_dem = df.r_dem.values
 
             elif not gmt:
 
                 if self.dem == None:
-                    print(dem)
-                    self.dem = import_dem(filein=dem,outdir=f"{self.slewdir}/")
+                    print(self.dem)
+                    self.dem = import_dem(filein=self.dem,outdir=f"{self.slewdir}/")
                 else:
                     print("DEM already read")
                     pass
@@ -319,7 +327,7 @@ class sim_gtrack(gtrack):
                 universal_newlines=True, cwd='tmp')
                 r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
             elif XovOpt.get("instrument") != 'BELA':
-                print("coming here")
+                print("## Using weird combination (not BELA).")
                 lontmp[lontmp < 0] += 360.
                 r_dem = get_demz_at(self.dem, lattmp, lontmp)
 
@@ -330,13 +338,13 @@ class sim_gtrack(gtrack):
             r_dem *= 1.e3
 
             # TODO replace with "small_scale_topo/texture_noise" option
-            if XovOpt.get("instrument") != "LOLA":
+            if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
                 texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
                 # print("texture noise check",texture_noise,r_dem)
             else:
                 texture_noise = 0.
                 
-                # update Rmerc with r_dem/text (meters)
+            # update Rmerc with r_dem/text (meters)
             radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
             # print("radius etc",radius,r_dem,texture_noise)
         else:

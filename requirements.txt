@@ -51,3 +51,5 @@ certifi>=2020.12.5
 threadpoolctl>=2.1.0
 submitit
 wget
+rioxarray
+Rtree
