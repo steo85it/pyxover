@@ -16,7 +16,6 @@ from config import XovOpt
 # @profile
 def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
     start = time.time()
-
     # Exit process if file already exists and no option to recreate
     outpath = XovOpt.get("outdir") + outdir_in + 'xov/xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'
     if (XovOpt.get("new_xov") != 2) and (os.path.isfile(outpath)):
@@ -79,7 +78,7 @@ def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
             # reindex and keep only useful columns
             old_xovs = input_xov[useful_columns]
             old_xovs = old_xovs.drop('xOvID', axis=1).rename_axis('xOvID').reset_index()
-
+            print(old_xovs)
         # preprocessing of old xov and mla_data
         mla_proj_df, part_proj_dict = prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb)
 
@@ -109,7 +108,8 @@ def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
         cmb[1]) + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
 
     print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-
+    print(xov_tmp.xovers.columns)
+    print(xov_tmp.xovers.dR)
     return xov_tmp
 
 ## MAIN ##

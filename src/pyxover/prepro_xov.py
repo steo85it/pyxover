@@ -13,13 +13,10 @@ from config import XovOpt
 def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     start_prepro = time.time()
 
-    # print(tmp.xov.xovers.columns)
+    # TODO remove check on orbits for this test
     old_xovs = old_xovs.loc[
         (old_xovs['orbA'].str.startswith(str(cmb[0]))) & (old_xovs['orbB'].str.startswith(str(cmb[1])))]
-    # print(tmp.xov.xovers.loc[tmp.xov.xovers.xOvID.isin([7249,7526,1212,8678,34,11436,625])][['R_A','R_B','x0','y0']])
-    # exit()
-    # print(old_xovs.loc[old_xovs['orbA'].isin(['1502130018','1504152013'])])
-    # exit()
+
     # print(old_xovs)
 
     tracks_in_xovs = np.unique(old_xovs[['orbA', 'orbB']].values)
@@ -29,7 +26,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
         print("No tracks to be processed. Stop!")
         exit()
 
-    track = gtrack(XovOpt.get("vecopts"))
+    track = gtrack(XovOpt.to_dict())
     delta_pars, etbcs, pars = get_ds_attrib()
     # part_proj_dict = dict.fromkeys([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']], [])
     # print(part_proj_dict)
@@ -40,15 +37,19 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
 
     for track_id in tracks_in_xovs[:]:
         # if track_id in ['1502130018','1502202222']:
-        # print(track_id)
+        print(track_id)
         if XovOpt.get("cloop_sim"):
             trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id[:-2] + '*.pkl'
         else:
+            # TODO removed check on orbid for this test
             trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
+            # trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'
         track = track.load(trackfil)
         mladata[track_id] = track.ladata_df
+        # print(mladata)
 
     for track_id in tracks_in_xovs[:]:
+        # print(track_id)
         # if track_id in ['1502130018','1502202222']:
 
         for idx, orb in enumerate(['orbA', 'orbB']):
@@ -56,7 +57,8 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             # print(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
 
             # load file if year of track corresponds to folder
-            if track_id[:2] == str(cmb[idx]):
+            # TODO removed check on orbid for this test
+            if True: #track_id[:2] == str(cmb[idx]):
                 # track = track.load(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
                 tmp_ladata = mladata[track_id]  # faster and less I/O
             else:
@@ -105,6 +107,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             ladata_extract = tmp_ladata.loc[tmp_ladata.reset_index()['index'].isin(xov_extract.genid)][
                 ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt']].reset_index()
             # print("ladata",ladata_extract)
+            # print("xov", xov_extract)
             # if idx>0:
             #     exit()
             # print(xov_extract)

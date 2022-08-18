@@ -28,6 +28,7 @@ import numpy as np
 # import mpl_toolkits.basemap as basemap
 
 import time
+from tqdm import tqdm
 
 # mylib
 # from mapcount import mapcount
@@ -80,11 +81,11 @@ def launch_gtrack(args):
             #
             if XovOpt.get("debug"):
                 print("track#:", track.name)
-                print("max diff R",abs(track.ladata_df.loc[:,'R']-track.df_input.loc[:,'altitude']).max())
-                print("R",track.ladata_df.loc[:,'R'].max(),track.df_input.loc[:,'altitude'].max())
-                print("max diff LON", XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 * np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.df_input.loc[:, 'geoc_long']).max())))
-                print("max diff LAT", XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 * np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.df_input.loc[:, 'geoc_lat']).max())))
-                print("max elev sim", abs(track.df_input.loc[:,'altitude']).max())
+                print("max diff R",abs(track.ladata_df.loc[:,'R']-(track.ladata_df.loc[:,'altitude']-XovOpt.get("vecopts")['PLANETRADIUS']) * 1.e3).max())
+                # print("R (check if radius included + units)",track.ladata_df.loc[:,'R'].max(),track.ladata_df.loc[:,'altitude'].max())
+                print("max diff LON", XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 * np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LON'] - track.ladata_df.loc[:, 'geoc_long']).max())))
+                print("max diff LAT", XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 * np.sin(np.deg2rad(abs(track.ladata_df.loc[:, 'LAT'] - track.ladata_df.loc[:, 'geoc_lat']).max())))
+                print("max elev sim", abs(track.ladata_df.loc[:,'altitude']).max())
             #exit()
             # pd.set_option('display.max_columns', None)
 
@@ -121,7 +122,7 @@ def main(args):
 
     # update options (needed when sending to slurm)
     XovOpt.clone(opts)
-    
+
     # locate data
     data_pth = f'{XovOpt.get("rawdir")}'
     dataset = indir_in
@@ -153,6 +154,7 @@ def main(args):
             glob.glob(f'{XovOpt.get("auxdir")}{epo_in}/slewcheck_0/' + '_boresights_LOLA_ch12345_*_laser2_fov_bs0.inc')[0])
     else:
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+
     ###########################
 
     # -------------------------------
@@ -164,8 +166,12 @@ def main(args):
     # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
     # for orbitA and orbitB.
     allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
+
     if len(allFiles) == 0:
-        print("# No files found in", os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*') )
+        print(str.lower(f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
+        allFiles = glob.glob(os.path.join(data_pth, str.lower(f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*')))
+        if len(allFiles) == 0:
+            print("# No files found in", os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*') )
         
     endInit = time.time()
     print(
@@ -190,10 +196,10 @@ def main(args):
                 orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
         # epo_in=[]
         tracks = []
-        for track_id, infil in zip(tracknames, allFiles):
+        for track_id, infil in tqdm(zip(tracknames, allFiles), total=len(allFiles)):
             track = track_id
 
-            track = gtrack(XovOpt.get("vecopts"))
+            track = gtrack(XovOpt.to_dict())
             # try:
             # Read and fill
             track.prepro(infil)
@@ -232,7 +238,7 @@ def main(args):
             elif int(iter_in) == 0:
                 try:
                     gtrack_fit2dem = XovOpt.get("outdir") + outdir_in + '/' + track_id + '.pkl'
-                    fit2dem_res = gtrack(XovOpt.get("vecopts"))
+                    fit2dem_res = gtrack(XovOpt.to_dict)
                     fit2dem_res = fit2dem_res.load(gtrack_fit2dem).sol_prev_iter
                     # if debug:
                     print("Solution of fit2dem for file",track_id+".pkl imported: \n", fit2dem_res['orb'])
@@ -278,8 +284,8 @@ def main(args):
             pool.close()
             pool.join()
     else:
-        from tqdm import tqdm
-        for arg in tqdm(args):
+#        from tqdm import tqdm
+        for arg in tqdm(args, total=len(allFiles)):
             launch_gtrack(arg)  # seq
 
     endGeoloc = time.time()

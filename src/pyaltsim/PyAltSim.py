@@ -30,7 +30,6 @@ import spiceypy as spice
 import matplotlib.pyplot as plt
 
 # mylib
-# from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("new_illumNG"), XovOpt.get("apply_topo"), XovOpt.get("vecopts"), XovOpt.get("range_noise"), XovOpt.get("SpInterp"), XovOpt.get("spauxdir")
 from config import XovOpt
 
 from xovutil import astro_trans as astr, pickleIO
@@ -45,8 +44,8 @@ start = time.time()
 
 ##############################################
 class sim_gtrack(gtrack):
-    def __init__(self, vecopts, orbID):
-        gtrack.__init__(self, vecopts)
+    def __init__(self, opts, orbID):
+        gtrack.__init__(self, opts)
         self.orbID = orbID
         self.name = str(orbID)
         self.outdir = None
@@ -66,15 +65,16 @@ class sim_gtrack(gtrack):
         # copy to self
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
-        if XovOpt.get("SpInterp") != 0:
-            # retrieve spice data for geoloc (if exist, you don't care about interpolation option??)
-            filename = XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl'
-            if not os.path.exists(filename) or XovOpt.get("SpInterp") == 2:
+        # retrieve spice data for geoloc from interp, if desired
+        if XovOpt.get("SpInterp") > 0:
+            if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") +
+                               'spaux_' + self.name + '.pkl') or \
+                    XovOpt.get("SpInterp") == 2:
                 # create interp for track
-                print("PyAltSim.py: interpolation")
                 self.interpolate()
             else:
-                self.SpObj = pickleIO.load(filename)
+                self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") +
+                                       'spaux_' + self.name + '.pkl')
 
         # actual processing
         self.lt_topo_corr(df=df_)
@@ -403,10 +403,9 @@ def sim_track(args):
     # i: i in list(df.groupby('orbID').groups.keys()))
     # outdir_: Input/Output directory?
     track, df, i, outdir_ = args
-    # print(track.name)
 
-    if XovOpt.get("instrument") == "LOLA":
-        track.slewdir = XovOpt.get("auxdir") + outdir_.split('/')[-3]
+    if track.XovOpt.get("instrument") == "LOLA":
+        track.slewdir = track.XovOpt.get("auxdir") + outdir_.split('/')[-3]
     else:
         assert track.slewdir == None
 
@@ -549,14 +548,11 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
         d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),1,00,00) # TODO avoiding issues with 30-Apr 23:59:59 ... extend spk
 
-
-        # WD: exclude maneuver time (using datetime functions)
         # if test, avoid computing tons of files
         if XovOpt.get("unittest"):
             d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('02'),5,00,00) # for testing
         else:
             d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
-            # d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('17'),23,59,59)
 
         dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
 
@@ -671,7 +667,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # loop over all gtracks
     # initializze objects
     print('orbs = ', list(df.groupby('orbID').groups.keys()))
-    args = ((sim_gtrack(XovOpt.get("vecopts"), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
+    args = ((sim_gtrack(XovOpt.to_dict(), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
 
     if XovOpt.get("parallel") and False:  # incompatible with grdtrack call ...
         # print((mp.cpu_count() - 1))

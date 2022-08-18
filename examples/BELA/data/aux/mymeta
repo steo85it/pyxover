@@ -1,0 +1,19 @@
+\begindata
+
+PATH_VALUES  = ( '/home/sberton2/Scaricati/ISIS3/ISISDATA/messenger/kernels' )
+
+PATH_SYMBOLS = ( 'A' )
+
+KERNELS_TO_LOAD = ( 'data/aux/kernels/bc_mpo_mlt_50037_20260314_20280529_v04.bsp',
+                    'data/aux/kernels/de432s.bsp',
+                    'data/aux/kernels/pck00010_msgr_v23.tpc',
+                    'data/aux/kernels/naif0012.tls',
+                    'data/aux/kernels/bc_mpo_v31.tf',
+                    'data/aux/kernels/bc_mpo_step_20220420.tsc',
+                    'data/aux/kernels/bc_sci_v10.tf' )
+
+\begintext
+                    'data/aux/kernels/msgr_040803_150430_150430_od431sc_2.bsp',
+                    '$A/spk/msgr_20040803_20150430_od431sc_2.bsp',
+                    '$A/../../base/kernels/lsk/naif0011.tls',
+                    '$A/../../base/kernels/spk/de405.bsp',

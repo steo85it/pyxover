@@ -38,7 +38,7 @@ from config import XovOpt
 
 def set_const(h2_sol):
     # from examples.MLA.options import pert_cloop
-    from config import XovOpt
+    # from config import XovOpt
 
     h2 = 1.e-6 # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
     l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
