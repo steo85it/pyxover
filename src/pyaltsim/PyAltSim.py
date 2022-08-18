@@ -223,12 +223,12 @@ class sim_gtrack(gtrack):
             gmt = False
 
             if XovOpt.get("instrument") == 'BELA':
-                if local:
+                if XovOpt.get("local"):
                     geotiff = ['/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
                            '/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_SPole_665m_v2.tif']
                 else:
-                    geotiff = [auxdir+'Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                               auxdir+'Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif']
+                    geotiff = [XovOpt.get("auxdir")+'Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                               XovOpt.get("auxdir")+'Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif']
 
                 df = pd.DataFrame(zip(lattmp,lontmp),columns=['LAT','LON'])#.reset_index()
                 # nice but not broadcasted... slow
@@ -270,8 +270,8 @@ class sim_gtrack(gtrack):
 
                 np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp, self.ladata_df.seqid.values)))
 
-                if local == 0:
-                    if instr == 'LOLA':
+                if XovOpt.get("local") == 0:
+                    if XovOpt.get("instrument") == 'LOLA':
                         if local_dem:
                             dem = self.slewdir + "/SLDEM2015_512PPD.GRD"
                         else:
@@ -286,7 +286,7 @@ class sim_gtrack(gtrack):
                 # # np.savetxt('gmt_'+self.name+'.out', r_dem)
 
                 else:
-                    dem = auxdir + 'SLDEM2015_512PPD.GRD'
+                    dem = XovOpt.get("instrument") + 'SLDEM2015_512PPD.GRD'
                     # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
 
                 # print(['grdtrack', gmt_in, '-G' + dem,'-R0.0/360.0/-50.0/50.0'])
