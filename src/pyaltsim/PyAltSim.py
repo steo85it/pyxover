@@ -427,12 +427,35 @@ def sim_track(args):
 
 
 def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
+    import datetime as dt
 
     ampl_in = args[0]   # Ampl directory?
     res_in = args[1]    # Result directory?
     dirnam_in = args[2] # Input directory? 
     epos_in = args[3]   # Month to simulate (format: YYMM)
     opts = args[4]      # Options (dictionnary)
+
+    print("arg")
+    print(*args)
+
+    if len(args)<6:
+        if XovOpt.get("instrument") != "LOLA":  # if BELA/CALA
+            # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
+            from calendar import monthrange
+
+            days_in_month = monthrange(int('20'+epos_in[:2]), int(epos_in[2:]))
+
+            d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),1,00,00) # TODO avoiding issues with 30-Apr 23:59:59 ... extend spk
+
+            # if test, avoid computing tons of files
+            if XovOpt.get("unittest"):
+                d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('02'),5,00,00) # for testing
+            else:
+                d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
+    else:
+        d_first = args[5]
+        d_last = args[6]
+
 
     # update options (needed when sending to slurm)
     XovOpt.clone(opts)
@@ -494,30 +517,30 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         print(path_illumng)
         print(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(glob.glob(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')[0])
-    #             data det1/0.000839737903394d0, -0.00457961230781711d0, 0.999989000131539d0, !day laser 1
-    #      &            0.000856137903d0,       -0.004609612308d0,  0.999989004837226d0,  !day laser 2
-    #      &            0.000937737903394d0, -0.00453461230781711d0,0.99998900013153902d0, !day
-    #      &            0.00076189248005d0,  -0.00431815664221d0, 0.99998900013153902d0/ !2 night + 5 night - 1 night completes square
-    #
-    #         data det2/0.000383964851735d0, -0.00436155174587546d0, 0.999990433217333d0,
-    #      &            0.000400364852d0,       -0.004391551746d0, 0.999989891939858d0,
-    #      &            0.000481964851735d0, -0.00431655174587546d0, 0.999989891939858d0,
-    #      &            0.00030611942839d0,   -0.00410009608028d0, 0.999989891939858d0/ ! offset 2 squares
-    #
-    #        data det3/0.000626524101387d0, -0.00504023006379987d0,0.99998664896001d0,
-    #      &            0.000642924101d0,       -0.005070230064d0, 0.999986483343407d0,
-    #      &            0.000724524101387d0, -0.00499523006379987d0, 0.99998664896000999d0,
-    #      &            0.000553524100735d0, -0.00476423006387546d0,0.999989891939858d0/ !2 nightside
-    #
-    #         data det4/0.001290665162689d0,  -0.00480736878596984d0, 0.999987131025527d0,
-    #      &            0.001307065163d0,       -0.004837368786d0, 0.999986961502879d0,
-    #      &            0.001388665162689d0,  -0.00476236878596984d0, 0.999986961502879d0,
-    #      &            0.001217665531707d0,  -0.00453621720415891d0, 0.999990352590072d0/!5 nightside
-    #
-    #        data det5/0.001048106282707d0,  -0.00413353888615891d0, 0.999990497919053d0,
-    #      &            0.001064506283d0,      -0.004163538886d0, 0.999990352590072d0,
-    #      &            0.001146106282707d0,  -0.00408853888615891d0, 0.999990352590072d0,
-    #      &            0.00097026085936d0,  -0.00387208322056d0, 0.999990352590072d0/ ! offset 2 squares
+        #             data det1/0.000839737903394d0, -0.00457961230781711d0, 0.999989000131539d0, !day laser 1
+        #      &            0.000856137903d0,       -0.004609612308d0,  0.999989004837226d0,  !day laser 2
+        #      &            0.000937737903394d0, -0.00453461230781711d0,0.99998900013153902d0, !day
+        #      &            0.00076189248005d0,  -0.00431815664221d0, 0.99998900013153902d0/ !2 night + 5 night - 1 night completes square
+        #
+        #         data det2/0.000383964851735d0, -0.00436155174587546d0, 0.999990433217333d0,
+        #      &            0.000400364852d0,       -0.004391551746d0, 0.999989891939858d0,
+        #      &            0.000481964851735d0, -0.00431655174587546d0, 0.999989891939858d0,
+        #      &            0.00030611942839d0,   -0.00410009608028d0, 0.999989891939858d0/ ! offset 2 squares
+        #
+        #        data det3/0.000626524101387d0, -0.00504023006379987d0,0.99998664896001d0,
+        #      &            0.000642924101d0,       -0.005070230064d0, 0.999986483343407d0,
+        #      &            0.000724524101387d0, -0.00499523006379987d0, 0.99998664896000999d0,
+        #      &            0.000553524100735d0, -0.00476423006387546d0,0.999989891939858d0/ !2 nightside
+        #
+        #         data det4/0.001290665162689d0,  -0.00480736878596984d0, 0.999987131025527d0,
+        #      &            0.001307065163d0,       -0.004837368786d0, 0.999986961502879d0,
+        #      &            0.001388665162689d0,  -0.00476236878596984d0, 0.999986961502879d0,
+        #      &            0.001217665531707d0,  -0.00453621720415891d0, 0.999990352590072d0/!5 nightside
+        #
+        #        data det5/0.001048106282707d0,  -0.00413353888615891d0, 0.999990497919053d0,
+        #      &            0.001064506283d0,      -0.004163538886d0, 0.999990352590072d0,
+        #      &            0.001146106282707d0,  -0.00408853888615891d0, 0.999990352590072d0,
+        #      &            0.00097026085936d0,  -0.00387208322056d0, 0.999990352590072d0/ ! offset 2 squares
     else:
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
@@ -549,18 +572,6 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
     elif XovOpt.get("instrument") != "LOLA":  # if BELA/CALA
         # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
-        from calendar import monthrange
-        import datetime as dt
-
-        days_in_month = monthrange(int('20'+epos_in[:2]), int(epos_in[2:]))
-
-        d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),1,00,00) # TODO avoiding issues with 30-Apr 23:59:59 ... extend spk
-
-        # if test, avoid computing tons of files
-        if XovOpt.get("unittest"):
-            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('02'),5,00,00) # for testing
-        else:
-            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
 
         dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
 

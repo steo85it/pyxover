@@ -84,9 +84,6 @@ class xov:
         self.pert_cloop_0 = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop_0, list(self.tracks.keys())[1]:gtracks[1].pert_cloop_0}
         # store the solution from the previous iteration
         self.sol_prev_iter = {list(self.tracks.keys())[0]:gtracks[0].sol_prev_iter,list(self.tracks.keys())[1]:gtracks[1].sol_prev_iter}
-        # print(df.orbID)
-        # print(df.orbID.unique())
-        # print(self.ladata_df.orbID)
 
         if XovOpt.get("debug") and False:
             # prepare surface texture "stamp" and assign the interpolated function as class attribute
@@ -166,7 +163,6 @@ class xov:
         xov_list = [x for x in xov_list if len(x.xovers) > 0]
 
         # concatenate df and reindex
-        # print([x.xovers for x in xov_list])
         if len(xov_list) > 0:
             self.xovers = pd.concat([x.xovers for x in xov_list], sort=True)
             # check for duplicate rows
@@ -181,15 +177,11 @@ class xov:
             # reset index to have a sequential one
             self.xovers = self.xovers.reset_index(drop=True)
             self.xovers['xOvID'] = self.xovers.index
-            # print(self.xovers)postpro_xov_elev
 
             # Retrieve all orbits involved in xovers
             orb_unique = self.xovers['orbA'].tolist()
             orb_unique.extend(self.xovers['orbB'].tolist())
             self.tracks = list(set(orb_unique))
-            # print(self.tracks)
-            # exit()
-            # print(orb_unique)
 
             if XovOpt.get("partials") == 1:
                 for xovi, xov in enumerate(xov_list):
@@ -199,7 +191,6 @@ class xov:
                         break
                     else:
                         print("### xov element ", xovi," is missing partials!!")
-            # print(self.parOrb_xy, self.parGlo_xy)
 
     def save(self, filnam):
         pklfile = open(filnam, "wb")
@@ -225,8 +216,6 @@ class xov:
         except:
             pass
             # print("Loading "+filnam+" failed")
-        # print(self.ladata_df)
-        # print(self.MGRx.tck)
 
         return self
 
@@ -238,10 +227,7 @@ class xov:
 
         orig_len = len(xoverstmp)
 
-        # print("orig_len", orig_len)
-        # print(self.xovers.loc[:,data_col].median(axis=0))
         sorted = np.sort(abs(xoverstmp.loc[:, data_col].values - xoverstmp.loc[:, data_col].median(axis=0)))
-        # print(len(sorted))
         std_median = sorted[round(0.68 * len(sorted))]
         # sorted = sorted[sorted<3*std_median]
 
@@ -307,9 +293,6 @@ class xov:
 
         if (XovOpt.get("debug")):
             print("get_elev", arg, ii, jj, ind_A, ind_B, par)
-            # print(ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[np.round(ind_A)])
-            # print(ladata_df.loc[ladata_df['orbID'] == arg[1]].iloc[np.round(ind_B)])
-        # print(par, param[par.partition('_')[0]] )
 
         # Apply elevation correction (if computing partial derivative)
         if (bool(re.search('_?A$', par)) or bool(re.search('_[p,m]$', par))):  # is not ''):

@@ -1,6 +1,7 @@
 import time
 from collections import defaultdict
 
+import os.path
 import numpy as np
 import pandas as pd
 from pygeoloc.ground_track import gtrack
@@ -14,8 +15,9 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     start_prepro = time.time()
 
     # TODO remove check on orbits for this test
-    old_xovs = old_xovs.loc[
-        (old_xovs['orbA'].str.startswith(str(cmb[0]))) & (old_xovs['orbB'].str.startswith(str(cmb[1])))]
+    if not XovOpt.get("weekly_sets"):
+        old_xovs = old_xovs.loc[
+            (old_xovs['orbA'].str.startswith(str(cmb[0]))) & (old_xovs['orbB'].str.startswith(str(cmb[1])))]
 
     # print(old_xovs)
 
@@ -42,7 +44,12 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id[:-2] + '*.pkl'
         else:
             # TODO removed check on orbid for this test
-            trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
+            if XovOpt.get("weekly_sets"):
+               trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[0] + '/gtrack_' + track_id + '.pkl'
+               if (not os.path.isfile(trackfil)):
+                   trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[1] + '/gtrack_' + track_id + '.pkl'
+            else:
+               trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
             # trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'
         track = track.load(trackfil)
         mladata[track_id] = track.ladata_df

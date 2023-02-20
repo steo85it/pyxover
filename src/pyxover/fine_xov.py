@@ -24,7 +24,10 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     track = gtrack(XovOpt.to_dict())
     # TODO removed check on orbid for this test
     # print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/gtrack_' + str(cmb[0]) + '*.pkl')
-    track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+    if XovOpt.get("weekly_sets"):
+      track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+    else:
+      track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
     # print(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + str(cmb[0]) + '*.pkl')
     # track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
 

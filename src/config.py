@@ -73,6 +73,7 @@ class XovOpt:
         "new_xov": 2,
 
         # Other options
+        "weekly_sets": False,
         # monthly or yearly sets for PyXover
         "monthly_sets": False,
         # analyze multi-xov pairs

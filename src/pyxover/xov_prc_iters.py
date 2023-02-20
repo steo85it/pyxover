@@ -98,8 +98,8 @@ def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
     # Save to file
     if not os.path.exists(XovOpt.get("outdir") + outdir_in + 'xov/'):
         os.mkdir(XovOpt.get("outdir") + outdir_in + 'xov/')
-    xov_tmp.save(XovOpt.get("outdir") + outdir_in + 'xov/xov_' + str(cmb[0]) + '_' + str(
-        cmb[1]) + '.pkl')  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
+    xov_pklname = 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
+    xov_tmp.save(XovOpt.get("outdir") + outdir_in + 'xov/' + xov_pklname)
 
     end = time.time()
 
