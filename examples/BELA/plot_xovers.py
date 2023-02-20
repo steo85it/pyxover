@@ -54,8 +54,8 @@ def prepare_grid(gdf):
 # split xovers in lowlat and polar ones
 dfs = []
 dfs.append(df0.loc[df0.LAT < 85][:])
-dfs.append(df0.loc[(df0.LAT >= 85) & (df0.LAT < 89)][:])
-dfs.append(df0.loc[df0.LAT >= 89][:int(2e6)])
+dfs.append(df0.loc[(df0.LAT >= 85) & (df0.LAT < 89)][:10000])
+dfs.append(df0.loc[df0.LAT >= 89][:int(2e4)])
 
 # set image
 fig = plt.figure()
@@ -73,6 +73,7 @@ for idx, df in enumerate(dfs):
     # if polar xovers, project to stereo
     if idx == 0:
         ax = fig.add_subplot(gs[0, :])
+        gdf = gdf.to_crs(crs_stereo_km)
         vmax = 500
     elif idx == 1:
         ax = fig.add_subplot(gs[1, 0])
@@ -112,6 +113,6 @@ for idx, df in enumerate(dfs):
     #     plt.xlabel("x distance from NP, km")
     #     plt.ylabel("y distance from NP, km")
 
-plt.savefig('data/tmp/xovers_density.pdf')
+# plt.savefig('data/tmp/xovers_density.pdf')
 plt.show()
 

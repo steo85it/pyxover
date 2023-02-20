@@ -91,13 +91,13 @@ def get_demz_tiff(filin,lon,lat):
     import pyproj
 
     # Read the data
-    da = xr.open_rasterio(filin)
+    da = xr.open_dataset(filin, engine='rasterio')
 
     # Rasterio works with 1D arrays (but still need to pass whole mesh, flattened)
     # convert lon/lat to xy using intrinsic crs, then generate additional dimension for
     # advanced xarray interpolation
     # print(da.crs)
-    p = pyproj.Proj(da.crs)
+    p = pyproj.Proj(da.rio.crs)
     xi, yi = p(lon, lat, inverse=False)
     xi = xr.DataArray(xi, dims="z")
     yi = xr.DataArray(yi, dims="z")
@@ -108,7 +108,7 @@ def get_demz_tiff(filin,lon,lat):
 
     da_interp = da.interp(x=xi,y=yi)
 
-    return da_interp.data*1.e-3 # convert to km for compatibility with grd
+    return da_interp.band_data.data*1.e-3 # convert to km for compatibility with grd
 
 def get_demz_grd(filin,lon,lat):
 

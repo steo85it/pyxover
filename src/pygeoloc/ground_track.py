@@ -98,7 +98,7 @@ class gtrack:
             # set t0
             self.t0_orb = self.ladata_df.ET_TX.iloc[0]
             # geolocate observations in orbit
-            self.geoloc(get_partials=self.XovOpt.get("partials"))
+            self.geoloc(get_partials=XovOpt.get('partials'))
             # project observations (polar stereo, choose pole N/S depending on data selection)
             if self.XovOpt.get("selected_hemisphere") == 'S':
                 self.project(lat0=-90)

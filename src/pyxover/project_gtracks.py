@@ -91,6 +91,7 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
             tmp_chunks = {k: v for (k, v) in result_chunks.items() if str(chunkid) == k.split('_')[-1]}
             # print(tmp_chunks)
             none_proj_df = pd.DataFrame(tmp_chunks['none_' + str(chunkid)][:, -2:], columns=['X_stgprj', 'Y_stgprj'])
+            ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
             # print(mla_proj_df)
             ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
 

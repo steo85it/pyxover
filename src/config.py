@@ -93,8 +93,10 @@ class XovOpt:
         "new_illumNG": 0,
         # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
         "new_sim" : 2,
-        # use topo
+        # use large scale topography
         "apply_topo": 0,
+        # apply small scale topography (simulated)
+        "small_scale_topo": False,
         # range noise
         "range_noise": 0,
         # local/global DEM (LOLA)

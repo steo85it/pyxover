@@ -167,7 +167,12 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
 
     # post-processing
     xovtmp = xov_tmp.postpro_xov_elev(xov_tmp.ladata_df, out)
-    xovtmp = pd.DataFrame(xovtmp, index=[0])  # TODO possibly avoid, very time consuming
+    try:
+        xovtmp = pd.DataFrame(xovtmp, index=[0])  # TODO possibly avoid, very time consuming
+    except:
+        print("issue with xovtmp")
+        print(xovtmp)
+        return
 
     if len(xovtmp) > 1:
         if XovOpt.get("debug"):
@@ -179,7 +184,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     xov_tmp.xovtmp = xovtmp
 
     # Compute and store distances between obs and xov coord
-    xov_tmp.set_xov_obs_dist()
+    #xov_tmp.set_xov_obs_dist()
     # Compute and store offnadir state for obs around xov
     xov_tmp.set_xov_offnadir()
 
@@ -200,7 +205,8 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
 
     # Update general df (serial only, does not work in parallel since not a shared object)
     if not XovOpt.get("parallel"):
-        xov_tmp.xovers = xov_tmp.xovers.append(xov_tmp.xovtmp, sort=True)
+        # xov_tmp.xovers = xov_tmp.xovers.append(xov_tmp.xovtmp, sort=True)
+        xov_tmp.xovers = pd.concat([xov_tmp.xovers, xov_tmp.xovtmp], sort=True)
 
     # import sys
     # def sizeof_fmt(num, suffix='B'):

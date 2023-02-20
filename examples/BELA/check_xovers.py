@@ -1,29 +1,27 @@
 import glob
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
-from src.config import XovOpt
-from src.pygeoloc.ground_track import gtrack
-from src.pyxover.xov_setup import xov
-
-trackfil = "data/out/sim/BE0_0/3res_20amp/gtrack_26/gtrack_2604010135.pkl"
-track = gtrack(XovOpt.to_dict())
-track = track.load(trackfil)
-print(track.ladata_df)
-
+from config import XovOpt
+from pygeoloc.ground_track import gtrack
+from pyxover.xov_setup import xov
 
 # xov_path = "examples/BELA/data/out/sim/BE0_0/3res_20amp/xov/xov_2612_2612.pkl"
 xov_ = xov(XovOpt.to_dict())
 xov_list = [xov_.load(x) for x in
-            glob.glob("data/out/sim/BE0_0/3res_20amp/xov/xov_26*_26*.pkl")]
+            glob.glob("data/out/sim/BE0_0/3res_20amp/xov1/xov_26*_26*.pkl")]
 xov_cmb = xov(XovOpt.to_dict())
 xov_cmb.combine(xov_list)
 print(xov_cmb.xovers)
 print(xov_cmb.xovers.columns)
-# xov_cmb.xovers = xov_cmb.xovers.loc[xov_cmb.xovers.LAT < 85]
+print(xov_cmb.xovers.LAT.min())
+xov_cmb.xovers = xov_cmb.xovers.loc[xov_cmb.xovers.LAT < 70].reset_index(drop=True)
 
-# print(xov_cmb.xovers.loc[0])
-for idxov in range(len(xov_cmb.xovers)):
+print(xov_cmb.xovers)
+#exit()
+
+for idxov in tqdm(range(len(xov_cmb.xovers))[:5]):
     orbidA, orbidB, shotidA, shotidB = xov_cmb.xovers.loc[idxov,['orbA','orbB',
                                                              'mla_idA','mla_idB']].values
 
@@ -51,4 +49,7 @@ for idxov in range(len(xov_cmb.xovers)):
     plt.scatter(x=x1, y=y1)
     plt.xlim(x1-50.,x1+50.)
     plt.ylim(y1-50.,y1+50.)
+    plt.xlabel("km (x, NP stereo proj)")
+    plt.ylabel("km (y, NP stereo proj)")
+    plt.savefig(f"plt/tst_{idxov}.png")
     plt.show()
