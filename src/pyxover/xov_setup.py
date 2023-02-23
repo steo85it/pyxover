@@ -888,6 +888,12 @@ class xov:
             elif XovOpt.get("instrument") in ['MLA','BELA']:
                 crs_lonlat = "+proj=lonlat +units=m +a=2440.e3 +b=2440.e3 +no_defs"
                 crs_stereo_km = '+proj=stere +lat_0=90 +lon_0=0 +lat_ts=90 +k=1 +x_0=0 +y_0=0 +units=km +a=2440.e3 +b=2440.e3 +no_defs'
+            elif XovOpt.get("instrument") in ['CALA']:
+                crs_lonlat = "+proj=lonlat +units=m +a=2410.3e3 +b=2410.3e3 +no_defs"
+                crs_stereo_km = '+proj=stere +lat_0=90 +lon_0=0 +lat_ts=90 +k=1 +x_0=0 +y_0=0 +units=km +a=2410.3e3 +b=2410.3e3 +no_defs'
+            else:
+                print(f'Instrument {XovOpt.get("instrument")} not recognized')
+                exit()
 
             print(x, y, ind_A, ind_B)
             df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]]#.values[::msrm_sampl]
