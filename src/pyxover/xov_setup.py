@@ -7,6 +7,7 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 18-Feb-2019
+import os.path
 import warnings
 
 from pyaltsim import perlin2d
@@ -411,9 +412,9 @@ class xov:
                     print("check elevpart0", xyintA)
                     print("check elevpart", param[par.partition('_')[0]], diff_step, xyintA[k][2] * diff_step)
 
-                if (bool(re.search('_pB?$', par))):
+                if bool(re.search('_pB?$', par)):
                     xyintB[k][1] += xyintB[k][3] * diff_step
-                elif (bool(re.search('_mB?$', par))):
+                elif bool(re.search('_mB?$', par)):
                     xyintB[k][1] -= xyintB[k][3] * diff_step
 
         else:
@@ -872,42 +873,60 @@ class xov:
     def get_xover_rough(self, arg, ladata_df, msrm_sampl):
         # Decimate data and find rough intersection
         x, y, ind_A, ind_B = intersection(
-            ladata_df.loc[ladata_df['orbID'] == arg[0]]['X_stgprj'].values[::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[1]]['X_stgprj'].values[::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[1]]['Y_stgprj'].values[::msrm_sampl])
+            ladata_df.loc[ladata_df['orbID'] == arg[0]]['X_stgprj'].values[500::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[500::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[1]]['X_stgprj'].values[500::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[1]]['Y_stgprj'].values[500::msrm_sampl])
 
         # plots
         if XovOpt.get("debug"):
             import geopandas as gpd
-            print(f"rough intersection")
-            print("## Check if correct crs is used for projections")
-            if XovOpt.get("instrument") == 'LRO':
-                crs_lonlat = "+proj=lonlat +units=m +a=1737.4e3 +b=1737.4e3 +no_defs"
-                crs_stereo_km = '+proj=stere +lat_0=-90 +lon_0=0 +lat_ts=-90 +k=1 +x_0=0 +y_0=0 +units=km +a=1737.4e3 +b=1737.4e3 +no_defs'
-            elif XovOpt.get("instrument") in ['MLA','BELA']:
-                crs_lonlat = "+proj=lonlat +units=m +a=2440.e3 +b=2440.e3 +no_defs"
-                crs_stereo_km = '+proj=stere +lat_0=90 +lon_0=0 +lat_ts=90 +k=1 +x_0=0 +y_0=0 +units=km +a=2440.e3 +b=2440.e3 +no_defs'
+            import matplotlib as mpl
+
+            mpl.use('TkAgg')  # !IMPORTANT
+            print(f"debug rough intersection")
+            if not os.path.exists(XovOpt.get('tmpdir')):
+                os.mkdir(XovOpt.get('tmpdir'))
+
+            if XovOpt.get("selected_hemisphere") == 'N':
+                lat_0 = 90
+            else:
+                lat_0 = -90
+            plarad = XovOpt.get('vecopts')['PLANETRADIUS']
+            crs_lonlat = f"+proj=lonlat +units=m +a={plarad}e3 +b={plarad}e3 +no_defs"
+            crs_stereo_km = f'+proj=stere +lat_0={lat_0} +lon_0=0 +lat_ts={lat_0} +k=1 +x_0=0 +y_0=0 +units=km +a={plarad}e3 +b={plarad}e3 +no_defs'
+            print(crs_lonlat)
+            print(crs_stereo_km)
 
             print(x, y, ind_A, ind_B)
             df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]]#.values[::msrm_sampl]
-            gdf0= gpd.GeoDataFrame(
-                df0, geometry=gpd.points_from_xy(df0.LON, df0.LAT),crs=crs_lonlat)
-            print(gdf0[['X_stgprj','Y_stgprj']])
-            print(gdf0.to_crs(crs_stereo_km))
+            gdf0 = gpd.GeoDataFrame(
+                df0, geometry=gpd.points_from_xy(df0.LON, df0.LAT), crs=crs_lonlat)
             df1 = ladata_df.loc[ladata_df['orbID'] == arg[1]]#.values[::msrm_sampl]
             gdf1 = gpd.GeoDataFrame(
-                df1, geometry=gpd.points_from_xy(df1.LON, df1.LAT),crs=crs_lonlat)
+                df1, geometry=gpd.points_from_xy(df1.LON, df1.LAT), crs=crs_lonlat)
+
+            gdf0 = gpd.GeoDataFrame(
+                df0, geometry=gpd.points_from_xy(df0.X_stgprj, df0.Y_stgprj), crs=crs_stereo_km)
+            gdf1 = gpd.GeoDataFrame(
+                df1, geometry=gpd.points_from_xy(df1.X_stgprj, df1.Y_stgprj), crs=crs_stereo_km)
+
             print(gdf1[['X_stgprj','Y_stgprj']])
-            print(gdf1.to_crs(crs_stereo_km))
+            print(gdf1.to_crs(crs_stereo_km).columns)
             ax = plt.subplot()
             gdf0.to_crs(crs_stereo_km).plot(ax=ax) #, label=gdf0.orbID[0])  # , color='red')
             gdf1.to_crs(crs_stereo_km).plot(ax=ax) #, label=gdf1.orbID[0])  # , color='red')
-            # plt.xlim(-40, 40)
-            # plt.ylim(-40, 40)
+            gdf2 = gpd.GeoDataFrame(
+                geometry=gpd.points_from_xy(x, y), crs=crs_stereo_km)
+            gdf2.plot(ax=ax)
+
+            # plt.xlim(-1000, 1000)
+            # plt.ylim(-1000, 1000)
             # plt.legend()
-            plt.show()
-            # exit()
+            # print(gdf0.ET_TX.iloc[0], gdf1.ET_TX.iloc[0])
+            plt.savefig(f"{XovOpt.get('tmpdir')}rough_inters_{gdf0.ET_TX.iloc[0]}_{gdf1.ET_TX.iloc[0]}.png")
+            plt.clf()
+
         return ind_A, ind_B, x, y
 
     ###@profile
@@ -959,6 +978,7 @@ class xov:
                 if len(self.tracks):
                     tmp = dict([v, k] for k, v in self.tracks.items())
                     print("no xovers btw " + tmp[0] + " and " + tmp[1])
+                    exit()
 
             return -1  # 0 xovers found
 
@@ -1032,6 +1052,7 @@ class xov:
                 if len(self.tracks):
                     tmp = dict([v, k] for k, v in self.tracks.items())
                     print("no xovers btw " + tmp[0] + " and " + tmp[1])
+                    exit()
 
             return -1  # 0 xovers found
 

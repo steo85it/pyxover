@@ -479,7 +479,7 @@ def main(args):
             result = []  # seq
             if XovOpt.get("local"):
                 from tqdm import tqdm
-                for arg in tqdm(args, total=len(allFilesA)):
+                for arg in tqdm(args, total=len(allFilesA), desc="allFilesA"):
                     result.append(launch_xov(arg))
             else:
                 for arg in args:
