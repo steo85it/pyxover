@@ -873,10 +873,10 @@ class xov:
     def get_xover_rough(self, arg, ladata_df, msrm_sampl):
         # Decimate data and find rough intersection
         x, y, ind_A, ind_B = intersection(
-            ladata_df.loc[ladata_df['orbID'] == arg[0]]['X_stgprj'].values[500::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[500::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[1]]['X_stgprj'].values[500::msrm_sampl],
-            ladata_df.loc[ladata_df['orbID'] == arg[1]]['Y_stgprj'].values[500::msrm_sampl])
+            ladata_df.loc[ladata_df['orbID'] == arg[0]]['X_stgprj'].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[1]]['X_stgprj'].values[::msrm_sampl],
+            ladata_df.loc[ladata_df['orbID'] == arg[1]]['Y_stgprj'].values[::msrm_sampl])
 
         # plots
         if XovOpt.get("debug"):
