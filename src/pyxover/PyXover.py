@@ -201,7 +201,7 @@ def main(args):
     iter_in = args[-1]
 
     # locate data
-    data_pth = XovOpt.get("basedir") # '/att/nobackup/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+    data_pth = XovOpt.get("basedir") # '/explore/nobackup/people/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
     dataset = indir_in  # 'test/' #'small_test/' #'1301/' #
     data_pth += dataset
     # # load kernels

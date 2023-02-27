@@ -10,8 +10,8 @@ import warnings
 
 import pandas as pd
 
-from src.accumxov.Amat import Amat
-from src.accumxov import AccumXov as xovacc, accum_utils
+from accumxov.Amat import Amat
+from accumxov import AccumXov as xovacc, accum_utils
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os

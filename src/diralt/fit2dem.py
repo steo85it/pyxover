@@ -309,7 +309,7 @@ if __name__ == '__main__':
     if False:
         from datetime import datetime
 
-        tid_df = pd.read_pickle("/att/nobackup/sberton2/MLA/tmp/tid_lat_time.pkl")
+        tid_df = pd.read_pickle("/explore/nobackup/people/sberton2/MLA/tmp/tid_lat_time.pkl")
         # tid_df.columns = tid_df.columns.map(''.join)
         # tid_df = tid_df.fillna(0).sort_values(by=['LAT']).reset_index()
         # tid_median_df = pd.DataFrame([tid_df.set_index('LAT').filter(regex='????'+f'{day:02}').median(axis=1) for day in range(0,31)]).transpose()
@@ -336,12 +336,12 @@ if __name__ == '__main__':
         # ax1.invert_yaxis()
         #         ylabel='Topog ampl rms (1st octave, m)')
         fig.savefig(
-            '/att/nobackup/sberton2/MLA/tmp/tid_median_df.png')  # '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/tid_median_df.png')
+            '/explore/nobackup/people/sberton2/MLA/tmp/tid_median_df.png')  # '/home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/tid_median_df.png')
 
         tmp = tmp[50.0].reset_index()
         tmp.columns = ['Dt', 'data']
         plot_pergram(tmp,
-                     '/att/nobackup/sberton2/MLA/tmp/tid_pergram.png')  # /home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/tid_pergram.png')
+                     '/explore/nobackup/people/sberton2/MLA/tmp/tid_pergram.png')  # /home/sberton2/Works/NASA/Mercury_tides/PyXover/tmp/tid_pergram.png')
 
         exit()
 
@@ -391,16 +391,16 @@ if __name__ == '__main__':
             elif dem_opt == 'hdem':
                 dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
         else:
-            dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
         # dem_xarr = import_dem(dem)
 
         if XovOpt.get("local"):
             spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
         else:
-            spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
+            spice.furnsh(['/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
             # ,
-            # '/att/nobackup/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp',
-            # '/att/nobackup/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp'])
+            # '/explore/nobackup/people/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp',
+            # '/explore/nobackup/people/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp'])
 
         if XovOpt.get("local"):
             path = XovOpt.get("outdir") + 'sim/' + exp + '/' + rghn + '/gtrack_' + str(ym)[:2] + '/gtrack_' + str(ym) + '*.pkl'

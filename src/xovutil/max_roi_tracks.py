@@ -54,10 +54,10 @@ def compare_subsets():
 
     return intersect_percent
 
-# note: revert with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${f%.BAK}.TAB";done**
-#       check with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
+# note: revert with **for f in /explore/nobackup/people/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${f%.BAK}.TAB";done**
+#       check with **for f in /explore/nobackup/people/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
 # to generate soft links from main dataset before subsetting it, e.g.,
-# for f in {08..15}; do cp -rs /att/nobackup/sberton2/MLA/data/SIM_$f/KX1 /att/nobackup/sberton2/MLA/data/SIM_$f/KX1r4 ;done
+# for f in {08..15}; do cp -rs /explore/nobackup/people/sberton2/MLA/data/SIM_$f/KX1 /explore/nobackup/people/sberton2/MLA/data/SIM_$f/KX1r4 ;done
 
 def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
 
@@ -70,7 +70,7 @@ def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
     if XovOpt.get("local"):
         obsfil = glob.glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/" + exp + "/" + kind + "/*.TAB")
     else:
-        obsfil = glob.glob("/att/nobackup/sberton2/MLA/data/SIM_??/" + exp + "/" + kind + "/*.TAB")
+        obsfil = glob.glob("/explore/nobackup/people/sberton2/MLA/data/SIM_??/" + exp + "/" + kind + "/*.TAB")
 
     # need tr[:-3] because of min:sec differences between sim and real data
     selected = [s for s in obsfil for tr in tracks if tr[:-3] in s]

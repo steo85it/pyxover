@@ -166,7 +166,7 @@ if __name__ == '__main__':
     print(opt.get("body"))
 
     print(opt.get("tmpdir"))
-    opt.set("basedir",'/att/nobackup/sberton2/MLA/')
+    opt.set("basedir",'/explore/nobackup/people/sberton2/MLA/')
 
     opt.check_consistency()
     print(opt.get("tmpdir"))

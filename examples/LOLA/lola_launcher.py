@@ -1,5 +1,5 @@
 import os
-# import numpy as np
+
 import pandas as pd
 import subprocess as s
 
@@ -26,8 +26,8 @@ if __name__ == '__main__':
     setup_lola()
 
     tmpdir = XovOpt.get("tmpdir") #'./' # '/home/sberton2/tmp/'
-    filnamin = f'testLOLA.in'
-    filnamout = f'loadPyAltSim'
+    filnamin = f'testLOLA.in' # copy LOLA_template.in to tmpdir (see config) and  add your slews
+    filnamout = f'loadPyAltSim' # prepro generates this in the same folder
 
     f = open(tmpdir+filnamin)
     df = pd.read_csv(f,sep='\s+',names=['trk','d/n','target'])

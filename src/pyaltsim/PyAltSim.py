@@ -7,9 +7,9 @@
 #
 import warnings
 
-from src.xovutil.dem_util import get_demz_at, import_dem
-from src.xovutil.icrf2pbf import icrf2pbf
-from src.xovutil.orient_setup import orient_setup
+from xovutil.dem_util import get_demz_at, import_dem
+from xovutil.icrf2pbf import icrf2pbf
+from xovutil.orient_setup import orient_setup
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -210,7 +210,7 @@ class sim_gtrack(gtrack):
                 if XovOpt.get("instrument") == "LOLA":
                     dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
                 else:
-                    dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+                    dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
             else:
                 dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
 
@@ -270,9 +270,9 @@ class sim_gtrack(gtrack):
                         if local_dem:
                             dem = self.slewdir + "/SLDEM2015_512PPD.GRD"
                         else:
-                            dem = "/att/projrepo/PGDA/LOLA/data/LOLA_GDR/CYLINDRICAL/raw/LDEM_4.GRD"
+                            dem = "/explore/nobackup/projects/pgda/LOLA/data/LOLA_GDR/CYLINDRICAL/raw/LDEM_4.GRD"
                     else:
-                        dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+                        dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
                 #             r_dem = subprocess.check_output(
                 #                 ['grdtrack', gmt_in,
                 #                  '-G' + dem],
@@ -513,19 +513,19 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     print('epos_in', epos_in)
 
     # if not XovOpt.get("local"):
-        # data_pth = '/att/nobackup/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+        # data_pth = '/explore/nobackup/people/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
         # dataset = ''  # 'small_test/' #'test1/' #'1301/' #
         # data_pth += dataset
         # TODO Avoid/remove explicit paths!!!
         # load kernels
         # if XovOpt.get("instrument") == "BELA":
-        #     spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'
+        #     spice.furnsh(['/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'
         #                  ,
-        #                  '/att/nobackup/sberton2/MLA/aux/spk/bc_sci_v06.tf',
-        #                  '/att/nobackup/sberton2/MLA/aux/spk/bc_mpo_mlt_50037_20260314_20280529_v03.bsp']
+        #                  '/explore/nobackup/people/sberton2/MLA/aux/spk/bc_sci_v06.tf',
+        #                  '/explore/nobackup/people/sberton2/MLA/aux/spk/bc_mpo_mlt_50037_20260314_20280529_v03.bsp']
         #     )  # 'aux/mymeta')
         # else:
-        #     spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')
+        #     spice.furnsh('/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')
 
     # else:
         # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
