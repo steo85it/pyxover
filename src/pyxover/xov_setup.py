@@ -7,6 +7,7 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 18-Feb-2019
+import os.path
 import warnings
 
 from pyaltsim import perlin2d
@@ -74,8 +75,8 @@ class xov:
         # map tracks to 0 and 1
         self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
 
-        if XovOpt.get("instrument") == 'BELA':
-            self.msrm_sampl = 20
+        if XovOpt.get("instrument") in ['BELA', 'CALA']: # TODO split the orbit to check with a smaller msrm_sampl w/o breaking memory
+            self.msrm_sampl = 20 # WD: try 10
         else:
             self.msrm_sampl = 4
 
@@ -84,9 +85,6 @@ class xov:
         self.pert_cloop_0 = {list(self.tracks.keys())[0]:gtracks[0].pert_cloop_0, list(self.tracks.keys())[1]:gtracks[1].pert_cloop_0}
         # store the solution from the previous iteration
         self.sol_prev_iter = {list(self.tracks.keys())[0]:gtracks[0].sol_prev_iter,list(self.tracks.keys())[1]:gtracks[1].sol_prev_iter}
-        # print(df.orbID)
-        # print(df.orbID.unique())
-        # print(self.ladata_df.orbID)
 
         if XovOpt.get("debug") and False:
             # prepare surface texture "stamp" and assign the interpolated function as class attribute
@@ -166,7 +164,6 @@ class xov:
         xov_list = [x for x in xov_list if len(x.xovers) > 0]
 
         # concatenate df and reindex
-        # print([x.xovers for x in xov_list])
         if len(xov_list) > 0:
             self.xovers = pd.concat([x.xovers for x in xov_list], sort=True)
             # check for duplicate rows
@@ -181,15 +178,11 @@ class xov:
             # reset index to have a sequential one
             self.xovers = self.xovers.reset_index(drop=True)
             self.xovers['xOvID'] = self.xovers.index
-            # print(self.xovers)postpro_xov_elev
 
             # Retrieve all orbits involved in xovers
             orb_unique = self.xovers['orbA'].tolist()
             orb_unique.extend(self.xovers['orbB'].tolist())
             self.tracks = list(set(orb_unique))
-            # print(self.tracks)
-            # exit()
-            # print(orb_unique)
 
             if XovOpt.get("partials") == 1:
                 for xovi, xov in enumerate(xov_list):
@@ -199,7 +192,6 @@ class xov:
                         break
                     else:
                         print("### xov element ", xovi," is missing partials!!")
-            # print(self.parOrb_xy, self.parGlo_xy)
 
     def save(self, filnam):
         pklfile = open(filnam, "wb")
@@ -225,8 +217,6 @@ class xov:
         except:
             pass
             # print("Loading "+filnam+" failed")
-        # print(self.ladata_df)
-        # print(self.MGRx.tck)
 
         return self
 
@@ -238,10 +228,7 @@ class xov:
 
         orig_len = len(xoverstmp)
 
-        # print("orig_len", orig_len)
-        # print(self.xovers.loc[:,data_col].median(axis=0))
         sorted = np.sort(abs(xoverstmp.loc[:, data_col].values - xoverstmp.loc[:, data_col].median(axis=0)))
-        # print(len(sorted))
         std_median = sorted[round(0.68 * len(sorted))]
         # sorted = sorted[sorted<3*std_median]
 
@@ -307,9 +294,6 @@ class xov:
 
         if (XovOpt.get("debug")):
             print("get_elev", arg, ii, jj, ind_A, ind_B, par)
-            # print(ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[np.round(ind_A)])
-            # print(ladata_df.loc[ladata_df['orbID'] == arg[1]].iloc[np.round(ind_B)])
-        # print(par, param[par.partition('_')[0]] )
 
         # Apply elevation correction (if computing partial derivative)
         if (bool(re.search('_?A$', par)) or bool(re.search('_[p,m]$', par))):  # is not ''):
@@ -428,9 +412,9 @@ class xov:
                     print("check elevpart0", xyintA)
                     print("check elevpart", param[par.partition('_')[0]], diff_step, xyintA[k][2] * diff_step)
 
-                if (bool(re.search('_pB?$', par))):
+                if bool(re.search('_pB?$', par)):
                     xyintB[k][1] += xyintB[k][3] * diff_step
-                elif (bool(re.search('_mB?$', par))):
+                elif bool(re.search('_mB?$', par)):
                     xyintB[k][1] -= xyintB[k][3] * diff_step
 
         else:
@@ -897,28 +881,52 @@ class xov:
         # plots
         if XovOpt.get("debug"):
             import geopandas as gpd
-            print(f"rough intersection")
-            crs_moon_lonlat = "+proj=lonlat +units=m +a=1737.4e3 +b=1737.4e3 +no_defs"
-            crs_stereo_km = '+proj=stere +lat_0=-90 +lon_0=0 +lat_ts=-90 +k=1 +x_0=0 +y_0=0 +units=km +a=1737.4e3 +b=1737.4e3 +no_defs'
+            import matplotlib as mpl
+
+            mpl.use('TkAgg')  # !IMPORTANT
+            print(f"debug rough intersection")
+            if not os.path.exists(XovOpt.get('tmpdir')):
+                os.mkdir(XovOpt.get('tmpdir'))
+
+            if XovOpt.get("selected_hemisphere") == 'N':
+                lat_0 = 90
+            else:
+                lat_0 = -90
+            plarad = XovOpt.get('vecopts')['PLANETRADIUS']
+            crs_lonlat = f"+proj=lonlat +units=m +a={plarad}e3 +b={plarad}e3 +no_defs"
+            crs_stereo_km = f'+proj=stere +lat_0={lat_0} +lon_0=0 +lat_ts={lat_0} +k=1 +x_0=0 +y_0=0 +units=km +a={plarad}e3 +b={plarad}e3 +no_defs'
+            print(crs_lonlat)
+            print(crs_stereo_km)
+
             print(x, y, ind_A, ind_B)
             df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]]#.values[::msrm_sampl]
-            gdf0= gpd.GeoDataFrame(
-                df0, geometry=gpd.points_from_xy(df0.LON, df0.LAT),crs=crs_moon_lonlat)
-            print(gdf0[['X_stgprj','Y_stgprj']])
-            print(gdf0.to_crs(crs_stereo_km))
+            gdf0 = gpd.GeoDataFrame(
+                df0, geometry=gpd.points_from_xy(df0.LON, df0.LAT), crs=crs_lonlat)
             df1 = ladata_df.loc[ladata_df['orbID'] == arg[1]]#.values[::msrm_sampl]
             gdf1 = gpd.GeoDataFrame(
-                df1, geometry=gpd.points_from_xy(df1.LON, df1.LAT),crs=crs_moon_lonlat)
+                df1, geometry=gpd.points_from_xy(df1.LON, df1.LAT), crs=crs_lonlat)
+
+            gdf0 = gpd.GeoDataFrame(
+                df0, geometry=gpd.points_from_xy(df0.X_stgprj, df0.Y_stgprj), crs=crs_stereo_km)
+            gdf1 = gpd.GeoDataFrame(
+                df1, geometry=gpd.points_from_xy(df1.X_stgprj, df1.Y_stgprj), crs=crs_stereo_km)
+
             print(gdf1[['X_stgprj','Y_stgprj']])
-            print(gdf1.to_crs(crs_stereo_km))
+            print(gdf1.to_crs(crs_stereo_km).columns)
             ax = plt.subplot()
             gdf0.to_crs(crs_stereo_km).plot(ax=ax) #, label=gdf0.orbID[0])  # , color='red')
             gdf1.to_crs(crs_stereo_km).plot(ax=ax) #, label=gdf1.orbID[0])  # , color='red')
-            plt.xlim(-40, 40)
-            plt.ylim(-40, 40)
+            gdf2 = gpd.GeoDataFrame(
+                geometry=gpd.points_from_xy(x, y), crs=crs_stereo_km)
+            gdf2.plot(ax=ax)
+
+            # plt.xlim(-1000, 1000)
+            # plt.ylim(-1000, 1000)
             # plt.legend()
-            plt.show()
-            # exit()
+            # print(gdf0.ET_TX.iloc[0], gdf1.ET_TX.iloc[0])
+            plt.savefig(f"{XovOpt.get('tmpdir')}rough_inters_{gdf0.ET_TX.iloc[0]}_{gdf1.ET_TX.iloc[0]}.png")
+            plt.clf()
+
         return ind_A, ind_B, x, y
 
     ###@profile
@@ -970,6 +978,7 @@ class xov:
                 if len(self.tracks):
                     tmp = dict([v, k] for k, v in self.tracks.items())
                     print("no xovers btw " + tmp[0] + " and " + tmp[1])
+                    exit()
 
             return -1  # 0 xovers found
 
@@ -1043,6 +1052,7 @@ class xov:
                 if len(self.tracks):
                     tmp = dict([v, k] for k, v in self.tracks.items())
                     print("no xovers btw " + tmp[0] + " and " + tmp[1])
+                    exit()
 
             return -1  # 0 xovers found
 

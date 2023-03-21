@@ -21,8 +21,16 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     xov_tmp.msrm_sampl = msrm_smpl
 
     # store the imposed perturbation (if closed loop simulation) - get from any track uploaded in prepro step
-    track = gtrack(XovOpt.get("vecopts"))
-    track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+    track = gtrack(XovOpt.to_dict())
+    # TODO removed check on orbid for this test
+    # print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/gtrack_' + str(cmb[0]) + '*.pkl')
+    if XovOpt.get("weekly_sets"):
+      track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+    else:
+      track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+    # print(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + str(cmb[0]) + '*.pkl')
+    # track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+
     xov_tmp.pert_cloop = {'0': track.pert_cloop}
     xov_tmp.pert_cloop_0 = {'0': track.pert_cloop_0}
     # store the solution from the previous iteration
@@ -162,7 +170,12 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
 
     # post-processing
     xovtmp = xov_tmp.postpro_xov_elev(xov_tmp.ladata_df, out)
-    xovtmp = pd.DataFrame(xovtmp, index=[0])  # TODO possibly avoid, very time consuming
+    try:
+        xovtmp = pd.DataFrame(xovtmp, index=[0])  # TODO possibly avoid, very time consuming
+    except:
+        print("issue with xovtmp")
+        print(xovtmp)
+        return
 
     if len(xovtmp) > 1:
         if XovOpt.get("debug"):
@@ -174,7 +187,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     xov_tmp.xovtmp = xovtmp
 
     # Compute and store distances between obs and xov coord
-    xov_tmp.set_xov_obs_dist()
+    #xov_tmp.set_xov_obs_dist()
     # Compute and store offnadir state for obs around xov
     xov_tmp.set_xov_offnadir()
 
@@ -195,7 +208,8 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
 
     # Update general df (serial only, does not work in parallel since not a shared object)
     if not XovOpt.get("parallel"):
-        xov_tmp.xovers = xov_tmp.xovers.append(xov_tmp.xovtmp, sort=True)
+        # xov_tmp.xovers = xov_tmp.xovers.append(xov_tmp.xovtmp, sort=True)
+        xov_tmp.xovers = pd.concat([xov_tmp.xovers, xov_tmp.xovtmp], sort=True)
 
     # import sys
     # def sizeof_fmt(num, suffix='B'):

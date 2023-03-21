@@ -66,13 +66,15 @@ class XovOpt:
         "OrbRep": 'cnt' , # 'lin' # 'quad' #
 
         # interpolation/spice direct call (0: use spice, 1: yes, use interpolation, 2: yes, create interpolation)
-        "SpInterp": 1,
+        "SpInterp": 0,
+        "spice_meta": 'mymeta',
         # create new gtrack (0:no, 1:yes, if not already present, 2: yes, create and replace)
         "new_gtrack": 2,
         # create new xov (0:no, 1:yes, if not already present, 2: yes, create and replace)
         "new_xov": 2,
 
         # Other options
+        "weekly_sets": False,
         # monthly or yearly sets for PyXover
         "monthly_sets": False,
         # analyze multi-xov pairs
@@ -87,14 +89,16 @@ class XovOpt:
         "compute_input_xov": True,
 
         # PyAltSim options
-        # simulation mode
+        # simulation mode ! WD: possible option to (0:no, 1:yes, use, 2: yes, create)
         "sim_altdata": 0,
         # recompute a priori
         "new_illumNG": 0,
         # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
         "new_sim" : 2,
-        # use topo
+        # use large scale topography
         "apply_topo": 0,
+        # apply small scale topography (simulated)
+        "small_scale_topo": False,
         # range noise
         "range_noise": 0,
         # local/global DEM (LOLA)
@@ -162,7 +166,7 @@ class XovOpt:
 
     @staticmethod
     def clone(opts):
-        print("- Updating XovOpt")
+        # print("- Updating XovOpt")
         XovOpt.__conf = opts.copy()
         
 # example, suppose importing

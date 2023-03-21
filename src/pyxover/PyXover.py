@@ -39,33 +39,10 @@ from pyxover.xov_setup import xov
 
 # from xovutil import lflatten
 ########################################
-# # test space
-#
-# tst = [np.array([ 89.72151033, 103.94256763]), np.array([139.94256763])]
-# tst = lflatten(tst)
-# print(tst)
-# exit()
-# vecopts = {'SCID':'-236'}
-#
-# tmp_ser = Amat(vecopts)
-# for f in glob.glob('/home/sberton2/Works/NASA/Mercury_tides/out/xov_130101*_13.pkl'):
-#     tmp_ser = tmp_ser.load(f)
-#
-#     print(tmp_ser.xovers)
-#
-# # tmp_par = Amat(vecopts)
-# # tmp_par = tmp_par.load('out/small_par/Amat_small_dataset.pkl')
-#
-# # print(tmp_par.spA.to_dense().equals(tmp_ser.spA.to_dense()))
-#
-# # print(tmp_par.spA)
-# # print(tmp_ser.spA)
-#
-# exit()
 
-# @profile
 def launch_xov(
         args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
+
     track_idA = args[0]
     # print(track_id)
     comb = args[1]
@@ -82,30 +59,39 @@ def launch_xov(
     else:
         mladata = args[4]
     outdir = args[5]
+    xov_dir = outdir + 'xov/'
 
+    xov_pklname = 'xov_' + track_idA + '_' + misycmb[par][1] + '.pkl'
     if XovOpt.get("new_xov"):  # and track_id=='1301232350':
         # print( "check", track_id, misycmb[par])
-        if not os.path.isfile(outdir + 'xov/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl') or XovOpt.get("new_xov") == 2:
+        if not os.path.isfile(xov_dir + xov_pklname) or XovOpt.get("new_xov") == 2:
 
             # print("Processing " + track_id + " ...")
 
             # try:
             #    trackA = track_id
             #    trackA = tracklist[str(track_id)]
-            trackA = gtrack(XovOpt.get("vecopts"))
+            trackA = gtrack(XovOpt.to_dict())
 
-            if XovOpt.get("monthly_sets"):
-                trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0][:2] + '/gtrack_' + track_idA + '.pkl')
+            # TODO removed check on orbit for this test
+            if XovOpt.get("weekly_sets"):
+                gtrack_dir = outdir + 'gtrack_' + misycmb[par][0] + '/'
+            elif XovOpt.get("monthly_sets"):
+                gtrack_dir = outdir + 'gtrack_' + misycmb[par][0][:2] + '/'
+            
+            if XovOpt.get("weekly_sets") or XovOpt.get("monthly_sets"):
+                trackA = trackA.load(gtrack_dir + 'gtrack_' + track_idA + '.pkl')
             else:
                 # trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
                 trackA.ladata_df = mladata[track_idA]   # faster and less I/O which overloads PGDA
+
+            if trackA == None:
+                print(gtrack_dir + 'gtrack_' + track_idA + '.pkl not found')
 
             if not trackA == None and len(trackA.ladata_df) > 0:
 
                 xov_tmp = track_idA
                 xov_tmp = xov(XovOpt.get("vecopts"))
-
-                # print(comb)
 
                 xovers_list = []
                 xover_found = False
@@ -116,13 +102,17 @@ def launch_xov(
                     #    print("Processing " + gtrackA + " vs " + gtrackB)
 
                     if track_idB > track_idA:
-                        # try:
-                        #        trackB = track_id
-                        #        trackB = tracklist[str(gtrackB)]
-                        trackB = gtrack(XovOpt.get("vecopts"))
 
-                        if XovOpt.get("monthly_sets"):
-                           trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1][:2] + '/gtrack_' + track_idB + '.pkl')
+                        trackB = gtrack(XovOpt.to_dict())
+
+                        # TODO removed check on orbit for this test
+                        if XovOpt.get("weekly_sets"):
+                           gtrack_dir = outdir + 'gtrack_' + misycmb[par][1] + '/'
+                        elif XovOpt.get("monthly_sets"):
+                           gtrack_dir = outdir + 'gtrack_' + misycmb[par][1][:2] + '/'
+
+                        if XovOpt.get("weekly_sets") or XovOpt.get("monthly_sets"):
+                           trackB = trackB.load(gtrack_dir + 'gtrack_' + track_idB + '.pkl')
                         else:
                            # trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
                            trackB.ladata_df = mladata[track_idB]  # faster and less I/O which overloads PGDA
@@ -167,10 +157,9 @@ def launch_xov(
                         # just pass rough_xovs to next step
                         return xov_tmp.xovers
                     else:
-                        xov_tmp.save(outdir + 'xov/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl')
+                        xov_tmp.save(xov_dir + xov_pklname)
                         print(
-                            'Xov for ' + track_idA + ' processed and written to ' + outdir + 'xov/xov_' + track_idA + '_' +
-                            misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
+                            'Xov for ' + track_idA + ' processed and written to ' + xov_dir + xov_pklname + ' @' + time.strftime("%H:%M:%S", time.gmtime()))
                         return track_idA
 
         # except:
@@ -180,8 +169,7 @@ def launch_xov(
         else:
 
             #      track = track.load('out/xov_'+gtrackA+'.pkl')
-            print('Xov for ' + track_idA + ' already exists in ' + outdir + 'xov_' + track_idA + '_' +
-                          misycmb[par][1] + '.pkl @' + time.strftime("%H:%M:%S", time.gmtime()))
+            print('Xov for ' + track_idA + ' already exists in ' + xov_dir + xov_pklname + ' @' + time.strftime("%H:%M:%S", time.gmtime()))
 
     ########################################
 # @profile
@@ -213,28 +201,12 @@ def main(args):
     # spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
 
     # set ncores
-    ncores = mp.cpu_count() - 1  # 8
+    ncores = 2 # mp.cpu_count() - 1  # 8
 
     if XovOpt.get("parallel"):
         print('Process launched on ' + str(ncores) + ' CPUs')
 
     ##############################################
-
-    # Setup some useful options
-    # vecopts = {'SCID': '-236',
-    #            'SCNAME': 'MESSENGER',
-    #            'SCFRAME': -236000,
-    #            'INSTID': (-236500, -236501),
-    #            'INSTNAME': ('MSGR_MLA', 'MSGR_MLA_RECEIVER'),
-    #            'PLANETID': '199',
-    #            'PLANETNAME': 'MERCURY',
-    #            'PLANETRADIUS': 2440.,
-    #            'PLANETFRAME': 'IAU_MERCURY',
-    #            'OUTPUTTYPE': 1,
-    #            'ALTIM_BORESIGHT': '',
-    #            'INERTIALFRAME': 'J2000',
-    #            'INERTIALCENTER': 'SSB',
-    #            'PARTDER': ''}
 
     # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
@@ -252,9 +224,9 @@ def main(args):
     # setup all combinations between years
     par = int(cmb_y_in)
 
-    if XovOpt.get("monthly_sets"):
+    if XovOpt.get("monthly_sets") and not XovOpt.get("weekly_sets"):
         if XovOpt.get("instrument") == 'BELA':
-            misy = ['26','27']
+            misy = ['26'] #,'27']
         else:
             misy = ['11', '12', '13', '14', '15']
 
@@ -262,9 +234,14 @@ def main(args):
         misy = [x+f'{y:02}' for x in misy for y in months]
         if XovOpt.get("instrument") != 'BELA':
             misy = ['0801','0810']+misy[2:-8]
+    elif XovOpt.get("weekly_sets"):
+        if XovOpt.get("instrument") == 'CALA':
+            misy = ['310501','310508','310515','310522','310529','310605','310612']
     else:
         if XovOpt.get("instrument") == 'BELA':
             misy = ['26','27'] #+str("{:02}".format(i)) for i in range(1,13,1)]
+        elif XovOpt.get("instrument") == 'CALA':
+            misy = ['31'] #+str("{:02}".format(i)) for i in range(1,13,1)]
         elif XovOpt.get("instrument") == 'LOLA':
             misy = ['09', '10']
         else:
@@ -275,7 +252,7 @@ def main(args):
     if True: #XovOpt.get("debug"):
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
-
+    # exit()
     ###########################
     startInit = time.time()
 
@@ -283,7 +260,7 @@ def main(args):
 
         # check if input_xov already exists, if yes don't recreate it (should be conditional...)
         input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(misycmb[par][0]) + '_' + str(misycmb[par][1]) + '.pkl.gz'
-        if os.path.exists(input_xov_path) and XovOpt.get("instrument") == 'BELA':
+        if os.path.exists(input_xov_path) and (XovOpt.get("instrument") == 'BELA' or XovOpt.get("instrument") == 'CALA'):
             print("input xov file already exists in", input_xov_path)
             print("Rerun without computing this cumbersome input, be smart!")
             exit(0)
@@ -302,19 +279,36 @@ def main(args):
         # print(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
         # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*')))
 
-        if XovOpt.get("monthly_sets"):
+        # TODO remove check on orbid for this test
+        if XovOpt.get("weekly_sets"):
+            import datetime as dt
+            date0 = dt.datetime.strptime(misycmb[par][0], '%y%m%d')
+            date1 = dt.datetime.strptime(misycmb[par][1], '%y%m%d')
+            allFilesA = []
+            allFilesB = []
+            for i in range(0,7):
+                datestr = (date0 + dt.timedelta(days=i)).strftime('%y%m%d')
+                allFilesA.extend(glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/gtrack_' + datestr + '*')))
+                datestr = (date1 + dt.timedelta(days=i)).strftime('%y%m%d')
+                allFilesB.extend(glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/gtrack_' + datestr + '*')))
+        elif XovOpt.get("monthly_sets"):
           allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0][:2] + '/gtrack_' + misycmb[par][0] + '*'))
           allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1][:2] + '/gtrack_' + misycmb[par][1] + '*'))
+          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][0] + '*'))
+          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][1] + '*'))
         else:
           allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/*'))
           allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/*'))
+          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
+          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
 
-        # if misycmb[par][0] == misycmb[par][1]:
-        #     allFiles = allFilesA
-        # else:
-        #     allFiles = allFilesA + allFilesB
-
-        # print(allFiles)
+        if XovOpt.get('debug'):
+            if misycmb[par][0] == misycmb[par][1]:
+                allFiles = allFilesA
+            else:
+                allFiles = allFilesA + allFilesB
+            print(allFiles)
+            # exit()
 
         # xovnames = ['xov_' + fil.split('.')[0][-10:] for fil in allFiles]
         # trackxov_list = []
@@ -327,11 +321,12 @@ def main(args):
 
         # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
         # TODO, check wether one could safely save time by only considering xovers with a given weight
-        iter = int(outdir_in.split('/')[1].split('_')[-1])
+        # iter = int(outdir_in.split('/')[1].split('_')[-1])
+        iter = iter_in
         if iter>0:
             comb = select_useful_comb(comb, iter, outdir_in)
 
-        # print(comb)
+        print(comb)
 
         # load all tracks
         # tmp = [gtrack(vecopts) for i in range(len(allFiles))]
@@ -350,15 +345,29 @@ def main(args):
         # print(comb)
         # print(comb.shape,np.ravel(comb).shape,len(set(np.ravel(comb))))
         # print(set(np.ravel(comb)))
-        track_obj = gtrack(XovOpt.get("vecopts"))
+        track_obj = gtrack(XovOpt.to_dict())
         mladata = {}
         cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
              'X_stgprj', 'Y_stgprj']
 
         for track_id in set(np.ravel(comb)):
-            track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
+            # TODO removed check on orbid for this test
+            # try:
+            # WD: not so nice. gtrack_* directories are used too extensively
+            if XovOpt.get("weekly_sets"):
+               track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl'
+               if (not os.path.isfile(track_filepath)):
+                   track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + misycmb[par][1] + '/gtrack_' + track_id + '.pkl'
+            else:
+               track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
+            track_obj = track_obj.load(track_filepath)
+            
+            # track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
+            # except:
+            #     print(f"* Issue with {XovOpt.get('outdir') + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'}")
+
             #print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
-            #print(track_obj.ladata_df)
+            # print(track_obj.ladata_df)
             #print(track_obj.ladata_df.loc[:,cols])
             # resurrect as soon as got also south part of obs track
             #if instr == 'BELA':
@@ -378,8 +387,7 @@ def main(args):
             except:
                 print(f"*** PyXover: Issue with {track_id}. Skip.")
                 exit()
-        # print(len(mladata))
-        # exit()
+
             # transform to df to get memory
             # print("total memory:",pd.from_dict(mladata).memory_usage(deep=True).sum()*1.e-6)
             # exit()
@@ -413,7 +421,7 @@ def main(args):
         # exit()
         if XovOpt.get("instrument") =='BELA':
             os.makedirs(XovOpt.get("tmpdir"), exist_ok=True)
-            mladata_pkl_fn = XovOpt.get("tmpdir") + 'mladata_tmp_'+cmb_y_in+'.pkl'
+            mladata_pkl_fn = f"{XovOpt.get('tmpdir')}mladata_tmp_{cmb_y_in}.pkl"
             with open(mladata_pkl_fn, 'wb') as handle:
                 import pickle
                 pickle.dump(mladata, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -445,9 +453,9 @@ def main(args):
                 #pool = mp.Pool(processes=ncores)
                 # store list of tracks with xovs
                 result = pool.map(launch_xov, args)  # parallel
-# ######################################
-#             ncores = mp.cpu_count() - 1  # 8
-#
+            # ######################################
+            # ncores = mp.cpu_count() - 1  # 8
+            #
             # if local:
             #     from tqdm import tqdm
             #     pbar = tqdm(total=len(allFilesA))
@@ -472,7 +480,7 @@ def main(args):
             result = []  # seq
             if XovOpt.get("local"):
                 from tqdm import tqdm
-                for arg in tqdm(args, total=len(allFilesA)):
+                for arg in tqdm(args, total=len(allFilesA), desc="allFilesA"):
                     result.append(launch_xov(arg))
             else:
                 for arg in args:
@@ -481,6 +489,7 @@ def main(args):
 
         # remove None from list
         result = [x for x in result if x is not None]
+
         if len(result)>0:
             if XovOpt.get("new_algo"):
                 rough_xov = pd.concat(result).reset_index()
@@ -488,7 +497,7 @@ def main(args):
                 acttracks = np.unique(np.array([x for x in result if x is not None]).flatten())
         else:
             print("### PyXover: no xovers between the available tracks")
-            exit()
+            return
 
         endXov2 = time.time()
         print(
@@ -498,6 +507,8 @@ def main(args):
     else: # xovs will be taken from old iter
         rough_xov = pd.DataFrame()
 
+    print(f"misycmb[par]: {misycmb[par]}")
+    print(f"number of rough xovers: {len(rough_xov)}")
     # called either with results from xov_rough (iter=0) or with empty df and xovers from old solution
     if XovOpt.get("new_algo"):
         print("Calling a new awesome routine!!")
@@ -547,7 +558,7 @@ if __name__ == '__main__':
     start = time.time()
 
     args = sys.argv[1:]
-    print(args)
+    # print(args)
     main(args)
 
     # stop clock and print runtime

@@ -5,12 +5,13 @@
 # Author: Stefano Bertone
 # Created: 16-Oct-2018
 #
+from fileinput import filename
 import warnings
 
-from src.pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
-from src.xovutil.dem_util import get_demz_at, import_dem
-from src.xovutil.icrf2pbf import icrf2pbf
-from src.xovutil.orient_setup import orient_setup
+from pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
+from xovutil.dem_util import get_demz_at, import_dem, get_demz_tiff
+from xovutil.icrf2pbf import icrf2pbf
+from xovutil.orient_setup import orient_setup
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -29,13 +30,12 @@ import spiceypy as spice
 import matplotlib.pyplot as plt
 
 # mylib
-# from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("new_illumNG"), XovOpt.get("apply_topo"), XovOpt.get("vecopts"), XovOpt.get("range_noise"), XovOpt.get("SpInterp"), XovOpt.get("spauxdir")
 from config import XovOpt
 
-from src.xovutil import astro_trans as astr, pickleIO
-from src.pygeoloc.ground_track import gtrack
-from src.geolocate_altimetry import get_sc_ssb, get_sc_pla
-from src.pyaltsim import perlin2d
+from xovutil import astro_trans as astr, pickleIO
+from pygeoloc.ground_track import gtrack
+from geolocate_altimetry import get_sc_ssb, get_sc_pla
+from pyaltsim import perlin2d
 
 ########################################
 # start clock
@@ -44,8 +44,8 @@ start = time.time()
 
 ##############################################
 class sim_gtrack(gtrack):
-    def __init__(self, vecopts, orbID):
-        gtrack.__init__(self, vecopts)
+    def __init__(self, opts, orbID):
+        gtrack.__init__(self, opts)
         self.orbID = orbID
         self.name = str(orbID)
         self.outdir = None
@@ -65,12 +65,16 @@ class sim_gtrack(gtrack):
         # copy to self
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
-        # retrieve spice data for geoloc
-        if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl') or XovOpt.get("SpInterp") == 2:
-            # create interp for track
-            self.interpolate()
-        else:
-            self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
+        # retrieve spice data for geoloc from interp, if desired
+        if XovOpt.get("SpInterp") > 0:
+            if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") +
+                               'spaux_' + self.name + '.pkl') or \
+                    XovOpt.get("SpInterp") == 2:
+                # create interp for track
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") +
+                                       'spaux_' + self.name + '.pkl')
 
         # actual processing
         self.lt_topo_corr(df=df_)
@@ -207,52 +211,60 @@ class sim_gtrack(gtrack):
         if XovOpt.get("apply_topo"):
             # st = time.time()
 
-            if not XovOpt.get("local"):
-                if XovOpt.get("instrument") == "LOLA":
-                    dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
-                else:
-                    dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-            else:
-                dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-
-            # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
+            # if not XovOpt.get("local"):
+            #     if XovOpt.get("instrument") == "LOLA":
+            #         dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
+            #     else:
+            #         dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            # else:
+            #     dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            #
+            # # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
             gmt = False
 
             if XovOpt.get("instrument") == 'BELA':
-                if local:
-                    geotiff = ['/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                           '/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_SPole_665m_v2.tif']
+                if XovOpt.get("local"):
+                    geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                               'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
+                               'SP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif'}
                 else:
-                    geotiff = [auxdir+'Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                               auxdir+'Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif']
+                    geotiff = [f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                               f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif']
 
-                df = pd.DataFrame(zip(lattmp,lontmp),columns=['LAT','LON'])#.reset_index()
+                df = pd.DataFrame(zip(lattmp, lontmp), columns=['LAT', 'LON']) #.reset_index()
                 # nice but not broadcasted... slow
                 # df['r_dem'] = df.apply(lambda x: get_demz_tiff(geotiff[0],lat=x.LAT,lon=x.LON) if x.LAT > 30
                 #                         else get_demz_grd(filin=dem,lon=x.LON,lat=x.LAT), axis=1)
 
-                mask_np = (df['LAT'] >= 40)
-                mask_equat = (df['LAT'] < 40) & (df['LAT'] > -55)
-                mask_sp = (df['LAT'] <= -55)
+                mask_np = (df['LAT'] >= 70)
+                mask_equat = (df['LAT'] < 70) & (df['LAT'] > -70)
+                mask_sp = (df['LAT'] <= -70)
 
                 df['r_dem'] = 0
                 # NP (MLA DEM)
                 if len(df.loc[mask_np,:])>0:
-                    df.loc[mask_np, 'r_dem'] = get_demz_grd(filin=dem,lon=df.loc[mask_np,'LON'].values,lat=df.loc[mask_np,'LAT'].values).T
+                    # df.loc[mask_np, 'r_dem'] = get_demz_grd(filin=dem,lon=df.loc[mask_np,'LON'].values,lat=df.loc[mask_np,'LAT'].values).T
+                    df.loc[mask_np, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['NP'],
+                                                                           lon=df.loc[mask_np,'LON'].values,
+                                                                           lat=df.loc[mask_np,'LAT'].values).T)
                 # EQUAT (USGS)
                 if len(df.loc[mask_equat,:])>0:
-                    df.loc[mask_equat, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[0],lon=df.loc[mask_equat,'LON'].values,lat=df.loc[mask_equat,'LAT'].values).T)
+                    df.loc[mask_equat, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['global'],
+                                                                           lon=df.loc[mask_equat,'LON'].values,
+                                                                           lat=df.loc[mask_equat,'LAT'].values).T)
                 # SP (USGS)
                 if len(df.loc[mask_sp,:])>0:
-                    df.loc[mask_sp, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[1],lon=df.loc[mask_sp,'LON'].values,lat=df.loc[mask_sp,'LAT'].values).T)
+                    df.loc[mask_sp, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['SP'],
+                                                                        lon=df.loc[mask_sp,'LON'].values,
+                                                                        lat=df.loc[mask_sp,'LAT'].values).T)
 
                 r_dem = df.r_dem.values
 
             elif not gmt:
 
                 if self.dem == None:
-                    print(dem)
-                    self.dem = import_dem(filein=dem,outdir=f"{self.slewdir}/")
+                    print(self.dem)
+                    self.dem = import_dem(filein=self.dem,outdir=f"{self.slewdir}/")
                 else:
                     print("DEM already read")
                     pass
@@ -266,8 +278,8 @@ class sim_gtrack(gtrack):
 
                 np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp, self.ladata_df.seqid.values)))
 
-                if local == 0:
-                    if instr == 'LOLA':
+                if XovOpt.get("local") == 0:
+                    if XovOpt.get("instrument") == 'LOLA':
                         if local_dem:
                             dem = self.slewdir + "/SLDEM2015_512PPD.GRD"
                         else:
@@ -282,7 +294,7 @@ class sim_gtrack(gtrack):
                 # # np.savetxt('gmt_'+self.name+'.out', r_dem)
 
                 else:
-                    dem = auxdir + 'SLDEM2015_512PPD.GRD'
+                    dem = XovOpt.get("instrument") + 'SLDEM2015_512PPD.GRD'
                     # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
 
                 # print(['grdtrack', gmt_in, '-G' + dem,'-R0.0/360.0/-50.0/50.0'])
@@ -316,7 +328,7 @@ class sim_gtrack(gtrack):
                 universal_newlines=True, cwd='tmp')
                 r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
             elif XovOpt.get("instrument") != 'BELA':
-                print("coming here")
+                print("## Using weird combination (not BELA).")
                 lontmp[lontmp < 0] += 360.
                 r_dem = get_demz_at(self.dem, lattmp, lontmp)
 
@@ -327,13 +339,13 @@ class sim_gtrack(gtrack):
             r_dem *= 1.e3
 
             # TODO replace with "small_scale_topo/texture_noise" option
-            if XovOpt.get("instrument") != "LOLA":
+            if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
                 texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
                 # print("texture noise check",texture_noise,r_dem)
             else:
                 texture_noise = 0.
                 
-                # update Rmerc with r_dem/text (meters)
+            # update Rmerc with r_dem/text (meters)
             radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
             # print("radius etc",radius,r_dem,texture_noise)
         else:
@@ -394,30 +406,58 @@ class sim_gtrack(gtrack):
 
 
 def sim_track(args):
+    # tracks: (sim_gtrack(XovOpt.get("vecopts"), i)
+    # df: "simil-illumNG prediction data frame
+    # i: i in list(df.groupby('orbID').groups.keys()))
+    # outdir_: Input/Output directory?
     track, df, i, outdir_ = args
-    # print(track.name)
 
-    if XovOpt.get("instrument") == "LOLA":
-        track.slewdir = XovOpt.get("auxdir") + outdir_.split('/')[-3]
+    if track.XovOpt.get("instrument") == "LOLA":
+        track.slewdir = track.XovOpt.get("auxdir") + outdir_.split('/')[-3]
     else:
         assert track.slewdir == None
 
-
-    if os.path.isfile(outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB') == False:
+    filename = outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB'
+    if os.path.isfile(filename) == False:
         track.setup(df[df['orbID'] == i])
-        track.rdr_df.to_csv(outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
-        print('Simulated observations written to', outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB')
+        track.rdr_df.to_csv(filename, index=False, sep=',', na_rep='NaN')
+        print('Simulated observations written to', filename)
     else:
-        print('Simulated observations ', outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB already exists. Skip.')
+        print('Simulated observations ', filename + ' already exists. Skip.')
 
 
 def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
+    import datetime as dt
 
-    ampl_in = args[0]
-    res_in = args[1]
-    dirnam_in = args[2]
-    epos_in = args[3]
-    opts = args[4]
+    ampl_in = args[0]   # Ampl directory?
+    res_in = args[1]    # Result directory?
+    dirnam_in = args[2] # Input directory
+
+    print("arg")
+    print(*args)
+
+    if len(args)<6:
+        epos_in = args[3]   # Month to simulate (format: YYMM)
+        opts = args[4]      # Options (dictionnary)
+        if XovOpt.get("instrument") != "LOLA":  # if BELA/CALA
+            # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
+            from calendar import monthrange
+
+            days_in_month = monthrange(int('20'+epos_in[:2]), int(epos_in[2:]))
+
+            d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),1,00,00) # TODO avoiding issues with 30-Apr 23:59:59 ... extend spk
+
+            # if test, avoid computing tons of files
+            if XovOpt.get("unittest"):
+                d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('02'),5,00,00) # for testing
+            else:
+                d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
+    else:
+        d_first = args[3]
+        d_last = args[4]
+        opts = args[5]      # Options (dictionnary)
+        epos_in = d_first.strftime('%y%m%d')
+
 
     # update options (needed when sending to slurm)
     XovOpt.clone(opts)
@@ -429,11 +469,11 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
     if XovOpt.get("SpInterp") in [0, 2]:
         # load kernels
-        if not XovOpt.get("local"):
+        if not XovOpt.get("local"): # WD: Messenger related??
             spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
                           f'{XovOpt.get("auxdir")}mymeta_pgda'])
         else:
-            spice.furnsh(f'{XovOpt.get("auxdir")}mymeta')
+            spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
 
     if XovOpt.get("instrument") == "LOLA":
         path_illumng = f'{XovOpt.get("auxdir")}{epos_in}/slewcheck_{ampl_in}/'
@@ -466,7 +506,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # load kernels
     # TODO adapt for pgda w/o mentioning paths
     if not XovOpt.get("instrument") == 'LOLA':
-        spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
+        # spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
+        spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
 
     if XovOpt.get("parallel"):
         # set ncores
@@ -479,36 +520,37 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         print(path_illumng)
         print(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(glob.glob(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')[0])
-    #             data det1/0.000839737903394d0, -0.00457961230781711d0, 0.999989000131539d0, !day laser 1
-    #      &            0.000856137903d0,       -0.004609612308d0,  0.999989004837226d0,  !day laser 2
-    #      &            0.000937737903394d0, -0.00453461230781711d0,0.99998900013153902d0, !day
-    #      &            0.00076189248005d0,  -0.00431815664221d0, 0.99998900013153902d0/ !2 night + 5 night - 1 night completes square
-    #
-    #         data det2/0.000383964851735d0, -0.00436155174587546d0, 0.999990433217333d0,
-    #      &            0.000400364852d0,       -0.004391551746d0, 0.999989891939858d0,
-    #      &            0.000481964851735d0, -0.00431655174587546d0, 0.999989891939858d0,
-    #      &            0.00030611942839d0,   -0.00410009608028d0, 0.999989891939858d0/ ! offset 2 squares
-    #
-    #        data det3/0.000626524101387d0, -0.00504023006379987d0,0.99998664896001d0,
-    #      &            0.000642924101d0,       -0.005070230064d0, 0.999986483343407d0,
-    #      &            0.000724524101387d0, -0.00499523006379987d0, 0.99998664896000999d0,
-    #      &            0.000553524100735d0, -0.00476423006387546d0,0.999989891939858d0/ !2 nightside
-    #
-    #         data det4/0.001290665162689d0,  -0.00480736878596984d0, 0.999987131025527d0,
-    #      &            0.001307065163d0,       -0.004837368786d0, 0.999986961502879d0,
-    #      &            0.001388665162689d0,  -0.00476236878596984d0, 0.999986961502879d0,
-    #      &            0.001217665531707d0,  -0.00453621720415891d0, 0.999990352590072d0/!5 nightside
-    #
-    #        data det5/0.001048106282707d0,  -0.00413353888615891d0, 0.999990497919053d0,
-    #      &            0.001064506283d0,      -0.004163538886d0, 0.999990352590072d0,
-    #      &            0.001146106282707d0,  -0.00408853888615891d0, 0.999990352590072d0,
-    #      &            0.00097026085936d0,  -0.00387208322056d0, 0.999990352590072d0/ ! offset 2 squares
+        #             data det1/0.000839737903394d0, -0.00457961230781711d0, 0.999989000131539d0, !day laser 1
+        #      &            0.000856137903d0,       -0.004609612308d0,  0.999989004837226d0,  !day laser 2
+        #      &            0.000937737903394d0, -0.00453461230781711d0,0.99998900013153902d0, !day
+        #      &            0.00076189248005d0,  -0.00431815664221d0, 0.99998900013153902d0/ !2 night + 5 night - 1 night completes square
+        #
+        #         data det2/0.000383964851735d0, -0.00436155174587546d0, 0.999990433217333d0,
+        #      &            0.000400364852d0,       -0.004391551746d0, 0.999989891939858d0,
+        #      &            0.000481964851735d0, -0.00431655174587546d0, 0.999989891939858d0,
+        #      &            0.00030611942839d0,   -0.00410009608028d0, 0.999989891939858d0/ ! offset 2 squares
+        #
+        #        data det3/0.000626524101387d0, -0.00504023006379987d0,0.99998664896001d0,
+        #      &            0.000642924101d0,       -0.005070230064d0, 0.999986483343407d0,
+        #      &            0.000724524101387d0, -0.00499523006379987d0, 0.99998664896000999d0,
+        #      &            0.000553524100735d0, -0.00476423006387546d0,0.999989891939858d0/ !2 nightside
+        #
+        #         data det4/0.001290665162689d0,  -0.00480736878596984d0, 0.999987131025527d0,
+        #      &            0.001307065163d0,       -0.004837368786d0, 0.999986961502879d0,
+        #      &            0.001388665162689d0,  -0.00476236878596984d0, 0.999986961502879d0,
+        #      &            0.001217665531707d0,  -0.00453621720415891d0, 0.999990352590072d0/!5 nightside
+        #
+        #        data det5/0.001048106282707d0,  -0.00413353888615891d0, 0.999990497919053d0,
+        #      &            0.001064506283d0,      -0.004163538886d0, 0.999990352590072d0,
+        #      &            0.001146106282707d0,  -0.00408853888615891d0, 0.999990352590072d0,
+        #      &            0.00097026085936d0,  -0.00387208322056d0, 0.999990352590072d0/ ! offset 2 squares
     else:
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
-    # generate list of epochs
-    if XovOpt.get("new_illumNG") and XovOpt.get("instrument") != "BELA":
+    # Generate list of epochs
+    #########################
+    if XovOpt.get("new_illumNG") and not XovOpt.get("instrument") in ["BELA","CALA"]:
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         data_pth = XovOpt.get("rawdir")
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
@@ -531,20 +573,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
     # print(np.sort(epo_in)[-1])
 
-    elif XovOpt.get("instrument") != "LOLA":
+    elif XovOpt.get("instrument") != "LOLA":  # if BELA/CALA
         # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
-        from calendar import monthrange
-        import datetime as dt
-
-        days_in_month = monthrange(int('20'+epos_in[:2]), int(epos_in[2:]))
-
-        d_first = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),00,00,00)
-
-        # if test, avoid computing tons of files
-        if XovOpt.get("unittest"):
-            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int('01'),5,00,00) # for testing
-        else:
-            d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
 
         dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
 
@@ -552,10 +582,11 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         sec_j2000_last = (d_last - dj2000).total_seconds()
         # print(sec_j2000_first,sec_j2000_last)
         # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
-        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1)
+        # epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
+        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.05) # WD: create option?
 
     # pass to illumNG
-    if XovOpt.get("instrument") != 'BELA':
+    if not XovOpt.get("instrument") in ['BELA','CALA']:
         if XovOpt.get("local"):
             if XovOpt.get("new_illumNG"):
                 np.savetxt(XovOpt.get("tmpdir")+"epo_mla_" + epos_in + ".in", epo_tx, fmt="%10.2f")
@@ -599,7 +630,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         df = prepro_ilmNG(illumNGf)
         print('illumNGf', illumNGf)
 
-    else: # if BELA
+    else: # if BELA/CALA
+        # WD: name to be changed ...
         illumpklf = XovOpt.get("tmpdir")+'bela_illumNG_'+epos_in+'.pkl'
 
         if XovOpt.get("new_illumNG"):
@@ -656,8 +688,9 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         os.makedirs(outdir_, exist_ok=True)
 
     # loop over all gtracks
+    # initializze objects
     print('orbs = ', list(df.groupby('orbID').groups.keys()))
-    args = ((sim_gtrack(XovOpt.get("vecopts"), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
+    args = ((sim_gtrack(XovOpt.to_dict(), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
 
     if XovOpt.get("parallel") and False:  # incompatible with grdtrack call ...
         # print((mp.cpu_count() - 1))

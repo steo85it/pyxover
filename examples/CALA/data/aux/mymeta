@@ -1,0 +1,22 @@
+\begindata
+
+PATH_VALUES  = ( 'data/aux/kernels' )
+
+PATH_SYMBOLS = ( 'A' )
+
+KERNELS_TO_LOAD = ( '$A/CALAg531121.SPK',
+                    '$A/CALAg531137.SPK',
+                    '$A/CALAg531154.SPK',
+                    '$A/jup365.bsp',
+                    '$A/de432s.bsp',
+                    '$A/pck00010_msgr_v23.tpc',
+                    '$A/naif0012.tls' )
+
+\begintext
+
+Summary for: share/CALAg531121.SPK
+
+Body: -555
+      Start of Interval (ET)              End of Interval (ET)
+      -----------------------------       -----------------------------
+      2031 MAY 01 00:00:00.000            2031 MAY 18 12:00:08.000

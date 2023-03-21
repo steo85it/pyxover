@@ -91,7 +91,9 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
             tmp_chunks = {k: v for (k, v) in result_chunks.items() if str(chunkid) == k.split('_')[-1]}
             # print(tmp_chunks)
             none_proj_df = pd.DataFrame(tmp_chunks['none_' + str(chunkid)][:, -2:], columns=['X_stgprj', 'Y_stgprj'])
+            ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
             # print(mla_proj_df)
+            ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
 
             if XovOpt.get("partials"):
                 partials_proj_df = []
@@ -107,7 +109,6 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
                     partials_proj_df.append(tmp)
 
                 # print(partials_proj_df)
-                ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
                 chunk_proj_df = pd.concat([mla_proj_df.iloc[ind_mla_proj[0]:ind_mla_proj[1]].reset_index(drop=True),
                                            none_proj_df] + partials_proj_df, axis=1)
                 projchunks.append(chunk_proj_df)

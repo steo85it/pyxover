@@ -25,7 +25,7 @@ import re
 import numpy as np
 import spiceypy as spice
 from astropy import constants as const
-from astropy.constants import c as clight
+from scipy.constants import c as clight
 
 # mylib
 from xovutil import astro_trans as astr
@@ -48,6 +48,9 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
 
     :type inp_df: ladata_df containing TOF(sec) and ET_TX(sec from J2000)
     """
+    use_24 = False # False # use pointing aberration
+    use_iter = True # True
+
     #  ABCORR = 'NONE'
     # TODO check tof unit (sec or ns???)
     tof = inp_df['TOF'].values
@@ -61,8 +64,8 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # print("geoloc",tmp_pertPar)
     # exit()
 
-    oneway = tof * clight.value / 2.
-    twoway = tof * clight.value
+    oneway = tof * clight / 2.
+    twoway = tof * clight
 
     # Set all corrections to 0
     # dACR = [0, 0, 0]
@@ -70,13 +73,13 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     #print("testObjGeoLoc", SpObj['MGRx'].eval(et_tx))
     #exit()
 
-    scpos_tx, scvel_tx = get_sc_ssb(et_tx, SpObj, tmp_pertPar, vecopts, t0 = t0)
+    scpos_tx, scvel_tx = get_sc_ssb(et_tx, SpObj, tmp_pertPar, vecopts, t0=t0)
     # update after offset
     Rtx = np.linalg.norm(scpos_tx, axis=1)
 
     # get probe CoM state at RX
     # --------------------------
-    scpos_rx, scvel_rx = get_sc_ssb(et_tx + tof, SpObj, tmp_pertPar, vecopts, t0 = t0)
+    scpos_rx, scvel_rx = get_sc_ssb(et_tx + tof, SpObj, tmp_pertPar, vecopts, t0=t0)
     # update after offset
     Rrx = np.linalg.norm(scpos_rx, axis=1)
 
@@ -97,26 +100,26 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # print(plapos_bc)
 
     # compute SSB to bounce point vector
-    if XovOpt.get("instrument") == 'BELA':
+    pxform_array = np.frompyfunc(spice.pxform, 3, 1)
+    if XovOpt.get("instrument") in ['BELA','CALA']:
         # project tof along radial dir between s/c and planet (=nadir pointing)
         zpt = (-scpos_tx+plapos_bc)/(np.linalg.norm(scpos_tx-plapos_bc,axis=1)[:, np.newaxis])
     else:
         # get altimeter boresight in S/C frame
-        zpt = np.tile(XovOpt.get("vecopts")['ALTIM_BORESIGHT'], np.size(scpos_tx, 0)).reshape(-1, 3)
+        zpt = np.tile(vecopts['ALTIM_BORESIGHT'], np.size(scpos_tx, 0)).reshape(-1, 3)
 
         # compute s/c frame to inertial rotation (using np.frompyfunc to vectorize pxform)
         # ck+fk+sclk needed
         if (XovOpt.get("SpInterp") > 0):
             cmat = SpObj['MGRa'].evalCmat(et_tx)
         else:
-            pxform_array = np.frompyfunc(spice.pxform, 3, 1)
             cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
 
         # rotate boresight dir to inertial frame
         zpt = [np.dot(cmat[i], zpt[i]) for i in range(0, np.size(zpt, 0))]
         # print(np.array(vmbf).reshape(-1,3))
 
-    if ([tmp_pertPar[k] for k in ['dRl', 'dPt']] != [0, 0]):
+    if [tmp_pertPar[k] for k in ['dRl', 'dPt']] != [0, 0]:
         # Apply roll and pitch offsets to zpt (converted to radians)
         # print(np.reshape(np.tile([tmp_pertPar[k] for k in ['dRl','dPt']],len(et_tx)),(-1,2)))
         ang_Rl = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 0]
@@ -127,35 +130,74 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
 
     # print(zpt,np.size(scpos_tx,0))
 
-    # compute corrections to oneway tof - average of Shapiro delay on
-    # each branch (!!! Ri, Rj, etc are w.r.t. SSB and not w.r.t. perturbing
-    # body, which is wrong but probably acceptable)
+    if use_iter:
+        if use_24:
+            print("*** geoloc: use_24 can only be used if use_iter=False")
+            exit()
+        # compute corrections to oneway tof - average of Shapiro delay on
+        # each branch (!!! Ri, Rj, etc are w.r.t. SSB and not w.r.t. perturbing
+        # body, which is wrong but probably acceptable)
+        oneway = range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt)
 
-    oneway = range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt)
+        # update bouncing point after relativistic correction
+        vprj = scpos_tx + zpt * oneway.reshape(-1, 1)
+        # et_bc = et_tx + oneway/clight
 
-    #print((tof * clight.value / 2.) - oneway)
-    #print(max(abs((tof * clight.value / 2.) - oneway)))
-    #print((tof * clight.value / 2. - oneway)/clight.value*2.)
+        # get planet@bc to bounce point vector
+        vbore = vprj - plapos_bc
 
-    # update bouncing point after relativistic correction
-    vprj = scpos_tx + zpt * oneway.reshape(-1, 1)
-    et_bc = et_tx + oneway/clight.value
+        # compute off-nadir value and pass/save to df
+        offndr = get_offnadir(plapos_bc, scpos_tx, vbore)
+    else:
+        #######################################
+        # add aberration correction
+        # print(scpos_rx-scpos_tx)
+        # print(twoway/clight)
+        v12 = (scpos_rx-scpos_tx)/tof[:,np.newaxis]
+        beta = v12/clight
+        betanorm = np.linalg.norm(beta,axis=1)
 
-    # get planet@bc to bounce point vector
-    vbore = vprj - plapos_bc
+        # to apply pointing aberration (eq.24)
+        # if use_24:
+        #     e1 = (zpt+beta)/(np.sqrt(np.einsum('ij,ij->i',beta,beta))+2*np.einsum('ij,ij->i',beta,zpt)+1)[:,np.newaxis]
+        # else:
+        e1 = np.vstack(zpt)
 
-    # compute off-nadir value and pass/save to df
-    offndr = get_offnadir(plapos_bc, scpos_tx, vbore)
+        costheta = np.einsum('ij,ij->i',v12,e1)/np.linalg.norm(v12,axis=1)
+
+        # get planet barycenter state (SSB J2000) at bounce
+        # --------------------------------------------------
+        et_bc = et_tx + (tof / 2.) * (1+betanorm*costheta)
+        # print(np.max(np.abs(et_tx + tof / 2.-et_bc)))
+
+        plapos_bc, lt = spice.spkpos(vecopts['PLANETNAME'],
+                                     et_bc,
+                                     vecopts['INERTIALFRAME'],
+                                     'NONE',
+                                     vecopts['INERTIALCENTER'])
+
+        plapos_bc = 1.e3 * np.vstack(plapos_bc)
+
+        if use_24:
+            tmp = clight * tof / 2. * (1 - betanorm * betanorm * (1 - costheta * costheta))
+            vbore = tmp[:, np.newaxis] * (e1 + beta) + scpos_tx - plapos_bc
+        else:
+            tmp = clight * tof/2. * (1+betanorm*costheta)
+            vbore = tmp[:,np.newaxis] * e1 + scpos_tx - plapos_bc
+        offndr = 0. # compatibility, not used
 
     # compute inertial to body-fixed frame rotation
     if XovOpt.get("body") == "MOON":
         # (using np.frompyfunc to vectorize pxform)
         tsipm = pxform_array(vecopts['INERTIALFRAME'], vecopts['PLANETFRAME'], et_bc)
     else: # TODO only works for Mercury!!!!!
-        # (using custom implementation)
-        # print("tmp_pertPar['dL']", tmp_pertPar['dL'])
-        rotpar, upd_rotpar = orient_setup(tmp_pertPar['dRA'], tmp_pertPar['dDEC'], tmp_pertPar['dPM'], tmp_pertPar['dL'])
-        tsipm = icrf2pbf(et_bc, upd_rotpar)
+        if True: # need to use rot from spice to compare to RDR
+            tsipm = pxform_array(vecopts['INERTIALFRAME'], vecopts['PLANETFRAME'], et_bc)
+        else:
+            # (using custom implementation)
+            # print("tmp_pertPar['dL']", tmp_pertPar['dL'])
+            rotpar, upd_rotpar = orient_setup(tmp_pertPar['dRA'], tmp_pertPar['dDEC'], tmp_pertPar['dPM'], tmp_pertPar['dL'])
+            tsipm = icrf2pbf(et_bc, upd_rotpar)
 
     # print(tsipm.ravel)
     # np.stack(tsipm,1)
@@ -167,31 +209,27 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     vmbf = [np.dot(tsipm[i], vbore[i]) for i in range(0, np.size(vbore, 0))]
     # print(np.array(vmbf).reshape(-1,3))
 
-    # print(np.linalg.norm(vmbf,axis=1))
-    # print(np.linalg.norm(scpos_tx-plapos_bc,axis=1))
-    # print(tof)
-    # print(oneway)
-    # exit()
-
-    # apply tidal deformation (deformation in meters in radial, lon, lat)
-    # print("apply tidal corr geoloc_alt")
-    dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar)
-
-    # convert xyz to latlon, then apply correction
+    # NO TIDAL DEFORMATION for now
+    dr = 0.
+    # # apply tidal deformation (deformation in meters in radial, lon, lat)
+    # # print("apply tidal corr geoloc_alt")
+    # dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar)
+    # #
+    # # # convert xyz to latlon, then apply correction
     rtmp, lattmp, lontmp = astr.cart2sph(np.array(vmbf).reshape(-1, 3))
-    # print(rtmp, lattmp, lontmp)
-    rtmp += dr
-    lattmp += dlat / (vecopts['PLANETRADIUS'] * 1e3)
-    lontmp += dlon / (vecopts['PLANETRADIUS'] * 1e3) / np.cos(lattmp)
+    # # # print(rtmp, lattmp, lontmp)
+    # rtmp += dr
+    # lattmp += dlat / (vecopts['PLANETRADIUS'] * 1e3)
+    # lontmp += dlon / (vecopts['PLANETRADIUS'] * 1e3) / np.cos(lattmp)
 
     # print(dr, dlat / (vecopts['PLANETRADIUS']*1e3) , dlon / (vecopts['PLANETRADIUS']*1e3) / np.cos(lattmp) )
     # exit()
 
     if (vecopts['OUTPUTTYPE'] == 0):
         vmbf = astr.sph2cart(rtmp, lattmp, lontmp)
-        return np.array(vmbf).reshape(-1, 3), et_bc, dr, offndr #2 * oneway / clight.value;
+        return np.array(vmbf).reshape(-1, 3), et_bc, dr, offndr #2 * oneway / clight;
     elif (vecopts['OUTPUTTYPE'] == 1):
-        return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr, offndr #2 * oneway / clight.value
+        return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr, offndr #2 * oneway / clight
 
 
 def get_offnadir(plapos_bc, scpos_tx, vbore):
@@ -258,11 +296,20 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0 = 0):
         # print(scpv.shape)
         # exit()
     else:
+        # try:
         scpv, lt = spice.spkezr(vecopts['SCNAME'],
-                                   et,
-                                   vecopts['INERTIALFRAME'],
-                                   'NONE',
-                                   vecopts['INERTIALCENTER'])
+                                       et,
+                                       vecopts['INERTIALFRAME'],
+                                       'NONE',
+                                       vecopts['INERTIALCENTER'])
+        # except:
+        #     scpv = np.array([spice.spkez(vecopts['SCID'],
+        #                                t,
+        #                                vecopts['INERTIALFRAME'],
+        #                                'NONE',
+        #                                vecopts['PLANETID'])[0] for t in et])
+
+
         scpv = np.atleast_2d(np.squeeze(scpv))
 
     # print('check scpv', scpv)
@@ -330,11 +377,18 @@ def get_sc_pla(et, x_sc, v_sc, SpObj, vecopts):
         v_pla = np.transpose(SpObj['MERv'].eval(et))
         scpv_p = np.concatenate((x_sc * 1.e-3 - x_pla, v_sc * 1.e-3 - v_pla), axis=1)
     else:
-        scpv_p, lt = spice.spkezr(vecopts['SCNAME'],
-                                  et,
-                                  vecopts['INERTIALFRAME'],
-                                  'NONE',
-                                  vecopts['PLANETNAME'])
+        try:
+            scpv_p, lt = spice.spkezr(vecopts['SCNAME'],
+                                      et,
+                                      vecopts['INERTIALFRAME'],
+                                      'NONE',
+                                      vecopts['PLANETNAME'])
+        except:
+            scpv_p = np.array([spice.spkez(vecopts['SCID'],
+                                      t,
+                                      vecopts['INERTIALFRAME'],
+                                      'NONE',
+                                      vecopts['PLANETID'])[0] for t in et])
 
     scpos_p = 1.e3 * np.array(scpv_p)[:, :3]
     scvel_p = 1.e3 * np.array(scpv_p)[:, 3:]
