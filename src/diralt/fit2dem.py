@@ -395,7 +395,7 @@ if __name__ == '__main__':
         # dem_xarr = import_dem(dem)
 
         if XovOpt.get("local"):
-            spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
+            spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
         else:
             spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
             # ,

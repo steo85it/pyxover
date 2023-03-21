@@ -431,14 +431,14 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
     ampl_in = args[0]   # Ampl directory?
     res_in = args[1]    # Result directory?
-    dirnam_in = args[2] # Input directory? 
-    epos_in = args[3]   # Month to simulate (format: YYMM)
-    opts = args[4]      # Options (dictionnary)
+    dirnam_in = args[2] # Input directory
 
     print("arg")
     print(*args)
 
     if len(args)<6:
+        epos_in = args[3]   # Month to simulate (format: YYMM)
+        opts = args[4]      # Options (dictionnary)
         if XovOpt.get("instrument") != "LOLA":  # if BELA/CALA
             # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
             from calendar import monthrange
@@ -453,8 +453,10 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
             else:
                 d_last = dt.datetime(int('20'+epos_in[:2]), int(epos_in[2:]), int(days_in_month[-1]),23,59,59)
     else:
-        d_first = args[5]
-        d_last = args[6]
+        d_first = args[3]
+        d_last = args[4]
+        opts = args[5]      # Options (dictionnary)
+        epos_in = d_first.strftime('%y%m%d')
 
 
     # update options (needed when sending to slurm)
@@ -471,7 +473,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
             spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
                           f'{XovOpt.get("auxdir")}mymeta_pgda'])
         else:
-            spice.furnsh(f'{XovOpt.get("auxdir")}mymeta')
+            spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
 
     if XovOpt.get("instrument") == "LOLA":
         path_illumng = f'{XovOpt.get("auxdir")}{epos_in}/slewcheck_{ampl_in}/'
@@ -504,7 +506,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # load kernels
     # TODO adapt for pgda w/o mentioning paths
     if not XovOpt.get("instrument") == 'LOLA':
-        spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
+        # spice.furnsh(XovOpt.get("auxdir") + 'mymeta')  # 'aux/mymeta')
+        spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
 
     if XovOpt.get("parallel"):
         # set ncores
@@ -579,7 +582,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         sec_j2000_last = (d_last - dj2000).total_seconds()
         # print(sec_j2000_first,sec_j2000_last)
         # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
-        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
+        # epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
+        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.05) # WD: create option?
 
     # pass to illumNG
     if not XovOpt.get("instrument") in ['BELA','CALA']:

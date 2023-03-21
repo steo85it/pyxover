@@ -236,7 +236,7 @@ def main(args):
             misy = ['0801','0810']+misy[2:-8]
     elif XovOpt.get("weekly_sets"):
         if XovOpt.get("instrument") == 'CALA':
-            misy = ['310501', '310517']
+            misy = ['310501','310508','310515','310522','310529','310605','310612']
     else:
         if XovOpt.get("instrument") == 'BELA':
             misy = ['26','27'] #+str("{:02}".format(i)) for i in range(1,13,1)]
@@ -260,7 +260,7 @@ def main(args):
 
         # check if input_xov already exists, if yes don't recreate it (should be conditional...)
         input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(misycmb[par][0]) + '_' + str(misycmb[par][1]) + '.pkl.gz'
-        if os.path.exists(input_xov_path) and XovOpt.get("instrument") == 'BELA':
+        if os.path.exists(input_xov_path) and (XovOpt.get("instrument") == 'BELA' or XovOpt.get("instrument") == 'CALA'):
             print("input xov file already exists in", input_xov_path)
             print("Rerun without computing this cumbersome input, be smart!")
             exit(0)
@@ -286,7 +286,7 @@ def main(args):
             date1 = dt.datetime.strptime(misycmb[par][1], '%y%m%d')
             allFilesA = []
             allFilesB = []
-            for i in range(0,6):
+            for i in range(0,7):
                 datestr = (date0 + dt.timedelta(days=i)).strftime('%y%m%d')
                 allFilesA.extend(glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/gtrack_' + datestr + '*')))
                 datestr = (date1 + dt.timedelta(days=i)).strftime('%y%m%d')
@@ -321,7 +321,8 @@ def main(args):
 
         # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
         # TODO, check wether one could safely save time by only considering xovers with a given weight
-        iter = int(outdir_in.split('/')[1].split('_')[-1])
+        # iter = int(outdir_in.split('/')[1].split('_')[-1])
+        iter = iter_in
         if iter>0:
             comb = select_useful_comb(comb, iter, outdir_in)
 

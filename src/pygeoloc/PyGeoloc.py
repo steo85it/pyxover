@@ -66,18 +66,18 @@ from config import XovOpt
 ########################################
 
 def launch_gtrack(args):
-    track, infil, outdir_in = args
+    track, outdir_in = args
     track_id = 'gtrack_' + track.name
     # track = gtrack(vecopts)
 
-    if XovOpt.get("new_gtrack"):
+    if XovOpt.get("new_gtrack") > 0:
         gtrack_out = XovOpt.get("outdir") + outdir_in + '/' + track_id + '.pkl'
         if not os.path.isfile(gtrack_out) or XovOpt.get("new_gtrack") == 2:
 
             if not os.path.exists(XovOpt.get("outdir") + outdir_in):
                 os.makedirs(XovOpt.get("outdir") + outdir_in, exist_ok=True)
 
-            track.setup(infil)
+            track.setup()
             #
             if XovOpt.get("debug"):
                 print("track#:", track.name)
@@ -105,6 +105,7 @@ def launch_gtrack(args):
                 print('Gtrack file ' + gtrack_out + ' already existed!')
 
 def main(args):
+    import datetime as dt
 
     # print(args)
 
@@ -112,12 +113,12 @@ def main(args):
     print('Number of arguments:', len(args), 'arguments.')
     print('Argument List:', str(args))
 
-    epo_in = args[0]
-    indir_in = args[1]
-    outdir_in = args[2]
-    # args[3] ??
-    iter_in = args[4]
-#    if len(args) > 4: # passing a fct to slurm doesn't pass these updated Opt
+    epo_in = args[0]    # WD: (list of?) epoch from input raw alti file
+    indir_in = args[1]  # Location of input raw alti file
+    outdir_in = args[2] # Location of output pickle gtrack
+    d_tracks = args[3]  # list of date?
+    iter_in = args[4]   # iteration number (to load previous teration info)
+#    if len(args) > 4:  # passing a fct to slurm doesn't pass these updated Opt
     opts = args[5]
 
     # update options (needed when sending to slurm)
@@ -134,7 +135,7 @@ def main(args):
             spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
                          f'{XovOpt.get("auxdir")}mymeta_pgda'])
         else:
-            spice.furnsh(f'{XovOpt.get("auxdir")}mymeta')
+            spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
         # or, add custom kernels
         # load additional kernels
         # spice.furnsh(['XXX.bsp'])
@@ -165,8 +166,10 @@ def main(args):
 
     # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
     # for orbitA and orbitB.
+    # WD: Seems like the TAB extension is not required -> can be .TAB or .pkl
     allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
 
+    # Check if filenames are lower case
     if len(allFiles) == 0:
         print(str.lower(f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
         allFiles = glob.glob(os.path.join(data_pth, str.lower(f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*')))
@@ -180,10 +183,24 @@ def main(args):
 
     startPrepro = time.time()
 
-    # Prepare list of tracks to geolocalise
-    tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles[:]]
+    # -------------------------------------
+    # Load all epochs of all raw alti files
+    # Get a list of arc boundaries
+    # -------------------------------------
 
-    if XovOpt.get("new_gtrack"):
+    # Prepare list of tracks to geolocalise
+    dstr_files = [fil.split('.')[0][-10:] for fil in allFiles[:]]
+    d_files = [dt.datetime.strptime(date, '%y%m%d%H%M') for date in dstr_files]
+    d_files.sort()
+
+    dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
+    d_track_start = d_tracks[:-1]
+    d_track_end   = d_tracks[1:]
+    print(d_track_start)
+    print(d_track_end)
+
+
+    if XovOpt.get("new_gtrack") > 0:
 
         # Import solution at previous iteration
         if int(iter_in) > 0:
@@ -194,15 +211,52 @@ def main(args):
             import_prev_sol = hasattr(tmp,'sol4_pars')
             if import_prev_sol:
                 orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
-        # epo_in=[]
         tracks = []
-        for track_id, infil in tqdm(zip(tracknames, allFiles), total=len(allFiles)):
-            track = track_id
+        for d_start, d_end in tqdm(zip(d_track_start, d_track_end), total=len(d_track_start)):
+            track_name = d_start.strftime('%y%m%d%H%M')
+            track_id = f'gtrack_{track_name}'
+            track = track_id # WD: what is it for?
+
+            # if 0, don't cut the gtrack
+            # t_start = 0
+            # t_end = 0
+            # Look for which file to use in allFiles
+            
+            if (track_name in dstr_files):
+                index_file = dstr_files.index(track_name)
+                infil = allFiles[index_file]
+                t_start = 0
+            else:
+               d_track = dt.datetime.strptime(track_name,'%y%m%d%H%M')
+               duration = [(date-d_track).total_seconds() for date in d_files]
+               print("duration")
+               print(duration)
+               index = [i for i, x in enumerate(duration) if x<0]
+               print("index")
+               print(index)
+               d_file = d_files[index[-1]] # find the closest before
+               index_file = dstr_files.index(d_file.strftime('%y%m%d%H%M'))
+               infil = allFiles[index_file]
+               print("Arc discontinuity:")
+               print(f"Use file {infil} for track {track_name}")
+               t_start = (d_start - dj2000).total_seconds()
+            
+            if (d_end.strftime('%y%m%d%H%M') in dstr_files):
+                t_end = 0
+            else:
+               # -1 to avoid overlap with next gtrack
+               t_end = (d_end - dj2000).total_seconds() - 1
+               print("Arc discontinuity:")
+               print(f"Track {track_name} ends at {t_end}")
+
+            print(t_start)
+            print(t_end)
+            
 
             track = gtrack(XovOpt.to_dict())
             # try:
             # Read and fill
-            track.prepro(infil)
+            track.prepro(infil,t_start=t_start, t_end=t_end)
             # except:
             #    print('Issue in preprocessing for '+track_id)
             # epo_in.extend(track.ladata_df.ET_TX.values)
@@ -269,7 +323,9 @@ def main(args):
 
     startGeoloc = time.time()
 
-    args = ((tr, fil, outdir_in) for (tr, fil) in zip(tracks,allFiles))
+    # WD: if not XovOpt.get("new_gtrack") > 0, tracks is not defined ...
+    # WD: fil is not used in launch_gtrack
+    args = ((tr, outdir_in) for tr in tracks)
 
     # loop over all gtracks
     if XovOpt.get("parallel"):
@@ -277,7 +333,7 @@ def main(args):
         if XovOpt.get("local"):
             # forks everything, if much memory needed, use the remote option with get_context
             from tqdm.contrib.concurrent import process_map  # or thread_map
-            _ = process_map(launch_gtrack, args, max_workers=ncores, total=len(allFiles))
+            _ = process_map(launch_gtrack, args, max_workers=ncores, total=len(tracks))
         else:
             pool = mp.Pool(processes=ncores)  # mp.cpu_count())
             _ = pool.map(launch_gtrack, args)  # parallel
@@ -285,7 +341,7 @@ def main(args):
             pool.join()
     else:
 #        from tqdm import tqdm
-        for arg in tqdm(args, total=len(allFiles)):
+        for arg in tqdm(args, total=len(tracks)):
             launch_gtrack(arg)  # seq
 
     endGeoloc = time.time()

@@ -42,7 +42,7 @@ class gtrack:
         self.dr_simit = None
         # Laser Altimeter Data (dataframe) ?
         self.ladata_df = None
-        self.df_input = None
+        # self.df_input = None
         self.name = None
         # Mercury (central body)
         self.MERv = None # Velocity
@@ -80,7 +80,7 @@ class gtrack:
 
     # create groundtrack object from data and save to file
     # contain interpolated s/c and planets orbits for covered timespan
-    def setup(self, filnam):
+    def setup(self, filnam=""):
 
         if len(self.ladata_df) > 0:
             if self.SpObj == None and self.XovOpt.get("SpInterp") == 2:
@@ -110,10 +110,10 @@ class gtrack:
 
 
     # create groundtrack from data and save to file
-    def prepro(self, filnam, read_all=False):
+    def prepro(self, filnam, read_all=False, t_start=0, t_end=0):
 
         # read data and fill ladata_df
-        self.read_fill(filnam, read_all=read_all)
+        self.read_fill(filnam, read_all=read_all, t_start=t_start, t_end=t_end)
         # print(self.ladata_df)
 
         # testInterp(self.ladata_df,self.vecopts)
@@ -209,7 +209,7 @@ class gtrack:
         gc.enable()
         return self
 
-    def read_fill(self, infil, read_all=False):
+    def read_fill(self, infil, read_all=False, t_start=0, t_end=0):
 
         if infil.split(".")[-1] in ["TAB","tab"]:
             df = pd.read_csv(infil, sep=',', header=0)
@@ -223,16 +223,22 @@ class gtrack:
         if 'rdr_name' in df.columns: # if LOLA rdr
             df['orbID'] = df.rdr_name.str.split('_',expand=True).values[:,-1]
         else:
-            df['orbID'] = infil.split('.')[0][-10:]
-
+            if (t_start == 0):
+                df['orbID'] = infil.split('.')[0][-10:]
+            else:
+               import datetime as dt
+               date = dt.datetime(2000,1,1,12,0,0)+dt.timedelta(seconds=t_start)
+               df['orbID'] = date.strftime('%y%m%d%H%m')
+               
         self.name = df['orbID'].unique().squeeze()
         
+
         # strip and lower case all column names
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.lower()
 
         # only select the required data (column)
-        self.df_input = df.copy()
+        # self.df_input = df.copy() # WD: not used
         #self.XovOpt.display()
 
         # if (self.XovOpt.get("debug")) or (self.XovOpt.get("instrument") == "BELA") or read_all:
@@ -241,6 +247,12 @@ class gtrack:
                  ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
         else:
             df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid']]
+
+        # WD take only data in the timspan
+        if (t_start !=0):
+            df = df[df['ephemeristime']>=t_start]
+        if (t_end !=0):
+            df = df[df['ephemeristime']<=t_end]
 
         # pd.set_option('display.max_columns', 500)
         # pd.set_option('display.max_rows', 500)
