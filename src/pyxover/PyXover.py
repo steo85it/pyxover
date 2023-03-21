@@ -44,12 +44,10 @@ def launch_xov(
         args):  # pool.map functions have to stay on top level (not inside other functions) to avoid the "cannot be pickled" error
 
     track_idA = args[0]
-    # print(track_id)
     comb = args[1]
-    misycmb = args[2]
-    par = args[3]
+    misycmb_par = args[2]
     if XovOpt.get("instrument") == 'BELA':
-        mladata_pkl_fn = args[4]
+        mladata_pkl_fn = args[3]
         with open(mladata_pkl_fn, 'rb') as handle:
             #start_unpickle = time.time()
             import pickle
@@ -57,13 +55,13 @@ def launch_xov(
             #end_unpickle = time.time()
             #print("mladata unpickled after",end_unpickle-start_unpickle,"sec")
     else:
-        mladata = args[4]
-    outdir = args[5]
+        mladata = args[3]
+    outdir = args[4]
     xov_dir = outdir + 'xov/'
 
-    xov_pklname = 'xov_' + track_idA + '_' + misycmb[par][1] + '.pkl'
+    xov_pklname = 'xov_' + track_idA + '_' + misycmb_par[1] + '.pkl'
     if XovOpt.get("new_xov"):  # and track_id=='1301232350':
-        # print( "check", track_id, misycmb[par])
+        # print( "check", track_id, misycmb_par)
         if not os.path.isfile(xov_dir + xov_pklname) or XovOpt.get("new_xov") == 2:
 
             # print("Processing " + track_id + " ...")
@@ -75,14 +73,14 @@ def launch_xov(
 
             # TODO removed check on orbit for this test
             if XovOpt.get("weekly_sets"):
-                gtrack_dir = outdir + 'gtrack_' + misycmb[par][0] + '/'
+                gtrack_dir = outdir + 'gtrack_' + misycmb_par[0] + '/'
             elif XovOpt.get("monthly_sets"):
-                gtrack_dir = outdir + 'gtrack_' + misycmb[par][0][:2] + '/'
+                gtrack_dir = outdir + 'gtrack_' + misycmb_par[0][:2] + '/'
             
             if XovOpt.get("weekly_sets") or XovOpt.get("monthly_sets"):
                 trackA = trackA.load(gtrack_dir + 'gtrack_' + track_idA + '.pkl')
             else:
-                # trackA = trackA.load(outdir + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl')
+                # trackA = trackA.load(outdir + 'gtrack_' + misycmb_par[0] + '/gtrack_' + track_id + '.pkl')
                 trackA.ladata_df = mladata[track_idA]   # faster and less I/O which overloads PGDA
 
             if trackA == None:
@@ -107,14 +105,14 @@ def launch_xov(
 
                         # TODO removed check on orbit for this test
                         if XovOpt.get("weekly_sets"):
-                           gtrack_dir = outdir + 'gtrack_' + misycmb[par][1] + '/'
+                           gtrack_dir = outdir + 'gtrack_' + misycmb_par[1] + '/'
                         elif XovOpt.get("monthly_sets"):
-                           gtrack_dir = outdir + 'gtrack_' + misycmb[par][1][:2] + '/'
+                           gtrack_dir = outdir + 'gtrack_' + misycmb_par[1][:2] + '/'
 
                         if XovOpt.get("weekly_sets") or XovOpt.get("monthly_sets"):
                            trackB = trackB.load(gtrack_dir + 'gtrack_' + track_idB + '.pkl')
                         else:
-                           # trackB = trackB.load(outdir + 'gtrack_' + misycmb[par][1] + '/gtrack_' + gtrackB + '.pkl')
+                           # trackB = trackB.load(outdir + 'gtrack_' + misycmb_par[1] + '/gtrack_' + gtrackB + '.pkl')
                            trackB.ladata_df = mladata[track_idB]  # faster and less I/O which overloads PGDA
 
                         if not trackB == None and len(trackB.ladata_df) > 0:
@@ -152,7 +150,7 @@ def launch_xov(
                         # Save to temporary folder
                         # if not os.path.exists(outdir + 'xov/tmp/'):
                         #     os.mkdir(outdir + 'xov/tmp/')
-                        # xov_tmp.save(outdir + 'xov/tmp/xov_' + track_idA + '_' + misycmb[par][1] + '.pkl')
+                        # xov_tmp.save(outdir + 'xov/tmp/xov_' + track_idA + '_' + misycmb_par[1] + '.pkl')
 
                         # just pass rough_xovs to next step
                         return xov_tmp.xovers
@@ -173,22 +171,22 @@ def launch_xov(
 
     ########################################
 # @profile
-def main(args):
+def main(args_in):
     # from examples.MLA.options import XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("vecopts")
     from config import XovOpt
 
-    print(args)
+    print(args_in)
 
     # read input args
-    print('Number of arguments:', len(args), 'arguments.')
-    print('Argument List:', str(args))
+    print('Number of arguments:', len(args_in), 'arguments.')
+    print('Argument List:', str(args_in))
 
-    cmb_y_in = args[0]
-    indir_in = args[1]
-    outdir_in = args[2]
-    dum = args[3]
-    iter_in = args[4]
-    opts = args[5]
+    cmb_y_in = args_in[0]
+    indir_in = args_in[1]
+    outdir_in = args_in[2]
+    dum = args_in[3]
+    iter_in = args_in[4]
+    opts = args_in[5]
 
     # update options (needed when sending to slurm)
     XovOpt.clone(opts)
@@ -249,6 +247,7 @@ def main(args):
 
     misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
     print(f"combs:{misycmb}")
+    misycmb_par = misycmb[par]
     if True: #XovOpt.get("debug"):
         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
     print(par, misycmb[par]," has been selected!")
@@ -259,7 +258,7 @@ def main(args):
     if iter_in == 0 and XovOpt.get("compute_input_xov"):
 
         # check if input_xov already exists, if yes don't recreate it (should be conditional...)
-        input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(misycmb[par][0]) + '_' + str(misycmb[par][1]) + '.pkl.gz'
+        input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(misycmb_par[0]) + '_' + str(misycmb_par[1]) + '.pkl.gz'
         if os.path.exists(input_xov_path) and (XovOpt.get("instrument") == 'BELA' or XovOpt.get("instrument") == 'CALA'):
             print("input xov file already exists in", input_xov_path)
             print("Rerun without computing this cumbersome input, be smart!")
@@ -273,37 +272,37 @@ def main(args):
         # for orbitA and orbitB.
         # Geoloc, if active, will process all files in A+B. Xov will only process combinations
         # of orbits from A and B
-        # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][0] + '*.TAB'))
-        # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb[par][1] + '*.TAB'))
+        # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb_par[0] + '*.TAB'))
+        # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb_par[1] + '*.TAB'))
 
-        # print(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*'))
-        # print(glob.glob(os.path.join(outdir, indir_in + misycmb[par][0][:2] + '/gtrack_'+misycmb[par][0]+'*')))
+        # print(os.path.join(outdir, indir_in + misycmb_par[0][:2] + '/gtrack_'+misycmb_par[0]+'*'))
+        # print(glob.glob(os.path.join(outdir, indir_in + misycmb_par[0][:2] + '/gtrack_'+misycmb_par[0]+'*')))
 
         # TODO remove check on orbid for this test
         if XovOpt.get("weekly_sets"):
             import datetime as dt
-            date0 = dt.datetime.strptime(misycmb[par][0], '%y%m%d')
-            date1 = dt.datetime.strptime(misycmb[par][1], '%y%m%d')
+            date0 = dt.datetime.strptime(misycmb_par[0], '%y%m%d')
+            date1 = dt.datetime.strptime(misycmb_par[1], '%y%m%d')
             allFilesA = []
             allFilesB = []
             for i in range(0,7):
                 datestr = (date0 + dt.timedelta(days=i)).strftime('%y%m%d')
-                allFilesA.extend(glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/gtrack_' + datestr + '*')))
+                allFilesA.extend(glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb_par[0] + '/gtrack_' + datestr + '*')))
                 datestr = (date1 + dt.timedelta(days=i)).strftime('%y%m%d')
-                allFilesB.extend(glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/gtrack_' + datestr + '*')))
+                allFilesB.extend(glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb_par[1] + '/gtrack_' + datestr + '*')))
         elif XovOpt.get("monthly_sets"):
-          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0][:2] + '/gtrack_' + misycmb[par][0] + '*'))
-          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1][:2] + '/gtrack_' + misycmb[par][1] + '*'))
-          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][0] + '*'))
-          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb[par][1] + '*'))
+          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb_par[0][:2] + '/gtrack_' + misycmb_par[0] + '*'))
+          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb_par[1][:2] + '/gtrack_' + misycmb_par[1] + '*'))
+          # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb_par[0] + '*'))
+          # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/gtrack_' + misycmb_par[1] + '*'))
         else:
-          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][0] + '/*'))
-          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb[par][1] + '/*'))
+          allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb_par[0] + '/*'))
+          allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb_par[1] + '/*'))
           # allFilesA = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
           # allFilesB = glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + '/*'))
 
         if XovOpt.get('debug'):
-            if misycmb[par][0] == misycmb[par][1]:
+            if misycmb_par[0] == misycmb_par[1]:
                 allFiles = allFilesA
             else:
                 allFiles = allFilesA + allFilesB
@@ -355,9 +354,9 @@ def main(args):
             # try:
             # WD: not so nice. gtrack_* directories are used too extensively
             if XovOpt.get("weekly_sets"):
-               track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + misycmb[par][0] + '/gtrack_' + track_id + '.pkl'
+               track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + misycmb_par[0] + '/gtrack_' + track_id + '.pkl'
                if (not os.path.isfile(track_filepath)):
-                   track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + misycmb[par][1] + '/gtrack_' + track_id + '.pkl'
+                   track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + misycmb_par[1] + '/gtrack_' + track_id + '.pkl'
             else:
                track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
             track_obj = track_obj.load(track_filepath)
@@ -425,15 +424,15 @@ def main(args):
             with open(mladata_pkl_fn, 'wb') as handle:
                 import pickle
                 pickle.dump(mladata, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            args = ((fil.split('.')[0].split('_')[-1], comb, misycmb, par, mladata_pkl_fn, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
+            args = ((fil.split('.')[0].split('_')[-1], comb, misycmb_par, mladata_pkl_fn, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
         else:
-            # args = ((fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in) for fil in allFilesA)
-            args = ((fil.split('.')[0].split('_')[-1], comb, misycmb, par, mladata, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
+            # args = ((fil.split('.')[0][-10:], comb, misycmb_par, mladata, outdir + outdir_in) for fil in allFilesA)
+            args = ((fil.split('.')[0].split('_')[-1], comb, misycmb_par, mladata, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
         print("Looking for (potential) xovers within combinations of",len(allFilesA),"tracks (A) with",len(allFilesB),"tracks (B)...")
 
-        # print(XovOpt.get("outdir")+indir_in[:-7]+'xov/tmp/xovin_'+misycmb[par][0]+'_'+misycmb[par][1]+'.pkl.gz')
+        # print(XovOpt.get("outdir")+indir_in[:-7]+'xov/tmp/xovin_'+misycmb_par[0]+'_'+misycmb_par[1]+'.pkl.gz')
         if XovOpt.get("instrument") == 'BELA' and \
-                os.path.exists(XovOpt.get("outdir")+indir_in[:-7]+'xov/tmp/xovin_'+misycmb[par][0]+'_'+misycmb[par][1]+'.pkl.gz'):
+                os.path.exists(XovOpt.get("outdir")+indir_in[:-7]+'xov/tmp/xovin_'+misycmb_par[0]+'_'+misycmb_par[1]+'.pkl.gz'):
             print("Xovin exists. Exit.")
             exit()
 
@@ -467,9 +466,9 @@ def main(args):
             # with mp.get_context("spawn").Pool(processes=ncores) as pool:
             #     for fil in allFilesA:
             #         if local:
-            #             result.append(pool.apply_async(launch_xov, args=(fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in), callback=update))
+            #             result.append(pool.apply_async(launch_xov, args=(fil.split('.')[0][-10:], comb, misycmb_par, mladata, outdir + outdir_in), callback=update))
             #         else:
-            #             result.append(pool.apply_async(launch_xov, args=(fil.split('.')[0][-10:], comb, misycmb, par, mladata, outdir + outdir_in)))
+            #             result.append(pool.apply_async(launch_xov, args=(fil.split('.')[0][-10:], comb, misycmb_par, mladata, outdir + outdir_in)))
             #
             #     pool.close()
             #     pool.join()
@@ -507,12 +506,12 @@ def main(args):
     else: # xovs will be taken from old iter
         rough_xov = pd.DataFrame()
 
-    print(f"misycmb[par]: {misycmb[par]}")
+    print(f"misycmb_par: {misycmb_par}")
     print(f"number of rough xovers: {len(rough_xov)}")
     # called either with results from xov_rough (iter=0) or with empty df and xovers from old solution
     if XovOpt.get("new_algo"):
         print("Calling a new awesome routine!!")
-        xov_prc_iters_run(outdir_in, iter_in, misycmb[par], rough_xov)
+        xov_prc_iters_run(outdir_in, iter_in, misycmb_par, rough_xov)
 
     #############################################
     endXov3 = time.time()
