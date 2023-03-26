@@ -1,16 +1,54 @@
 \begindata
 
-PATH_VALUES  = ( 'data/aux/kernels' )
+PATH_VALUES  = ( 'data/aux/kernels','/storage/research/aiub_gravdet/WD_XOV/ORB' )
 
-PATH_SYMBOLS = ( 'A' )
+PATH_SYMBOLS = ( 'A','B' )
 
-KERNELS_TO_LOAD = ( '$A/CALAg531121.SPK',
-                    '$A/CALAg531137.SPK',
-                    '$A/CALAg531154.SPK',
-                    '$A/jup365.bsp',
+KERNELS_TO_LOAD = ( '$A/jup365.bsp',
                     '$A/de432s.bsp',
                     '$A/pck00010_msgr_v23.tpc',
-                    '$A/naif0012.tls' )
+                    '$A/naif0012.tls',
+                    '$B/dAJe8311210.SPK',
+                    '$B/dAJe8311220.SPK',
+                    '$B/dAJe8311230.SPK',
+                    '$B/dAJe8311240.SPK',
+                    '$B/dAJe8311250.SPK',
+                    '$B/dAJe8311260.SPK',
+                    '$B/dAJe8311270.SPK',
+                    '$B/dAJe8311280.SPK',
+                    '$B/dAJe8311290.SPK',
+                    '$B/dAJe8311300.SPK',
+                    '$B/dAJe8311310.SPK',
+                    '$B/dAJe8311320.SPK',
+                    '$B/dAJe8311330.SPK',
+                    '$B/dAJe8311340.SPK',
+                    '$B/dAJe8311350.SPK',
+                    '$B/dAJe8311360.SPK',
+                    '$B/dAJe8311370.SPK',
+                    '$B/dAJe8311380.SPK',
+                    '$B/dAJe8311390.SPK',
+                    '$B/dAJe8311400.SPK',
+                    '$B/dAJe8311410.SPK',
+                    '$B/dAJe8311420.SPK',
+                    '$B/dAJe8311440.SPK',
+                    '$B/dAJe8311450.SPK',
+                    '$B/dAJe8311460.SPK',
+                    '$B/dAJe8311470.SPK',
+                    '$B/dAJe8311480.SPK',
+                    '$B/dAJe8311490.SPK',
+                    '$B/dAJe8311500.SPK',
+                    '$B/dAJe8311510.SPK',
+                    '$B/dAJe8311520.SPK',
+                    '$B/dAJe8311530.SPK',
+                    '$B/dAJe8311540.SPK',
+                    '$B/dAJe8311550.SPK',
+                    '$B/dAJe8311560.SPK',
+                    '$B/dAJe8311570.SPK',
+                    '$B/dAJe8311580.SPK',
+                    '$B/dAJe8311590.SPK',
+                    '$B/dAJe8311600.SPK',
+                    '$B/dAJe8311610.SPK',
+                    '$B/dAJe8311620.SPK')
 
 \begintext
 
