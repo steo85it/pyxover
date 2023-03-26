@@ -872,6 +872,18 @@ class xov:
     ##@profile
     def get_xover_rough(self, arg, ladata_df, msrm_sampl):
         # Decimate data and find rough intersection
+        # WD: look for large gaps
+        def check_continuity(data, m=6.):
+            diff = data.diff()
+            d = np.abs(diff - np.median(diff))
+            mdev = np.median(d)
+            s = d / (mdev if mdev else 1.)
+            if any(s>m):
+                print("possible discountinuity in ground track")
+        # check_continuity(ladata_df.loc[ladata_df['orbID'] == arg[0]]['X_stgprj'].values[::msrm_sampl])
+        # check_continuity(ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[::msrm_sampl])
+        # check_continuity(ladata_df.loc[ladata_df['orbID'] == arg[1]]['X_stgprj'].values[::msrm_sampl])
+        # check_continuity(ladata_df.loc[ladata_df['orbID'] == arg[1]]['Y_stgprj'].values[::msrm_sampl])
         x, y, ind_A, ind_B = intersection(
             ladata_df.loc[ladata_df['orbID'] == arg[0]]['X_stgprj'].values[::msrm_sampl],
             ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[::msrm_sampl],
