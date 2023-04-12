@@ -19,7 +19,7 @@ XovOpt.set("basedir", 'data/')
 XovOpt.set("instrument", 'CALA')
 XovOpt.set("debug", False)
 # XovOpt.set("multi_xov", True)
-XovOpt.set("selected_hemisphere", 'S')
+XovOpt.set("selected_hemisphere", 'N')
 
 # Subset of parameters to solve for
 XovOpt.set("sol4_orb", [])
@@ -47,7 +47,7 @@ XovOpt.set("par_constr",
             'dR/dC': 1.e2, 'dR/dR': 2.e1})  # , 'dR/dRl':5.e1, 'dR/dPt':5.e1} #
 XovOpt.set("mean_constr", {'dR/dA': 1.e0, 'dR/dC': 1.e0, 'dR/dR': 1.e0})
 
-XovOpt.set("expopt", 'CA0')
+XovOpt.set("expopt", 'Ah5')
 XovOpt.set("resopt", 3)   # roughness topo small scale
 XovOpt.set("amplopt", 20) #
 XovOpt.set("spauxdir", 'CAL_spk/')
@@ -105,7 +105,7 @@ for monyea in months_to_process:
     outdir_in = f'sim/{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/gtrack_{monyea[:2]}'
     # geolocation step
     # 4th argument ('BELASCIRDR') unused?
-    # PyGeoloc.main([f'{monyea}', indir_in, outdir_in, 'BELASCIRDR', 0, XovOpt.to_dict()])
+    PyGeoloc.main([f'{monyea}', indir_in, outdir_in, 'BELASCIRDR', 0, XovOpt.to_dict()])
 # # crossovers location step
 XovOpt.set("parallel", False)  # not sure why, but parallel gets crazy
 # XovOpt.set("debug", True) # To test, to plot several useful plots, just for pyXover (set to False afterward)

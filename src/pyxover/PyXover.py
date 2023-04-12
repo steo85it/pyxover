@@ -262,7 +262,7 @@ def main(args_in):
         if os.path.exists(input_xov_path) and (XovOpt.get("instrument") == 'BELA' or XovOpt.get("instrument") == 'CALA'):
             print("input xov file already exists in", input_xov_path)
             print("Rerun without computing this cumbersome input, be smart!")
-            exit(0)
+            # exit(0)
 
         # -------------------------------
         # File reading and ground-tracks computation
