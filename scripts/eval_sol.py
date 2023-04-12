@@ -593,11 +593,11 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             for idx, col in enumerate(cols):
                 ax.set_prop_cycle(color=colors)
                 if ref_sol != '' and len(ref.pert_cloop.columns) > 0:
-                    n, bins, patches = plt.hist(np.abs(ref.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
+                    n, bins, patches = plt.hist(np.abs(ref.pert_cloop[col.split('/')[-1]].values.astype(float)), bins=num_bins, density=False,
                                                 facecolor=colors[idx], label=col.split('/')[-1],
                                                 alpha=0.3)
-                # print(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)))
-                n, bins, patches = plt.hist(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
+                # print(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(float)))
+                n, bins, patches = plt.hist(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(float)), bins=num_bins, density=False,
                                             facecolor=colors[idx], label=col.split('/')[-1],
                                             alpha=0.7)
 
@@ -1183,7 +1183,7 @@ def check_iters_old(sol, subexp=''):
     iters_rms = np.array(iters_rms)
     iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
     #iters_rms[:,1:] = iters_rms[:,1:].round(3)
-    wrmse = iters_rms[:,2].astype(np.float)
+    wrmse = iters_rms[:,2].astype(float)
     perc_rms_change = np.concatenate([[None],np.abs((np.diff(wrmse)/wrmse[1:]*100.)).round(2)])
     print(np.concatenate([iters_rms,perc_rms_change[:,np.newaxis]],axis=1))
 

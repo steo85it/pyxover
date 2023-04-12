@@ -5,6 +5,7 @@
 # Author: Stefano Bertone
 # Created: 16-Oct-2018
 #
+import logging
 import warnings
 
 from accumxov.Amat import Amat
@@ -249,8 +250,8 @@ def main(args_in):
     print(f"combs:{misycmb}")
     misycmb_par = misycmb[par]
     if True: #XovOpt.get("debug"):
-        print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
-    print(par, misycmb[par]," has been selected!")
+        print("Choose grid element among:", dict(map(reversed, enumerate(misycmb))))
+    print(par, misycmb[par], " has been selected!")
     # exit()
     ###########################
     startInit = time.time()
@@ -285,7 +286,7 @@ def main(args_in):
             date1 = dt.datetime.strptime(misycmb_par[1], '%y%m%d')
             allFilesA = []
             allFilesB = []
-            for i in range(0,7):
+            for i in range(0, 7):
                 datestr = (date0 + dt.timedelta(days=i)).strftime('%y%m%d')
                 allFilesA.extend(glob.glob(os.path.join(XovOpt.get("outdir"), indir_in + misycmb_par[0] + '/gtrack_' + datestr + '*')))
                 datestr = (date1 + dt.timedelta(days=i)).strftime('%y%m%d')
@@ -309,6 +310,10 @@ def main(args_in):
             print(allFiles)
             # exit()
 
+        if len(allFilesA + allFilesB) == 0:
+            logging.error("** No gtrack files selected. Check path in PyXover.")
+            exit(1)
+
         # xovnames = ['xov_' + fil.split('.')[0][-10:] for fil in allFiles]
         # trackxov_list = []
 
@@ -322,7 +327,7 @@ def main(args_in):
         # TODO, check wether one could safely save time by only considering xovers with a given weight
         # iter = int(outdir_in.split('/')[1].split('_')[-1])
         iter = iter_in
-        if iter>0:
+        if iter > 0:
             comb = select_useful_comb(comb, iter, outdir_in)
 
         print(comb)
@@ -418,7 +423,7 @@ def main(args_in):
         # print(np.all(mask,axis=1))
         # comb_1 = comb[np.all(mask,axis=1),:]
         # exit()
-        if XovOpt.get("instrument") =='BELA':
+        if XovOpt.get("instrument") == 'BELA':
             os.makedirs(XovOpt.get("tmpdir"), exist_ok=True)
             mladata_pkl_fn = f"{XovOpt.get('tmpdir')}mladata_tmp_{cmb_y_in}.pkl"
             with open(mladata_pkl_fn, 'wb') as handle:

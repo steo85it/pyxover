@@ -78,7 +78,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
         # plt.xlim(-1.*xlim, xlim)
         # the histogram of the data
         num_bins = 'auto'
-        n, bins, patches = plt.hist(huber_weights_track.astype(np.float),
+        n, bins, patches = plt.hist(huber_weights_track.astype(float),
                                     bins=num_bins)  # , cumulative=True)  # , density=True, facecolor='blue',
         # alpha=0.7, range=[-1.*xlim, xlim])
         plt.xlabel('weight (1/m)')
@@ -306,9 +306,9 @@ def get_stats(amat):
     if XovOpt.get("local") and XovOpt.get("debug"):
         plt.figure()  # figsize=(8, 3))
         num_bins = 200  # 'auto'  #
-        n, bins, patches = plt.hist((amat.weights @ (np.abs(w).reshape(-1, 1))).astype(np.float), bins=num_bins,
+        n, bins, patches = plt.hist((amat.weights @ (np.abs(w).reshape(-1, 1))).astype(float), bins=num_bins,
                                     cumulative=-1, range=[0.1, 50.])
-        # n, bins, patches = plt.hist(w.astype(np.float), bins=num_bins, cumulative=True)
+        # n, bins, patches = plt.hist(w.astype(float), bins=num_bins, cumulative=True)
         # plt.xlabel('roughness@baseline700 (m/m)')
         plt.savefig(XovOpt.get("tmpdir") + '/histo_residuals.png')
         plt.clf()

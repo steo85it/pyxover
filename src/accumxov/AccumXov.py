@@ -296,7 +296,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
 
                     plt.figure()  # figsize=(8, 3))
                     num_bins = 100  # 'auto'  # 40  # v
-                    n, bins, patches = plt.hist(tmp.astype(np.float), bins=num_bins)
+                    n, bins, patches = plt.hist(tmp.astype(float), bins=num_bins)
                     plt.xlabel('dR (m)')
                     plt.ylabel('# tracks')
                     plt.savefig(XovOpt.get("tmpdir") + '/histo_tracks_weights.png')
@@ -326,7 +326,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
                     if XovOpt.get("debug") and XovOpt.get("local"):
                         num_bins = 100  # 'auto'
                         plt.clf()
-                        n, bins, patches = plt.hist(np.where(huber_penal < 1., huber_penal, 1.).astype(np.float),
+                        n, bins, patches = plt.hist(np.where(huber_penal < 1., huber_penal, 1.).astype(float),
                                                     bins=num_bins, cumulative=True)
                         plt.xlabel('huber_penal')
                         plt.savefig(XovOpt.get("tmpdir") + '/histo_huber_h2.png')

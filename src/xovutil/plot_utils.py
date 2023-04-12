@@ -18,14 +18,14 @@ def plt_histo_dR(idx, xov_df, xov_ref='', xlim=None):
     plt.xlim(-1.*xlim, xlim)
     # the histogram of the data
     num_bins = 200 # 'auto'
-    n, bins, patches = plt.hist(xov_df.dR.astype(np.float), bins=num_bins, density=False, facecolor='blue',
+    n, bins, patches = plt.hist(xov_df.dR.astype(float), bins=num_bins, density=False, facecolor='blue',
                                 alpha=0.9, range=[-1.*xlim, xlim])
     # add a 'best fit' line
     # y = stats.norm.pdf(bins, mean_dR, std_dR)
     # plt.plot(bins, y, 'b--')
     if isinstance(xov_ref, pd.DataFrame):
         xov_ref = xov_ref.loc[xov_ref.dR.abs() < 200]
-        n, bins, patches = plt.hist(xov_ref.dR.astype(np.float), bins=num_bins, density=False, facecolor='red',
+        n, bins, patches = plt.hist(xov_ref.dR.astype(float), bins=num_bins, density=False, facecolor='red',
                                     alpha=0.3, range=[-1.*xlim, xlim])
     plt.xlabel('dR (m)')
     plt.ylabel('Probability')
