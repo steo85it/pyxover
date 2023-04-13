@@ -166,8 +166,8 @@ def plot_tracks_histo(postfit_list, filename=XovOpt.get("tmpdir") + '/histo_trac
     num_bins = 40  # 'auto'
     plt_labels = ['pre-fit','post-fit']
     for idx, postfit in enumerate(postfit_list):
-        # print(postfit.pre.astype(np.float))
-        n, bins, patches = plt.hist(postfit.pre.astype(np.float), bins=num_bins, alpha=0.7,
+        # print(postfit.pre.astype(float))
+        n, bins, patches = plt.hist(postfit.pre.astype(float), bins=num_bins, alpha=0.7,
                                     label=plt_labels[idx],range=[0., xlim])  # , density=True) #, facecolor='blue',
     # alpha=0.7, range=[-1.*xlim, xlim])
     plt.xlabel('dR (m)')

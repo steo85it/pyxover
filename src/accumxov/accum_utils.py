@@ -7,6 +7,7 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 05-Feb-2020
+import logging
 import re
 
 import numpy as np
@@ -25,6 +26,7 @@ import matplotlib.pyplot as plt
 from pyxover.xov_setup import xov
 from pyxover.xov_utils import get_tracks_rms
 from xovutil.iterables import multiply_sparse_get_diag
+
 
 # @profile
 def get_xov_cov_tracks(df, plot_stuff=False):
@@ -63,21 +65,21 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     huber_threshold_track = 5
     # tmp = tracks_rms_df.sort_values(by='track').pre.abs().values
     # makes sense to use the bias and not the rms (actually the average value would also be fine...) !! remember ABS!!
-    tracks_rms_df.sort_values(by='track',inplace=True)
+    tracks_rms_df.sort_values(by='track', inplace=True)
     tmp = tracks_rms_df.bias.abs().values
     huber_weights_track = np.where(tmp > huber_threshold_track, (huber_threshold_track / tmp) ** 1, 1.)
     # tracks_rms_df['huber'] = huber_weights_track
     # print(tracks_rms_df)
     # exit()
 
-    if plot_stuff and XovOpt.get("local"): # and debug:
+    if plot_stuff and XovOpt.get("local"):  # and debug:
         # plot histo
-        plt.figure() #figsize=(8, 3))
+        plt.figure()  # figsize=(8, 3))
         # plt.xlim(-1.*xlim, xlim)
         # the histogram of the data
         num_bins = 'auto'
-        n, bins, patches = plt.hist(huber_weights_track.astype(np.float),
-                                    bins=num_bins) #, cumulative=True)  # , density=True, facecolor='blue',
+        n, bins, patches = plt.hist(huber_weights_track.astype(float),
+                                    bins=num_bins)  # , cumulative=True)  # , density=True, facecolor='blue',
         # alpha=0.7, range=[-1.*xlim, xlim])
         plt.xlabel('weight (1/m)')
         plt.ylabel('# tracks')
@@ -90,7 +92,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
 
     cov_tracks = huber_weights_track.round(2).astype('float16')
     # if cov_tracks element == 0, add 0.001 to avoid inf because of rounding)
-    cov_tracks[cov_tracks==0] += 1.e-3
+    cov_tracks[cov_tracks == 0] += 1.e-3
     # from weights to covariances (inverse)
     np.reciprocal(cov_tracks, out=cov_tracks)
     # convert to sparse (on diagonal)
@@ -111,7 +113,8 @@ def get_xov_cov_tracks(df, plot_stuff=False):
 
     return cov_xov_tracks
 
-def get_vce_factor(Ninv, Cinv, x, b = None, A = None, sapr=1., kind='obs'):
+
+def get_vce_factor(Ninv, Cinv, x, b=None, A=None, sapr=1., kind='obs'):
     """
     compute vce factor for subset of data or constraint
     see eq. 17-21 of https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1002/jgre.20118
@@ -137,7 +140,7 @@ def get_vce_factor(Ninv, Cinv, x, b = None, A = None, sapr=1., kind='obs'):
     # nelem is nobs for a subset of data or nparam for a constraint
     nelem = Cinv.shape[0]
     # a priori squared sigma (inverse of weight associated)
-    s2apr = sapr**2
+    s2apr = sapr ** 2
 
     if kind == 'obs':
         ri = (b - A * x)
@@ -147,18 +150,19 @@ def get_vce_factor(Ninv, Cinv, x, b = None, A = None, sapr=1., kind='obs'):
         Ni = Cinv
 
     # numerator (basically the quantity to minimize)
-    rTw = csr_matrix(ri.T)* Cinv
+    rTw = csr_matrix(ri.T) * Cinv
     # print(csr_matrix(ri.T),rTw * ri, Cinv,Cinv.max(),Cinv.min())
     rTwr = (rTw * ri)[0]
     # basically a modified dof for the subset
     redundancy = nelem - (1. / s2apr) * np.trace(Ni @ Ninv)
-    print("kind, sqrt(rTwr),redundancy,chi2:",kind,np.sqrt(rTwr),redundancy,np.trace(Ni.todense()),rTwr/redundancy)
+    print("kind, sqrt(rTwr),redundancy,chi2:", kind, np.sqrt(rTwr), redundancy, np.trace(Ni.todense()),
+          rTwr / redundancy)
 
     # the new sigma^2 associated to the subset of data or constraint
     return rTwr / redundancy
 
 
-def downsize_xovers(xov_df,max_xovers=1.e5):
+def downsize_xovers(xov_df, max_xovers=1.e5):
     # remove very large dR (>1km)
     xov_df = xov_df.loc[xov_df['dR'].abs() < 1.e3]
     print(xov_df.columns)
@@ -184,17 +188,18 @@ def downsize_xovers(xov_df,max_xovers=1.e5):
     print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().min())
     print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().median())
     print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().mean())
-    print("Downsized xovers to the 'best'",len(selected),"xovers out of",len(xov_df),". Done!")
+    print("Downsized xovers to the 'best'", len(selected), "xovers out of", len(xov_df), ". Done!")
 
     return selected
 
-def subsample_xovers(xov_df,size_samples=1.e5,rand_seed=0):
+
+def subsample_xovers(xov_df, size_samples=1.e5, rand_seed=0):
     from sklearn.utils import resample
 
     # use xovers index to identify in sampling
     data = xov_df.index.values
     # round to 10 deg latitude to assign stratification
-    lats = np.round(xov_df.LAT.values/10.,0)*10.
+    lats = np.round(xov_df.LAT.values / 10., 0) * 10.
 
     # prepare bootstrap sample (no replace cause I just want 1 occurrence per element)
     boot = resample(data, replace=False, n_samples=size_samples, random_state=rand_seed, stratify=lats)
@@ -218,29 +223,30 @@ def subsample_xovers(xov_df,size_samples=1.e5,rand_seed=0):
 
 
 def get_stats(amat):
-
     # xover residuals
     w = amat.xov.xovers['dR'].values
     nobs = len(w)
     npar = len(amat.sol_dict['sol'].values())
 
-    lTP = np.hstack(w).reshape(1, -1) @ amat.weights # hstack converts "object" to "float" for product
+    lTP = np.hstack(w).reshape(1, -1) @ amat.weights  # hstack converts "object" to "float" for product
     lTPl = lTP @ np.hstack(w).reshape(-1, 1)
 
     xsol = []
     xstd = []
     # print(amat.sol_dict['sol'])
+    print(amat.sol4_pars)
+    print(amat.sol_dict['sol'].items())
     for filt in amat.sol4_pars:
         # print(np.array(filt))
         filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
         # print(filtered_dict)
-        if len(list(filtered_dict.values()))>0:
+        if len(list(filtered_dict.values())) > 0:
             xsol.append(list(filtered_dict.values())[0])
         else:
-            print(np.array(filt),"not found")
+            print(np.array(filt), "not found")
             xsol.append(0.)
         filtered_dict = {k: v for (k, v) in amat.sol_dict['std'].items() if filt in k}
-        if len(list(filtered_dict.values()))>0:
+        if len(list(filtered_dict.values())) > 0:
             xstd.append(list(filtered_dict.values())[0])
         else:
             xstd.append(0.)
@@ -261,28 +267,28 @@ def get_stats(amat):
     # consistency reasons. Here we remove these values from the computation of vTPv
     # else matrix shapes don't match
     if len(ATPb) != xT.shape[1]:
-        print("removing stuff...",len(ATPb),(xT.shape[1]))
+        print("removing stuff...", len(ATPb), (xT.shape[1]))
         missing = [x for x in amat.sol4_pars if x not in amat.parNames]
         missing = [amat.sol4_pars.index(x) for x in missing]
         xT = np.delete(xT, missing)
         # remove parameters not in sol4_pars
         tmp_sol4pars = [amat.parNames[x] for x in amat.sol4_pars if x in amat.parNames.keys()]
         ATPb = ATPb[tmp_sol4pars]
-        ATP = ATP[tmp_sol4pars,:]
-        spA_tmp = amat.spA[:,tmp_sol4pars]
+        ATP = ATP[tmp_sol4pars, :]
+        spA_tmp = amat.spA[:, tmp_sol4pars]
     else:
         spA_tmp = amat.spA
     ##################
     vTPv = lTPl - xT @ ATPb
-    print(nobs,npar)
+    print(nobs, npar)
     print("pre-RMS=", np.sqrt(lTPl / (nobs - npar)), " post-RMS=", np.sqrt(vTPv / (nobs - npar)))
 
     # degrees of freedom in case of constrained least square
-    #Atmp = (ATP@spA_tmp + amat.penalty_mat)
-    #trR = np.diagonal(np.linalg.pinv(Atmp.todense())@ATP@spA_tmp).sum()
-    #dof = nobs - trR
+    # Atmp = (ATP@spA_tmp + amat.penalty_mat)
+    # trR = np.diagonal(np.linalg.pinv(Atmp.todense())@ATP@spA_tmp).sum()
+    # dof = nobs - trR
     dof = nobs - npar
-    m0 = np.linalg.norm(np.sqrt(vTPv/dof))
+    m0 = np.linalg.norm(np.sqrt(vTPv / dof))
     # print("test-m0", m0)
 
     # alternative method to compute chi2 for constrained least-square (not involving inverse)
@@ -300,9 +306,9 @@ def get_stats(amat):
     if XovOpt.get("local") and XovOpt.get("debug"):
         plt.figure()  # figsize=(8, 3))
         num_bins = 200  # 'auto'  #
-        n, bins, patches = plt.hist((amat.weights @ (np.abs(w).reshape(-1, 1))).astype(np.float), bins=num_bins,
+        n, bins, patches = plt.hist((amat.weights @ (np.abs(w).reshape(-1, 1))).astype(float), bins=num_bins,
                                     cumulative=-1, range=[0.1, 50.])
-        # n, bins, patches = plt.hist(w.astype(np.float), bins=num_bins, cumulative=True)
+        # n, bins, patches = plt.hist(w.astype(float), bins=num_bins, cumulative=True)
         # plt.xlabel('roughness@baseline700 (m/m)')
         plt.savefig(XovOpt.get("tmpdir") + '/histo_residuals.png')
         plt.clf()
@@ -325,11 +331,11 @@ def analyze_dist_vs_dR(xov):
 
 
 def print_sol(orb_sol, glb_sol, xov, xovi_amat):
-
     partemplate = set([x.split('/')[1] for x in xovi_amat.sol_dict['sol'].keys()])
 
     regex = re.compile(".*_dR/d([ACR]|(Rl)|(Pt))[0,1,2,'C','S']?$")
-    soltmp = [(x.split('_')[0], 'sol_' + x.split('_')[1], v) for x, v in xovi_amat.sol_dict['sol'].items() if regex.match(x)]
+    soltmp = [(x.split('_')[0], 'sol_' + x.split('_')[1], v) for x, v in xovi_amat.sol_dict['sol'].items() if
+              regex.match(x)]
 
     print('-- Solutions -- ')
     if len(soltmp) > 0:
@@ -349,12 +355,12 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
     print(glb_sol)
     print('-- -- -- -- ')
 
-    if len(XovOpt.get("pert_cloop")['glo'])>0:
+    if len(XovOpt.get("pert_cloop")['glo']) > 0:
         print('to_be_recovered (sim mode, dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)')
         print(XovOpt.get("pert_cloop")['glo'])
 
     if XovOpt.get("debug") and False:
-        _ = xov.remove_outliers('dR',remove_bad=remove_3sigma_median)
+        _ = xov.remove_outliers('dR', remove_bad=remove_3sigma_median)
         print(xov.xovers.columns)
         print(xov.xovers.loc[xov.xovers.orbA == '1301022345'])
         # print(xov.xovers.loc[xov.xovers.orbA == '1301022341' ].sort_values(by='R_A', ascending=True)[:10])
@@ -364,7 +370,6 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
 
 
 def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
-
     if sol4_orb == [] and sol4_orbpar != [None]:
         sol4_orb = set([i.split('_')[0] for i in track_names])
         sol4_orb = [x for x in sol4_orb if x.isdigit()]
@@ -378,19 +383,24 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
     if sol4_glo == []:
         sol4_glo = list(XovOpt.get("parGlo").keys())
-        sol4_glo = ['dR/'+x for x in sol4_glo]
+        sol4_glo = ['dR/' + x for x in sol4_glo]
     elif sol4_glo == [None]:
         sol4_glo = []
 
     sol4_pars = sorted(sol4_orb) + sorted(sol4_glo)
 
-    print('solving for',len(sol4_pars),'parameters.')
-    # print('solving for:',np.array(sol4_pars))
+    if len(sol4_pars) > 0:
+        logging.info(f'solving for {len(sol4_pars)} parameters.')
+        # print('solving for:',np.array(sol4_pars))
+    else:
+        logging.error(f'** Solving for {len(sol4_pars)} parameters. Is this correct? Recheck options.')
+        XovOpt.display()
+        exit()
 
     return sol4_pars
 
 
-def analyze_sol(xovi_amat,xov,mode='full'):
+def analyze_sol(xovi_amat, xov, mode='full'):
     # from accumxov.accum_opt import remove_max_dist
 
     # print('xovi_amat.sol',xovi_amat.sol)
@@ -403,25 +413,26 @@ def analyze_sol(xovi_amat,xov,mode='full'):
     # print(len(np.reshape(xovi_amat.sol4_pars, (-1, 1))),len(np.reshape(xovi_amat.sol[0], (-1, 1))),
     #                          len(np.reshape(xovi_amat.sol[-1], (-1, 1))) )
     # check wheter list contains full list of pars or just those from this iter
-    if mode=='full':
+    if mode == 'full':
         sol4_pars = xovi_amat.sol4_pars
     else:
         sol4_pars = xovi_amat.sol4_pars_iter
-
 
     # Ordering is important here, don't use set or other "order changing" functions
     _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
                    np.reshape(xovi_amat.sol[0], (-1, 1)),
                    np.reshape(xovi_amat.sol[-1], (-1, 1))
                    ))
-    sol_dict = {'sol': dict(zip(_[:,0],_[:,1].astype(float))), 'std': dict( zip( _[:,0],np.sqrt(_[:,2].astype(float))) ) }
+    sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float))),
+                'std': dict(zip(_[:, 0], np.sqrt(_[:, 2].astype(float))))}
 
     if XovOpt.get("debug"):
         print("sol_dict_analyze_sol")
         print(sol_dict)
 
     # Extract solution for global parameters
-    glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(XovOpt.get("parGlo").keys()) for x in _[:, 0]]], columns=['par', 'sol', 'std'])
+    glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(XovOpt.get("parGlo").keys()) for x in _[:, 0]]],
+                           columns=['par', 'sol', 'std'])
     partemplate = set([x.split('/')[1] for x in sol_dict['sol'].keys()])
     # regex = re.compile(".*"+str(list(partemplate))+"$")
 
@@ -431,10 +442,10 @@ def analyze_sol(xovi_amat,xov,mode='full'):
     parOrbKeys = list(XovOpt.get("parOrb").keys())
     solved4 = list(partemplate)
 
-    if XovOpt.get("OrbRep") in ['lin', 'quad','per']:
-        parOrbKeys = [x+str(y) for x in parOrbKeys for y in [0,1,2,'C','S']]
+    if XovOpt.get("OrbRep") in ['lin', 'quad', 'per']:
+        parOrbKeys = [x + str(y) for x in parOrbKeys for y in [0, 1, 2, 'C', 'S']]
     # solved4orb = list(filter(regex.match, list(parOrb.keys())))
-    solved4orb = list(set(parOrbKeys)&set(solved4))
+    solved4orb = list(set(parOrbKeys) & set(solved4))
 
     if len(solved4orb) > 0:
         df_ = pd.DataFrame(_, columns=['key', 'sol', 'std'])
@@ -443,7 +454,7 @@ def analyze_sol(xovi_amat,xov,mode='full'):
         df_.drop('key', axis=1, inplace=True)
         # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
         df_ = df_.replace(to_replace='None', value=np.nan).dropna()
-        table = pd.pivot_table(df_, values=['sol','std'], index=['orb'], columns=['par'], aggfunc=np.sum)
+        table = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'], aggfunc=np.sum)
 
         if any(xov.xovers.filter(like='dist', axis=1)):
             xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
@@ -455,26 +466,26 @@ def analyze_sol(xovi_amat,xov,mode='full'):
 
             if AccOpt.get("remove_max_dist"):
                 xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
-                #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+                # xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
 
-            _ = xov.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1)
+            _ = xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1)
             table['num_obs'] = _
 
             df1 = xov.xovers.groupby(['orbA'], sort=False)['dist_max'].max().reset_index()
             df2 = xov.xovers.groupby(['orbB'], sort=False)['dist_max'].max().reset_index()
 
-            merged_Frame = pd.merge(df1, df2, left_on='orbA', right_on='orbB',how='outer')
+            merged_Frame = pd.merge(df1, df2, left_on='orbA', right_on='orbB', how='outer')
             merged_Frame['orbA'] = merged_Frame['orbA'].fillna(merged_Frame['orbB'])
             merged_Frame['orbB'] = merged_Frame['orbB'].fillna(merged_Frame['orbA'])
-            merged_Frame['dist_max'] = merged_Frame[['dist_max_x','dist_max_y']].mean(axis=1)
-            merged_Frame = merged_Frame[['orbA','dist_max']]
-            merged_Frame.columns = ['orb','dist_max']
+            merged_Frame['dist_max'] = merged_Frame[['dist_max_x', 'dist_max_y']].mean(axis=1)
+            merged_Frame = merged_Frame[['orbA', 'dist_max']]
+            merged_Frame.columns = ['orb', 'dist_max']
 
             table.columns = ['_'.join(col).strip() for col in table.columns.values]
             try:
-                table = pd.merge(table.reset_index(),merged_Frame,on='orb')
+                table = pd.merge(table.reset_index(), merged_Frame, on='orb')
             except:
-                table = pd.concat([table.reset_index(),merged_Frame])
+                table = pd.concat([table.reset_index(), merged_Frame])
 
         orb_sol = table
         if XovOpt.get("debug"):
@@ -513,11 +524,12 @@ def analyze_sol(xovi_amat,xov,mode='full'):
     print(glb_sol['std'].values)
 
     # sol_dict['std'] *= sigma_0
-    glb_sol['std'] = glb_sol['std'].astype('float').values/AccOpt.get("sigma_0")
+    glb_sol['std'] = glb_sol['std'].astype('float').values / AccOpt.get("sigma_0")
     for col in orb_sol.filter(regex='std_*').columns:
-        orb_sol[col] = orb_sol[col].astype('float').values/AccOpt.get("sigma_0")
+        orb_sol[col] = orb_sol[col].astype('float').values / AccOpt.get("sigma_0")
 
     return orb_sol, glb_sol, sol_dict
+
 
 def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
     from accumxov.Amat import Amat
@@ -526,9 +538,10 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
     if int(ext_iter) > 0:
         previous_iter = Amat(XovOpt.get("vecopts"))
         # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-        previous_iter = previous_iter.load(('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-                                           '_' + str(ext_iter - 1) + '/' +
-                                           ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+        previous_iter = previous_iter.load(
+            ('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+            '_' + str(ext_iter - 1) + '/' +
+            ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
         print("initial sol dict=", len(previous_iter.sol_dict['sol']))
 
         # print(previous_iter.sol_dict)

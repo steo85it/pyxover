@@ -16,7 +16,7 @@ def plt_histo(series, xlim='', filename='test'):
     plt.xlim(-1.*xlim, xlim)
     # the histogram of the data
     num_bins = 200 # 'auto'
-    n, bins, patches = plt.hist(series.astype(np.float), bins=num_bins, density=True, facecolor='blue',
+    n, bins, patches = plt.hist(series.astype(float), bins=num_bins, density=True, facecolor='blue',
     alpha=1./(float(filename)+1.), range=[-1.*xlim, xlim],cumulative=False)
 
     plt.xlabel('dR (m)')

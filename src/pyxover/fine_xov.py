@@ -112,14 +112,20 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     if XovOpt.get("debug"):
         print("Parameters:", xov_tmp.parOrb_xy, xov_tmp.parGlo_xy, xov_tmp.par_xy)
     # update xovers table with LAT and LON
-    xov_tmp = get_xov_latlon(xov_tmp, mla_proj_df.loc[mla_proj_df.partid == 'none'])
-    xov_tmp.xovers.drop('xovid', axis=1).reset_index(inplace=True, drop=True)
+    # print(xov_tmp.xovers.columns)
+    # print(mla_proj_df.loc[mla_proj_df.partid == 'none'].columns)
+    # print(xov_tmp.xovers)
+    # print(mla_proj_df.loc[mla_proj_df.partid == 'none'])
+    if len(xov_tmp.xovers) > 0:
+        xov_tmp = get_xov_latlon(xov_tmp, mla_proj_df.loc[mla_proj_df.partid == 'none'])
+        xov_tmp.xovers.drop('xovid', axis=1).reset_index(inplace=True, drop=True)
     # print(xov_tmp.xovers.columns)
     if XovOpt.get("debug"):
         pd.set_option('display.max_columns', 500)
         pd.set_option('display.max_rows', 500)
 
-        print(xov_tmp.xovers)  # .loc[xov_tmp.xovers['orbA']=='1504030011'])
+    print(xov_tmp.xovers)  # .loc[xov_tmp.xovers['orbA']=='1504030011'])
+
     end_finexov = time.time()
     print("Fine_xov for", str(cmb) ,"finished after", int(end_finexov - start_finexov), "sec or ",
           round((end_finexov - start_finexov) / 60., 2), " min and located", len(xov_tmp.xovers), "out of previous",
@@ -149,13 +155,13 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
 
     msrm_smpl = xov_tmp.msrm_sampl
 
-    try:
-        x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
-    except:
-        if XovOpt.get("debug"):
-            print("### get_xover_fine issue on xov #", xovi)
-            print(xov_tmp.ladata_df)
-        return  # continue
+    # try:
+    x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
+    # except:
+    #     if XovOpt.get("debug"):
+    #         print("### get_xover_fine issue on xov #", xovi)
+    #         print(xov_tmp.ladata_df)
+    #     return  # continue
     # print(x, y, subldA, subldB, ldA, ldB)
 
     ldA, ldB, R_A, R_B = xov_tmp.get_elev('', subldA, subldB, ldA, ldB, x=x, y=y)
@@ -211,20 +217,20 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
         # xov_tmp.xovers = xov_tmp.xovers.append(xov_tmp.xovtmp, sort=True)
         xov_tmp.xovers = pd.concat([xov_tmp.xovers, xov_tmp.xovtmp], sort=True)
 
-    # import sys
-    # def sizeof_fmt(num, suffix='B'):
-    #     ''' by Fred Cirera,  https://stackoverflow.com/a/1094933/1870254, modified'''
-    #     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
-    #         if abs(num) < 1024.0:
-    #             return "%3.1f %s%s" % (num, unit, suffix)
-    #         num /= 1024.0
-    #     return "%.1f %s%s" % (num, 'Yi', suffix)
-    #
-    # print("iter over xov:",xovi)
-    # for name, size in sorted(((name, sys.getsizeof(value)) for name, value in locals().items()),
-    #                          key=lambda x: -x[1])[:10]:
-    #     print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
+    # print used memory
+    if XovOpt.get('debug'):
+        import sys
+        def sizeof_fmt(num, suffix='B'):
+            ''' by Fred Cirera,  https://stackoverflow.com/a/1094933/1870254, modified'''
+            for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+                if abs(num) < 1024.0:
+                    return "%3.1f %s%s" % (num, unit, suffix)
+                num /= 1024.0
+            return "%.1f %s%s" % (num, 'Yi', suffix)
 
-    # exit()
+        print("iter over xov:", xovi)
+        for name, size in sorted(((name, sys.getsizeof(value)) for name, value in locals().items()),
+                                 key=lambda xm: -xm[1])[:10]:
+            print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
 
     return xov_tmp.xovtmp
