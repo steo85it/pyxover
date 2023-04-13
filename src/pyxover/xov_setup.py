@@ -60,6 +60,7 @@ class xov:
     def setup(self, gtracks):
 
         self.gtracks = gtracks
+        # self.t0_tracks[gtracks.name] = gtracks.t0_orb
 
         if XovOpt.get("new_algo"):
             cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
