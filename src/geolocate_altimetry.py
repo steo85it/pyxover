@@ -56,11 +56,6 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     tof = inp_df['TOF'].values
     et_tx = inp_df['ET_TX'].values
 
-    #print('tof')
-    #print(tof)
-    # print('et_tx')
-    # print(et_tx)
-
     # print("geoloc",tmp_pertPar)
     # exit()
 

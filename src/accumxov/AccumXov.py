@@ -333,13 +333,13 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
             xovi_amat.xov.xovers['interp_weight'] = val
 
             # apply huber weights
-            print(val)
-            print(huber_penal)
-            print(len(val), len(huber_penal))
-            print(val.dtype, huber_penal.dtype)
-            print(val.shape)
-            print(huber_penal.shape)
             if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get("remove_dR200"):
+                print(val)
+                print(huber_penal)
+                print(len(val), len(huber_penal))
+                print(val.dtype, huber_penal.dtype)
+                print(val.shape)
+                print(huber_penal.shape)
                 val *= np.hstack(huber_penal) # hstack converts array of objects (not sure why) to array of floats
                 # print("after huber", np.sort(val), np.mean(val))
                 # val *= huber_weights_dist

@@ -187,7 +187,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     xov_tmp.xovtmp = xovtmp
 
     # Compute and store distances between obs and xov coord
-    #xov_tmp.set_xov_obs_dist()
+    xov_tmp.set_xov_obs_dist()
     # Compute and store offnadir state for obs around xov
     xov_tmp.set_xov_offnadir()
 

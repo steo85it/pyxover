@@ -49,10 +49,10 @@ class AccOpt:
             AccOpt.set("get_cov_only", True)
             AccOpt.set("clean_part", False)
             AccOpt.set("use_advanced_weighting", False)
-        else:
-            AccOpt.set("get_cov_only", False)
-            AccOpt.set("clean_part", True)
-            AccOpt.set("use_advanced_weighting", True)
+        # else:
+        #     AccOpt.set("get_cov_only", False)
+        #     AccOpt.set("clean_part", True)
+        #     AccOpt.set("use_advanced_weighting", True)
 
         logging.info("All good and consistent!")
 

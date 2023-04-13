@@ -261,7 +261,6 @@ def clean_xov(xov, par_list=[]):
 
 
 def clean_partials(b, spA, glbpars, threshold = 1.e6):
-    # spA = spA[:99264,-4:]
 
     nglbpars = len(glbpars)
 

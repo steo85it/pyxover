@@ -22,12 +22,12 @@ from pyaltsim import PyAltSim
 grid = True
 run_pyAltSim  = False # 3-4 hours per month, 30min-1h15 per week (up to 2.8GB)
 run_pyGeoLoc  = False # quite fase per gtrack
-run_pyXover   = True # 10min or 20min
-run_accuXover = False
+run_pyXover   = False # 10min or 20min
+run_accuXover = True
 
 camp = "/storage/research/aiub_gravdet/WD_XOV"
 OrbDir = f"{camp}/ORB/"
-SIMID     = "Ah5"  # Simulation ID
+SIMID     = "Ah7"  # Simulation ID
 ORBID      = "014"  # Input CR3BP orbit
 MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMID}_CR3BP.ORB"
 
@@ -43,18 +43,28 @@ MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMID}_CR3BP.ORB"
 # CB4 : gtracks and cov North from CB4 with Ah5
 # CB5 : simulation from Ah5 sample 0.05s
 # CB5 : gtracks and cov North from CB5 with Ah5
+# CB6 : gtracks and xov North from CB2 with Jf3
+# CB7 : gtracks and xov South from CB2 with Jf3
+# CB8 : gtracks and xov North from CB2 with Jf4
+# CB9 : gtracks and xov South from CB2 with Jf4
+# CC0 : gtracks and xov North from CB2 with Jf5 (test pyxover)
+# CC1 : gtracks and xov South from CB2 with Jf5
+# CC2 : simulation from Ah7 (sampling 1s)
+# CC2 : gtracks and xov North from CC2 with Ah7
+
 simid = 'CB2'
-estid = 'CB3'
+estid = 'CC0'
 XovOpt.set("selected_hemisphere",'N')
-XovOpt.set("spice_meta",'mymeta_Je8')
+XovOpt.set("spice_meta",'mymeta_Jf5')
 
 XovOpt.set("body", 'CALLISTO')
 XovOpt.set("basedir", f'{camp}/pyXover/')
 XovOpt.set("instrument", 'CALA')
 
 # Subset of parameters to solve for
-XovOpt.set("sol4_orb", [])
-XovOpt.set("sol4_orbpar", [None])
+# For "sol4_orb" and "sol4_orbpar, laisser une liste vide signifie "tous", sinon mettre "None" pour pas estimer
+XovOpt.set("sol4_orb", []) # pour quelles orbites tu veux estimer les parametres "sol4_orbpar"
+XovOpt.set("sol4_orbpar", []) # quels parametres d'orbite, quelle direction ou pointing tu veux estimer
 XovOpt.set("sol4_glo", ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL', 'dR/dh2'])
 
 vecopts = {'SCID': -555,  # '-236',
@@ -92,9 +102,9 @@ XovOpt.check_consistency()
 AccOpt.check_consistency()
 
 if XovOpt.get("SpInterp") == 0:
-    if not os.path.exists("data/aux/kernels"):
-        os.makedirs("data/aux/kernels")
-    os.chdir("data/aux/kernels")
+    if not os.path.exists('data/aux/kernels'):
+        os.makedirs('data/aux/kernels')
+    os.chdir('data/aux/kernels')
     import wget
 
     furnsh_input = [
@@ -107,11 +117,7 @@ if XovOpt.get("SpInterp") == 0:
             wget.download(f)
     os.chdir('../../../')
 
-XovOpt.set("sim_altdata", True)
-XovOpt.set("partials", False)
 XovOpt.set("parallel", True)
-XovOpt.set("apply_topo", False)
-XovOpt.set("range_noise", False)
 XovOpt.set("new_illumNG", True)
 XovOpt.set("unittest", True) # this restricts simulated data to the first day of the month (see d_last in PyAltSim.main)
 XovOpt.set("debug", False)
@@ -131,6 +137,10 @@ if grid:
 # Altimetry simulation
 # WD should really organize the folders in weekly folders
 if run_pyAltSim:
+    XovOpt.set("sim_altdata", True)
+    XovOpt.set("partials", False)
+    XovOpt.set("apply_topo", False)
+    XovOpt.set("range_noise", False)
     XovOpt.set("expopt", simid)
     d_sess = build_sessiontable_man(MANFIL,500,500) #darc > 1 Cday
 
@@ -138,7 +148,7 @@ if run_pyAltSim:
     nWeeks = math.floor((d_sess[-1] - d_sess[0]).days/7)
     d_weeks = []
     for w in range(0,nWeeks+1):
-       d_weeks.append(d_sess[0] + dt.timedelta(weeks=w))
+        d_weeks.append(d_sess[0] + dt.timedelta(weeks=w))
 
     d_sess.extend(d_weeks[1:])
     d_sess.sort()
@@ -146,11 +156,10 @@ if run_pyAltSim:
     pyaltsim_in = []
     j = 0
     for i in range(0, len(d_sess)-1):
-    # for i in range(0, 1):
         d_first = d_sess[i] + dt.timedelta(seconds=1) # avoid out of bound
         d_last = d_sess[i+1] - dt.timedelta(seconds=1) # avoid overlaps
         if ((d_sess[i] >= d_weeks[j+1])): # Change directory if new week
-           j+=1
+            j+=1
         monyea = d_weeks[j].strftime('%y%m%d')
         # indir_in = f'SIM_{monyea[:2]}/{XovOpt.get("expopt")}/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/'
         indir_in = f'SIM_{monyea}/{XovOpt.get("expopt")}/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/'
@@ -168,26 +177,26 @@ if run_pyAltSim:
     else:
         for arg in pyaltsim_in:
             # PyAltSim.main([XovOpt.get("amplopt"), XovOpt.get("resopt"), indir_in, f'{monyea}', XovOpt.to_dict()])
-            PyAltSim.main(arg)    
+            PyAltSim.main(arg)
 
-if run_pyGeoLoc or run_pyXover:
+if run_pyGeoLoc or run_pyXover or run_accuXover:
     XovOpt.set("sim_altdata", False)
     XovOpt.set("partials", True)
     XovOpt.set("parallel", False)
     XovOpt.set("SpInterp", 0)
     XovOpt.set("expopt", estid)
     d_sess = build_sessiontable_man(MANFIL,24,26)
-   
+
     # Divide by weeks
     nWeeks = math.floor((d_sess[-1] - d_sess[0]).days/7)
     d_weeks = []
     for w in range(0,nWeeks+1):
-       d_weeks.append(d_sess[0] + dt.timedelta(weeks=w))
+        d_weeks.append(d_sess[0] + dt.timedelta(weeks=w))
 
     d_sess.extend(d_weeks[1:])
     d_sess.sort()
 
-    # d_weeks = d_weeks[:6]
+    d_weeks = d_weeks[:-3]
     print(d_weeks)
 
 
@@ -254,33 +263,36 @@ if run_pyXover:
     if grid: # WD: change MLASIMRDR?
         executor.update_parameters(slurm_name="pyxover",
                                    slurm_mem='12G',
-                                   slurm_cpus_per_task=2,
+                                   slurm_cpus_per_task=1,
                                    slurm_time=60*2, # minutes
-                                   slurm_array_parallelism=20)
+                                   slurm_array_parallelism=30)
         pyxover_in = []
-        for par in range(0,len(misycmb)-1):
+        for par in range(0,1):
+        # for par in range(0,len(misycmb)):
             indir_in =  f'{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/gtrack_'
             outdir_in = f'{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/'
             input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/xov_' + str(misycmb[par][0]) + '_' + str(misycmb[par][1]) + '.pkl'
             if os.path.exists(input_xov_path):
-               print("input xov file already exists in", input_xov_path)
+                print("input xov file already exists in", input_xov_path)
             else:
-                pyxover_in.append([f'{par}',indir_in, outdir_in, 'MLASIMRDR', 0,XovOpt.to_dict()])
+                pyxover_in.append([f'{par}',indir_in, outdir_in, misycmb[par], 0,XovOpt.to_dict()])
         if(len(pyxover_in) == 1):
-           job = executor.submit(PyXover.main, pyxover_in[0]) # single job
-           print(job.result())
+            job = executor.submit(PyXover.main, pyxover_in[0]) # single job
+            print(job.result())
         else:
             jobs = executor.map_array(PyXover.main, pyxover_in)
             for job in jobs:
                 print(job.results())
     else:
         PyXover.main(['0', f'{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/gtrack_',
-           f'{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/', 'MLASIMRDR', 0,
-           XovOpt.to_dict()])
+                      f'{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/', 'MLASIMRDR', 0,
+                      XovOpt.to_dict()])
 
 
 # # lsqr solution step
 if run_accuXover:
+    XovOpt.set("expopt", estid)
+    # XovOpt.set("sol4_glo", [None])
     out = AccumXov.main(
-         [[f'{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/'], '', 0,
-          XovOpt.to_dict()])
+        [[f'{XovOpt.get("expopt")}_0/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/'], '', 0,
+         XovOpt.to_dict()])

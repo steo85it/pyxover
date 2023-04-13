@@ -184,7 +184,7 @@ def main(args_in):
     cmb_y_in = args_in[0]
     indir_in = args_in[1]
     outdir_in = args_in[2]
-    dum = args_in[3]
+    misycmb_par = args_in[3] # replaced in non CALA case
     iter_in = args_in[4]
     opts = args_in[5]
 
@@ -222,36 +222,34 @@ def main(args_in):
     # setup all combinations between years
     par = int(cmb_y_in)
 
-    if XovOpt.get("monthly_sets") and not XovOpt.get("weekly_sets"):
-        if XovOpt.get("instrument") == 'BELA':
-            misy = ['26'] #,'27']
-        else:
-            misy = ['11', '12', '13', '14', '15']
-
-        months = np.arange(1,13,1)
-        misy = [x+f'{y:02}' for x in misy for y in months]
-        if XovOpt.get("instrument") != 'BELA':
-            misy = ['0801','0810']+misy[2:-8]
-    elif XovOpt.get("weekly_sets"):
-        if XovOpt.get("instrument") == 'CALA':
-            misy = ['310501','310508','310515','310522','310529','310605','310612']
-    else:
-        if XovOpt.get("instrument") == 'BELA':
-            misy = ['26','27'] #+str("{:02}".format(i)) for i in range(1,13,1)]
-        elif XovOpt.get("instrument") == 'CALA':
-            misy = ['31'] #+str("{:02}".format(i)) for i in range(1,13,1)]
-        elif XovOpt.get("instrument") == 'LOLA':
-            misy = ['09', '10']
-        else:
-            misy = ['08','11', '12', '13', '14', '15']
-
-    misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
-    print(f"combs:{misycmb}")
-    misycmb_par = misycmb[par]
-    if True: #XovOpt.get("debug"):
-        print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
-    print(par, misycmb[par]," has been selected!")
-    # exit()
+    if not XovOpt.get("instrument") == 'CALA':
+       if XovOpt.get("monthly_sets") and not XovOpt.get("weekly_sets"):
+           if XovOpt.get("instrument") == 'BELA':
+               misy = ['26'] #,'27']
+           else:
+               misy = ['11', '12', '13', '14', '15']
+           months = np.arange(1,13,1)
+           misy = [x+f'{y:02}' for x in misy for y in months]
+           if XovOpt.get("instrument") != 'BELA':
+               misy = ['0801','0810']+misy[2:-8]
+       else:
+           if XovOpt.get("instrument") == 'BELA':
+               misy = ['26','27'] #+str("{:02}".format(i)) for i in range(1,13,1)]
+           elif XovOpt.get("instrument") == 'LOLA':
+               misy = ['09', '10']
+           else:
+               misy = ['08','11', '12', '13', '14', '15']
+       misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
+       print(f"combs:{misycmb}")
+       misycmb_par = misycmb[par]
+       if True: #XovOpt.get("debug"):
+          print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
+       print(par, misycmb[par]," has been selected!")
+    
+    # if XovOpt.get("instrument") == 'CALA':
+    #   misy = ['310501','310508','310515','310522','310529','310605','310612','310619','310626','310703','310710','310717','310724','310731','310807']
+    #   misy = ['310501','310508','310515','310522','310529','310605','310612','310619','310626','310703','310710','310717']
+    
     ###########################
     startInit = time.time()
 

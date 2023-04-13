@@ -583,7 +583,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # print(sec_j2000_first,sec_j2000_last)
         # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
         # epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
-        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.05) # WD: create option?
+        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,1) # WD: create option?
 
     # pass to illumNG
     if not XovOpt.get("instrument") in ['BELA','CALA']:

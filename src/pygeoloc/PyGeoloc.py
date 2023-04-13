@@ -256,6 +256,7 @@ def main(args):
             track = gtrack(XovOpt.to_dict())
             # try:
             # Read and fill
+            # decide hemisphere in prepro (read_fill)
             track.prepro(infil,t_start=t_start, t_end=t_end)
             # except:
             #    print('Issue in preprocessing for '+track_id)
