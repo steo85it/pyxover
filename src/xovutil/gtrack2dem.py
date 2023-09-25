@@ -14,7 +14,7 @@ import xarray as xr
 # from examples.MLA.options import XovOpt.get("auxdir"), XovOpt.get("tmpdir"), XovOpt.get("outdir")
 from config import XovOpt
 
-from src.xovutil.plot_hillshade import plot_multiple
+from xovutil.plot_hillshade import plot_multiple
 
 
 def import_dem(filein):
@@ -61,7 +61,7 @@ def plot_hillshade(data_grd):
     from matplotlib.cbook import get_sample_data
     from matplotlib.colors import LightSource
 
-    from src.xovutil.gtrack2dem import import_dem
+    from xovutil.gtrack2dem import import_dem
     # from examples.MLA.options import XovOpt.get("tmpdir")
     from config import XovOpt
 

@@ -9,6 +9,7 @@
 import glob
 import os
 import time
+from tqdm import tqdm
 
 import pandas as pd
 import numpy as np
@@ -48,16 +49,24 @@ if __name__ == '__main__':
     files = glob.glob(f'{XovOpt.get("inpdir")}{args}/boresight_position_*.?')
 
     li = {}
-    for f in files:
-        print("Processing", f)
+    for f in tqdm(files): #, desc=files):
+        #print("Processing", f)
         tmp = np.loadtxt(f)
         li[f.split('.')[-1]] = tmp
     #print(li)
     df_xin = pd.DataFrame(li['x'])
     df_yin = pd.DataFrame(li['y'])
     df_zin = pd.DataFrame(li['z'])
-    
-    print(len(df_xin))
+
+    #print(df_xin.values.shape)
+    #print(np.transpose(astr.cart2sph(np.vstack([df_xin.values.ravel(), df_yin.values.ravel(), df_zin.values.ravel()]).T)).shape)
+    dfrll = pd.DataFrame(np.transpose(astr.cart2sph(np.vstack([df_xin.values.ravel(), df_yin.values.ravel(), df_zin.values.ravel()]).T)),columns=['geoc_r','geoc_lat','geoc_lon'])
+    #print(dfrll.dropna())
+    #dfrll.geoc_r.plot()
+    #plt.show()
+    #exit()
+   
+    #print(df_xin.shape)
     len_table = len(df_xin)
 
     print("Processing "+args)
@@ -98,8 +107,8 @@ if __name__ == '__main__':
 
     for idx,track in enumerate(tracks):
         df = track.ladata_df[['ET_TX','geoc_long','geoc_lat','altitude','seqid']]
-        df[['seqid']] = df[['seqid']]+1
-        df.loc[:,'altitude'] = 1737.4e3 + df.loc[:,'altitude'].values
+        df.loc[:, 'seqid'] = df.loc[:, 'seqid'].values + 1
+        df.loc[:, 'altitude'] = 1737.4e3 + df.loc[:, 'altitude'].values
         dfxyz = pd.DataFrame(np.transpose(astr.sph2cart(df['altitude'].values, df['geoc_lat'].values, df['geoc_long'].values)),columns=['geoc_x','geoc_y','geoc_z'])
         df = pd.concat([df,dfxyz],axis=1)
 
@@ -149,6 +158,11 @@ if __name__ == '__main__':
     if not os.path.exists(outdir_):
         os.makedirs(outdir_, exist_ok=True)
 
+    # copy file with epochs
+    if not os.path.islink(outdir_+'/out.time'):
+        os.symlink(f'{XovOpt.get("inpdir")}{args}/boresight_time_slewcheck.xyzd', outdir_+'/out.time')
+
+    # save new xyz and lonlatelv
     dfx.to_csv(outdir_+'/out.x', header=None, index=None, sep='\t',na_rep='Nan')
     dfy.to_csv(outdir_+'/out.y', header=None, index=None, sep='\t',na_rep='Nan')
     dfz.to_csv(outdir_+'/out.z', header=None, index=None, sep='\t',na_rep='Nan')
@@ -160,19 +174,47 @@ if __name__ == '__main__':
 
     # df_xin.columns=df_yin.columns=df_zin.columns=bores
 
-    print((dfy))
-    print((df_yin*1.e3))
-    print((dfy - df_yin*1.e3).dropna())
+    #print((dfx - df_xin*1.e3).dropna())
+    #print((dfy - df_yin*1.e3).dropna())
+    #print((dfz - df_zin*1.e3).dropna())
 
+    (dfx - df_xin*1.e3).to_csv(outdir_+'/out.dx', header=None, index=None, sep='\t',na_rep='Nan')
+    (dfy - df_yin*1.e3).to_csv(outdir_+'/out.dy', header=None, index=None, sep='\t',na_rep='Nan')
+    (dfz - df_zin*1.e3).to_csv(outdir_+'/out.dz', header=None, index=None, sep='\t',na_rep='Nan')
+    
     fig, ax = plt.subplots()
     (dfx - df_xin*1.e3).mean(axis=1).plot(ax=ax, label='x')
     (dfy - df_yin*1.e3).mean(axis=1).plot(ax=ax, label='y')
     (dfz - df_zin*1.e3).mean(axis=1).plot(ax=ax, label='z')
     ax.legend()
-    ax.set_xlabel('')
+    ax.set_xlabel('epoch')
     ax.set_ylabel('diff_meters')
     plt.savefig(outdir_+'/illumNG_vs_altsim_'+args+'.png')
 
+    df_rin = dfrll.geoc_r.values.reshape(df_xin.shape)
+    df_latin = np.rad2deg(dfrll.geoc_lat.values.reshape(df_xin.shape))
+    df_lonin = np.rad2deg(dfrll.geoc_lon.values.reshape(df_xin.shape))
+
+    #print((dfelv - pd.DataFrame(df_rin*1.e3)).dropna())
+    #print((dflat - pd.DataFrame(df_latin)).dropna())
+    #print((dflon - pd.DataFrame(df_lonin)).dropna())
+
+    (dflat - pd.DataFrame(df_latin)).to_csv(outdir_+'/out.dlat', header=None, index=None, sep='\t',na_rep='Nan')
+    (dflon - pd.DataFrame(df_lonin)).to_csv(outdir_+'/out.dlon', header=None, index=None, sep='\t',na_rep='Nan')
+    (dfelv - pd.DataFrame(df_rin*1.e3)).to_csv(outdir_+'/out.dr', header=None, index=None, sep='\t',na_rep='Nan')
+    
+    plt.clf()
+    fig, ax = plt.subplots()
+    (dfelv - pd.DataFrame(df_rin*1.e3)).mean(axis=1).plot(ax=ax, label='r')
+    ((dflat - pd.DataFrame(df_latin)).mean(axis=1)*1e4).plot(ax=ax, label='lat')
+    ((dflon - pd.DataFrame(df_lonin)).mean(axis=1)*1e4).plot(ax=ax, label='lon')
+    ax.legend()
+    ax.set_xlabel('epoch')
+    ax.set_ylabel('diff_geod (meters, deg*1e4)')
+    plt.savefig(outdir_+'/illumNG_vs_altsim_geod_'+args+'.png')
+
+    print(f"- Data series and plots saved to {outdir_}.")
+    
     # stop clock and print runtime
     # -----------------------------
     end = time.time()

@@ -32,10 +32,10 @@ import matplotlib.pyplot as plt
 # from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("parallel"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("new_illumNG"), XovOpt.get("apply_topo"), XovOpt.get("vecopts"), XovOpt.get("range_noise"), XovOpt.get("SpInterp"), XovOpt.get("spauxdir")
 from config import XovOpt
 
-from src.xovutil import astro_trans as astr, pickleIO
-from src.pygeoloc.ground_track import gtrack
-from src.geolocate_altimetry import get_sc_ssb, get_sc_pla
-from src.pyaltsim import perlin2d
+from xovutil import astro_trans as astr, pickleIO
+from pygeoloc.ground_track import gtrack
+from geolocate_altimetry import get_sc_ssb, get_sc_pla
+from pyaltsim import perlin2d
 
 ########################################
 # start clock
@@ -59,17 +59,20 @@ class sim_gtrack(gtrack):
         df_['TOF'] = df_['rng'] * 2. * 1.e3 / clight
         # preparing df for geoloc
         df_['seqid'] = df_.index
+
         df_ = df_.rename(columns={"epo_tx": "ET_TX"})
+        
         df_ = df_.reset_index(drop=True)
         # copy to self
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
 
         # retrieve spice data for geoloc
-        if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl') or XovOpt.get("SpInterp") == 2:
-            # create interp for track
-            self.interpolate()
-        else:
-            self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
+        if XovOpt.get("SpInterp") > 0:
+            if not os.path.exists(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl') or XovOpt.get("SpInterp") == 2:
+                # create interp for track
+                self.interpolate()
+            else:
+                self.SpObj = pickleIO.load(XovOpt.get("auxdir") + XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
 
         # actual processing
         self.lt_topo_corr(df=df_)
@@ -353,6 +356,8 @@ class sim_gtrack(gtrack):
                                           self.pertPar['dL'])
             tsipm = icrf2pbf(et_tx, upd_rotpar)
         scxyz_tx_pbf = np.vstack([np.dot(tsipm[i], scpos_tx_p[i]) for i in range(0, np.size(scpos_tx_p, 0))])
+        #print(scxyz_tx_pbf)
+        #exit()
         return scxyz_tx_pbf
 
 
@@ -381,17 +386,22 @@ class sim_gtrack(gtrack):
                                   'LON': 'geoc_long', 'LAT': 'geoc_lat', 'R': 'altitude',
                                   })
         df_ = df_.reset_index(drop=True)
-        if XovOpt.get("local"):
-            self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
-                                                  'UTC', 'TOF_ns_ET', 'chn', 'seqid']])[mlardr_cols]
-        else:
-            self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
-                                                  'UTC', 'TOF_ns_ET', 'chn', 'seqid']], sort=True)[mlardr_cols]
+
+        self.rdr_df = pd.concat([self.rdr_df,df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
+                                    'UTC', 'TOF_ns_ET', 'chn', 'seqid']]])[mlardr_cols]
+        #if XovOpt.get("local"):
+        #    self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
+        #                                          'UTC', 'TOF_ns_ET', 'chn', 'seqid']])[mlardr_cols]
+        #else:
+        #    self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
+        #                                          'UTC', 'TOF_ns_ET', 'chn', 'seqid']], sort=True)[mlardr_cols]
 
 
 ##############################################
-
+# also used for LOLA preprocessing (change name? not really using illumNG anymore)
 def prepro_ilmNG(illumNGf):
+    from tt2tdb import tt2tdb
+
     li = []
     for f in illumNGf:
         print("Processing", f)
@@ -405,6 +415,10 @@ def prepro_ilmNG(illumNGf):
 
     df_ = df_[df_.rng < 1600]
     df_ = df_.rename(columns={"xyzd": "epo_tx"})
+
+    # if LOLA, convert TDT epochs to ET/TDB
+    if XovOpt.get("instrument") == "LOLA":
+        df_["epo_tx"] = tt2tdb(df_.epo_tx.values)
     # print(df_.dtypes)
 
     df_['diff'] = df_.epo_tx.diff().fillna(0)
@@ -545,8 +559,9 @@ def main(arg):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
     if XovOpt.get("instrument") == 'LOLA':
         print(path_illumng)
-        print(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')
-        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(glob.glob(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')[0])
+        print(path_illumng+'_boresights_LOLA_ch*_*_laser2_fov_bs'+str(ampl_in)+'.inc')
+        print(glob.glob(path_illumng+'_boresights_LOLA_ch*_*_laser2_fov_bs'+str(ampl_in)+'.inc'))
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(glob.glob(path_illumng+'_boresights_LOLA_ch*_*_laser2_fov_bs'+str(ampl_in)+'.inc')[0])
     else:
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################

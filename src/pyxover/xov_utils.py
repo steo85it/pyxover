@@ -26,12 +26,12 @@ from statsmodels.tools.eval_measures import rmse
 from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
-from src.xovutil.project_coord import project_stereographic
+from xovutil.project_coord import project_stereographic
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 # @profile
-from src.pyxover.xov_setup import xov
+from pyxover.xov_setup import xov
 
 
 def get_tracks_rms(xovers_df, plot_xov_tseries=False):
@@ -232,8 +232,8 @@ def load_combine(xov_pth,vecopts,dataset='sim'):
 
 
 def clean_xov(xov, par_list=[]):
-    from src.accumxov.accum_utils import analyze_dist_vs_dR
-    # from src.accumxov.accum_opt import remove_max_dist
+    from accumxov.accum_utils import analyze_dist_vs_dR
+    # from accumxov.accum_opt import remove_max_dist
 
     # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
     # plus remove outliers with median method

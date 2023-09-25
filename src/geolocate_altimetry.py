@@ -28,19 +28,19 @@ from astropy import constants as const
 from astropy.constants import c as clight
 
 # mylib
-from src.xovutil import astro_trans as astr
-from src.xovutil.icrf2pbf import icrf2pbf
+from xovutil import astro_trans as astr
+from xovutil.icrf2pbf import icrf2pbf
 # from examples.MLA.options import XovOpt.get("SpInterp")
 from config import XovOpt
-from src.xovutil.orient_setup import orient_setup
-from src.tidal_deform import tidal_deform
+from xovutil.orient_setup import orient_setup
+from tidal_deform import tidal_deform
 
 
 # from collections import defaultdict
 
 ##############################################
 # #@profile
-from src.xovutil.units import rad2as, as2rad, sec2day
+from xovutil.units import rad2as, as2rad, sec2day
 
 
 def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):

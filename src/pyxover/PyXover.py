@@ -7,8 +7,8 @@
 #
 import warnings
 
-from src.accumxov.Amat import Amat
-from src.pyxover.xov_prc_iters import xov_prc_iters_run
+from accumxov.Amat import Amat
+from pyxover.xov_prc_iters import xov_prc_iters_run
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import os
@@ -33,8 +33,8 @@ import time
 # from mapcount import mapcount
 from config import XovOpt
 
-from src.pygeoloc.ground_track import gtrack
-from src.pyxover.xov_setup import xov
+from pygeoloc.ground_track import gtrack
+from pyxover.xov_setup import xov
 
 
 # from xovutil import lflatten

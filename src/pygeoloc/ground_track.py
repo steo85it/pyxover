@@ -17,17 +17,17 @@ import numpy as np
 import pandas as pd
 import spiceypy as spice
 
-from src.xovutil import astro_trans as astr, pickleIO
-from src.geolocate_altimetry import geoloc
-from src.xovutil.interp_obj import interp_obj
+from xovutil import astro_trans as astr, pickleIO
+from geolocate_altimetry import geoloc
+from xovutil.interp_obj import interp_obj
 # from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("partials"), XovOpt.get("parallel"), XovOpt.get("SpInterp"), XovOpt.get("auxdir"), XovOpt.get("parOrb"), XovOpt.get("parGlo"), pert_cloop, XovOpt.get("pert_tracks"), XovOptgetsim_altdata, \
 #     XovOpt.get("local"), XovOpt.get("pert_cloop_orb"), XovOpt.get("OrbRep"), XovOpt.get("spauxdir")
 from config import XovOpt
 
 # from mapcount import mapcount
-from src.xovutil.project_coord import project_stereographic
-from src.tidal_deform import tidepart_h2
-from src.xovutil.iterables import mergsum
+from xovutil.project_coord import project_stereographic
+from tidal_deform import tidepart_h2
+from xovutil.iterables import mergsum
 
 
 class gtrack:

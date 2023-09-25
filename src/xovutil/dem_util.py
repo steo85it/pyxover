@@ -15,7 +15,7 @@ import numpy as np
 import xarray as xr
 from scipy.interpolate import RectBivariateSpline
 
-from src.xovutil import pickleIO
+from xovutil import pickleIO
 # from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("debug")
 from config import XovOpt
 

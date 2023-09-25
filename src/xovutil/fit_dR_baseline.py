@@ -11,12 +11,12 @@ import numpy as np
 from scipy.stats import stats
 import matplotlib.pyplot as plt
 
-from src.accumxov import accum_opt, AccumXov as xovacc, accum_utils
-from src.accumxov.Amat import Amat
+from accumxov import accum_opt, AccumXov as xovacc, accum_utils
+from accumxov.Amat import Amat
 # from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("outdir")
 from config import XovOpt
 
-from src.xovutil.stat import rms
+from xovutil.stat import rms
 
 
 def fit_sols(sol,exp_list):

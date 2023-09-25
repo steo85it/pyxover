@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 
-from src.pygeoloc.ground_track import gtrack
+from pygeoloc.ground_track import gtrack
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("outdir")
 from config import XovOpt
 import matplotlib.pyplot as plt

@@ -31,7 +31,7 @@ import time
 
 # mylib
 # from mapcount import mapcount
-from src.pygeoloc.ground_track import gtrack
+from pygeoloc.ground_track import gtrack
 # from examples.MLA.options import XovOpt.get("parallel"), XovOpt.get("SpInterp"), XovOpt.get("new_gtrack"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("vecopts"), XovOpt.get("debug"), XovOpt.get("OrbRep"), XovOpt.get("rawdir")
 from config import XovOpt
 

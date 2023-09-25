@@ -17,22 +17,22 @@ import numpy as np
 from scipy.constants import c as clight
 from scipy.interpolate import RectBivariateSpline
 
-from src.pyaltsim.PyAltSim import sim_gtrack
-from src.xovutil.dem_util import get_demz_grd, get_demz_tiff
-from src.geolocate_altimetry import geoloc
-from src.pygeoloc.ground_track import gtrack
+from pyaltsim.PyAltSim import sim_gtrack
+from xovutil.dem_util import get_demz_grd, get_demz_tiff
+from geolocate_altimetry import geoloc
+from pygeoloc.ground_track import gtrack
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("auxdir"), XovOpt.get("SpInterp"), XovOpt.get("tmpdir"), XovOpt.get("local"), XovOpt.get("debug"), pert_cloop, XovOpt.get("spauxdir")
 from config import XovOpt
 
-from src.xovutil import astro_trans as astr, pickleIO
+from xovutil import astro_trans as astr, pickleIO
 import spiceypy as spice
 
 import xarray as xr
 import matplotlib.pyplot as plt
 from scipy import stats, signal
 
-from src.tidal_deform import set_const, tidepart_h2
-from src.xovutil.iterables import mergsum
+from tidal_deform import set_const, tidepart_h2
+from xovutil.iterables import mergsum
 
 numer_sol = 1
 pergram = 0
