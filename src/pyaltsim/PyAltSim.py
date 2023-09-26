@@ -6,6 +6,7 @@
 # Created: 16-Oct-2018
 #
 import warnings
+import logging
 
 from xovutil.dem_util import get_demz_at, import_dem
 from xovutil.icrf2pbf import icrf2pbf
@@ -256,7 +257,7 @@ class sim_gtrack(gtrack):
                     print(dem)
                     self.dem = import_dem(filein=dem,outdir=f"{self.slewdir}/")
                 else:
-                    print("DEM already read")
+                    logging.info("DEM already read")
                     pass
             else:
                 print("Using grdtrack")
@@ -318,7 +319,7 @@ class sim_gtrack(gtrack):
                 universal_newlines=True, cwd='tmp')
                 r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
             elif XovOpt.get("instrument") != 'BELA':
-                print("coming here")
+                #print("coming here")
                 lontmp[lontmp < 0] += 360.
                 r_dem = get_demz_at(self.dem, lattmp, lontmp)
 
@@ -505,7 +506,7 @@ def sim_track(args):
     print("track.slewdir",track.slewdir)
     print(outdir_)
     
-    if os.path.isfile(outdir_ + 'MLASIMRDR' + track.name + '.TAB') == False:
+    if True or os.path.isfile(outdir_ + 'MLASIMRDR' + track.name + '.TAB') == False:
         track.setup(df[df['orbID'] == i])
         track.rdr_df.to_csv(outdir_ + 'MLASIMRDR' + track.name + '.TAB', index=False, sep=',', na_rep='NaN')
         print('Simulated observations written to', outdir_ + 'MLASIMRDR' + track.name + '.TAB')

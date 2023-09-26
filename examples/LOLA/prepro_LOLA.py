@@ -19,15 +19,13 @@ from config import XovOpt
 from setup_lola import setup_lola
 
 def prepro_LOLA(args, borefil, grdfil):
-
-
     
     #XovOpt.set("basedir","data/") #"/att/nobackup/sberton2/LOLA/PyXover/examples/LOLA/"
     #    XovOpt.set("outdir",f'{basedir}out/')
     #    XovOpt.set("auxdir",f'{basedir}aux/')
     #XovOpt.set("inpdir",'/att/nobackup/dmao1/LOLA/slew_check/')
     #XovOpt.check_consistency()    
-
+    
     setup_lola()
     
     print(XovOpt.get("inpdir"))
@@ -61,6 +59,13 @@ def prepro_LOLA(args, borefil, grdfil):
     else:
         outdir0_ = basedir+'slewcheck_'
 
+    # save run info
+    if not os.path.exists(basedir):
+        os.makedirs(basedir, exist_ok=True)
+    with open(f"{basedir}info_{args}_run.in","w") as f:
+        f.write(f'{args} {borefil} {grdfil}\n')
+
+    # prepare input files for pyaltsim
     for i,x in enumerate(rngs):
         outdir_ = outdir0_+str(i)
         if not os.path.exists(outdir_):
