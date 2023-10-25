@@ -39,20 +39,30 @@ from config import XovOpt
 def set_const(h2_sol):
     # from examples.MLA.options import pert_cloop
     # from config import XovOpt
+    
+    if XovOpt.get('body') == 'MERCURY':
+       
+       h2 = 1.e-6 # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
+       l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
+       # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
+       tau = 0. #84480. # time lag in seconds, corresponding to 4 deg, G. Steinbrugge, 2018
 
-    h2 = 1.e-6 # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
-    l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
-    # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
-    tau = 0. #84480. # time lag in seconds, corresponding to 4 deg, G. Steinbrugge, 2018
-
-    GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
-    Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
+       GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
+       Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
+    elif XovOpt.get('body') == 'CALLISTO':
+       h2 = 1.2 # Genova et al 2022
+       l2 = 0.
+       tau = 0.
+       GMsun = 0.1266865341960128e18   # Jupiter's GM value (m^3/s^2)
+       Gm = 0.7179292e13  # Callisto's GM value (m^3/s^2)
+    else:
+       print(f"*** tidal_deform: {XovOpt.get('body')} not recognized.")
+       exit()
 
     # # check if h2 is perturbed
     if 'dh2' in XovOpt.get("pert_cloop")['glo'].keys():
         h2 += XovOpt.get("pert_cloop")['glo']['dh2']
     h2 += h2_sol
-    #print('h2tot',h2)
 
     return h2, l2, tau, GMsun, Gm
 
@@ -124,11 +134,6 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     # Vsun = (GMsun/(dSUN)) * np.square(plarad/dSUN) * 0.5*(3*np.square(coszSUN)-1);
     # apply to get vertical displacement of surface due to tides
     urtot = h2 * Vsun / gSurf
-    # print(Psun)
-    # print(Vsun)
-    # print(gSurf)
-    # print(h2)
-    # exit()
     ##################################################
     if XovOpt.get("debug") and XovOpt.get("local"):
         import matplotlib.pyplot as plt
@@ -257,9 +262,6 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     dV = (Vtot - Vtot0) / (np.deg2rad(dCO))
     # apply to get latitude displacement at surface
     thtot = l2 * dV / gSurf
-
-    # print(urtot,lotot,thtot)
-    # exit()
 
     return urtot, lotot, thtot
 

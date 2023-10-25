@@ -222,7 +222,7 @@ class sim_gtrack(gtrack):
             # # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
             gmt = False
 
-            if XovOpt.get("instrument") == 'BELA':
+            if XovOpt.get("instrument") in ['BELA','CALA']:
                 if XovOpt.get("local"):
                     geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
                                'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
@@ -358,13 +358,14 @@ class sim_gtrack(gtrack):
         et_tx = df.loc[:, 'ET_TX'].values
         sc_pos, sc_vel = get_sc_ssb(et_tx, self.SpObj, self.pertPar, self.vecopts)
         scpos_tx_p, _ = get_sc_pla(et_tx, sc_pos, sc_vel, self.SpObj, self.vecopts)
-        if XovOpt.get('body') == 'MOON':
-            pxform_array = np.frompyfunc(spice.pxform, 3, 1)
-            tsipm = pxform_array(XovOpt.get("vecopts")['INERTIALFRAME'],XovOpt.get("vecopts")['PLANETFRAME'],et_tx) 
-        else:
+        if XovOpt.get('body') in ["MERCURY","CALLISTO"]:
             rotpar, upd_rotpar = orient_setup(self.pertPar['dRA'], self.pertPar['dDEC'], self.pertPar['dPM'],
                                           self.pertPar['dL'])
             tsipm = icrf2pbf(et_tx, upd_rotpar)
+        else:
+            pxform_array = np.frompyfunc(spice.pxform, 3, 1)
+            tsipm = pxform_array(XovOpt.get("vecopts")['INERTIALFRAME'],XovOpt.get("vecopts")['PLANETFRAME'],et_tx) 
+        
         scxyz_tx_pbf = np.vstack([np.dot(tsipm[i], scpos_tx_p[i]) for i in range(0, np.size(scpos_tx_p, 0))])
         return scxyz_tx_pbf
 
@@ -583,7 +584,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # print(sec_j2000_first,sec_j2000_last)
         # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
         # epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
-        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,1) # WD: create option?
+        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
 
     # pass to illumNG
     if not XovOpt.get("instrument") in ['BELA','CALA']:
@@ -688,7 +689,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         os.makedirs(outdir_, exist_ok=True)
 
     # loop over all gtracks
-    # initializze objects
+    # initialize objects
     print('orbs = ', list(df.groupby('orbID').groups.keys()))
     args = ((sim_gtrack(XovOpt.to_dict(), i), df, i, outdir_) for i in list(df.groupby('orbID').groups.keys()))
 

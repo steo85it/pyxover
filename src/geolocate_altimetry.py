@@ -182,17 +182,14 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
         offndr = 0. # compatibility, not used
 
     # compute inertial to body-fixed frame rotation
-    if XovOpt.get("body") == "MOON":
-        # (using np.frompyfunc to vectorize pxform)
-        tsipm = pxform_array(vecopts['INERTIALFRAME'], vecopts['PLANETFRAME'], et_bc)
-    else: # TODO only works for Mercury!!!!!
-        if True: # need to use rot from spice to compare to RDR
-            tsipm = pxform_array(vecopts['INERTIALFRAME'], vecopts['PLANETFRAME'], et_bc)
-        else:
-            # (using custom implementation)
-            # print("tmp_pertPar['dL']", tmp_pertPar['dL'])
-            rotpar, upd_rotpar = orient_setup(tmp_pertPar['dRA'], tmp_pertPar['dDEC'], tmp_pertPar['dPM'], tmp_pertPar['dL'])
-            tsipm = icrf2pbf(et_bc, upd_rotpar)
+    if XovOpt.get('body') in ["MERCURY","CALLISTO"]:
+          # (using custom implementation)
+          # print("tmp_pertPar['dL']", tmp_pertPar['dL'])
+          rotpar, upd_rotpar = orient_setup(tmp_pertPar['dRA'], tmp_pertPar['dDEC'], tmp_pertPar['dPM'], tmp_pertPar['dL'])
+          tsipm = icrf2pbf(et_bc, upd_rotpar)
+    else:
+       # (using np.frompyfunc to vectorize pxform)
+       tsipm = pxform_array(vecopts['INERTIALFRAME'], vecopts['PLANETFRAME'], et_bc)
 
     # print(tsipm.ravel)
     # np.stack(tsipm,1)
@@ -204,25 +201,23 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     vmbf = [np.dot(tsipm[i], vbore[i]) for i in range(0, np.size(vbore, 0))]
     # print(np.array(vmbf).reshape(-1,3))
 
-    # NO TIDAL DEFORMATION for now
-    dr = 0.
     # # apply tidal deformation (deformation in meters in radial, lon, lat)
     # # print("apply tidal corr geoloc_alt")
-    # dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar)
+    dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar)
     # #
     # # # convert xyz to latlon, then apply correction
     rtmp, lattmp, lontmp = astr.cart2sph(np.array(vmbf).reshape(-1, 3))
     # # # print(rtmp, lattmp, lontmp)
-    # rtmp += dr
-    # lattmp += dlat / (vecopts['PLANETRADIUS'] * 1e3)
-    # lontmp += dlon / (vecopts['PLANETRADIUS'] * 1e3) / np.cos(lattmp)
+    rtmp += dr
+    lattmp += dlat / (vecopts['PLANETRADIUS'] * 1e3)
+    lontmp += dlon / (vecopts['PLANETRADIUS'] * 1e3) / np.cos(lattmp)
 
     # print(dr, dlat / (vecopts['PLANETRADIUS']*1e3) , dlon / (vecopts['PLANETRADIUS']*1e3) / np.cos(lattmp) )
     # exit()
 
     if (vecopts['OUTPUTTYPE'] == 0):
         vmbf = astr.sph2cart(rtmp, lattmp, lontmp)
-        return np.array(vmbf).reshape(-1, 3), et_bc, dr, offndr #2 * oneway / clight;
+        return np.array(vmbf).reshape(-1, 3), et_bc, dr, offndr # 2 * oneway / clight;
     elif (vecopts['OUTPUTTYPE'] == 1):
         return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr, offndr #2 * oneway / clight
 
