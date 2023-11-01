@@ -66,18 +66,12 @@ def import_dem(filein,outdir=''):
 def get_demz_at(dem_xarr, lattmp, lontmp):
     # lontmp += 180.
     lontmp[lontmp < 0] += 360.
-    #print("eval")
-    #print(np.sort(lattmp))
-    #print(np.sort(lontmp))
-    #print(np.sort(np.deg2rad(lontmp)))
-    # exit()
     
     return dem_xarr.ev(np.deg2rad(lattmp)+np.pi/2., np.deg2rad(lontmp))
 
 
 def get_demz_diff_at(dem_xarr, lattmp, lontmp, axis='lon'):
     lontmp[lontmp < 0] += 360.
-    # print(dem_xarr)
     diff_dem_xarr = dem_xarr.differentiate(axis)
 
     lat_ax = xr.DataArray(lattmp, dims='z')
@@ -106,7 +100,7 @@ def get_demz_tiff(filin,lon,lat):
         print(da)
         print("x,y len:", len(xi),len(yi))
 
-    da_interp = da.interp(x=xi,y=yi)
+    da_interp = da.interp(x=xi, y=yi, kwargs={"fill_value": None})
 
     return da_interp.band_data.data*1.e-3 # convert to km for compatibility with grd
 

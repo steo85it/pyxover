@@ -82,7 +82,7 @@ class sim_gtrack(gtrack):
         # add range noise
         if XovOpt.get("range_noise"):
             mean = 0.
-            std = 0.2
+            std = 0.5
             self.add_range_noise(df_,mean,std)
 
         self.setup_rdr()
@@ -132,8 +132,14 @@ class sim_gtrack(gtrack):
             lontmp, lattmp, rtmp = np.transpose(self.ladata_df[['LON', 'LAT', 'R']].values)
             r_bc = rtmp + XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
 
+            if np.isnan(np.sum(lattmp)):
+               print("lattmp is nan")
+            if np.isnan(np.sum(lontmp)):
+               print("lontmp is nan")
             # use lon and lat to get "real" elevation from map
             radius = self.get_topoelev(lattmp, lontmp)
+            if np.isnan(np.sum(radius)):
+               print("radius is nan")
 
             # use "real" elevation to get bounce point coordinates
             bcxyz_pbf = astr.sph2cart(radius, lattmp, lontmp)
@@ -259,8 +265,10 @@ class sim_gtrack(gtrack):
                                                                         lat=df.loc[mask_sp,'LAT'].values).T)
 
                 r_dem = df.r_dem.values
+                if np.isnan(np.sum(r_dem)):
+                   print("r_dem is nan")
 
-            elif not gmt:
+            elif not gmt and False:
 
                 if self.dem == None:
                     print(self.dem)
@@ -327,7 +335,7 @@ class sim_gtrack(gtrack):
                 ['grdtrack', gmt_in, '-G' + dem],
                 universal_newlines=True, cwd='tmp')
                 r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-            elif XovOpt.get("instrument") != 'BELA':
+            elif not (XovOpt.get("instrument") in ['BELA','CALA']):
                 print("## Using weird combination (not BELA).")
                 lontmp[lontmp < 0] += 360.
                 r_dem = get_demz_at(self.dem, lattmp, lontmp)
@@ -336,20 +344,21 @@ class sim_gtrack(gtrack):
                 # radius_xarr = dem_xarr.interp(lon=xr.DataArray(lontmp, dims='z'), lat= xr.DataArray(lattmp, dims='z')).z.values * 1.e3 #
 
             # Convert to meters (if DEM given in km)
-            r_dem *= 1.e3
-
-            # TODO replace with "small_scale_topo/texture_noise" option
-            if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
-                texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
-                # print("texture noise check",texture_noise,r_dem)
-            else:
-                texture_noise = 0.
-                
-            # update Rmerc with r_dem/text (meters)
-            radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
-            # print("radius etc",radius,r_dem,texture_noise)
+            r_dem *= 1.e3            
         else:
-            radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
+            r_dem = 0.
+            
+        # TODO replace with "small_scale_topo/texture_noise" option
+        if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
+           texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
+           # print("texture noise check",texture_noise,r_dem)
+        else:
+           texture_noise = 0.
+         
+        # update Rmerc with r_dem/text (meters)
+        radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
+        # print("radius etc",radius,r_dem,texture_noise)
+
 
         return radius
 
@@ -584,7 +593,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # print(sec_j2000_first,sec_j2000_last)
         # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
         # epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
-        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
+        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,1/30) # WD: create option?
 
     # pass to illumNG
     if not XovOpt.get("instrument") in ['BELA','CALA']:
@@ -647,7 +656,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # print(df)
 
     # TODO replace with "small_scale_topo" option
-    if XovOpt.get("apply_topo") and XovOpt.get("instrument") != "LOLA":
+    if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
         # read and interpolate DEM
         # # open netCDF file
         # nc_file = "/home/sberton2/Works/NASA/Mercury_tides/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD"
