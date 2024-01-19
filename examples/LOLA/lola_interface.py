@@ -9,7 +9,7 @@ import glob
 
 from accumxov import AccumXov
 from config import XovOpt
-from examples.LOLA.setup_lola import setup_lola
+from setup_lola import setup_lola
 from pyaltsim import PyAltSim
 from pyxover import PyXover
 
@@ -66,15 +66,15 @@ if __name__ == '__main__':
 
     dirnams = [f'{XovOpt.get("rawdir")}SIM_{subarg[:2]}/{exp}/{str(x[1])}res_{x[0]}amp/' for x in cmb]
 
-    args_pyaltsim = [(i, j, k, subarg) for ((i, j), k) in zip(cmb, dirnams)]
+    args_pyaltsim = [(i, j, k, subarg, XovOpt.to_dict()) for ((i, j), k) in zip(cmb, dirnams)]
 
     indirnams = ['SIM_' + subarg[:2] + f'/{exp}/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
     outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_'+ subarg[:2] for x in cmb]
-    args_pygeoloc = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
+    args_pygeoloc = [(subarg, k, l, 'MLASIMRDR',ext_iter, XovOpt.to_dict()) for (k, l) in zip(indirnams, outdirnams)]
 
     indirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_' for x in cmb]
     outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
-    args_pyxover = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
+    args_pyxover = [(subarg, k, l, 'MLASIMRDR',ext_iter, XovOpt.to_dict()) for (k, l) in zip(indirnams, outdirnams)]
 
     # load spice kernels
     if not XovOpt.get("local"):

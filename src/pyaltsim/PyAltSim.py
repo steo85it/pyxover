@@ -480,7 +480,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     dataset = dirnam_in
     data_pth += dataset
 
-    if XovOpt.get("SpInterp") in [0, 2]:
+    if (XovOpt.get("SpInterp") in [0, 2]) and (not XovOpt.get("instrument") == "LOLA"):
         # load kernels
         if not XovOpt.get("local"): # WD: Messenger related??
             spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',

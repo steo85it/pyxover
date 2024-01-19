@@ -5,7 +5,7 @@ import subprocess as s
 from config import XovOpt
 from prepro_LOLA import prepro_LOLA
 from pygeoloc import PyGeoloc
-from examples.LOLA.setup_lola import setup_lola
+from setup_lola import setup_lola
 
 # add to PYTHONPATH before running (should work with setup.py, but it doesn't...)
 # export PYTHONPATH=/att/nobackup/sberton2/LOLA/PyXover/src:/att/nobackup/sberton2/LOLA/PyXover:$PYTHONPATH
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     if XovOpt.get("local"):
         prepro_LOLA(str(strs[row, 0]), str(strs[row, 1]), str(strs[row, 2]))
     else:
-    #    launch_slurm(filnamout,phase=0)
+        #launch_slurm(filnamout,phase=0)
         print("ok prepro")
 
     # processing
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         f.write((' ').join(['python3 lola_interface.py 0', str(strs[row,0]), '1', '\n']))
     f.close()
     # TODO use the more advanced launch_slurm with local option
-    #launch_slurm(filnamout,phase=1)
+    launch_slurm(filnamout,phase=1)
 
     # postpro
     print("Post-processing started...")
