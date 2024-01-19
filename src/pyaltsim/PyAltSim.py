@@ -82,7 +82,7 @@ class sim_gtrack(gtrack):
         # add range noise
         if XovOpt.get("range_noise"):
             mean = 0.
-            std = 0.5
+            std = 15
             self.add_range_noise(df_,mean,std)
 
         self.setup_rdr()
@@ -97,7 +97,8 @@ class sim_gtrack(gtrack):
         """
         np.random.seed(int(self.name))
         tof_noise = (std * np.random.randn(len(df_)) + mean) / clight
-        df_.loc[:, 'TOF'] += tof_noise
+        df_.loc[:, 'TOF'] += tof_noise # WD: not affected by lt_topo_corr?
+        self.ladata_df.loc[:, 'TOF'] += tof_noise
         if XovOpt.get("debug"):
             plt.plot(df_.loc[:, 'ET_TX'], df_.TOF, 'bo', df_.loc[:, 'ET_TX'], df_.TOF - tof_noise, 'k')
             plt.savefig('tmp/noise.png')
@@ -484,6 +485,9 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
                           f'{XovOpt.get("auxdir")}mymeta_pgda'])
         else:
             spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
+        # load additional kernels
+        if XovOpt.get("spice_spk"):
+            spice.furnsh(XovOpt.get("spice_spk"))
 
     if XovOpt.get("instrument") == "LOLA":
         path_illumng = f'{XovOpt.get("auxdir")}{epos_in}/slewcheck_{ampl_in}/'
@@ -592,8 +596,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         sec_j2000_last = (d_last - dj2000).total_seconds()
         # print(sec_j2000_first,sec_j2000_last)
         # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
-        # epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option?
-        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,1/30) # WD: create option?
+        epo_tx = np.arange(sec_j2000_first,sec_j2000_last,.1) # WD: create option
+        # epo_tx = np.arange(sec_j2000_first,sec_j2000_last,1/30) # WD: create option
 
     # pass to illumNG
     if not XovOpt.get("instrument") in ['BELA','CALA']:
@@ -663,7 +667,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # sim_gtrack.dem_xr = xr.open_dataset(nc_file)
 
         # prepare surface texture "stamp" and assign the interpolated function as class attribute
-	# persistence = 0.65 to fit power law of Steinbrugge 2018 over scales 50m (spot-size) to 200m (spots distance)
+	     # persistence = 0.65 to fit power law of Steinbrugge 2018 over scales 50m (spot-size) to 200m (spots distance)
         np.random.seed(62)
         shape_text = 1024
         res_text = 2 ** res_in

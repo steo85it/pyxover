@@ -140,9 +140,10 @@ def main(args):
                           f'{XovOpt.get("auxdir")}mymeta_pgda'])
         else:
             spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
-        # or, add custom kernels
         # load additional kernels
-        # spice.furnsh(['XXX.bsp'])
+        print(XovOpt.get("spice_spk"))
+        if XovOpt.get("spice_spk"):
+            spice.furnsh(XovOpt.get("spice_spk"))# or, add custom kernels
 
     # set ncores
     ncores = mp.cpu_count() - 1  # 8
