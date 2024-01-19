@@ -39,7 +39,7 @@ def icrf2pbf(ET, rotpar):
 
     ## time
     d = ET / 86400.
-    T = d / 36525.
+    T = d / 36525. # sec per Julian century
     d2013 = d - 4748.5
 
     # Nutation and Precesion angles
