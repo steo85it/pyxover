@@ -22,13 +22,8 @@ def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
         print("Fine xov", outpath," already exists. Stop!")
         return
 
-    # create useful dirs
-    if not os.path.exists(XovOpt.get("outdir") + outdir_in + 'xov/'):
-        os.mkdir(XovOpt.get("outdir") + outdir_in + 'xov/')
-    if not os.path.exists(XovOpt.get("outdir") + outdir_in + 'xov/tmp/'):
-        os.mkdir(XovOpt.get("outdir") + outdir_in + 'xov/tmp/')
-    if not os.path.exists(XovOpt.get("outdir") + outdir_in + 'xov/tmp/proj'):
-        os.mkdir(XovOpt.get("outdir") + outdir_in + 'xov/tmp/proj')
+    # create useful dirs recursively
+    os.makedirs(XovOpt.get("outdir") + outdir_in + 'xov/tmp/proj', exist_ok=True)
 
     if xov_iter==0:
         msrm_smpl = 4 # same as used for rough_xovs in PyXover (should be automatic)
