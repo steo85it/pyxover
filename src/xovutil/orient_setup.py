@@ -14,6 +14,8 @@ import numpy as np
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("debug")
 from config import XovOpt
 
+import spiceypy as spice
+
 from xovutil.units import as2deg
 
 AG = False # True
@@ -54,9 +56,9 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
         #    PM0 = np.array([318.2245, 6.1385025, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
     elif XovOpt.get('body') == 'CALLISTO':
         # IAU
-        POLE_RA0  = np.array([ 268.72,  -0.009, 0.])
-        POLE_DEC0 = np.array([  64.83,   0.003, 0.])
-        PM0 = np.array([259.51, 21.5710715, 0.])
+        nc, POLE_RA0 = spice.bodvrd(XovOpt.get('body'), 'POLE_RA', 3)
+        nc, POLE_DEC0 = spice.bodvrd(XovOpt.get('body'), 'POLE_DEC', 3)
+        nc, PM0 = spice.bodvrd(XovOpt.get('body'), 'PM', 3)
     else:
        print(f"*** orient_setup: {XovOpt.get('body')} not recognized.")
        exit()
@@ -83,29 +85,18 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
                  #                                [153.955429, 20.461675]])
                  }
     elif XovOpt.get('body') == 'CALLISTO':
+       nc, NUT_PREC_RA0     = spice.bodvrd(XovOpt.get('body'), 'NUT_PREC_RA', 16)
+       nc, NUT_PREC_DEC0    = spice.bodvrd(XovOpt.get('body'), 'NUT_PREC_DEC', 16)
+       nc, NUT_PREC_PM0     = spice.bodvrd(XovOpt.get('body'), 'NUT_PREC_PM', 16)
+       nc, NUT_PREC_ANGLES0 = spice.bodvrd('5', 'NUT_PREC_ANGLES', 2*16)
+       # Synthetic librations
+       NUT_PREC_ANGLES0[-2] = 96.968560
+       NUT_PREC_ANGLES0[-1] = 3729658.8916926
        rotpar = {'ORIENT0': '',
-                 'NUT_PREC_RA0'     : np.transpose([ 0., 0., 0., 0., -0.068, 0.590, 0.,  0.010,
-                                                     0., 0., 0., 0.,     0.,    0., 0.,      0.]),
-                 'NUT_PREC_DEC0'    : np.transpose([ 0., 0., 0., 0., -0.029,  0.254, 0., -0.004,
-                                                     0., 0., 0., 0.,     0.,    0., 0.,      0.]),
-                 'NUT_PREC_PM0'     : np.transpose([ 0., 0., 0., 0.,  0.061, -0.533, 0., -0.009,
-                                                     0., 0., 0., 0.,     0.,    0., 0.,      0.]),
-                 'NUT_PREC_ANGLES0' : np.vstack([[73.32     , 91472.9  ],
-                                                 [24.62     , 45137.2  ],
-                                                 [283.90    , 4850.7   ],
-                                                 [355.80    , 1191.3   ],
-                                                 [119.90    , 262.1    ],
-                                                 [229.80    , 64.3     ],
-                                                 [352.25    , 2382.6   ],
-                                                 [113.35    , 6070.0   ],
-                                                 [146.64    , 182945.8 ],
-                                                 [49.24     , 90274.4  ],
-                                                 [99.360714 , 4850.4046],
-                                                 [175.895369, 1191.9605],
-                                                 [300.323162, 262.5475 ],
-                                                 [114.012305, 6070.2476],
-                                                 [49.511251 , 64.3000  ],
-                                                 [96.968560 , 3729658.8916926]])
+                 'NUT_PREC_RA0'     : NUT_PREC_RA0,
+                 'NUT_PREC_DEC0'    : NUT_PREC_DEC0,
+                 'NUT_PREC_PM0'     : NUT_PREC_PM0,
+                 'NUT_PREC_ANGLES0' : np.vstack([[NUT_PREC_ANGLES0[i], NUT_PREC_ANGLES0[i+1]] for i in range(0,len(NUT_PREC_ANGLES0),2)])
        }
     else:
        print(f"*** orient_setup: {XovOpt.get('body')} not recognized.")

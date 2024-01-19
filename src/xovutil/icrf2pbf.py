@@ -38,17 +38,16 @@ def icrf2pbf(ET, rotpar):
     W2 = p[2, 2]
 
     ## time
-    # TODO T = ET / (86400. * 365.25 * 100) # 365.25 days per Julian year
-    T = ET / (86400. * 365. * 100)  # sec per Julian century
     d = ET / 86400.
+    T = d / 36525.
     d2013 = d - 4748.5
 
     # Nutation and Precesion angles
-    nutpre = np.transpose([np.sin(np.deg2rad(a[:, 0] + a[:, 1] * t)) for t in T])
+    nutpre = np.transpose([np.deg2rad(a[:, 0] + a[:, 1] * t) for t in T])
 
     ## Pole position
-    RA  = RA0  + RA1  * T + RA2  * np.square(T) / 2 + np.dot(ra_np, nutpre)
-    DEC = DEC0 + DEC1 * T + DEC2 * np.square(T) / 2 + np.dot(dec_np, nutpre)
+    RA  = RA0  + RA1  * T + RA2  * np.square(T) / 2 + np.dot(ra_np, np.sin(nutpre))
+    DEC = DEC0 + DEC1 * T + DEC2 * np.square(T) / 2 + np.dot(dec_np, np.cos(nutpre))
 
     ## libration amplitude
     # rpd = pi / 180
@@ -58,7 +57,7 @@ def icrf2pbf(ET, rotpar):
     #     +w(3)*sin(rpd*(164.373257+12.277005*d)) ...
     #     +w(4)*sin(rpd*(339.164343+16.369340*d)) ...
     #     +w(5)*sin(rpd*(153.955429+20.461675*d));
-    amplibtmp = np.dot(w, nutpre)
+    amplibtmp = np.dot(w, np.sin(nutpre))
 
     ## Longitude of the prime meridian
     # print("prime mer",W0,W1,W2,d, amplibtmp)
