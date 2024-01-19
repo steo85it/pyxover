@@ -152,3 +152,8 @@ venv.bak/
 /examples/BELA/data/tmp/
 /examples/BELA/data/raw/
 /examples/*/log_slurm/
+/examples/*/data/aux/*/*.pkl
+examples/CALA/*.out
+examples/CALA/old/*
+examples/CALA/data/aux/mymeta_*
+data/aux/kernels/*
