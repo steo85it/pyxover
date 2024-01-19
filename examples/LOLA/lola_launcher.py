@@ -49,7 +49,7 @@ if __name__ == '__main__':
     if XovOpt.get("local"):
         prepro_LOLA(str(strs[row, 0]), str(strs[row, 1]), str(strs[row, 2]))
     else:
-        launch_slurm(filnamout,phase=0)
+    #    launch_slurm(filnamout,phase=0)
         print("ok prepro")
     
     # processing
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         f.write((' ').join(['python3 lola_interface.py 0', str(strs[row,0]), '1', '\n']))
     f.close()
     # TODO use the more advanced launch_slurm with local option
-    launch_slurm(filnamout,phase=1)
+    #launch_slurm(filnamout,phase=1)
 
     # postpro
     print("Post-processing started...")

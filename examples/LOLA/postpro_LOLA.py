@@ -80,7 +80,7 @@ if __name__ == '__main__':
     files = glob.glob(XovOpt.get("rawdir")+'SIM_'+args[:2]+'/'+args+'/0res_*amp/MLA*.TAB') # lro_iaumoon_spice/0res_*/MLA*.TAB')
 
     ncols = len(dirs)
-    print(ncols)
+    #print(ncols)
 
     #print(dirs,files)
     print(len(files))
@@ -98,6 +98,7 @@ if __name__ == '__main__':
         #print(track.ladata_df)
         #exit()
 
+    dftdb = []
     dfx = []
     dfy = []
     dfz = []
@@ -114,6 +115,8 @@ if __name__ == '__main__':
 
         df_full = pd.DataFrame(list(range(len_table)),columns=['seqid'])
         df = df_full.merge(df,on='seqid',how='outer').drop('seqid',axis=1)
+
+       
         dfx.append(df['geoc_x'])
         dfy.append(df['geoc_y'])
         dfz.append(df['geoc_z'])
@@ -122,6 +125,8 @@ if __name__ == '__main__':
         dflon.append(df['geoc_long'])
         dfelv.append(df['altitude'])
 
+
+    dftdb = df.loc[:, 'ET_TX']
     dfx = pd.concat(dfx, axis=1)
     dfy = pd.concat(dfy, axis=1)
     dfz = pd.concat(dfz, axis=1)
@@ -134,12 +139,12 @@ if __name__ == '__main__':
     if len(missing_cols)>0:
         df_miss = pd.DataFrame(columns=missing_cols)
         # print(df_miss)
-        dfx = pd.concat([dfx,df_miss],axis=1)
-        dfy = pd.concat([dfy,df_miss],axis=1)
-        dfz = pd.concat([dfz,df_miss],axis=1)
-        dflat = pd.concat([dflat,df_miss],axis=1)
-        dflon = pd.concat([dflon,df_miss],axis=1)
-        dfelv = pd.concat([dfelv,df_miss],axis=1)
+        dfx = pd.concat([dfx,df_miss], axis=1)
+        dfy = pd.concat([dfy,df_miss], axis=1)
+        dfz = pd.concat([dfz,df_miss], axis=1)
+        dflat = pd.concat([dflat,df_miss], axis=1)
+        dflon = pd.concat([dflon,df_miss], axis=1)
+        dfelv = pd.concat([dfelv,df_miss], axis=1)
 
     # reorder
     if ncols>1:
@@ -159,16 +164,18 @@ if __name__ == '__main__':
         os.makedirs(outdir_, exist_ok=True)
 
     # copy file with epochs
-    if not os.path.islink(outdir_+'/out.time'):
-        os.symlink(f'{XovOpt.get("inpdir")}{args}/boresight_time_slewcheck.xyzd', outdir_+'/out.time')
+    if not os.path.islink(outdir_+f'/{args}_out.tt'):
+        os.symlink(f'{XovOpt.get("inpdir")}{args}/boresight_time_slewcheck.xyzd', outdir_+f'/{args}_out.tt')
+    dftdb.to_csv(outdir_+f'/{args}_out.tdb', header=None, index=None, sep='\t', na_rep='Nan')
 
+    
     # save new xyz and lonlatelv
-    dfx.to_csv(outdir_+'/out.x', header=None, index=None, sep='\t',na_rep='Nan')
-    dfy.to_csv(outdir_+'/out.y', header=None, index=None, sep='\t',na_rep='Nan')
-    dfz.to_csv(outdir_+'/out.z', header=None, index=None, sep='\t',na_rep='Nan')
-    dflat.to_csv(outdir_+'/out.lat', header=None, index=None, sep='\t',na_rep='Nan')
-    dflon.to_csv(outdir_+'/out.lon', header=None, index=None, sep='\t',na_rep='Nan')
-    dfelv.to_csv(outdir_+'/out.elv', header=None, index=None, sep='\t',na_rep='Nan')
+    dfx.to_csv(outdir_+f'/{args}_out.x', header=None, index=None, sep='\t', na_rep='Nan')
+    dfy.to_csv(outdir_+f'/{args}_out.y', header=None, index=None, sep='\t', na_rep='Nan')
+    dfz.to_csv(outdir_+f'/{args}_out.z', header=None, index=None, sep='\t', na_rep='Nan')
+    dflat.to_csv(outdir_+f'/{args}_out.lat', header=None, index=None, sep='\t', na_rep='Nan')
+    dflon.to_csv(outdir_+f'/{args}_out.lon', header=None, index=None, sep='\t', na_rep='Nan')
+    dfelv.to_csv(outdir_+f'/{args}_out.elv', header=None, index=None, sep='\t', na_rep='Nan')
 
     #print(files)
 
@@ -178,9 +185,9 @@ if __name__ == '__main__':
     #print((dfy - df_yin*1.e3).dropna())
     #print((dfz - df_zin*1.e3).dropna())
 
-    (dfx - df_xin*1.e3).to_csv(outdir_+'/out.dx', header=None, index=None, sep='\t',na_rep='Nan')
-    (dfy - df_yin*1.e3).to_csv(outdir_+'/out.dy', header=None, index=None, sep='\t',na_rep='Nan')
-    (dfz - df_zin*1.e3).to_csv(outdir_+'/out.dz', header=None, index=None, sep='\t',na_rep='Nan')
+    (dfx - df_xin*1.e3).to_csv(outdir_+f'/{args}_out.dx', header=None, index=None, sep='\t', na_rep='Nan')
+    (dfy - df_yin*1.e3).to_csv(outdir_+f'/{args}_out.dy', header=None, index=None, sep='\t', na_rep='Nan')
+    (dfz - df_zin*1.e3).to_csv(outdir_+f'/{args}_out.dz', header=None, index=None, sep='\t', na_rep='Nan')
     
     fig, ax = plt.subplots()
     (dfx - df_xin*1.e3).mean(axis=1).plot(ax=ax, label='x')
@@ -199,9 +206,9 @@ if __name__ == '__main__':
     #print((dflat - pd.DataFrame(df_latin)).dropna())
     #print((dflon - pd.DataFrame(df_lonin)).dropna())
 
-    (dflat - pd.DataFrame(df_latin)).to_csv(outdir_+'/out.dlat', header=None, index=None, sep='\t',na_rep='Nan')
-    (dflon - pd.DataFrame(df_lonin)).to_csv(outdir_+'/out.dlon', header=None, index=None, sep='\t',na_rep='Nan')
-    (dfelv - pd.DataFrame(df_rin*1.e3)).to_csv(outdir_+'/out.dr', header=None, index=None, sep='\t',na_rep='Nan')
+    (dflat - pd.DataFrame(df_latin)).to_csv(outdir_+f'/{args}_out.dlat', header=None, index=None, sep='\t',na_rep='Nan')
+    (dflon - pd.DataFrame(df_lonin)).to_csv(outdir_+f'/{args}_out.dlon', header=None, index=None, sep='\t',na_rep='Nan')
+    (dfelv - pd.DataFrame(df_rin*1.e3)).to_csv(outdir_+f'/{args}_out.dr', header=None, index=None, sep='\t',na_rep='Nan')
     
     plt.clf()
     fig, ax = plt.subplots()
