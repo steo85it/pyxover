@@ -12,7 +12,6 @@ from config import XovOpt
 from examples.LOLA.setup_lola import setup_lola
 from pyaltsim import PyAltSim
 from pyxover import PyXover
-from config import XovOpt
 
 if __name__ == '__main__':
 
@@ -28,7 +27,7 @@ if __name__ == '__main__':
     if sys.argv[2] == "211300102":
         XovOpt.set("local_dem", False)
         XovOpt.check_consistency()
-    
+
     data_sim = 'sim'  # 'data' #
     exp = '' # 'lola/' # '' #  '1s' #'mladata' #
     ext_iter = 0  # external iteration
@@ -78,13 +77,22 @@ if __name__ == '__main__':
     args_pyxover = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
 
     # load spice kernels
-    if XovOpt.get("local") == 0:
+    if not XovOpt.get("local"):
         # load kernels
-        _ = ["/att/projrepo/PGDA/LRO/data/furnsh/furnsh.LRO.def.spkonly.LOLA"]
-        _.extend(glob.glob("/att/nobackup/mkbarker/common/data/generic/GSE_LRO.tf"))
+        _ = ["/explore/nobackup/projects/pgda/LRO/data/furnsh/furnsh.LRO.def.spkonly.LOLA"]
+        _.extend(glob.glob("/explore/nobackup/people/mkbarker/common/data/generic/GSE_LRO.tf"))
         _.extend(glob.glob(XovOpt.get("inpdir")+"targeting_slews.furnsh"))
-        _.extend(["/att/nobackup/mkbarker/common/data/generic/RSSD0000.TF"])
-	   
+        _.extend(["/explore/nobackup/people/mkbarker/common/data/generic/RSSD0000.TF"])
+        #_.extend(["/explore/nobackup/people/sberton2/LOLA/PyXover/examples/LOLA/data/aux/spice/LRO_2023036.bsp"])
+        #_.extend(["/explore/nobackup/people/sberton2/LOLA/PyXover/examples/LOLA/data/aux/spice/LRO_230205.bsp"])
+        #_.extend(["/explore/nobackup/people/gcasciol/LRO/fit/apollo/230501/traj#230501_3.bsp"])
+        #_.extend(["/explore/nobackup/people/gcasciol/LRO/fit/apollo/230501_tropo_corrected/traj#230501_3.bsp"])
+        #_.extend(["/explore/nobackup/people/gcasciol/LRO/fit/estimation_nav/saved_trajs/traj_for_erwan/traj#230511_3.bsp"])
+        _.extend(["/home/emazaric/nobackup/LRO/data/spk_lola/LRO_ES_125_202305_GRGM900C_L600.bsp"])
+        _.extend(glob.glob("/explore/nobackup/people/gcasciol/LRO/fit/apollo/23????/*.bsp"))
+        #_.extend(["/explore/nobackup/people/gcasciol/LRO/fit/apollo/230705/traj#230705_3.bsp"])
+        _.extend(glob.glob("/explore/nobackup/people/gcasciol/LRO/fit/apollo/230705_bis/*bsp"))
+
         #print(_)
         spice.furnsh(_)
     else:

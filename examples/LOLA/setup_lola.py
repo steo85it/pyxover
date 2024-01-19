@@ -37,7 +37,7 @@ def setup_lola():
     XovOpt.set("basedir","data/") #"/att/nobackup/sberton2/LOLA/PyXover/examples/LOLA/"
 #    XovOpt.set("outdir",f'{basedir}out/')
 #    XovOpt.set("auxdir",f'{basedir}aux/')
-    XovOpt.set("inpdir",'/att/nobackup/dmao1/LOLA/slew_check/')
+    XovOpt.set("inpdir",'/explore/nobackup/people/dmao1/LOLA/slew_check/')
     
     for newdir in ["tmpdir","outdir","auxdir","rawdir"]:
                 os.makedirs(XovOpt.get("basedir")+XovOpt.get(newdir),exist_ok=True)

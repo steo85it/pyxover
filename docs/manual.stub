@@ -52,7 +52,7 @@ Closed-loop simulation
 1a. if illumng data do not exist (a priori geolocalisation of the tracks), to create them:
    select new_illumNG = 1 to create tmp/epo_mla_YYMM.in
    cd /home/sberton2/projects/Mercury_tides/_MLA_Stefano; rm tmp; modify doSLURM to process the desired dates and launch
-   creates /att/nobackup/sberton2/MLA/aux/illumng/mlatimes_YYMM/boresightxxx, which is used as input for sim run
+   creates /explore/nobackup/people/sberton2/MLA/aux/illumng/mlatimes_YYMM/boresightxxx, which is used as input for sim run
 2. /home/sberton2/launchLISTslurm loadPyAltSim PyAltSim 1 23:59:59 30Gb 20: launch process for selected months (after preparing list of commands in PyAltSim
 3. Preparing new apriori (illumNG or internal spherical) is time consuming: if already available in tmpdir, just switch new_illumNG=False and proceed to simulating data.
 ## pyproj warning/error: export PROJ_LIB=$NOBACKUP/.spack_repo/opt/spack/linux-debian8-broadwell/gcc-9.3.0/proj-6.3.1-wosgaaf7fqh5u7iaiu4ucpbkyk2l5tv4/share/proj or same path with proj.set_path(...) (or similar)
@@ -86,7 +86,7 @@ Launch selection script (currently scratch_12) with the data dir.
 Copy data to experiment folder by
 for f in /home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/; do mkdir $f/KX1; cp -rs $f/KX2/* $f/KX1/.; done
 or
-for f in /att/nobackup/sberton2/MLA/data/SIM_??/; do mkdir $f/KX2; cp -rs $f/KX1/* $f/KX2/.; done
+for f in /explore/nobackup/people/sberton2/MLA/data/SIM_??/; do mkdir $f/KX2; cp -rs $f/KX1/* $f/KX2/.; done
 Update launch_test
 
 Import new orbit to pkl

@@ -77,7 +77,7 @@ def launch_xov(
                 gtrack_dir = outdir + 'gtrack_' + misycmb_par[0] + '/'
             elif XovOpt.get("monthly_sets"):
                 gtrack_dir = outdir + 'gtrack_' + misycmb_par[0][:2] + '/'
-            
+
             if XovOpt.get("weekly_sets") or XovOpt.get("monthly_sets"):
                 trackA = trackA.load(gtrack_dir + 'gtrack_' + track_idA + '.pkl')
             else:
@@ -191,9 +191,9 @@ def main(args_in):
 
     # update options (needed when sending to slurm)
     XovOpt.clone(opts)
-        
+
     # locate data
-    data_pth = XovOpt.get("basedir") # '/att/nobackup/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+    data_pth = XovOpt.get("basedir") # '/explore/nobackup/people/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
     dataset = indir_in  # 'test/' #'small_test/' #'1301/' #
     data_pth += dataset
     # # load kernels
@@ -246,11 +246,11 @@ def main(args_in):
        if True: #XovOpt.get("debug"):
           print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
        print(par, misycmb[par]," has been selected!")
-    
+
     # if XovOpt.get("instrument") == 'CALA':
     #   misy = ['310501','310508','310515','310522','310529','310605','310612','310619','310626','310703','310710','310717','310724','310731','310807']
     #   misy = ['310501','310508','310515','310522','310529','310605','310612','310619','310626','310703','310710','310717']
-    
+
     ###########################
     startInit = time.time()
 
@@ -363,7 +363,7 @@ def main(args_in):
             else:
                track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
             track_obj = track_obj.load(track_filepath)
-            
+
             # track_obj = track_obj.load(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl')
             # except:
             #     print(f"* Issue with {XovOpt.get('outdir') + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'}")

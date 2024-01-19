@@ -7,6 +7,7 @@
 #
 from fileinput import filename
 import warnings
+import logging
 
 from pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
 from xovutil.dem_util import get_demz_at, import_dem, get_demz_tiff
@@ -60,7 +61,9 @@ class sim_gtrack(gtrack):
         df_['TOF'] = df_['rng'] * 2. * 1.e3 / clight
         # preparing df for geoloc
         df_['seqid'] = df_.index
+
         df_ = df_.rename(columns={"epo_tx": "ET_TX"})
+
         df_ = df_.reset_index(drop=True)
         # copy to self
         self.ladata_df = df_[['ET_TX', 'TOF', 'orbID', 'seqid']]
@@ -218,15 +221,15 @@ class sim_gtrack(gtrack):
         if XovOpt.get("apply_topo"):
             # st = time.time()
 
-            # if not XovOpt.get("local"):
-            #     if XovOpt.get("instrument") == "LOLA":
-            #         dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
-            #     else:
-            #         dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-            # else:
-            #     dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-            #
-            # # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
+            if not XovOpt.get("local"):
+                if XovOpt.get("instrument") == "LOLA":
+                    dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
+                else:
+                    dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            else:
+                dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+
+            # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
             gmt = False
 
             if XovOpt.get("instrument") in ['BELA','CALA']:
@@ -275,7 +278,7 @@ class sim_gtrack(gtrack):
                     print(self.dem)
                     self.dem = import_dem(filein=self.dem,outdir=f"{self.slewdir}/")
                 else:
-                    print("DEM already read")
+                    logging.info("DEM already read")
                     pass
             else:
                 print("Using grdtrack")
@@ -292,9 +295,9 @@ class sim_gtrack(gtrack):
                         if local_dem:
                             dem = self.slewdir + "/SLDEM2015_512PPD.GRD"
                         else:
-                            dem = "/att/projrepo/PGDA/LOLA/data/LOLA_GDR/CYLINDRICAL/raw/LDEM_4.GRD"
+                            dem = "/explore/nobackup/projects/pgda/LOLA/data/LOLA_GDR/CYLINDRICAL/raw/LDEM_4.GRD"
                     else:
-                        dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+                        dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
                 #             r_dem = subprocess.check_output(
                 #                 ['grdtrack', gmt_in,
                 #                  '-G' + dem],
@@ -345,21 +348,19 @@ class sim_gtrack(gtrack):
                 # radius_xarr = dem_xarr.interp(lon=xr.DataArray(lontmp, dims='z'), lat= xr.DataArray(lattmp, dims='z')).z.values * 1.e3 #
 
             # Convert to meters (if DEM given in km)
-            r_dem *= 1.e3            
+            r_dem *= 1.e3
         else:
             r_dem = 0.
-            
+
         # TODO replace with "small_scale_topo/texture_noise" option
         if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
            texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
-           # print("texture noise check",texture_noise,r_dem)
         else:
            texture_noise = 0.
-         
+
         # update Rmerc with r_dem/text (meters)
         radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
         # print("radius etc",radius,r_dem,texture_noise)
-
 
         return radius
 
@@ -372,11 +373,16 @@ class sim_gtrack(gtrack):
             rotpar, upd_rotpar = orient_setup(self.pertPar['dRA'], self.pertPar['dDEC'], self.pertPar['dPM'],
                                           self.pertPar['dL'])
             tsipm = icrf2pbf(et_tx, upd_rotpar)
+        elif XovOpt.get('body') == 'MOON':
+            pxform_array = np.frompyfunc(spice.pxform, 3, 1)
+            tsipm = pxform_array(XovOpt.get("vecopts")['INERTIALFRAME'],XovOpt.get("vecopts")['PLANETFRAME'],et_tx)
         else:
             pxform_array = np.frompyfunc(spice.pxform, 3, 1)
-            tsipm = pxform_array(XovOpt.get("vecopts")['INERTIALFRAME'],XovOpt.get("vecopts")['PLANETFRAME'],et_tx) 
-        
+            tsipm = pxform_array(XovOpt.get("vecopts")['INERTIALFRAME'],XovOpt.get("vecopts")['PLANETFRAME'],et_tx)
+
         scxyz_tx_pbf = np.vstack([np.dot(tsipm[i], scpos_tx_p[i]) for i in range(0, np.size(scpos_tx_p, 0))])
+        #print(scxyz_tx_pbf)
+        #exit()
         return scxyz_tx_pbf
 
 
@@ -411,10 +417,6 @@ class sim_gtrack(gtrack):
         # else:
         #     self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
         #                                           'UTC', 'TOF_ns_ET', 'chn', 'seqid']], sort=True)[mlardr_cols]
-
-
-##############################################
-
 
 def sim_track(args):
     # tracks: (sim_gtrack(XovOpt.get("vecopts"), i)
@@ -499,19 +501,19 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         os.makedirs(XovOpt.get('tmpdir'))
 
     # if not XovOpt.get("local"):
-        # data_pth = '/att/nobackup/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
+        # data_pth = '/explore/nobackup/people/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
         # dataset = ''  # 'small_test/' #'test1/' #'1301/' #
         # data_pth += dataset
         # TODO Avoid/remove explicit paths!!!
         # load kernels
         # if XovOpt.get("instrument") == "BELA":
-        #     spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'
+        #     spice.furnsh(['/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'
         #                  ,
-        #                  '/att/nobackup/sberton2/MLA/aux/spk/bc_sci_v06.tf',
-        #                  '/att/nobackup/sberton2/MLA/aux/spk/bc_mpo_mlt_50037_20260314_20280529_v03.bsp']
+        #                  '/explore/nobackup/people/sberton2/MLA/aux/spk/bc_sci_v06.tf',
+        #                  '/explore/nobackup/people/sberton2/MLA/aux/spk/bc_mpo_mlt_50037_20260314_20280529_v03.bsp']
         #     )  # 'aux/mymeta')
         # else:
-        #     spice.furnsh('/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')
+        #     spice.furnsh('/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')
 
     # else:
         # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
@@ -532,32 +534,9 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
     if XovOpt.get("instrument") == 'LOLA':
         print(path_illumng)
-        print(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')
-        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(glob.glob(path_illumng+'_boresights_LOLA_ch12345_*_laser2_fov_bs'+str(ampl_in)+'.inc')[0])
-        #             data det1/0.000839737903394d0, -0.00457961230781711d0, 0.999989000131539d0, !day laser 1
-        #      &            0.000856137903d0,       -0.004609612308d0,  0.999989004837226d0,  !day laser 2
-        #      &            0.000937737903394d0, -0.00453461230781711d0,0.99998900013153902d0, !day
-        #      &            0.00076189248005d0,  -0.00431815664221d0, 0.99998900013153902d0/ !2 night + 5 night - 1 night completes square
-        #
-        #         data det2/0.000383964851735d0, -0.00436155174587546d0, 0.999990433217333d0,
-        #      &            0.000400364852d0,       -0.004391551746d0, 0.999989891939858d0,
-        #      &            0.000481964851735d0, -0.00431655174587546d0, 0.999989891939858d0,
-        #      &            0.00030611942839d0,   -0.00410009608028d0, 0.999989891939858d0/ ! offset 2 squares
-        #
-        #        data det3/0.000626524101387d0, -0.00504023006379987d0,0.99998664896001d0,
-        #      &            0.000642924101d0,       -0.005070230064d0, 0.999986483343407d0,
-        #      &            0.000724524101387d0, -0.00499523006379987d0, 0.99998664896000999d0,
-        #      &            0.000553524100735d0, -0.00476423006387546d0,0.999989891939858d0/ !2 nightside
-        #
-        #         data det4/0.001290665162689d0,  -0.00480736878596984d0, 0.999987131025527d0,
-        #      &            0.001307065163d0,       -0.004837368786d0, 0.999986961502879d0,
-        #      &            0.001388665162689d0,  -0.00476236878596984d0, 0.999986961502879d0,
-        #      &            0.001217665531707d0,  -0.00453621720415891d0, 0.999990352590072d0/!5 nightside
-        #
-        #        data det5/0.001048106282707d0,  -0.00413353888615891d0, 0.999990497919053d0,
-        #      &            0.001064506283d0,      -0.004163538886d0, 0.999990352590072d0,
-        #      &            0.001146106282707d0,  -0.00408853888615891d0, 0.999990352590072d0,
-        #      &            0.00097026085936d0,  -0.00387208322056d0, 0.999990352590072d0/ ! offset 2 squares
+        print(path_illumng+'_boresights_LOLA_ch*_*_laser2_fov_bs'+str(ampl_in)+'.inc')
+        print(glob.glob(path_illumng+'_boresights_LOLA_ch*_*_laser2_fov_bs'+str(ampl_in)+'.inc'))
+        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(glob.glob(path_illumng+'_boresights_LOLA_ch*_*_laser2_fov_bs'+str(ampl_in)+'.inc')[0])
     else:
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
@@ -587,7 +566,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
     # print(np.sort(epo_in)[-1])
 
-    elif XovOpt.get("instrument") != "LOLA":  # if BELA/CALA
+    elif XovOpt.get("instrument") != "LOLA":
         # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
 
         dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)

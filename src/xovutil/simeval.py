@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 
-from src.pygeoloc.ground_track import gtrack
+from pygeoloc.ground_track import gtrack
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("outdir")
 from config import XovOpt
 import matplotlib.pyplot as plt
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     sim_test = "sph"
 
     track_sim = gtrack(XovOpt.get("vecopts"))
-    simf = glob("/att/nobackup/sberton2/MLA/data/SIM_13/"+sim_test+"/0res_1amp/MLASIMRDR13010107*.TAB")
+    simf = glob("/explore/nobackup/people/sberton2/MLA/data/SIM_13/"+sim_test+"/0res_1amp/MLASIMRDR13010107*.TAB")
 
     for f in simf:
         track_sim.read_fill(f)
@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
 
     track_real = gtrack(XovOpt.get("vecopts"))
-    reaf = glob("/att/nobackup/sberton2/MLA/data/MLA_13/MLASCIRDR13010107*.TAB")
+    reaf = glob("/explore/nobackup/people/sberton2/MLA/data/MLA_13/MLASCIRDR13010107*.TAB")
     for f in reaf:
         track_real.read_fill(f)
 

@@ -8,7 +8,7 @@ class XovOpt:
     __conf = {
         # env opt
         "debug": False,
-        "local": True, #
+        "local": False, #
         "parallel": False,
         "partials": True,
         "unittest": False,
@@ -104,7 +104,7 @@ class XovOpt:
         "range_noise": 0,
         # local/global DEM (LOLA)
         "local_dem": True,
-        
+
         # vecopts
         # Setup some useful options
         "vecopts": {'SCID': '-236',
@@ -169,7 +169,7 @@ class XovOpt:
     def clone(opts):
         # print("- Updating XovOpt")
         XovOpt.__conf = opts.copy()
-        
+
 # example, suppose importing
 # from config import Options
 if __name__ == '__main__':
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     print(opt.get("body"))
 
     print(opt.get("tmpdir"))
-    opt.set("basedir",'/att/nobackup/sberton2/MLA/')
+    opt.set("basedir",'/explore/nobackup/people/sberton2/MLA/')
 
     opt.check_consistency()
     print(opt.get("tmpdir"))

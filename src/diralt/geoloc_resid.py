@@ -17,22 +17,22 @@ import numpy as np
 from scipy.constants import c as clight
 from scipy.interpolate import RectBivariateSpline
 
-from src.pyaltsim.PyAltSim import sim_gtrack
-from src.xovutil.dem_util import get_demz_grd, get_demz_tiff
-from src.geolocate_altimetry import geoloc
-from src.pygeoloc.ground_track import gtrack
+from pyaltsim.PyAltSim import sim_gtrack
+from xovutil.dem_util import get_demz_grd, get_demz_tiff
+from geolocate_altimetry import geoloc
+from pygeoloc.ground_track import gtrack
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("auxdir"), XovOpt.get("SpInterp"), XovOpt.get("tmpdir"), XovOpt.get("local"), XovOpt.get("debug"), pert_cloop, XovOpt.get("spauxdir")
 from config import XovOpt
 
-from src.xovutil import astro_trans as astr, pickleIO
+from xovutil import astro_trans as astr, pickleIO
 import spiceypy as spice
 
 import xarray as xr
 import matplotlib.pyplot as plt
 from scipy import stats, signal
 
-from src.tidal_deform import set_const, tidepart_h2
-from src.xovutil.iterables import mergsum
+from tidal_deform import set_const, tidepart_h2
+from xovutil.iterables import mergsum
 
 numer_sol = 1
 pergram = 0
@@ -318,7 +318,7 @@ def get_demres_full(dorb, track, df, dem_file,
 #     if local:
 #         dem = auxdir + 'HDEM_64.GRD'  # 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km.GRD' # 'MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
 #     else:
-#         dem = '/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'
+#         dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'
 #     # print(subprocess.check_output(['grdinfo', dem]))
 #     r_dem = subprocess.check_output(
 #         ['grdtrack', gmt_in, '-G' + dem],
@@ -435,7 +435,7 @@ def fit_track_to_dem(df_in,dem_file):
     #         "/home/sberton2/Works/NASA/Mercury_tides/aux/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km.GRD") #HDEM_64.GRD")
     # else:
     #     dem_xarr = import_dem(
-    #         "/att/nobackup/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD")
+    #         "/explore/nobackup/people/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD")
 
     if len(df_) > 0:
 
@@ -617,7 +617,7 @@ def fit_track_to_dem(df_in,dem_file):
             #         "/home/sberton2/Works/NASA/Mercury_tides/aux/HDEM_64.GRD")  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD")
             # else:
             #     dem_xarr = import_dem(
-            #         "/att/nobackup/emazaric/MESSENGER/data/GDR/HDEM_64.GRD")
+            #         "/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD")
 
             # Preliminary data cleaning
             dorb = np.array([0., 0., 0.]) #, 0., 0.])  # ,0,0,0]  # range(-10,10,1) #np.array([10.3, 0.7, 10.8, 11.9, 1.2])
@@ -800,14 +800,14 @@ if __name__ == '__main__':
     #    if local:
     #      spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
     #    else:
-    #      spice.furnsh(['/att/nobackup/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
+    #      spice.furnsh(['/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
 
     if XovOpt.get("local"):
         dem_xarr = import_dem(
             "/home/sberton2/Works/NASA/Mercury_tides/aux/HDEM_64.GRD")  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_4ppd_HgM008frame.GRD")
     else:
         dem_xarr = import_dem(
-            "/att/nobackup/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD")
+            "/explore/nobackup/people/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD")
 
     for ex in spk:
 
@@ -833,7 +833,7 @@ if __name__ == '__main__':
             path = '/home/sberton2/Works/NASA/Mercury_tides/out/mladata/' + epo + '_' + ex + '/gtrack_' + epo[
                                                                                                           :2] + '/' + '*.pkl'
         else:
-            path = "/att/nobackup/sberton2/MLA/out/mladata/" + ex + "/gtrack_*/*.pkl"
+            path = "/explore/nobackup/people/sberton2/MLA/out/mladata/" + ex + "/gtrack_*/*.pkl"
 
         allFiles = glob.glob(os.path.join(path))
         allFiles = np.sort(allFiles)[1:2]

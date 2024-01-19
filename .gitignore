@@ -1,6 +1,6 @@
 # ignore folders
 *.bin
-examples/*/data/aux/kernels/*
+examples/*/data/aux/*
 examples/*/data/out/*
 examples/*/data/tmp/*
 examples/*/data/raw/*

@@ -187,6 +187,9 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
           # print("tmp_pertPar['dL']", tmp_pertPar['dL'])
           rotpar, upd_rotpar = orient_setup(tmp_pertPar['dRA'], tmp_pertPar['dDEC'], tmp_pertPar['dPM'], tmp_pertPar['dL'])
           tsipm = icrf2pbf(et_bc, upd_rotpar)
+    elif XovOpt.get("body") == "MOON":
+        # (using np.frompyfunc to vectorize pxform)
+        tsipm = pxform_array(vecopts['INERTIALFRAME'], vecopts['PLANETFRAME'], et_bc)
     else:
        # (using np.frompyfunc to vectorize pxform)
        tsipm = pxform_array(vecopts['INERTIALFRAME'], vecopts['PLANETFRAME'], et_bc)

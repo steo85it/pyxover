@@ -1,10 +1,9 @@
 import os
-# import numpy as np
 import pandas as pd
 import subprocess as s
 
 from config import XovOpt
-from examples.LOLA.prepro_LOLA import prepro_LOLA
+from prepro_LOLA import prepro_LOLA
 from pygeoloc import PyGeoloc
 from examples.LOLA.setup_lola import setup_lola
 
@@ -26,8 +25,8 @@ if __name__ == '__main__':
     setup_lola()
 
     tmpdir = XovOpt.get("tmpdir") #'./' # '/home/sberton2/tmp/'
-    filnamin = f'testLOLA.in'
-    filnamout = f'loadPyAltSim'
+    filnamin = f'testLOLA.in' # copy LOLA_template.in to tmpdir (see config) and  add your slews
+    filnamout = f'loadPyAltSim' # prepro generates this in the same folder
 
     f = open(tmpdir+filnamin)
     df = pd.read_csv(f,sep='\s+',names=['trk','d/n','target'])
@@ -49,7 +48,8 @@ if __name__ == '__main__':
     if XovOpt.get("local"):
         prepro_LOLA(str(strs[row, 0]), str(strs[row, 1]), str(strs[row, 2]))
     else:
-        launch_slurm(filnamout,phase=0)
+    #    launch_slurm(filnamout,phase=0)
+        print("ok prepro")
 
     # processing
     print("Processing started...")
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         f.write((' ').join(['python3 lola_interface.py 0', str(strs[row,0]), '1', '\n']))
     f.close()
     # TODO use the more advanced launch_slurm with local option
-    launch_slurm(filnamout,phase=1)
+    #launch_slurm(filnamout,phase=1)
 
     # postpro
     print("Post-processing started...")
