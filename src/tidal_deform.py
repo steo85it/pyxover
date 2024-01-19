@@ -112,7 +112,10 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
         merpos = np.transpose(SpObj['MERx'].eval(ET-tau))
         sunpos -= merpos
     else:
-        sunpos, tmp = spice.spkpos('SUN', ET-tau, frame, 'NONE', obs)
+        if XovOpt.get('body') == 'CALLISTO':
+           sunpos, tmp = spice.spkpos('JUPITER', ET-tau, frame, 'NONE', obs)
+        else:
+           sunpos, tmp = spice.spkpos('SUN', ET-tau, frame, 'NONE', obs)
 
     sunpos = 1.e3 * np.array(sunpos)
     dSUN = np.linalg.norm(sunpos, axis=1)
