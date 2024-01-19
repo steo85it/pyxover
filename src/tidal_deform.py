@@ -20,7 +20,7 @@
 # Variables:
 # LO = long. on planet's surface
 # TH = lat. on planet's surface
-
+import logging
 from math import pi
 
 import numpy as np
@@ -36,28 +36,38 @@ from config import XovOpt
 
 ##############################################
 
-def set_const(h2_sol):
+def set_const(h2_sol, central_body):
     # from examples.MLA.options import pert_cloop
     # from config import XovOpt
     
     if XovOpt.get('body') == 'MERCURY':
-       
        h2 = 1.e-6 # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
        l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
        # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
        tau = 0. #84480. # time lag in seconds, corresponding to 4 deg, G. Steinbrugge, 2018
 
-       GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
        Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
+    elif XovOpt.get('body') == 'MOON':
+       h2 = 0.04 # https://doi.org/10.1007/s00190-020-01455-8
+       l2 = 0.
+       tau = 0. # time lag in seconds,
+
+       Gm = 4.90486959e12  # Moon's GM value (m^3/s^2)
     elif XovOpt.get('body') == 'CALLISTO':
        h2 = 1.2 # Genova et al 2022
        l2 = 0.
        tau = 0.
-       GMsun = 0.1266865341960128e18   # Jupiter's GM value (m^3/s^2)
        Gm = 0.7179292e13  # Callisto's GM value (m^3/s^2)
     else:
        print(f"*** tidal_deform: {XovOpt.get('body')} not recognized.")
        exit()
+
+    if central_body == 'SUN':
+        GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
+    elif central_body == 'JUPITER':
+        GMsun = 0.1266865341960128e18  # Jupiter's GM value (m^3/s^2)
+    elif central_body == 'EARTH':
+        GMsun = 3.9860044188e14  # Earth's GM value (m^3/s^2)
 
     # # check if h2 is perturbed
     if 'dh2' in XovOpt.get("pert_cloop")['glo'].keys():
@@ -81,14 +91,14 @@ def cosz(TH, LO, latSUN, lonSUN):
 
 
 # @profile
-def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
+def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par, central_body):
 
     # print("dpar",delta_par)
 
     if isinstance(delta_par, dict) and 'dh2' in delta_par.keys():
-        h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'])
+        h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'], central_body=central_body)
     else:
-        h2, l2, tau, GMsun, Gm = set_const(0)
+        h2, l2, tau, GMsun, Gm = set_const(0, central_body=central_body)
 
     plarad = vecopts['PLANETRADIUS'] * 1.e3
     gSurf = Gm / np.square(plarad)  # surface g of body (ok)
@@ -108,18 +118,19 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
 
     # get Sun position and distance from body
     if (XovOpt.get("SpInterp") > 0):
-        sunpos = np.transpose(SpObj['SUNx'].eval(ET-tau))
-        merpos = np.transpose(SpObj['MERx'].eval(ET-tau))
-        sunpos -= merpos
-    else:
-        if XovOpt.get('body') == 'CALLISTO':
-           sunpos, tmp = spice.spkpos('JUPITER', ET-tau, frame, 'NONE', obs)
+        if XovOpt.get('body') == 'MERCURY':
+            pertpos = np.transpose(SpObj['SUNx'].eval(ET-tau))
+            merpos = np.transpose(SpObj['MERx'].eval(ET-tau))
+            pertpos -= merpos
         else:
-           sunpos, tmp = spice.spkpos('SUN', ET-tau, frame, 'NONE', obs)
+            logging.error(f"** tides with spice_interp not implemented for {XovOpt.get('body')}.")
+            exit()
+    else:
+       pertpos, tmp = spice.spkpos(central_body, ET-tau, frame, 'NONE', obs)
 
-    sunpos = 1.e3 * np.array(sunpos)
-    dSUN = np.linalg.norm(sunpos, axis=1)
-    [rSUN, latSUN, lonSUN] = astr.cart2sph(sunpos)
+    pertpos = 1.e3 * np.array(pertpos)
+    dSUN = np.linalg.norm(pertpos, axis=1)
+    [rSUN, latSUN, lonSUN] = astr.cart2sph(pertpos)
 
     coszSUN = cosz(TH, LO, latSUN, lonSUN)
 
@@ -177,11 +188,11 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
         #loop on all Sun positions (176 Earth days)
         def plot_tides(d):
             step = 16
-            sunpos, tmp = spice.spkpos('SUN', ET+step*d*86400., frame, 'NONE', obs)
+            pertpos, tmp = spice.spkpos(central_body, ET+step*d*86400., frame, 'NONE', obs)
             # print(ET,sunpos)
-            sunpos = 1.e3 * np.array(sunpos)
-            dSUN = np.linalg.norm(sunpos, axis=1)
-            [rSUN, latSUN, lonSUN] = astr.cart2sph(sunpos)
+            pertpos = 1.e3 * np.array(pertpos)
+            dSUN = np.linalg.norm(pertpos, axis=1)
+            [rSUN, latSUN, lonSUN] = astr.cart2sph(pertpos)
 
             tmp = cosz(lat, lon, latSUN[0], lonSUN[0])
             Psun = [lpmv(0, j, tmp) for j in range(2, nmax)]
@@ -269,7 +280,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
     return urtot, lotot, thtot
 
 
-def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0):
+def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0, central_body='SUN'):
     # print(  'vecopts check',  vecopts['PARTDER'])
     # print("partial call", delta_par)
 
@@ -282,9 +293,9 @@ def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0):
     # h2, l2, tau, GMsun, Gm = set_const(h2_sol=dh2)
 
     if isinstance(delta_par, dict) and 'dh2' in delta_par.keys():
-        h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'])
+        h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'], central_body=central_body)
     else:
-        h2, l2, tau, GMsun, Gm = set_const(0)
+        h2, l2, tau, GMsun, Gm = set_const(0, central_body=central_body)
     #print("dh2 partcall", dh2)
 
-    return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par={'dh2':dh2})[0]) / h2, 0., 0.
+    return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par={'dh2':dh2})[0], central_body=central_body) / h2, 0., 0.

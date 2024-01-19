@@ -204,10 +204,21 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     vmbf = [np.dot(tsipm[i], vbore[i]) for i in range(0, np.size(vbore, 0))]
     # print(np.array(vmbf).reshape(-1,3))
 
-    # # apply tidal deformation (deformation in meters in radial, lon, lat)
-    # # print("apply tidal corr geoloc_alt")
-    dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar)
-    # #
+    ## apply tidal deformation (deformation in meters in radial, lon, lat) ##
+    # ---------------------------------------------------------------------
+    # set list of perturbers for each central body
+    central_body = {"MERCURY":['SUN'], "MOON":['EARTH', 'SUN'], "CALLISTO":['JUPITER']}
+    dr_part = [], dlon_part = [], dlat_part = []
+    for pertbody in central_body[XovOpt.get('body')]:
+        dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar,
+                                      central_body=pertbody)
+        dr_part.append(dr), dlon_part.append(dlon), dlat_part.append(dlat)
+
+    # combine to get total displacement due to tides
+    dr = np.sum(dr_part)
+    dlon = np.sum(dlon_part)
+    dlat = np.sum(dlat_part)
+
     # # # convert xyz to latlon, then apply correction
     rtmp, lattmp, lontmp = astr.cart2sph(np.array(vmbf).reshape(-1, 3))
     # # # print(rtmp, lattmp, lontmp)
