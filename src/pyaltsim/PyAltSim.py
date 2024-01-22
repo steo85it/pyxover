@@ -223,11 +223,11 @@ class sim_gtrack(gtrack):
 
             if not XovOpt.get("local"):
                 if XovOpt.get("instrument") == "LOLA":
-                    dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
+                    self.dem = self.slewdir+"/SLDEM2015_512PPD.GRD"
                 else:
-                    dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+                    self.dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD' #MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
             else:
-                dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+                self.dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
 
             # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
             gmt = False
@@ -342,6 +342,7 @@ class sim_gtrack(gtrack):
             elif not (XovOpt.get("instrument") in ['BELA','CALA']):
                 print("## Using weird combination (not BELA).")
                 lontmp[lontmp < 0] += 360.
+
                 r_dem = get_demz_at(self.dem, lattmp, lontmp)
 
                 # Works but slower (interpolates each time, could be improved by https://github.com/JiaweiZhuang/xESMF/issues/24)

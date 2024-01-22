@@ -208,7 +208,9 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0 = 0):
     # ---------------------------------------------------------------------
     # set list of perturbers for each central body
     central_body = {"MERCURY":['SUN'], "MOON":['EARTH', 'SUN'], "CALLISTO":['JUPITER']}
-    dr_part = [], dlon_part = [], dlat_part = []
+    dr_part = []
+    dlon_part = []
+    dlat_part = []
     for pertbody in central_body[XovOpt.get('body')]:
         dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar,
                                       central_body=pertbody)

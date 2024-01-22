@@ -63,7 +63,7 @@ if __name__ == '__main__':
     f.close()
     # TODO use the more advanced launch_slurm with local option
     launch_slurm(filnamout,phase=1)
-
+    
     # postpro
     print("Post-processing started...")
     postpro_cols = ['trk']
