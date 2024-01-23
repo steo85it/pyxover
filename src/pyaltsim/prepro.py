@@ -10,7 +10,7 @@ from config import XovOpt
 def prepro_ilmNG(illumNGf):
     li = []
     for f in illumNGf:
-        print("Processing", f)
+        # print("Processing", f)
         df = pd.read_csv(f, index_col=None, header=0, names=[f.split('.')[-1]])
         li.append(df)
 

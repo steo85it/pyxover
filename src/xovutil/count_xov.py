@@ -1,4 +1,4 @@
-from src.accumxov.Amat import Amat
+from accumxov.Amat import Amat
 # from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("vecopts"), XovOpt.get("tmpdir")
 from config import XovOpt
 

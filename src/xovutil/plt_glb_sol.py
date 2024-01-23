@@ -47,9 +47,9 @@ import scipy.linalg as la
 # dh2   -0.084235  0.085218  0.084235
 from scipy.sparse import csr_matrix, diags
 
-from src.accumxov.Amat import Amat
+from accumxov.Amat import Amat
 # from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("outdir"), XovOpt.get("vecopts")
-from src.xovutil.units import deg2as
+from xovutil.units import deg2as
 from config import XovOpt
 
 def other_groups():
