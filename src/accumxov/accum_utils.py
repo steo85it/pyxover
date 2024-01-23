@@ -280,6 +280,8 @@ def get_stats(amat):
         spA_tmp = amat.spA
     ##################
     vTPv = lTPl - xT @ ATPb
+    amat.postfit_res = spA_tmp @ xT.T
+    amat.postfit_res = amat.postfit_res - w
     print(nobs, npar)
     print("pre-RMS=", np.sqrt(lTPl / (nobs - npar)), " post-RMS=", np.sqrt(vTPv / (nobs - npar)))
 
