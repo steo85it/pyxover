@@ -433,8 +433,6 @@ def sim_track(args):
         assert track.slewdir == None
 
     filename = outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB'
-    track.setup(df[df['orbID'] == i])
-
     if os.path.isfile(filename) == False:
         track.setup(df[df['orbID'] == i])
         track.rdr_df.to_csv(filename, index=False, sep=',', na_rep='NaN')

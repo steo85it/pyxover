@@ -51,7 +51,7 @@ if __name__ == '__main__':
     else:
         launch_slurm(filnamout,phase=0)
         print("ok prepro")
-    exit()
+    #exit()
 
     # processing
     print("Processing started...")
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     f.close()
     # TODO use the more advanced launch_slurm with local option
     launch_slurm(filnamout,phase=1)
-    exit()
+    #exit()
 
     # postpro
     print("Post-processing started...")
