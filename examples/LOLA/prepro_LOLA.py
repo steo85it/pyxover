@@ -16,23 +16,23 @@ import time
 
 # from prOpt import local, instr, inpdir
 from config import XovOpt
-from examples.LOLA.setup_lola import setup_lola
+from setup_lola import setup_lola
 
 def prepro_LOLA(args, borefil, grdfil):
 
 
-    
+
     #XovOpt.set("basedir","data/") #"/att/nobackup/sberton2/LOLA/PyXover/examples/LOLA/"
     #    XovOpt.set("outdir",f'{basedir}out/')
     #    XovOpt.set("auxdir",f'{basedir}aux/')
     #XovOpt.set("inpdir",'/att/nobackup/dmao1/LOLA/slew_check/')
-    #XovOpt.check_consistency()    
+    #XovOpt.check_consistency()
 
     setup_lola()
-    
+
     print(XovOpt.get("inpdir"))
     print(XovOpt.get("auxdir")+args+'/')
-    
+
     print(args)
     if XovOpt.get("local"):
        basedir = 'data/' #'/home/sberton2/Works/NASA/LOLA/aux/'+args+'/'
@@ -61,6 +61,13 @@ def prepro_LOLA(args, borefil, grdfil):
     else:
         outdir0_ = basedir+'slewcheck_'
 
+    # save run info
+    if not os.path.exists(basedir):
+        os.makedirs(basedir, exist_ok=True)
+    with open(f"{basedir}info_{args}_run.in","w") as f:
+        f.write(f'{args} {borefil} {grdfil}\n')
+
+    # prepare input files for pyaltsim
     for i,x in enumerate(rngs):
         outdir_ = outdir0_+str(i)
         if not os.path.exists(outdir_):
@@ -80,7 +87,7 @@ def prepro_LOLA(args, borefil, grdfil):
                    outdir_+'/boresight_time_slewcheck.xyzd')
         except:
             logging.warning(f"{outdir_}/boresight_time_slewcheck.xyzd already exists!")
-            
+
     # copy selected grid to experiment folder
     if XovOpt.get("local"):
         os.symlink(indir+'../'+grdfil+'_SLDEM2015_512PPD.GRD',
@@ -93,7 +100,7 @@ def prepro_LOLA(args, borefil, grdfil):
                    basedir+"SLDEM2015_512PPD.GRD")
         except:
             logging.warning(f"{basedir}SLDEM2015_512PPD.GRD already exists!")
-                            
+
     # stop clock and print runtime
     # -----------------------------
     end = time.time()

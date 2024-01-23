@@ -90,7 +90,8 @@ def rp_2_xyz(vec_in, ang_Rl, ang_Pt):
 
 # transform cartesian to spherical (meters, radians)
 def cart2sph(xyz):
-    # print("cart2sph in",np.array(xyz))
+    #print("cart2sph in",np.array(xyz))
+    #print(xyz.shape)
 
     rtmp = np.linalg.norm(np.array(xyz).reshape(-1, 3), axis=1)
     lattmp = np.arcsin(np.array(xyz).reshape(-1, 3)[:, 2] / rtmp)

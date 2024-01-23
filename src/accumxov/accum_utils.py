@@ -27,7 +27,6 @@ from pyxover.xov_setup import xov
 from pyxover.xov_utils import get_tracks_rms
 from xovutil.iterables import multiply_sparse_get_diag
 
-
 # @profile
 def get_xov_cov_tracks(df, plot_stuff=False):
     tracks_rms_df = get_tracks_rms(df, plot_xov_tseries=plot_stuff)

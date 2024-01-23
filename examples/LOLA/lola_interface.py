@@ -6,13 +6,13 @@ import multiprocessing as mp
 
 import spiceypy as spice
 import glob
+from tqdm import tqdm
 
 from accumxov import AccumXov
 from config import XovOpt
-from examples.LOLA.setup_lola import setup_lola
+from setup_lola import setup_lola
 from pyaltsim import PyAltSim
 from pyxover import PyXover
-from config import XovOpt
 
 if __name__ == '__main__':
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     if sys.argv[2] == "211300102":
         XovOpt.set("local_dem", False)
         XovOpt.check_consistency()
-    
+
     data_sim = 'sim'  # 'data' #
     exp = '' # 'lola/' # '' #  '1s' #'mladata' #
     ext_iter = 0  # external iteration
@@ -67,24 +67,33 @@ if __name__ == '__main__':
 
     dirnams = [f'{XovOpt.get("rawdir")}SIM_{subarg[:2]}/{exp}/{str(x[1])}res_{x[0]}amp/' for x in cmb]
 
-    args_pyaltsim = [(i, j, k, subarg) for ((i, j), k) in zip(cmb, dirnams)]
+    args_pyaltsim = [(i, j, k, subarg, XovOpt.to_dict()) for ((i, j), k) in zip(cmb, dirnams)]
 
     indirnams = ['SIM_' + subarg[:2] + f'/{exp}/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
     outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_'+ subarg[:2] for x in cmb]
-    args_pygeoloc = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
+    args_pygeoloc = [(subarg, k, l, 'MLASIMRDR',ext_iter, XovOpt.to_dict()) for (k, l) in zip(indirnams, outdirnams)]
 
     indirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/gtrack_' for x in cmb]
     outdirnams = ['sim/' + exp + '_' + str(ext_iter) + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in cmb]
-    args_pyxover = [(subarg, k, l, 'MLASIMRDR',ext_iter) for (k, l) in zip(indirnams, outdirnams)]
+    args_pyxover = [(subarg, k, l, 'MLASIMRDR',ext_iter, XovOpt.to_dict()) for (k, l) in zip(indirnams, outdirnams)]
 
     # load spice kernels
-    if XovOpt.get("local") == 0:
+    if not XovOpt.get("local"):
         # load kernels
-        _ = ["/att/projrepo/PGDA/LRO/data/furnsh/furnsh.LRO.def.spkonly.LOLA"]
-        _.extend(glob.glob("/att/nobackup/mkbarker/common/data/generic/GSE_LRO.tf"))
+        _ = ["/explore/nobackup/projects/pgda/LRO/data/furnsh/furnsh.LRO.def.spkonly.LOLA"]
+        _.extend(glob.glob("/explore/nobackup/people/mkbarker/common/data/generic/GSE_LRO.tf"))
         _.extend(glob.glob(XovOpt.get("inpdir")+"targeting_slews.furnsh"))
-        _.extend(["/att/nobackup/mkbarker/common/data/generic/RSSD0000.TF"])
-	   
+        _.extend(["/explore/nobackup/people/mkbarker/common/data/generic/RSSD0000.TF"])
+        #_.extend(["/explore/nobackup/people/sberton2/LOLA/PyXover/examples/LOLA/data/aux/spice/LRO_2023036.bsp"])
+        #_.extend(["/explore/nobackup/people/sberton2/LOLA/PyXover/examples/LOLA/data/aux/spice/LRO_230205.bsp"])
+        #_.extend(["/explore/nobackup/people/gcasciol/LRO/fit/apollo/230501/traj#230501_3.bsp"])
+        #_.extend(["/explore/nobackup/people/gcasciol/LRO/fit/apollo/230501_tropo_corrected/traj#230501_3.bsp"])
+        #_.extend(["/explore/nobackup/people/gcasciol/LRO/fit/estimation_nav/saved_trajs/traj_for_erwan/traj#230511_3.bsp"])
+        _.extend(["/home/emazaric/nobackup/LRO/data/spk_lola/LRO_ES_125_202305_GRGM900C_L600.bsp"])
+        _.extend(glob.glob("/explore/nobackup/people/gcasciol/LRO/fit/apollo/23????/*.bsp"))
+        #_.extend(["/explore/nobackup/people/gcasciol/LRO/fit/apollo/230705/traj#230705_3.bsp"])
+        _.extend(glob.glob("/explore/nobackup/people/gcasciol/LRO/fit/apollo/230705_bis/*bsp"))
+
         #print(_)
         spice.furnsh(_)
     else:
@@ -95,11 +104,11 @@ if __name__ == '__main__':
         # add option to spread over the cluster
         idx_tst = [i for i in range(len(cmb))]
         if XovOpt.get("local") == 0:
-            for ie in range(len(args_pyxover)):
+            for ie in tqdm(range(len(args_pyxover))):
                 if data_sim == 'sim' and ext_iter == 0:
-                    print("Running PyAltSim with ", args_pyaltsim[ie], "...")
+                    #print("Running PyAltSim with ", args_pyaltsim[ie], "...")
                     PyAltSim.main(args_pyaltsim[ie])
-                print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
+                #print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
                 # PyGeoloc.main(args_pygeoloc[ie])
         #
         else:
@@ -111,11 +120,11 @@ if __name__ == '__main__':
                 pool.close()
                 pool.join()
             else:
-                for ie in range(len(args_pyxover)):
+                for ie in tqdm(range(len(args_pyxover))):
                     if data_sim == 'sim' and ext_iter == 0:
-                        print("Running PyAltSim with ", args_pyaltsim[ie], "...")
+                        #print("Running PyAltSim with ", args_pyaltsim[ie], "...")
                         PyAltSim.main(args_pyaltsim[ie])
-                    print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
+                    #print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
                     # PyGeoloc.main(args_pygeoloc[ie])
 
 

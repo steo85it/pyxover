@@ -14,12 +14,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 #from mpl_toolkits.basemap import Basemap
 
-from src.xovutil import pickleIO
+from xovutil import pickleIO
 from scripts.eval_sol import draw_map
 # from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("tmpdir"), XovOpt.get("vecopts")
 from config import XovOpt
 
-from src.xovutil.project_coord import project_stereographic
+from xovutil.project_coord import project_stereographic
 
 subdir = "" # archived/KX1r2_fitglborb/"
 subexp = '0res_1amp' # '3res_20amp'

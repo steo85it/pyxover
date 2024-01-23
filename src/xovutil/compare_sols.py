@@ -14,12 +14,12 @@ import pandas as pd
 from scipy.sparse import diags
 from scipy.linalg import pinv, pinvh
 
-from src.accumxov.Amat import Amat
+from accumxov.Amat import Amat
 # from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("outdir"), XovOpt.get("sol4_glo")
 from config import XovOpt
 
-from src.xovutil.iterables import mergsum
-from src.xovutil.units import as2deg
+from xovutil.iterables import mergsum
+from xovutil.units import as2deg
 
 
 def get_apost_parerr(amat):

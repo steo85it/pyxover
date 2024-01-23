@@ -1,12 +1,13 @@
 \begindata
 
-PATH_VALUES  = ( 'data/aux/kernels','/storage/research/aiub_gravdet/WD_XOV/ORB' )
+PATH_VALUES  = ( '/home/sberton2/Lavoro/code/pyxover/examples/CALA/data/aux/kernels','/storage/research/aiub_gravdet/WD_XOV/ORB' )
 
 PATH_SYMBOLS = ( 'A','B' )
 
 KERNELS_TO_LOAD = ( '$A/CALAh531121.SPK',
                     '$A/CALAg531137.SPK',
                     '$A/CALAg531154.SPK',
+                    '$A/CALAm031121.SPK',
                     '$A/jup365.bsp',
                     '$A/de432s.bsp',
                     '$A/pck00010_msgr_v23.tpc',

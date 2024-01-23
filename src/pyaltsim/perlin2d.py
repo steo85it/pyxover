@@ -11,6 +11,7 @@
 # Command to cut: grdcut -R2844/5796/2844/5796 gaussii16384_8640cut.grd -Ggaussii16384_2952cut.grd
 
 import numpy as np
+import xarray as xr
 
 # def generate_perlin_noise_2d(shape, res):
 #     def f(t):
@@ -66,9 +67,10 @@ def generate_perlin_noise_2d(shape, res):
     n1 = n01 * (1 - t[:, :, 0]) + t[:, :, 0] * n11
     return np.sqrt(2) * ((1 - t[:, :, 1]) * n0 + t[:, :, 1] * n1)
 
+
 def generate_fractal_noise_2d(shape, res, octaves=1, persistence=0.5):
-    #print(np.array(res)*octaves,shape,np.mod(np.array(res)*octaves,shape))
-    #if np.shape(res*octaves)[0]%np.shape(shape)[0] == 0:
+    # print(np.array(res)*octaves,shape,np.mod(np.array(res)*octaves,shape))
+    # if np.shape(res*octaves)[0]%np.shape(shape)[0] == 0:
     noise = np.zeros(shape)
     frequency = 1
     amplitude = 1
@@ -76,21 +78,22 @@ def generate_fractal_noise_2d(shape, res, octaves=1, persistence=0.5):
         noise += amplitude * generate_perlin_noise_2d(shape, (frequency * res[0], frequency * res[1]))
         frequency *= 2
         amplitude *= persistence
-    #else:
+    # else:
     #    print("shape must be a multiple of octaves*res.")
     #    exit(2)
 
     return noise
 
-def generate_periodic_fractal_noise_2d(amplitude, shape, res, octaves=1, persistence=0.5):
 
+def generate_periodic_fractal_noise_2d(amplitude, shape, res, octaves=1, persistence=0.5):
     noise = generate_fractal_noise_2d(shape, res, octaves, persistence)
-    #print("pre",noise)
+    # print("pre",noise)
     noise *= amplitude
-    #print("post",noise)
-    #_ = np.hstack([noise,np.flip(noise,axis=1)])
-    #noise = np.vstack([_,np.flip(_,axis=0)])
+    # print("post",noise)
+    # _ = np.hstack([noise,np.flip(noise,axis=1)])
+    # noise = np.vstack([_,np.flip(_,axis=0)])
     return noise
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -98,36 +101,55 @@ if __name__ == '__main__':
     from hillshade import hill_shade
     import seaborn as sns
 
-    #np.random.seed(0)
-    #noise = generate_perlin_noise_2d((256, 256), (8, 8))
-    #plt.imshow(noise, cmap='gray', interpolation='lanczos')
-    #plt.colorbar()
+    # np.random.seed(0)
+    # noise = generate_perlin_noise_2d((256, 256), (8, 8))
+    # plt.imshow(noise, cmap='gray', interpolation='lanczos')
+    # plt.colorbar()
+
+    amplitude = 20
+    resolution = 3
 
     np.random.seed(62)
     shape_text = 1024
-    res_text = 2**3
+    res_text = 2 ** resolution
     depth_text = 5
     size_stamp = 0.25
-    noise = generate_periodic_fractal_noise_2d(30, (shape_text, shape_text), (res_text, res_text), depth_text, persistence=0.65)
+    noise = generate_periodic_fractal_noise_2d(amplitude, (shape_text, shape_text), (res_text, res_text),
+                                               depth_text,  persistence=0.65)
+    print(noise.shape)
+    noise_xr = xr.DataArray(noise,
+                           coords={'y': np.linspace(0, 0.25, noise.shape[1]),
+                                   'x': np.linspace(0, 0.25, noise.shape[0])},
+                           dims=["y", "x"])
+    noise_xr.rio.write_crs("+proj=lonlat +units=m +a=1737.4e3 +b=1737.4e3 +no_defs", inplace=True)
+    print(noise_xr)
+    noise_xr.plot()
+    plt.show()
 
-    noise = hill_shade(noise,terrain=noise * 10)
-    #noise = abs(noise)**2.1/(abs(noise)**2.1).max()*35
-    #interp_spline = RectBivariateSpline(np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
-    #                                    np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
-    #                                    noise)
+    noise_xr.rio.to_raster('/home/sberton2/Scaricati/test_fract_noise_res1.tif')
+
+
+
     #
-    sns.set_context('notebook')
-    plt.figure()
-    ax = plt.imshow(noise, cmap='viridis', interpolation='None', extent=(0, 0.25, 0, 0.25))
-
-    plt.xlabel('degrees')
-    plt.ylabel('degrees')
-    plt.title('Simulated small-scale topography',pad=10)
-
-    cbar = plt.colorbar()
-    cbar.set_label('elevation (m)')
-    cbar.set_ticks([0.1,0.3,0.5,0.7,0.9])
-    cbar.set_ticklabels([-40,-20,0,20, 40])
-
-    plt.tight_layout()
-    plt.savefig("/home/sberton2/tmp/test_fract_noise_res1.pdf")
+    # noise = hill_shade(noise, terrain=noise * 10)
+    # # noise = abs(noise)**2.1/(abs(noise)**2.1).max()*35
+    # # interp_spline = RectBivariateSpline(np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
+    # #                                    np.array(range(shape_text * 2)) / shape_text * 2. * size_stamp,
+    # #                                    noise)
+    # #
+    # sns.set_context('notebook')
+    # plt.figure()
+    # ax = plt.imshow(noise, cmap='viridis', interpolation='None', extent=(0, 0.25, 0, 0.25))
+    #
+    # plt.xlabel('degrees')
+    # plt.ylabel('degrees')
+    # plt.title('Simulated small-scale topography', pad=10)
+    #
+    # cbar = plt.colorbar()
+    # cbar.set_label('elevation (m)')
+    # cbar.set_ticks([0.1, 0.3, 0.5, 0.7, 0.9])
+    # cbar.set_ticklabels([-40, -20, 0, 20, 40])
+    #
+    # plt.tight_layout()
+    # plt.show()
+    # # plt.savefig("/home/sberton2/Scaricati/test_fract_noise_res1.pdf")
