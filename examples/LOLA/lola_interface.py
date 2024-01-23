@@ -6,6 +6,7 @@ import multiprocessing as mp
 
 import spiceypy as spice
 import glob
+from tqdm import tqdm
 
 from accumxov import AccumXov
 from config import XovOpt
@@ -103,11 +104,11 @@ if __name__ == '__main__':
         # add option to spread over the cluster
         idx_tst = [i for i in range(len(cmb))]
         if XovOpt.get("local") == 0:
-            for ie in range(len(args_pyxover)):
+            for ie in tqdm(range(len(args_pyxover))):
                 if data_sim == 'sim' and ext_iter == 0:
-                    print("Running PyAltSim with ", args_pyaltsim[ie], "...")
+                    #print("Running PyAltSim with ", args_pyaltsim[ie], "...")
                     PyAltSim.main(args_pyaltsim[ie])
-                print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
+                #print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
                 # PyGeoloc.main(args_pygeoloc[ie])
         #
         else:
@@ -119,11 +120,11 @@ if __name__ == '__main__':
                 pool.close()
                 pool.join()
             else:
-                for ie in range(len(args_pyxover)):
+                for ie in tqdm(range(len(args_pyxover))):
                     if data_sim == 'sim' and ext_iter == 0:
-                        print("Running PyAltSim with ", args_pyaltsim[ie], "...")
+                        #print("Running PyAltSim with ", args_pyaltsim[ie], "...")
                         PyAltSim.main(args_pyaltsim[ie])
-                    print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
+                    #print("Running PyGeoloc with ", args_pygeoloc[ie], "...")
                     # PyGeoloc.main(args_pygeoloc[ie])
 
 

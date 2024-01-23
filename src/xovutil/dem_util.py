@@ -30,7 +30,7 @@ def import_dem(filein, outdir=''):
     nc_file = filein
     dem_xarr = xr.open_dataset(nc_file)
 
-    print(filein)
+    # print(filein)
 
     try:
         lats = np.deg2rad(dem_xarr.lat.values) + np.pi / 2.
@@ -57,7 +57,7 @@ def import_dem(filein, outdir=''):
         pickleIO.save(interp_spline, dem_interp_path)
         logging.info(f"Interpolated DEM saved to {dem_interp_path}.")
     else:
-        logging.warning(f"### Just read, interp_map exists in {dem_interp_path}")
+        logging.info(f"### Just read, interp_map exists in {dem_interp_path}")
         interp_spline = pickleIO.load(dem_interp_path)
 
     return interp_spline
