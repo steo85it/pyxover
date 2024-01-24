@@ -31,7 +31,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from scipy import stats, signal
 
-from tidal_deform import set_const, tidepart_h2
+from tidal_deform import tidepart_h2
 from xovutil.iterables import mergsum
 
 numer_sol = 1
@@ -689,7 +689,10 @@ def get_lstsq_partials(dem_xarr, df_, dorb, track):
         dorb_tmp[idx] -= step
         dr_m, dummy = get_demres_full(dorb_tmp, track, df_, dem_xarr)
         dr_dorb.append((dr_p - dr_m) / (2 * step))
-    # print(dr_dorb)
+
+    print("The call for partial derivatives with respect to h2 have to be adapted.")
+    exit()
+
     dr_dorb.append(tidepart_h2(track.XovOpt.get("vecopts"), \
                                np.transpose(astr.sph2cart(
                                    df_['R'].values + 2440 * 1.e3,

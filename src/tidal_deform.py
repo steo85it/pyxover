@@ -91,7 +91,7 @@ def cosz(TH, LO, latSUN, lonSUN):
 
 
 # @profile
-def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par, central_body):
+def tidal_deform(vecopts, xyz_bf, ET, SpObj, central_body, delta_par):
 
     # print("dpar",delta_par)
 
@@ -280,7 +280,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par, central_body):
     return urtot, lotot, thtot
 
 
-def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0, central_body='SUN'):
+def tidepart_h2(vecopts, xyz_bf, ET, SpObj, central_body, delta_par=0):
     # print(  'vecopts check',  vecopts['PARTDER'])
     # print("partial call", delta_par)
 
@@ -298,4 +298,4 @@ def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0, central_body='SUN'):
         h2, l2, tau, GMsun, Gm = set_const(0, central_body=central_body)
     #print("dh2 partcall", dh2)
 
-    return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par={'dh2':dh2})[0], central_body=central_body) / h2, 0., 0.
+    return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj, central_body, delta_par={'dh2':dh2})[0]) / h2, 0., 0.

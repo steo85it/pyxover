@@ -491,6 +491,9 @@ class gtrack:
 
         # store ladata_df for update
         ladata_df = self.ladata_df.copy()
+        
+        # WD: Check wether it works for more than one perturbing body
+        central_body = {"MERCURY": ['SUN'], "MOON": ['EARTH', 'SUN'], "CALLISTO": ['JUPITER']}
 
         if (self.vecopts['OUTPUTTYPE'] == 0):
             ladata_df['X'] = results[0][:, 0]
@@ -525,15 +528,17 @@ class gtrack:
                 # Add partials w.r.t. tidal h2
                 ladata_df['dLON/dh2'] = 0
                 ladata_df['dLAT/dh2'] = 0
-
-                if self.sol_prev_iter != None:
-                    ladata_df['dR/dh2'] = \
-                        tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
-                                    ladata_df['ET_BC'], SpObj, self.sol_prev_iter['glo'])[0]
-                else:
-                    ladata_df['dR/dh2'] = \
-                        tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
-                                    ladata_df['ET_BC'], SpObj)[0]
+                ladata_df['dR/dh2']   = 0
+                
+                for pertbody in central_body[XovOpt.get('body')]:
+                   if self.sol_prev_iter != None:
+                      ladata_df['dR/dh2'] += \
+                         tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
+                                     ladata_df['ET_BC'], SpObj, pertbody, delta_par=self.sol_prev_iter['glo'])[0]
+                   else:
+                      ladata_df['dR/dh2'] += \
+                         tidepart_h2(self.vecopts, np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]),
+                                     ladata_df['ET_BC'], SpObj, pertbody)[0]
                 # print(ladata_df['dR/dh2'])
                 # exit()
 
@@ -559,17 +564,21 @@ class gtrack:
                     # correcting for the perturbation applied for numerical partials
                     # getting current value of h2 (no effect since we divide by h2)
                     self.pertPar['dh2'] += self.XovOpt.get("parGlo")['dh2']
-                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts, np.transpose(astr.sph2cart(
-                        ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                        ladata_df['LAT'].values, ladata_df['LON'].values)),
-                                                      ladata_df['ET_BC'].values, SpObj,
-                                                      self.pertPar)[0]
-                else:
-                    ladata_df['dR/dh2'] = tidepart_h2(self.vecopts,
-                                                      np.transpose(astr.sph2cart(
-                                                          ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                                                          ladata_df['LAT'].values, ladata_df['LON'].values)),
-                                                      ladata_df['ET_BC'].values, SpObj)[0]
+                               
+                
+                for pertbody in central_body[XovOpt.get('body')]:
+                   if self.pertPar != None:  # self.sol_prev_iter != None:
+                      ladata_df['dR/dh2'] += tidepart_h2(self.vecopts, np.transpose(astr.sph2cart(
+                         ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                         ladata_df['LAT'].values, ladata_df['LON'].values)),
+                                                         ladata_df['ET_BC'].values, SpObj, pertbody,
+                                                         delta_par=self.pertPar)[0]
+                   else:
+                      ladata_df['dR/dh2'] = +tidepart_h2(self.vecopts,
+                                                         np.transpose(astr.sph2cart(
+                                                            ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
+                                                            ladata_df['LAT'].values, ladata_df['LON'].values)),
+                                                         ladata_df['ET_BC'].values, SpObj, pertbody)[0]
 
                 # print("ladata_df['dR/dh2']",ladata_df['dR/dh2'].values)
                 # exit()

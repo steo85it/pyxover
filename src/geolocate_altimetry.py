@@ -206,8 +206,8 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
     dlon_part = []
     dlat_part = []
     for pertbody in central_body[XovOpt.get('body')]:
-        dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, delta_par=tmp_pertPar,
-                                      central_body=pertbody)
+        dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, pertbody,
+                                      delta_par=tmp_pertPar)
         dr_part.append(dr), dlon_part.append(dlon), dlat_part.append(dlat)
 
     # combine to get total displacement due to tides for each epoch
@@ -215,10 +215,13 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
         dr = np.sum(np.vstack(dr_part), axis=0)
         dlon = np.sum(np.vstack(dlon_part), axis=0)
         dlat = np.sum(np.vstack(dlat_part), axis=0)
-    else:
+    else: # WD: TO DO: Clean a bit the shae mismatch
         dr = np.array(dr_part)
         dlon = np.array(dlon_part)
         dlat = np.array(dlat_part)
+        dr = dr[0][:]
+        dlon = dlon[0][:]
+        dlat = dlat[0][:]
 
     # # # convert xyz to latlon, then apply correction
     rtmp, lattmp, lontmp = astr.cart2sph(np.array(vmbf).reshape(-1, 3))
