@@ -174,6 +174,7 @@ def main(args):
     # for orbitA and orbitB.
     # WD: Seems like the TAB extension is not required -> can be .TAB or .pkl
     allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
+    allFiles = allFiles+glob.glob(os.path.join(data_pth, str.lower(f'{XovOpt.get("instrument")}*rdr*' + epo_in + '*.*')))
 
     # Check if filenames are lower case
     if len(allFiles) == 0:
@@ -198,12 +199,21 @@ def main(args):
     dstr_files = [fil.split('.')[0][-10:] for fil in allFiles[:]]
     d_files = [dt.datetime.strptime(date, '%y%m%d%H%M') for date in dstr_files]
     d_files.sort()
+    print(d_files)
 
     dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
-    d_track_start = d_tracks[:-1]
-    d_track_end = d_tracks[1:]
-    print(d_track_start)
-    print(d_track_end)
+    try:
+        d_track_start = d_tracks[:-1]
+        d_track_end = d_tracks[1:]
+        print(d_track_start[0].strftime('%y%m%d%H%M'))
+    except:
+        d_track_start = d_files[:-1]
+        d_track_end = d_files[1:]
+        # print(d_track_start[0].strftime('%y%m%d%H%M'))
+
+    # print(d_track_start)
+    # print(d_track_end)
+    # exit()
 
     if XovOpt.get("new_gtrack") > 0:
 
@@ -219,6 +229,7 @@ def main(args):
                 orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
         tracks = []
         for d_start, d_end in tqdm(zip(d_track_start, d_track_end), total=len(d_track_start)):
+            # print(d_start)
             track_name = d_start.strftime('%y%m%d%H%M')
             track_id = f'gtrack_{track_name}'
             track = track_id  # WD: what is it for?

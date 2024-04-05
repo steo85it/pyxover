@@ -139,6 +139,18 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
         drop=True).reset_index()
     df.rename(columns={'index': 'genID', 'seqid_mla': 'seqid'}, inplace=True)
 
+    # check that we got the same number of rows for both tracks
+    # TODO WHY is this happening with pandas 2.x.x
+    points_per_track = df.groupby('orbID')['genID'].count().values
+    try:
+        assert len(points_per_track) == 2
+        assert  np.diff(points_per_track) == 0
+    except:
+        if XovOpt.get("debug"):
+            print(f"# Removing weird xover, difference between trackA/B = {np.diff(points_per_track)}. Check!")
+            print(points_per_track)
+        return
+
     if len(df) > 0:  # and {'LON_proj','LAT_proj'}.issubset(df.columns):
         xov_tmp.proj_center = {'lon': df['LON_proj'].values[0], 'lat': df['LAT_proj'].values[0]}
         df.drop(columns=['LON_proj', 'LAT_proj'], inplace=True)
@@ -155,13 +167,13 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
 
     msrm_smpl = xov_tmp.msrm_sampl
 
-    # try:
-    x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
-    # except:
-    #     if XovOpt.get("debug"):
-    #         print("### get_xover_fine issue on xov #", xovi)
-    #         print(xov_tmp.ladata_df)
-    #     return  # continue
+    try:
+        x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
+    except:
+        if XovOpt.get("debug"):
+            print("### get_xover_fine issue on xov #", xovi)
+            print(xov_tmp.ladata_df)
+        return  # continue
     # print(x, y, subldA, subldB, ldA, ldB)
 
     ldA, ldB, R_A, R_B = xov_tmp.get_elev('', subldA, subldB, ldA, ldB, x=x, y=y)

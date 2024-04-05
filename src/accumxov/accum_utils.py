@@ -37,7 +37,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     # print(xovi_amat.xov.xovers)
     tmp = df[['xOvID', 'orbA', 'orbB']].astype('int32')
     # get unique tracksID in dataset
-    unique_orb = np.sort((tmp['orbA'].append(tmp['orbB'])).unique())
+    unique_orb = np.sort(np.unique(tmp[['orbA','orbB']].values.ravel()))
     # map to pseudo-pivot csr indexes
     tracks_map = dict(zip(unique_orb, range(len(unique_orb))))
     tmp['mapA'] = tmp['orbA'].map(tracks_map)
@@ -98,9 +98,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
     cov_tracks = diags(cov_tracks, 0)
 
     # project variance of individual tracks on xovers
-    # print(A_tracks.getnnz() / np.prod(A_tracks.shape))
-
-    cov_xov_tracks = cov_tracks * A_tracks.transpose()  # .round(2)
+    cov_xov_tracks = cov_tracks.astype('float32') * A_tracks.T  # .round(2)
     # print(cov_xov_tracks)
     # print(cov_xov_tracks.getnnz(), np.prod(cov_xov_tracks.shape), cov_xov_tracks.getnnz() / np.prod(cov_xov_tracks.shape))
     if XovOpt.get("full_covar"):

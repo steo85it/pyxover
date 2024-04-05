@@ -1,3 +1,4 @@
+import logging
 import time
 from collections import defaultdict
 
@@ -93,10 +94,12 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             # check if multiple xovers at same mla index
             multiple_counts = xov_extract.loc[:, 'seqid'].value_counts()  # .loc[lambda x: x>1]
 
-            if len(multiple_counts.loc[lambda x: x > 1]) > 0:
+            if len(multiple_counts[multiple_counts > 1]) > 0:
                 # print(rows.to_frame())
-                tmp = pd.merge(rows.reset_index(), multiple_counts.reset_index(), left_on='seqid',
-                               right_on='index').drop(['seqid_x', 'index_y'], axis=1)
+                rows = rows.reset_index()
+                # multiple_counts = multiple_counts.reset_index()
+                tmp = pd.merge(rows, multiple_counts, left_on='seqid',
+                               right_index=True).drop(['seqid'], axis=1)
                 tmp.columns = ["genid", "dupl"]
                 rows = tmp.reindex(tmp.index.repeat(tmp.dupl)).set_index('genid')
 
@@ -155,17 +158,23 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
                 newlat_m.columns = ['LAT_' + x + '_m' for x in upd_cols]
 
                 # tmp_proj_part = tmp_proj.drop(['ET_BC', 'LON', 'LAT'], axis=1)
+                mla_proj_df = mla_proj_df.astype({'genid':int})
+                # TODO FIX THIS!!!! There are duplicated genid keys associated to different xovers, which results
+                # in the wrong number of newlon/lat values, etc etc... IMPORTANT!!!!!!
+                logging.warning("# Dropping duplicated genid in mla_proj_df. This is a quick-fix but very wrong!!!!")
+                mla_proj_df = mla_proj_df.drop_duplicates(subset=['genid'])
+                tmp_mla_proj = mla_proj_df.set_index('genid')[['LON_proj', 'LAT_proj']]
                 for idx, pder in enumerate(['_' + x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']]):
                     if pder[-1] == 'p':
-                        tmp = pd.concat([mla_proj_df.set_index('genid')[['LON_proj', 'LAT_proj']],
+                        tmp = pd.concat([tmp_mla_proj,
                                          newlon_p['LON' + pder], newlat_p['LAT' + pder],
                                          tmp_ladata_partials['ET_BC' + pder], tmp_ladata_partials['dR/' + pder[1:-2]]
                                          ], axis=1)
                     else:
-                        tmp = pd.concat([mla_proj_df.set_index('genid')[['LON_proj', 'LAT_proj']],
+                        tmp = pd.concat([tmp_mla_proj,
                                          newlon_m['LON' + pder], newlat_m['LAT' + pder],
-                                         tmp_ladata_partials['ET_BC' + pder], tmp_ladata_partials['dR/' + pder[1:-2]]],
-                                        axis=1)
+                                         tmp_ladata_partials['ET_BC' + pder], tmp_ladata_partials['dR/' + pder[1:-2]]
+                                         ], axis=1)
                     # tmp['partid'] = pder[1:]
                     tmp.reset_index(inplace=True)
 

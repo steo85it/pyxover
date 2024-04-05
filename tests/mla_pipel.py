@@ -27,7 +27,7 @@ class MlaXoverTest(unittest.TestCase):
         vecopts = XovOpt.get('vecopts')
         vecopts['SCFRAME'] = 'MSGR_SPACECRAFT'
         XovOpt.set('vecopts', vecopts)
-        XovOpt.set("SpInterp", 0)
+        XovOpt.set("SpInterp", 1)
         XovOpt.check_consistency()
         AccOpt.check_consistency()
         # if downloading kernels is needed, refer to examples/MLA/data/aux dir

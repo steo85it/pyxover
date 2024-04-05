@@ -671,7 +671,8 @@ class xov:
 
             if XovOpt.get("debug"):
                 print("Fine", param, self.proj_center)
-                print(rough_indA, rough_indB)
+                print("indA/B", rough_indA, rough_indB)
+                print('ldA/B:')
                 print(ldA_, ldB_)
                 print(ldA_[rough_indA[0]], ldB_[rough_indB[0] - len(ldA_)])
 
@@ -725,7 +726,7 @@ class xov:
 
         intersec_out = np.reshape(intersec_out, (-1, 4))
 
-        if intersec_out.size != 0 and intersec_out != []:
+        if intersec_out.size != 0 and len(intersec_out) > 0:
 
             intersec_x, intersec_y = intersec_out[:, 0], intersec_out[:, 1]
             fine_indA, fine_indB = intersec_out[:, 2], intersec_out[:, 3]
@@ -1236,7 +1237,7 @@ class xov:
         idx[idx >= len(trackA.ladata_df) - 1] = len(trackA.ladata_df) - 2
         tmp1 = trackA.ladata_df.iloc[idx + 1][['LON', 'LAT']].reset_index(drop=True)
         tmp = pd.concat([tmp0, tmp1], axis=1)
-        tmp = tmp.groupby(by=tmp.columns, axis=1).mean()
+        tmp = tmp.T.groupby(by=tmp.columns).mean()
 
         self.xovers = pd.concat([self.xovers, tmp], axis=1)
 
