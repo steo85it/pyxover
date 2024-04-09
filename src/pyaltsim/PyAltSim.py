@@ -85,7 +85,7 @@ class sim_gtrack(gtrack):
         # add range noise
         if XovOpt.get("range_noise"):
             mean = 0.
-            std = 15
+            std = 12
             self.add_range_noise(df_, mean, std)
 
         self.setup_rdr()

@@ -10,11 +10,9 @@ from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
 from accumxov import AccumXov
-from accumxov.Amat import Amat
 from pygeoloc import PyGeoloc
 from pyxover import PyXover
 import itertools as itert
-# from examples.MLA.options import XovOpt.get("vecopts")
 
 # update paths and check options
 from pyaltsim import PyAltSim
@@ -27,8 +25,9 @@ run_accuXover = False
 
 camp = "/storage/research/aiub_gravdet/WD_XOV"
 OrbDir = f"{camp}/ORB/"
-SIMIDBSW   = "Am1"  # Simulation ID
-ESTIDBSW   = "Pg7i1"
+SIMIDBSW   = "Am0"  # Simulation ID
+ESTIDBSW   = "Ph3i1"
+# ESTIDBSW   = "Pg9i2A"
 ORBID      = "034"  # Input CR3BP orbit
 MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMIDBSW}_CR3BP.ORB"
 
@@ -101,7 +100,7 @@ MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMIDBSW}_CR3BP.ORB"
 # CF7 : gtracks and xov South from CF6 with Pe1i1
 #endregion
 
-# corrected h2
+#region corrected h2
 # CF8 : simulation from Am0 (sampling 30Hz) small scale topo
 # CF8: gtracks and xov North from CF8 with Pe1i1
 # CF9: gtracks and xov South from CF8 with Pe1i1
@@ -164,6 +163,7 @@ MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMIDBSW}_CR3BP.ORB"
 # CK7: gtracks and xov South from CG6 with Pg2i1
 # CK8: gtracks and xov North from CG6 with Pg3i1
 # CK9: gtracks and xov South from CG6 with Pg3i1
+#endregion
 
 # corrected rotation
 # CL0 : simulation from Am0 (sampling 10Hz) small/large scale topo
@@ -175,11 +175,50 @@ MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMIDBSW}_CR3BP.ORB"
 # CL4 : simulation from Am1 (sampling 10Hz) small/large scale topo
 # CL4 : gtracks and xov North from CL4 with Pg7i1
 # CL5 : gtracks and xov South from CL4 with Pg7i1
+# CL6 : simulation from Am0 (sampling 10Hz) no topo (to remove)
+# CL6 : gtracks and xov South from CL6 with Pg5i1 (to remove)
+# CL7 : gtracks and xov North from CL6 with Pg5i1 (to remove)
+# CL8 : simulation from Am0 (sampling 10Hz) large scale topo
+# CL8 : gtracks and xov South from CL8 with Pg5i1
+# CL9 : gtracks and xov North from CL8 with Pg5i1
+# CM0: simulation from Am0 (sampling 10Hz) noise 10m
+# CM0 : gtracks and xov North from CM0 with Pg5i1
+# CM1 : gtracks and xov South from CM0 with Pg5i1
+# CM2 : simulation from Am0 (sampling 10Hz) no topo
+# CM3 : gtracks and xov North from CL6 with Pg5i1 to remove
+# CM2 : gtracks and xov North from CM2 with Pg5i1
+# CM4 : gtracks and xov South from CM2 with Pg5i1
+# CM5 : simulation from Am0 (sampling 10Hz) small/large scale topo 30 Hz
+# CM5 : gtracks and xov North from CM5 with Pg5i1
+# CM6 : gtracks and xov South from CM5 with Pg5i1
+# CM7 : simulation from Am0 (sampling 10Hz) noise 15m
+# CM7 : gtracks and xov North from CM7 with Pg5i1
+# CM8 : gtracks and xov South from CM7 with Pg5i1
+# CM9 : simulation from Am0 (sampling 10Hz) noise 13m
+# CM9 : gtracks and xov North from CM7 with Pg5i1
+# CN0 : gtracks and xov South from CM7 with Pg5i1
+# CN1 : simulation from Am0 (sampling 10Hz) noise 12m
+# CN1 : gtracks and xov North from CM7 with Pg5i1
+# CN2 : gtracks and xov South from CM7 with Pg5i1
+# CN3 : gtracks and xov North from CM2 with Pg8i2A
+# CN4 : gtracks and xov South from CM2 with Pg8i2A
+# CN5 : gtracks and xov North from CL8 with Pg9i2A
+# CN6 : gtracks and xov South from CL8 with Pg9i2A
 
-simid = 'CL4'
-estid_N = 'CL4'
-estid_S = 'CL5'
-XovOpt.set("selected_hemisphere",'S')
+# CM2 : simulation from Am0 (sampling 10Hz) no topo
+# CN7 : gtracks and xov North from CM2 with Pg5i1
+# CN8 : gtracks and xov South from CM2 with Pg5i1
+# CL0 : simulation from Am0 (sampling 10Hz) small/large scale topo
+# CN9 : gtracks and xov North from CL0 with Pg5i1
+# CO0 : gtracks and xov South from CL0 with Pg5i1
+
+
+XovOpt.set("local",True)
+        
+simid = 'CL0'
+estid_N = 'CN9'
+estid_S = 'CO0'
+XovOpt.set("selected_hemisphere",'N')
 # XovOpt.set("import_proj",True)
 # XovOpt.set("compute_input_xov",False) # to use already computed rough xov (in xov/tmp/*pkl.gz)
 # XovOpt.set("new_xov",False) # to replace previous xov (rough or final?)
@@ -235,8 +274,8 @@ XovOpt.set("mean_constr", {'dR/dA': 1.e0, 'dR/dC': 1.e0, 'dR/dR': 1.e0})
 XovOpt.set("expopt", simid)
 XovOpt.set("resopt", 3)
 XovOpt.set("amplopt", 20)
-XovOpt.set("apply_topo",True) # use large scale topography
-XovOpt.set("small_scale_topo", True) # apply small scale topography (simulated)
+XovOpt.set("apply_topo",False) # use large scale topography (DEM)
+XovOpt.set("small_scale_topo", False) # apply small scale topography (simulated)
 XovOpt.set("spauxdir", 'CAL_spk/')
 
 
@@ -275,7 +314,7 @@ if grid:
     executor = submitit.AutoExecutor(folder="log_slurm")
     # set timeout in min, and partition for running the job
     executor.update_parameters(
-        slurm_partition="epyc2",#epyc2, aiub
+        slurm_partition="aiub",#epyc2, aiub
         slurm_cpus_per_task=1,
         slurm_nodes=1,
         slurm_array_parallelism=100)
@@ -287,7 +326,7 @@ if grid:
 if run_pyAltSim:
     XovOpt.set("sim_altdata", True)
     XovOpt.set("partials", False)
-    XovOpt.set("range_noise", False)
+    XovOpt.set("range_noise", True)
     XovOpt.set("expopt", simid)
     d_sess = build_sessiontable_man(MANFIL,500,500) #darc > 1 Cday
 
@@ -312,6 +351,7 @@ if run_pyAltSim:
         indir_in = f'SIM_{monyea}/{XovOpt.get("expopt")}/{XovOpt.get("resopt")}res_{XovOpt.get("amplopt")}amp/'
         pyaltsim_in.append(
             [XovOpt.get("amplopt"), XovOpt.get("resopt"), indir_in,  d_first, d_last, XovOpt.to_dict()])
+    # pyaltsim_in = pyaltsim_in[1:]
     if grid:
         executor.update_parameters(slurm_name="pyaltsim",
                                    slurm_cpus_per_task=2,
