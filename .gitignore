@@ -5,7 +5,7 @@ examples/*/data/out/*
 examples/*/data/tmp/*
 examples/*/data/raw/*
 examples/*/out/*
-examples/MLA/log_slurm/*
+examples/*/log_slurm/*
 pip-wheel-metadata/
 */*.egg-info
 *.obj
@@ -151,7 +151,6 @@ venv.bak/
 /examples/BELA/data/out/
 /examples/BELA/data/tmp/
 /examples/BELA/data/raw/
-/examples/*/log_slurm/
 /examples/*/data/aux/*/*.pkl
 examples/CALA/*.out
 examples/CALA/old/*
