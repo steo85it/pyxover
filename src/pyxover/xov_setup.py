@@ -1237,7 +1237,7 @@ class xov:
         idx[idx >= len(trackA.ladata_df) - 1] = len(trackA.ladata_df) - 2
         tmp1 = trackA.ladata_df.iloc[idx + 1][['LON', 'LAT']].reset_index(drop=True)
         tmp = pd.concat([tmp0, tmp1], axis=1)
-        tmp = tmp.T.groupby(by=tmp.columns).mean()
+        tmp = tmp.T.groupby(by=tmp.columns).mean().T
 
         self.xovers = pd.concat([self.xovers, tmp], axis=1)
 
