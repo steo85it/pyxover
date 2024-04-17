@@ -39,7 +39,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     # Populate mladata with laser altimeter data for each track
     for track_id in tracks_in_xovs[:]:
         # if track_id in ['1502130018','1502202222']:
-        print(track_id)
+        # print(track_id)
         if XovOpt.get("cloop_sim"):
             trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id[:-2] + '*.pkl'
         else:
@@ -74,21 +74,23 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             tmp = old_xovs.loc[old_xovs[orb] == track_id][[mla_idx[idx], 'xOvID', 'LON', 'LAT']].astype(
                 {mla_idx[idx]: int, 'xOvID': int, 'LON': float, 'LAT': float}).round({'LON': 3, 'LAT': 3}).values
 
+            if len(tmp) == 0:
+                logging.debug(f"no xovers for track={track_id} and orb={orb}, xov df extract empty. Continue.")
+                continue
+                # exit()
+
             # WD: I don't understand why seqid and xovid are not int at this point...
             xov_extract = pd.DataFrame(tmp, columns=['seqid', 'xovid', 'LON_proj', 'LAT_proj'])
             xov_extract.sort_values(by='seqid', inplace=True)
 
-            ########### TEST
-            # xov_extract = xov_extract.loc[xov_extract.xovid == 0]
-            ###########
-            # exit()
-            # Get geolocated observation with same seqid (same altimetry observation)
+            # Get geolocated observation with same seqid (unique LA range #)
             rows = tmp_ladata['seqid'].loc[tmp_ladata['seqid'].isin(xov_extract.loc[:, 'seqid'])]  # .index)  #
             # Check if multiple xovers at same mla index
             multiple_counts = xov_extract.loc[:, 'seqid'].value_counts()  # .loc[lambda x: x>1]
 
             # WD: not sure what is happening here
-            # Is the goal to create a unique genid, with the number of occurences?
+            # WD: Is the goal to create a unique genid, with the number of occurences?
+            # genid should be unique for this batch of LA ranges (?)
             if len(multiple_counts[multiple_counts > 1]) > 0:
                 # print(rows.to_frame())
                 rows = rows.reset_index()
@@ -106,25 +108,21 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             mla_close_to_xov = np.ravel([np.arange(i[0] - msrm_smpl, i[0] + (msrm_smpl + 1), 1) for i in tmp])
             tmp = np.hstack(
                 [mla_close_to_xov[:, np.newaxis], np.reshape(np.tile(tmp[:, 1:], (msrm_smpl * 2 + 1)), (-1, 4))])
+            # genid: a local id for la_ranges; seqid: global id for la_ranges; xovid: global id for xovers
+            # the same genid and seqid can belong to multiple xovers (so that genid can be not unique)
             xov_extract = pd.DataFrame(tmp, columns=['genid', 'seqid', 'xovid', 'LON_proj', 'LAT_proj'])
 
-            ladata_extract = tmp_ladata.loc[tmp_ladata.reset_index()['index'].isin(xov_extract.genid)][
-                ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt']].reset_index()
-            # print("ladata",ladata_extract)
-            # print("xov", xov_extract)
-            # if idx>0:
-            #     exit()
-            # print(xov_extract)
-            # exit()
-            mla_proj_df = pd.merge(xov_extract, ladata_extract, left_on='genid', right_on='index')
+            # print(tmp_ladata[['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt']])
+            ladata_extract = tmp_ladata.loc[tmp_ladata.index.isin(xov_extract.genid)][
+                ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt']]
+
+            mla_proj_df = pd.merge(xov_extract, ladata_extract, left_on='genid', right_index=True)
             mla_proj_df['partid'] = 'none'
-            # print("len mla_df_proj",len(mla_df_proj))
 
             if XovOpt.get("partials"):
-                # do stuff
-                tmp_ladata_partials = tmp_ladata.loc[tmp_ladata.reset_index()['index'].isin(xov_extract.genid)][
+                # do stuff (unsure if sorted in the same way... merge would be safer)
+                tmp_ladata_partials = tmp_ladata.loc[tmp_ladata.index.isin(xov_extract.genid)][
                     ['seqid', 'LON', 'LAT', 'orbID'] + pars + etbcs]
-                # print(tmp_ladata_partials.columns)
                 # print(delta_pars)
                 # update dict keys to multiply derivatives by deltas for LON and LAT and get increments
                 delta_pars_tmp = dict(zip(['dLON/' + x for x in delta_pars.keys()],
@@ -132,6 +130,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
                 delta_pars_tmp.update(dict(zip(['dLAT/' + x for x in delta_pars.keys()],
                                                [np.linalg.norm(x) for x in list(delta_pars.values())])))
                 part_deltas_df = pd.Series(delta_pars_tmp) * tmp_ladata_partials.loc[:, pars].astype(float)
+
                 # use increment to extrapolate new LON and LAT values
                 newlon_p = part_deltas_df.loc[:, part_deltas_df.columns.str.startswith("dLON")].add(
                     tmp_ladata_partials.LON, axis=0)
@@ -151,37 +150,25 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
                 newlon_m.columns = ['LON_' + x + '_m' for x in upd_cols]
                 newlat_m.columns = ['LAT_' + x + '_m' for x in upd_cols]
 
-                # tmp_proj_part = tmp_proj.drop(['ET_BC', 'LON', 'LAT'], axis=1)
-                mla_proj_df = mla_proj_df.astype({'genid':int})
-                # TODO FIX THIS!!!! There are duplicated genid keys associated to different xovers, which results
-                # in the wrong number of newlon/lat values, etc etc... IMPORTANT!!!!!!
-                logging.warning("# Dropping duplicated genid in mla_proj_df. This is a quick-fix but very wrong!!!!")
-                mla_proj_df = mla_proj_df.drop_duplicates(subset=['genid'])
-                tmp_mla_proj = mla_proj_df.set_index('genid')[['LON_proj', 'LAT_proj']]
+                # concatenate partials with LON/LAT associated to xovers (improve efficiency?)
+                tmp_mla_proj = mla_proj_df[['genid', 'LON_proj', 'LAT_proj']]
                 for idx, pder in enumerate(['_' + x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']]):
                     if pder[-1] == 'p':
-                        tmp = pd.concat([tmp_mla_proj,
+                        tmp = pd.concat([
                                          newlon_p['LON' + pder], newlat_p['LAT' + pder],
                                          tmp_ladata_partials['ET_BC' + pder], tmp_ladata_partials['dR/' + pder[1:-2]]
                                          ], axis=1)
                     else:
-                        tmp = pd.concat([tmp_mla_proj,
+                        tmp = pd.concat([
                                          newlon_m['LON' + pder], newlat_m['LAT' + pder],
                                          tmp_ladata_partials['ET_BC' + pder], tmp_ladata_partials['dR/' + pder[1:-2]]
                                          ], axis=1)
-                    # tmp['partid'] = pder[1:]
-                    tmp.reset_index(inplace=True)
-
-                    tmp = tmp.values
-
+                    # Concatenate all Series into a single DataFrame
+                    tmp['genid'] = tmp.index
+                    # Merge the partials DataFrame with the lonlat DataFrame
+                    tmp = tmp_mla_proj.merge(tmp, on='genid', how='left')
                     # REMEMBER: tmp.columns = genid, LON_proj, LAT_proj, LON, LAT, ET_BC, dR/dp
-
-                    # tmp.rename(
-                    #     columns={'level_0': 'genid', 'LON' + pder: "LON", 'dR/' + pder[1:-2]: "R", 'LAT' + pder: "LAT",
-                    #              'ET_BC' + pder: "ET_BC"}, inplace=True)
-                    # print(part_proj_dict[idx])
-
-                    part_proj_dict[idx].append(tmp)
+                    part_proj_dict[idx].append(tmp.values)
 
             mla_proj_list.append(mla_proj_df)
 
