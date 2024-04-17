@@ -20,8 +20,6 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
         old_xovs = old_xovs.loc[
             (old_xovs['orbA'].str.startswith(str(cmb[0]))) & (old_xovs['orbB'].str.startswith(str(cmb[1])))]
 
-    # print(old_xovs)
-
     tracks_in_xovs = np.unique(old_xovs[['orbA', 'orbB']].values)
     print("Processing", len(tracks_in_xovs), "tracks, previously resulting in", len(old_xovs), "xovers.")
     # check if tracks to process in this combination
@@ -38,6 +36,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     mla_idx = ['mla_idA', 'mla_idB']
     mladata = {}
 
+    # Populate mladata with laser altimeter data for each track
     for track_id in tracks_in_xovs[:]:
         # if track_id in ['1502130018','1502202222']:
         print(track_id)
@@ -54,15 +53,10 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             # trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'
         track = track.load(trackfil)
         mladata[track_id] = track.ladata_df
-        # print(mladata)
 
     for track_id in tracks_in_xovs[:]:
-        # print(track_id)
-        # if track_id in ['1502130018','1502202222']:
 
         for idx, orb in enumerate(['orbA', 'orbB']):
-            # print(idx,orb)
-            # print(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
 
             # load file if year of track corresponds to folder
             # TODO removed check on orbid for this test
@@ -74,26 +68,27 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
                 # track = gtrack(vecopts) # reinitialize track to avoid error "'NoneType' object has no attribute 'load'"
                 continue
 
-            # exit()
             # tmp_ladata = track.ladata_df.copy()  # .reset_index()
 
             # xov df extract and expand to neighb obs
             tmp = old_xovs.loc[old_xovs[orb] == track_id][[mla_idx[idx], 'xOvID', 'LON', 'LAT']].astype(
                 {mla_idx[idx]: int, 'xOvID': int, 'LON': float, 'LAT': float}).round({'LON': 3, 'LAT': 3}).values
-            # print(tmp)
-            # sampl = 10
+
+            # WD: I don't understand why seqid and xovid are not int at this point...
             xov_extract = pd.DataFrame(tmp, columns=['seqid', 'xovid', 'LON_proj', 'LAT_proj'])
             xov_extract.sort_values(by='seqid', inplace=True)
-            # print(xov_extract)
+
             ########### TEST
             # xov_extract = xov_extract.loc[xov_extract.xovid == 0]
             ###########
             # exit()
-            # # get geoloc obs with same seqid
+            # Get geolocated observation with same seqid (same altimetry observation)
             rows = tmp_ladata['seqid'].loc[tmp_ladata['seqid'].isin(xov_extract.loc[:, 'seqid'])]  # .index)  #
-            # check if multiple xovers at same mla index
+            # Check if multiple xovers at same mla index
             multiple_counts = xov_extract.loc[:, 'seqid'].value_counts()  # .loc[lambda x: x>1]
 
+            # WD: not sure what is happening here
+            # Is the goal to create a unique genid, with the number of occurences?
             if len(multiple_counts[multiple_counts > 1]) > 0:
                 # print(rows.to_frame())
                 rows = rows.reset_index()
@@ -106,7 +101,6 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             xov_extract['index'] = rows.index
 
             xov_extract = xov_extract[['index', 'seqid', 'xovid', 'LON_proj', 'LAT_proj']]
-            # print("xov",xov_extract)
 
             tmp = xov_extract.values
             mla_close_to_xov = np.ravel([np.arange(i[0] - msrm_smpl, i[0] + (msrm_smpl + 1), 1) for i in tmp])
