@@ -77,11 +77,9 @@ class xov:
         # map tracks to 0 and 1
         self.ladata_df['orbID'] = self.ladata_df['orbID'].map(self.tracks)
 
-        if XovOpt.get("instrument") in ['BELA',
-                                        'CALA']:  # TODO split the orbit to check with a smaller msrm_sampl w/o breaking memory
-            self.msrm_sampl = 20  # WD: try 10
-        else:
-            self.msrm_sampl = 4
+        # TODO split the orbit to check with a smaller msrm_sampl w/o breaking memory
+
+        self.msrm_sampl = XovOpt.get("msrm_sampl")
 
         # store the imposed perturbation (if closed loop simulation)
         self.pert_cloop = {list(self.tracks.keys())[0]: gtracks[0].pert_cloop,

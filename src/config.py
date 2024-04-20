@@ -88,6 +88,8 @@ class XovOpt:
         "new_algo": True,  # False #
         # load input xov
         "compute_input_xov": True,
+        # Measurement sampling
+        "msrm_smpl" : 2, # 4, 6, 8, 10 ...
 
         # PyAltSim options
         # simulation mode ! WD: possible option to (0:no, 1:yes, use, 2: yes, create)
@@ -144,6 +146,9 @@ class XovOpt:
                             f" is inconsistent with vecopts attr "
                             f"{XovOpt.get('vecopts')['PLANETNAME']}."
                             f" Please update vecopts via XovOpt.set.")
+        
+        if XovOpt.get("msrm_smpl") % 2 != 0:
+            raise NameError(f'msrm_smpl config not accepted! Should be an even int')
 
     @staticmethod
     def get(name):
