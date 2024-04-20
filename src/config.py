@@ -88,6 +88,8 @@ class XovOpt:
         "new_algo": True,  # False #
         # load input xov
         "compute_input_xov": True,
+        # Measurement sampling
+        "msrm_sampl" : 2, # 4, 6, 8, 10 ...
 
         # PyAltSim options
         # simulation mode ! WD: possible option to (0:no, 1:yes, use, 2: yes, create)
