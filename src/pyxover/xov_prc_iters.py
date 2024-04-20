@@ -27,9 +27,6 @@ def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
 
     msrm_smpl = XovOpt.get("msrm_sampl")  # should be even...
 
-    if msrm_smpl % 2 != 0:
-        print("*** ERROR: msrm_smpl not an even number:", msrm_smpl)
-
     # compute projected mla_data around old xovs
     if not XovOpt.get("import_proj"):
 
