@@ -63,7 +63,7 @@ def prepro_BELA_sim(epo_in):
     df_['lat']= np.rad2deg(approx_bounce_point_sph[1]) # pd.DataFrame(approx_bounce_point_sph,columns=['r','lat','lon'])
 
     # apply altitude cutoff (PFD too high)
-    df_ = df_[df_.rng < 1600]
+    df_ = df_[df_.rng < XovOpt.get("max_range_altitude")]
     df_ = df_.rename(columns={"xyzd": "epo_tx"})
     # print(df_.dtypes)
 

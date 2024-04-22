@@ -84,8 +84,8 @@ class sim_gtrack(gtrack):
 
         # add range noise
         if XovOpt.get("range_noise"):
-            mean = 0.
-            std = 12
+            mean = XovOpt.get("range_noise_opts")[0]
+            std = XovOpt.get("range_noise_opts")[1]
             self.add_range_noise(df_, mean, std)
 
         self.setup_rdr()
@@ -234,13 +234,9 @@ class sim_gtrack(gtrack):
             gmt = False
 
             if XovOpt.get("instrument") in ['BELA', 'CALA']:
-                if XovOpt.get("local"):
-                    geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                               'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
-                               'SP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif'}
-                else:
-                    geotiff = [f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                               f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif']
+                geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                           'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
+                           'SP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif'}
 
                 df = pd.DataFrame(zip(lattmp, lontmp), columns=['LAT', 'LON'])  # .reset_index()
                 # nice but not broadcasted... slow
@@ -448,9 +444,6 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     res_in = args[1]  # Result directory?
     dirnam_in = args[2]  # Input directory
 
-    #print("arg")
-    #print(*args)
-
     if len(args) < 6:
         epos_in = args[3]  # Month to simulate (format: YYMM)
         opts = args[4]  # Options (dictionnary)
@@ -481,23 +474,20 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     data_pth = f'{XovOpt.get("rawdir")}'
     dataset = dirnam_in
     data_pth += dataset
+    outdir_ = data_pth # WD: Could be merged with data_path
 
     if (XovOpt.get("SpInterp") in [0, 2]) and (not XovOpt.get("instrument") == "LOLA"):
         # load kernels
-        if not XovOpt.get("local"):  # WD: Messenger related??
-            spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
-                          f'{XovOpt.get("auxdir")}mymeta_pgda'])
-        else:
-            spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
+        spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
+        # if not XovOpt.get("local"):  # WD: Messenger related??
+             # spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
+             #               f'{XovOpt.get("auxdir")}mymeta_pgda'])
         # load additional kernels
         if XovOpt.get("spice_spk"):
             spice.furnsh(XovOpt.get("spice_spk"))
 
     if XovOpt.get("instrument") == "LOLA":
         path_illumng = f'{XovOpt.get("auxdir")}{epos_in}/slewcheck_{ampl_in}/'
-
-    #print('dirnam_in', dirnam_in)
-    #print('epos_in', epos_in)
 
     if not os.path.exists(XovOpt.get('tmpdir')):
         os.makedirs(XovOpt.get('tmpdir'))
@@ -550,9 +540,6 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # read all MLA datafiles (*.TAB in data_pth) corresponding to the given time period
         data_pth = XovOpt.get("rawdir")
         allFiles = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + epos_in + '*.TAB'))
-        #print("path+files")
-        #print(data_pth, epos_in)
-        #print(allFiles)
 
         # Prepare list of tracks
         tracknames = ['gtrack_' + fil.split('.')[0][-10:] for fil in allFiles]
@@ -564,10 +551,6 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
             epo_in.extend(track.ladata_df.ET_TX.values)
 
         epo_in = np.sort(np.array(epo_in))
-    # print(epo_in)
-    # print(epo_in.shape)
-    # print(np.sort(epo_in)[0],np.sort(epo_in)[-1])
-    # print(np.sort(epo_in)[-1])
 
     elif XovOpt.get("instrument") != "LOLA":
         # generate list of epoch within selected month and given sampling rate (fixed to 10 Hz)
@@ -576,10 +559,8 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
         sec_j2000_first = (d_first - dj2000).total_seconds()
         sec_j2000_last = (d_last - dj2000).total_seconds()
-        # print(sec_j2000_first,sec_j2000_last)
         # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
-        epo_tx = np.arange(sec_j2000_first, sec_j2000_last, .1)  # WD: create option
-        # epo_tx = np.arange(sec_j2000_first,sec_j2000_last,1/30) # WD: create option
+        epo_tx = np.arange(sec_j2000_first, sec_j2000_last, 1/XovOpt.get("sampling_rate"))
 
     # pass to illumNG
     if not XovOpt.get("instrument") in ['BELA', 'CALA']:
@@ -624,7 +605,6 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         # else:
         # launch illumNG directly
         df = prepro_ilmNG(illumNGf)
-        #print('illumNGf', illumNGf)
 
     else:  # if BELA/CALA
         # WD: name to be changed ...
@@ -639,7 +619,6 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
         else:
             df = pd.read_pickle(illumpklf)
             print("simil-illumNG prediction read from ", illumpklf)
-        # print(df)
 
     # TODO replace with "small_scale_topo" option
     if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
@@ -672,13 +651,6 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     #
     # print(tracks)
     # print([tr.name for tr in tracks])
-
-    if XovOpt.get("local"):
-        outdir_ = XovOpt.get("rawdir") + dirnam_in
-    else:
-        outdir_ = dirnam_in
-
-    #print("outdir = ", outdir_)
 
     if not os.path.exists(outdir_):
         os.makedirs(outdir_, exist_ok=True)

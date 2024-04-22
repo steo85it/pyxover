@@ -102,8 +102,14 @@ class XovOpt:
         "small_scale_topo": False,
         # range noise
         "range_noise": 0,
+        # range noise mean and std [m]
+        "range_noise_opts" : [0.,0.],
         # local/global DEM (LOLA)
         "local_dem": True,
+        # Maximum range altitude [km]
+        "max_range_altitude": 1050,
+        # Laser altimeter sampling rate [Hz]
+        "sampling_rate": 10,
 
         # vecopts
         # Setup some useful options
