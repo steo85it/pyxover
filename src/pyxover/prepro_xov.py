@@ -37,22 +37,32 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     mladata = {}
 
     # Populate mladata with laser altimeter data for each track
+    # WD: Whole gtrack is not needed.ladata_df could be passed as an
+    # argument, provided that necessary columns havent been dumped.
     for track_id in tracks_in_xovs[:]:
-        # if track_id in ['1502130018','1502202222']:
-        # print(track_id)
-        if XovOpt.get("cloop_sim"):
-            trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id[:-2] + '*.pkl'
-        else:
-            # TODO removed check on orbid for this test
-            if XovOpt.get("weekly_sets"):
-               trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[0] + '/gtrack_' + track_id + '.pkl'
-               if (not os.path.isfile(trackfil)):
-                   trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[1] + '/gtrack_' + track_id + '.pkl'
-            else:
-               trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl'
-            # trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + track_id + '.pkl'
-        track = track.load(trackfil)
-        mladata[track_id] = track.ladata_df
+       # First, try to read only ladata
+       # If don't exist, read the whole gtrack
+       for pattern in ['ladata_', '']:
+          if XovOpt.get("cloop_sim"):
+             trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + pattern + track_id[:-2] + '*.parquet'
+          else:
+             track_fn = 'gtrack_' + pattern + track_id + '.parquet'
+             if XovOpt.get("weekly_sets"):
+                trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[0] + '/' + track_fn
+                if (not os.path.isfile(trackfil)):
+                   trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[1] + '/' + track_fn
+             else:
+                trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/' + track_fn
+          if (os.path.isfile(trackfil)):
+             if pattern == 'ladata_':
+                track = track.load_df(trackfil)
+                break
+             else:
+                track = track.load(trackfil)
+       if track.ladata_df is None:
+          print(f"*** PyXover: Issue loading ladata from {track_id}.")
+          exit()
+       mladata[track_id] = track.ladata_df
 
     for track_id in tracks_in_xovs[:]:
 

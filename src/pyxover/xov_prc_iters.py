@@ -41,15 +41,13 @@ def xov_prc_iters_run(outdir_in, xov_iter, cmb, input_xov):
             else: # read a user defined abmat file
                 abmat = XovOpt.get("import_abmat")[1]
 
-            # print(outdir_old, outdir_in)
             tmp_Amat = Amat(XovOpt.get("vecopts"))
-            # print(outdir + outdir_old + 'Abmat*.pkl')
             tmp = tmp_Amat.load(glob.glob(abmat)[0])
             old_xovs = tmp.xov.xovers[useful_columns]
         else:
             input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl.gz'
             if not XovOpt.get("compute_input_xov"):
-                if XovOpt.get("instrument") == 'BELA' and not XovOpt.get("monthly_sets"):
+                if False and XovOpt.get("instrument") == 'BELA' and not XovOpt.get("monthly_sets"): #WD what is that ?
                     input_xov_path = glob.glob(
                         XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(cmb[0]) + '??_' + str(cmb[1]) + '??.pkl.gz')
                     input_xov = pd.concat([pd.read_pickle(x) for x in input_xov_path]).reset_index()

@@ -23,13 +23,11 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     # store the imposed perturbation (if closed loop simulation) - get from any track uploaded in prepro step
     track = gtrack(XovOpt.to_dict())
     # TODO removed check on orbid for this test
-    # print(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/gtrack_' + str(cmb[0]) + '*.pkl')
     if XovOpt.get("weekly_sets"):
-      track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+       track_folder = XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0]) + '/'
     else:
-      track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
-    # print(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + str(cmb[0]) + '*.pkl')
-    # track = track.load(glob.glob(XovOpt.get("outdir") + outdir_in + 'gtrack' + '/gtrack_' + str(cmb[0]) + '*.pkl')[0])
+       track_folder = XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/'
+    track = track.load(glob.glob(track_folder + 'gtrack_' + str(cmb[0]) + '*.pkl')[0])
 
     xov_tmp.pert_cloop = {'0': track.pert_cloop}
     xov_tmp.pert_cloop_0 = {'0': track.pert_cloop_0}
@@ -48,7 +46,6 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     proj_df_tmp = mla_proj_df[
         ['orbID', 'seqid_mla', 'ET_TX', 'LON', 'LAT', 'R', 'dt', 'offnadir', 'xovid', 'LON_proj', 'LAT_proj'] + list(
             cols_to_keep)]
-    # print(proj_df_tmp.columns)
     print("total memory proj_df_tmp:", proj_df_tmp.memory_usage(deep=True).sum() * 1.e-6)
 
     if XovOpt.get("parallel"):
@@ -103,8 +100,6 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
             for xovi in xovs_list:
                 fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
 
-            # print(idx)
-
     # fill xov structure with info for LS solution
     xov_tmp.parOrb_xy = [x for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns]  # update partials list
     xov_tmp.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(XovOpt.get("parGlo").keys())]
@@ -112,10 +107,6 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
     if XovOpt.get("debug"):
         print("Parameters:", xov_tmp.parOrb_xy, xov_tmp.parGlo_xy, xov_tmp.par_xy)
     # update xovers table with LAT and LON
-    # print(xov_tmp.xovers.columns)
-    # print(mla_proj_df.loc[mla_proj_df.partid == 'none'].columns)
-    # print(xov_tmp.xovers)
-    # print(mla_proj_df.loc[mla_proj_df.partid == 'none'])
     if len(xov_tmp.xovers) > 0:
         xov_tmp = get_xov_latlon(xov_tmp, mla_proj_df.loc[mla_proj_df.partid == 'none'])
         xov_tmp.xovers.drop('xovid', axis=1).reset_index(inplace=True, drop=True)
@@ -217,6 +208,9 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
         xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(
             np.reshape(xov_tmp.get_dt(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
             columns=['dtA', 'dtB'])], axis=1)
+        xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(
+            np.reshape(xov_tmp.get_tX(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
+            columns=['tA', 'tB'])], axis=1)
 
     # Remap track names to df
     xov_tmp.xovtmp['orbA'] = xov_tmp.xovtmp['orbA'].map({v: k for k, v in xov_tmp.tracks.items()})

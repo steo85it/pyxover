@@ -60,7 +60,6 @@ class xov:
     def setup(self, gtracks):
 
         self.gtracks = gtracks
-        # self.t0_tracks[gtracks.name] = gtracks.t0_orb
 
         if XovOpt.get("new_algo"):
             cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
@@ -82,6 +81,8 @@ class xov:
         self.msrm_sampl = XovOpt.get("msrm_sampl")
 
         # store the imposed perturbation (if closed loop simulation)
+        # WD: Isn't this overwritten during the fine search? (see compute_fine_xov)
+        # If yes, the following block can be removed
         self.pert_cloop = {list(self.tracks.keys())[0]: gtracks[0].pert_cloop,
                            list(self.tracks.keys())[1]: gtracks[1].pert_cloop}
         self.pert_cloop_0 = {list(self.tracks.keys())[0]: gtracks[0].pert_cloop_0,
@@ -90,7 +91,7 @@ class xov:
         self.sol_prev_iter = {list(self.tracks.keys())[0]: gtracks[0].sol_prev_iter,
                               list(self.tracks.keys())[1]: gtracks[1].sol_prev_iter}
 
-        if XovOpt.get("debug") and False:
+        if XovOpt.get("debug") and False: # WD: remove? Can't see why it's there ...
             # prepare surface texture "stamp" and assign the interpolated function as class attribute
             np.random.seed(62)
             shape_text = 1024
@@ -105,7 +106,6 @@ class xov:
             self.apply_texture = interp_spline
 
         if XovOpt.get("new_algo"):
-            # self.ladata_df = self.ladata_df[['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R', 'X_stgprj', 'Y_stgprj']]
             # rough only as prepro
             nxov = self.get_xov_prelim()
         else:
@@ -117,7 +117,6 @@ class xov:
             multi_xov_check = nxov > 0
         else:
             multi_xov_check = nxov == 1
-        # print(nxov,multi_xov_check)
 
         if multi_xov_check:
 
@@ -144,7 +143,6 @@ class xov:
                 self.xovtmp['orbA'] = trackmap[self.xovtmp['orbA']]
                 self.xovtmp['orbB'] = trackmap[self.xovtmp['orbB']]
 
-                # print(self.xovtmp)
                 # Update general df
                 # self.xovers.append(self.xovtmp)
         return multi_xov_check
@@ -208,19 +206,20 @@ class xov:
         pklfile.close()
 
     # ##@profile
-    # load groundtrack from file
+    # load xover from file
     def load(self, filnam):
-
+        import gc
+        # disabling cyclic garbage collection
+        gc.disable()
         try:
-            # print(filnam)
             pklfile = open(filnam, 'rb')
             self = pickle.load(pklfile)
             pklfile.close()
             # print('Xov loaded from '+filnam)
-
         except:
             pass
             # print("Loading "+filnam+" failed")
+        gc.enable()
 
         return self
 
@@ -729,8 +728,6 @@ class xov:
             intersec_x, intersec_y = intersec_out[:, 0], intersec_out[:, 1]
             fine_indA, fine_indB = intersec_out[:, 2], intersec_out[:, 3]
 
-            # print(fine_indA, fine_indB)
-
             intersec_ind = intersec_out[:, 2:]
             rough_ind = np.array([rough_indA, rough_indB]).T
 
@@ -739,8 +736,6 @@ class xov:
             tmp = rough_ind - msrm_sampl
             ld_ind_A = np.where(tmp[:, 0] > 0, (tmp + intersec_ind)[:, 0], intersec_ind[:, 0])
             ld_ind_B = np.where(tmp[:, 1] - len(ldA_) > 0, (tmp + intersec_ind)[:, 1], len(ldA_) + intersec_ind[:, 1])
-
-            # print(intersec_x)
 
             # plot and check intersections (rough, fine, ...)
             # if (debug):
@@ -1221,19 +1216,19 @@ class xov:
             print(pd.concat([xovtmp, df_], axis=1))
             # exit(2)
 
-    def get_xov_latlon(self, trackA):
+    def get_xov_latlon(self, track_ladata_df):
         """
         Retrieve LAT/LON of xover from geolocalisation table and add to xovers table
         (useful to analyze/plot xovers on map). Updates input xov.xovers.
 
-        :param trackA: gtrack containing ladata table
+        :param track_ladata_df: ladata table of gtrack
         """
         # TODO could also average trackB idB for more accuracy (or call this function
         # for trackB too)
         idx = self.xovers.cmb_idA.round()
-        tmp0 = trackA.ladata_df.iloc[idx][['LON', 'LAT']].reset_index(drop=True)
-        idx[idx >= len(trackA.ladata_df) - 1] = len(trackA.ladata_df) - 2
-        tmp1 = trackA.ladata_df.iloc[idx + 1][['LON', 'LAT']].reset_index(drop=True)
+        tmp0 = track_ladata_df.iloc[idx][['LON', 'LAT']].reset_index(drop=True)
+        idx[idx >= len(track_ladata_df) - 1] = len(track_ladata_df) - 2
+        tmp1 = track_ladata_df.iloc[idx + 1][['LON', 'LAT']].reset_index(drop=True)
         tmp = pd.concat([tmp0, tmp1], axis=1)
         tmp = tmp.T.groupby(by=tmp.columns).mean().T
 
@@ -1371,6 +1366,11 @@ class xov:
             xovers_df = pd.concat(
                 [xovers_df, pd.DataFrame(np.reshape(self.get_dt(ladata_df, xovers_df), (len(xovers_df), 2)),
                                          columns=['dtA', 'dtB'])], axis=1)
+            
+            xovers_df = pd.concat(
+                [xovers_df, pd.DataFrame(np.reshape(self.get_tX(ladata_df, xovers_df), (len(xovers_df), 2)),
+                                         columns=['tA', 'tB'])], axis=1)
+
             # if (OrbRep == 'lin' or OrbRep == 'quad'):
             #     xovers_df = self.upd_orbrep(xovers_df)
 
@@ -1438,7 +1438,6 @@ class xov:
 
     ####@profile
     def get_dt(self, ladata_df, xovers_df):
-        # tracksid = list(self.tracks.values())
 
         dt = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].loc[
                              map(round, xovers_df.cmb_idA.values)][['dt']].values, \
@@ -1459,6 +1458,16 @@ class xov:
         #     dt = dt - t0[:, np.newaxis]
 
         return dt
+     
+    def get_tX(self, ladata_df, xovers_df):
+
+        # dt = track.ladata_df.ET_TX - track.t0_orb
+        tX = np.squeeze([ladata_df.loc[ladata_df['orbID'].values == 0].loc[
+                             map(round, xovers_df.cmb_idA.values)][['ET_TX']].values, \
+                         ladata_df.loc[ladata_df['orbID'].values == 1].loc[
+                             map(round, xovers_df.cmb_idB.values)][['ET_TX']].values])
+
+        return tX
 
     ###@profile
     def get_partials(self, l):

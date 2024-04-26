@@ -12,6 +12,7 @@ import os
 import pickle
 import re
 import time
+import gc
 
 import numpy as np
 import pandas as pd
@@ -106,6 +107,7 @@ class gtrack:
                 self.project(lat0=90)
             # update df
 
+            # WD: Numerical errors. Should we assume a given sampling somehow?
             self.ladata_df['dt'] = self.ladata_df.ET_TX - self.t0_orb
 
     # create groundtrack from data and save to file
@@ -183,17 +185,21 @@ class gtrack:
         # print(self.MGRx.tck)
 
     def save(self, filnam):
-        # clean up useless columns
-        self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dR_tid$').columns, axis='columns')
-
+        # To use after self.ladata_df is saved via save_df
+        # Ladata_df is saved separately
+        self.ladata_df = None
         pklfile = open(filnam, "wb")
         pickle.dump(self, pklfile, protocol=-1)
         pklfile.close()
 
+    def save_df(self, filnam):
+        # clean up useless columns
+        self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dR_tid$').columns, axis='columns')
+        self.ladata_df.to_parquet(filnam, engine='pyarrow')
+
     # load groundtrack from file
     # @profile
     def load(self, filnam):
-        import gc
         # disabling cyclic garbage collection
         gc.disable()
         if os.path.isfile(filnam):
@@ -204,9 +210,19 @@ class gtrack:
             if self.XovOpt.get("debug"):
                 print("No " + filnam + " found")
             self = None
-        # print('Groundtrack loaded from '+filnam)
-        # print(self.ladata_df)
-        # print(self.MGRx.tck)
+        gc.enable()
+        return self
+     
+    # load ladata from file
+    def load_df(self, filnam):
+        # disabling cyclic garbage collection
+        gc.disable()
+        if os.path.isfile(filnam):
+            self.ladata_df = pd.read_parquet(filnam, engine='pyarrow')
+        else:
+            if self.XovOpt.get("debug"):
+                print("No " + filnam + " found")
+            self = None
         gc.enable()
         return self
 

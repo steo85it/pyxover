@@ -68,11 +68,11 @@ from config import XovOpt
 def launch_gtrack(args):
     track, outdir_in = args
     track_id = 'gtrack_' + track.name
-    # track = gtrack(vecopts)
 
     if XovOpt.get("new_gtrack") > 0:
         gtrack_out = XovOpt.get("outdir") + outdir_in + '/' + track_id + '.pkl'
-        if not os.path.isfile(gtrack_out) or XovOpt.get("new_gtrack") == 2:
+        gtrack_df_out = XovOpt.get("outdir") + outdir_in + '/' + 'gtrack_ladata_' + track.name + '.parquet'
+        if not (os.path.isfile(gtrack_out) or os.path.isfile(gtrack_out)) or XovOpt.get("new_gtrack") == 2:
 
             if not os.path.exists(XovOpt.get("outdir") + outdir_in):
                 os.makedirs(XovOpt.get("outdir") + outdir_in, exist_ok=True)
@@ -92,9 +92,8 @@ def launch_gtrack(args):
             # exit()
             # pd.set_option('display.max_columns', None)
 
-            # print(track.ladata_df)
-            # exit()
             if len(track.ladata_df) > 0:
+                track.save_df(gtrack_df_out)
                 track.save(gtrack_out)
                 if not XovOpt.get("local") or XovOpt.get("debug"):
                     print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
@@ -134,12 +133,7 @@ def main(args):
     data_pth += dataset
 
     if XovOpt.get("SpInterp") in [0, 2]:
-        # load kernels
-        if not XovOpt.get("local"):
-            spice.furnsh([f'{XovOpt.get("auxdir")}furnsh.MESSENGER.def',
-                          f'{XovOpt.get("auxdir")}mymeta_pgda'])
-        else:
-            spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
+        spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
         # load additional kernels
         print(XovOpt.get("spice_spk"))
         if XovOpt.get("spice_spk"):
@@ -318,13 +312,6 @@ def main(args):
                     True
 
             tracks.append(track)
-
-        # epo_in = np.array(epo_in)
-        # print(epo_in)
-        # print(epo_in.shape)
-        # print(np.sort(epo_in)[0])
-        # print(np.sort(epo_in)[-1])
-        # np.savetxt("tmp/epo_mla_1301.in", epo_in, fmt="%10.5f")
 
         if XovOpt.get("SpInterp") == 3:
             print(
