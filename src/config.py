@@ -89,7 +89,7 @@ class XovOpt:
         # load input xov
         "compute_input_xov": True,
         # Measurement sampling
-        "msrm_smpl" : 2, # 4, 6, 8, 10 ...
+        "msrm_sampl" : 2, # 4, 6, 8, 10 ...
 
         # PyAltSim options
         # simulation mode ! WD: possible option to (0:no, 1:yes, use, 2: yes, create)
@@ -105,7 +105,7 @@ class XovOpt:
         # range noise
         "range_noise": 0,
         # range noise mean and std [m]
-        "range_noise_opts" : [0.,0.],
+        "range_noise_mean_std" : [0.,0.],
         # local/global DEM (LOLA)
         "local_dem": True,
         # Maximum range altitude [km]
@@ -153,8 +153,8 @@ class XovOpt:
                             f"{XovOpt.get('vecopts')['PLANETNAME']}."
                             f" Please update vecopts via XovOpt.set.")
         
-        if XovOpt.get("msrm_smpl") % 2 != 0:
-            raise NameError(f'msrm_smpl config not accepted! Should be an even int')
+        if XovOpt.get("msrm_sampl") % 2 != 0:
+            raise NameError(f'msrm_sampl config not accepted! Should be an even int')
 
     @staticmethod
     def get(name):

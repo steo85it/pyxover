@@ -84,9 +84,8 @@ class sim_gtrack(gtrack):
 
         # add range noise
         if XovOpt.get("range_noise"):
-            mean = XovOpt.get("range_noise_opts")[0]
-            std = XovOpt.get("range_noise_opts")[1]
-            self.add_range_noise(df_, mean, std)
+            self.add_range_noise(df_, XovOpt.get("range_noise_mean_std")[0],
+                                 XovOpt.get("range_noise_mean_std")[1])
 
         self.setup_rdr()
 
@@ -389,10 +388,12 @@ class sim_gtrack(gtrack):
         # only select nadir data
         # df_ = df_[df_.loc[:,'offnadir']<5]
 
-        mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime', 'MET', 'frm',
-                       'chn', 'Pulswd', 'thrsh', 'gain', '1way_range', 'Emiss', 'TXmJ',
-                       'UTC', 'TOF_ns_ET', 'Sat_long', 'Sat_lat', 'Sat_alt', 'Offnad', 'Phase',
-                       'Sol_inc', 'SCRNGE', 'seqid']
+        # mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime', 'MET', 'frm',
+        #                'chn', 'Pulswd', 'thrsh', 'gain', '1way_range', 'Emiss', 'TXmJ',
+        #                'UTC', 'TOF_ns_ET', 'Sat_long', 'Sat_lat', 'Sat_alt', 'Offnad', 'Phase',
+        #                'Sol_inc', 'SCRNGE', 'seqid']
+        mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime',
+                       'frm', 'chn', 'UTC', 'TOF_ns_ET', 'seqid']
         self.rdr_df = pd.DataFrame(columns=mlardr_cols)
 
         # assign "bad chn" to non converged observations
