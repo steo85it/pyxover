@@ -46,7 +46,11 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
           if XovOpt.get("cloop_sim"):
              trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + pattern + track_id[:-2] + '*.parquet'
           else:
-             track_fn = 'gtrack_' + pattern + track_id + '.parquet'
+             track_fn = 'gtrack_' + pattern + track_id
+             if pattern == 'ladata_':
+                track_fn += '.parquet'
+             else:
+                track_fn += '.pkl'
              if XovOpt.get("weekly_sets"):
                 trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[0] + '/' + track_fn
                 if (not os.path.isfile(trackfil)):

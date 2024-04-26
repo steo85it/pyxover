@@ -339,6 +339,10 @@ def main(args_in):
             for pattern in ['ladata_', '']:
                track_filename = 'gtrack_' + pattern + track_id + '.pkl'
                track_filename = 'gtrack_' + pattern + track_id + '.parquet'
+               if pattern == 'ladata_':
+                  track_filename += '.parquet'
+               else:
+                  track_filename += '.pkl'
                if XovOpt.get("weekly_sets"):
                   track_filepath = XovOpt.get("outdir") + outdir_in + 'gtrack_' + misycmb_par[0] + '/' + track_filename
                   if (not os.path.isfile(track_filepath)):
