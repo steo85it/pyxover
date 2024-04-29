@@ -526,13 +526,9 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
     # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
     if XovOpt.get("instrument") == 'LOLA':
-        #print(path_illumng)
-        #print(path_illumng + '_boresights_LOLA_ch*_*_laser2_fov_bs' + str(ampl_in) + '.inc')
-        #print(glob.glob(path_illumng + '_boresights_LOLA_ch*_*_laser2_fov_bs' + str(ampl_in) + '.inc'))
+        print("XovOpt.get(vecopts)['ALTIM_BORESIGHT'] read from file")
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(
             glob.glob(path_illumng + '_boresights_LOLA_ch*_*_laser2_fov_bs' + str(ampl_in) + '.inc')[0])
-    else:
-        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
     ###########################
 
     # Generate list of epochs

@@ -147,14 +147,11 @@ def main(args):
 
     ##############################################
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
-    if XovOpt.get("instrument") == 'BELA':
-        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0., 0., 1.]
-    elif XovOpt.get("instrument") == 'LOLA':
+    if XovOpt.get("instrument") == 'LOLA':
+        print("XovOpt.get(vecopts)['ALTIM_BORESIGHT'] read from file")
         XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = np.loadtxt(
             glob.glob(f'{XovOpt.get("auxdir")}{epo_in}/slewcheck_0/' + '_boresights_LOLA_ch12345_*_laser2_fov_bs0.inc')[
                 0])
-    else:
-        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
 
     ###########################
 

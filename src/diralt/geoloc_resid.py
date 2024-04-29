@@ -428,8 +428,6 @@ def fit_track_to_dem(df_in,dem_file):
     # coeff_set_re = '^dR/d[A,C,R]'
     # n_per_orbit = [400]  # 100,800] #
 
-    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
-
     # if local:
     #     dem_xarr = import_dem(
     #         "/home/sberton2/Works/NASA/Mercury_tides/aux/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km.GRD") #HDEM_64.GRD")
@@ -797,8 +795,6 @@ def print_demfit(dr_post, dt_post, dorb='', orb='xxx', dr_pre='', dt_pre=''):
 if __name__ == '__main__':
 
     start = time.time()
-
-    XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
 
     #    if local:
     #      spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')

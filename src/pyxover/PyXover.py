@@ -200,12 +200,8 @@ def main(args_in):
 
     # out = spice.getfov(vecopts['INSTID'][0], 1)
     # updated w.r.t. SPICE from Mike's scicdr2mat.m
-    # WD: Is it safe to change this ALTIM_BORESIGHT here?
-    if XovOpt.get("instrument") == 'BELA':
-        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.,0.,1.]
-    else:
-        XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
-    ###########################
+    if XovOpt.get("instrument") == 'LOLA':
+        print("Should XovOpt.get(vecopts)['ALTIM_BORESIGHT'] be read from file in case of LOLA?")
 
     # apply pointing corrections
     # vecin = {'ZPT':vecopts['ALTIM_BORESIGHT']}
