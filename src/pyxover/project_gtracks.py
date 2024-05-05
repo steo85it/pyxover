@@ -1,17 +1,25 @@
 import multiprocessing as mp
 import time
 
+import os
 import numpy as np
 import pandas as pd
 from pyxover.xov_utils import get_ds_attrib
 from xovutil.project_coord import project_stereographic
+from pyxover.prepro_xov import prepro_mla_xov
 
 # from examples.MLA.options import XovOpt.get("local"), XovOpt.get("parallel"), XovOpt.get("partials"), XovOpt.get("outdir"), XovOpt.get("vecopts"), XovOpt.get("n_proc")
 from config import XovOpt
+from memory_profiler import profile
 
-
-def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
+# @profile
+def project_mla(old_xovs, msrm_smpl, gtrack_dirs, cmb):
+    
+    # preprocessing of old xov and mla_data
+    mla_proj_df, part_proj_dict = prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb)
+    
     start_proj = time.time()
+    
     # setting standard value (no chunks)
     # chunked_proj_dict = False
     if XovOpt.get("local"):
@@ -35,7 +43,6 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
                 chunkstart = i_proc * chunksize
                 # make sure to include the division remainder for the last process
                 chunkend = (i_proc + 1) * chunksize if i_proc < n_chunks - 1 else None
-                # print(mla_proj_df.columns)
 
                 # proc_chunks.append(mla_proj_df.iloc[slice(chunkstart, chunkend)])
                 proc_chunks[id + '_' + str(i_proc)] = tmp_proj[chunkstart: chunkend, :]
@@ -86,13 +93,12 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
     # operate on chunks #
     if chunked_proj_dict:
         projchunks = []
-        chunk_proj_df_paths = []
+        # chunk_proj_df_paths = []
         for chunkid in range(n_chunks):
             tmp_chunks = {k: v for (k, v) in result_chunks.items() if str(chunkid) == k.split('_')[-1]}
-            # print(tmp_chunks)
             none_proj_df = pd.DataFrame(tmp_chunks['none_' + str(chunkid)][:, -2:], columns=['X_stgprj', 'Y_stgprj'])
+            # WD: why twice?
             ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
-            # print(mla_proj_df)
             ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
 
             if XovOpt.get("partials"):
@@ -114,11 +120,11 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
                 projchunks.append(chunk_proj_df)
 
                 # save intermediate file
-                # chunk_proj_df_path = outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
+                # chunk_proj_df_path = proj_dir + '/xov_' + str(cmb[0]) + '_' + str(
                 #     cmb[1]) + '_project_' + str(chunkid) + '.pkl.gz'
                 # chunk_proj_df_paths.append(chunk_proj_df_path)
                 # chunk_proj_df.to_pickle(chunk_proj_df_path)
-                # print("Intermediate file saved to:", outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
+                # print("Intermediate file saved to:", proj_dir + 'proj/xov_' + str(cmb[0]) + '_' + str(
                 #     cmb[1]) + '_project_' + str(chunkid) + '.pkl.gz')
 
                 if chunkid == 0:
@@ -154,12 +160,7 @@ def project_mla(mla_proj_df, part_proj_dict, outdir_in, cmb):
                         partials_proj_df[['X_stgprj' + pder, 'Y_stgprj' + pder, 'ET_BC' + pder]].reset_index(drop=True))
 
             mla_proj_df = pd.concat([mla_proj_df.reset_index(drop=True)] + partials_df_list, axis=1, sort=False)
-    # Save intermediate result
-    proj_pkl_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
-        cmb[1]) + '_project.pkl.gz'
-    mla_proj_df.to_pickle(proj_pkl_path)
-    print("Projected df saved to:", XovOpt.get("outdir") + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
-        cmb[1]) + '_project.pkl.gz')
+
     print("Len mla_proj_df after reordering:", len(mla_proj_df))
     ################################################
     end_proj = time.time()

@@ -2,7 +2,6 @@ import logging
 import time
 from collections import defaultdict
 
-import os.path
 import numpy as np
 import pandas as pd
 from pygeoloc.ground_track import gtrack
@@ -10,9 +9,10 @@ from pyxover.xov_utils import get_ds_attrib
 
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("cloop_sim"), XovOpt.get("outdir"), XovOpt.get("partials")
 from config import XovOpt
+# from memory_profiler import profile
 
-
-def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
+# @profile
+def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
     start_prepro = time.time()
 
     # TODO remove check on orbits for this test
@@ -30,7 +30,6 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     track = gtrack(XovOpt.to_dict())
     delta_pars, etbcs, pars = get_ds_attrib()
     # part_proj_dict = dict.fromkeys([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']], [])
-    # print(part_proj_dict)
     part_proj_dict = defaultdict(list)
     mla_proj_list = []
     mla_idx = ['mla_idA', 'mla_idB']
@@ -40,33 +39,15 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
     # WD: Whole gtrack is not needed.ladata_df could be passed as an
     # argument, provided that necessary columns havent been dumped.
     for track_id in tracks_in_xovs[:]:
-       # First, try to read only ladata
-       # If don't exist, read the whole gtrack
-       for pattern in ['ladata_', '']:
-          if XovOpt.get("cloop_sim"):
-             trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + pattern + track_id[:-2] + '*.parquet'
-          else:
-             track_fn = 'gtrack_' + pattern + track_id
-             if pattern == 'ladata_':
-                track_fn += '.parquet'
-             else:
-                track_fn += '.pkl'
-             if XovOpt.get("weekly_sets"):
-                trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[0] + '/' + track_fn
-                if (not os.path.isfile(trackfil)):
-                   trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + cmb[1] + '/' + track_fn
-             else:
-                trackfil = XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/' + track_fn
-          if (os.path.isfile(trackfil)):
-             if pattern == 'ladata_':
-                track = track.load_df(trackfil)
-                break
-             else:
-                track = track.load(trackfil)
+       track.load_df_from_id(gtrack_dirs[0], track_id)
        if track.ladata_df is None:
-          print(f"*** PyXover: Issue loading ladata from {track_id}.")
+          track.load_df_from_id(gtrack_dirs[1], track_id)
+       if track.ladata_df is None:
+          print(f"*** PyXover: Issue loading ladata from {track_id} from {gtrack_dirs}.")
           exit()
-       mladata[track_id] = track.ladata_df
+       mladata[track_id] = track.ladata_df[['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt'] + pars + etbcs]
+    
+    track = None    
 
     for track_id in tracks_in_xovs[:]:
 
@@ -102,7 +83,6 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             # Check if multiple xovers at same mla index
             multiple_counts = xov_extract.loc[:, 'seqid'].value_counts()  # .loc[lambda x: x>1]
 
-            # WD: not sure what is happening here
             # WD: Is the goal to create a unique genid, with the number of occurences?
             # genid should be unique for this batch of LA ranges (?)
             if len(multiple_counts[multiple_counts > 1]) > 0:
@@ -126,7 +106,6 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
             # the same genid and seqid can belong to multiple xovers (so that genid can be not unique)
             xov_extract = pd.DataFrame(tmp, columns=['genid', 'seqid', 'xovid', 'LON_proj', 'LAT_proj'])
 
-            # print(tmp_ladata[['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt']])
             ladata_extract = tmp_ladata.loc[tmp_ladata.index.isin(xov_extract.genid)][
                 ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt']]
 
@@ -137,7 +116,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
                 # do stuff (unsure if sorted in the same way... merge would be safer)
                 tmp_ladata_partials = tmp_ladata.loc[tmp_ladata.index.isin(xov_extract.genid)][
                     ['seqid', 'LON', 'LAT', 'orbID'] + pars + etbcs]
-                # print(delta_pars)
+
                 # update dict keys to multiply derivatives by deltas for LON and LAT and get increments
                 delta_pars_tmp = dict(zip(['dLON/' + x for x in delta_pars.keys()],
                                           [np.linalg.norm(x) for x in list(delta_pars.values())]))
@@ -186,19 +165,17 @@ def prepro_mla_xov(old_xovs, msrm_smpl, outdir_in, cmb):
 
             mla_proj_list.append(mla_proj_df)
 
+    # free-up memory
+    mladata.clear()
+
     # concatenate lists
     mla_proj_df = pd.concat(mla_proj_list, sort=False).reset_index(drop=True)
     mla_proj_df.rename(columns={"seqid_x": "seqid_xov", "seqid_y": "seqid_mla"},
                        inplace=True)  # remember that seqid_mla is not continuous because of eventual bad obs
-    # print(mla_proj_df)
     part_proj_dict = {x: np.vstack(y) for x, y in part_proj_dict.items()}
     part_proj_dict = dict(zip([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']], part_proj_dict.values()))
 
     part_proj_dict.update({'none': mla_proj_df[['genid', 'LON_proj', 'LAT_proj', 'LON', 'LAT']].values})
-
-    # free-up memory
-    mladata.clear()
-    track = None
 
     # save main part
     # mla_proj_df.to_pickle(outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(

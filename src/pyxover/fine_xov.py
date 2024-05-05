@@ -7,12 +7,14 @@ import pandas as pd
 from pygeoloc.ground_track import gtrack
 from pyxover.get_xov_latlon import get_xov_latlon
 from pyxover.xov_setup import xov
+import os
 
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("outdir"), XovOpt.get("parallel"), XovOpt.get("local"), XovOpt.get("parGlo"), XovOpt.get("debug"), XovOpt.get("partials"), XovOpt.get("n_proc")
 from config import XovOpt
+from memory_profiler import profile
 
-
-def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
+# @profile
+def compute_fine_xov(mla_proj_df, msrm_smpl, gtrack_dirs, cmb):
     start_finexov = time.time()
     # initialize xov object
     xovs_list = mla_proj_df.xovid.unique()
@@ -22,12 +24,12 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, outdir_in, cmb):
 
     # store the imposed perturbation (if closed loop simulation) - get from any track uploaded in prepro step
     track = gtrack(XovOpt.to_dict())
-    # TODO removed check on orbid for this test
-    if XovOpt.get("weekly_sets"):
-       track_folder = XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0]) + '/'
+    trackfiles = glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + str(cmb[0]) + '*.pkl'))
+    if len(trackfiles) > 0:
+       track = track.load(trackfiles[0])
     else:
-       track_folder = XovOpt.get("outdir") + outdir_in + 'gtrack_' + str(cmb[0][:2]) + '/'
-    track = track.load(glob.glob(track_folder + 'gtrack_' + str(cmb[0]) + '*.pkl')[0])
+       print(f"No file found for {gtrack_dirs[0]}gtrack_{str(cmb[0])}*.pkl")
+       exit()
 
     xov_tmp.pert_cloop = {'0': track.pert_cloop}
     xov_tmp.pert_cloop_0 = {'0': track.pert_cloop_0}
@@ -137,9 +139,9 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
         assert len(points_per_track) == 2
         assert  np.diff(points_per_track) == 0
     except:
-        if XovOpt.get("debug"):
-            print(f"# Removing weird xover, difference between trackA/B = {np.diff(points_per_track)}. Check!")
-            print(points_per_track)
+        # if XovOpt.get("debug"):
+        print(f"# Removing weird xover, difference between trackA/B = {np.diff(points_per_track)}. Check!")
+        print(points_per_track)
         return
 
     if len(df) > 0:  # and {'LON_proj','LAT_proj'}.issubset(df.columns):
@@ -161,17 +163,15 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     try:
         x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
     except:
-        if XovOpt.get("debug"):
-            print("### get_xover_fine issue on xov #", xovi)
-            print(xov_tmp.ladata_df)
+        # if XovOpt.get("debug"):
+        print("### get_xover_fine issue on xov #", xovi)
+        print(xov_tmp.ladata_df)
         return  # continue
-    # print(x, y, subldA, subldB, ldA, ldB)
 
     ldA, ldB, R_A, R_B = xov_tmp.get_elev('', subldA, subldB, ldA, ldB, x=x, y=y)
-    # print(ldA, ldB, R_A, R_B)
+
     out = np.vstack((x, y, ldA, ldB, R_A, R_B)).T
-    # print(df)
-    # print(out)
+
     if len(out) == 0:
         if XovOpt.get("debug"):
             print("### Empty out on xov #", xovi)

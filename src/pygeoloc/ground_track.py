@@ -165,7 +165,6 @@ class gtrack:
 
         # read data and fill ladata_df
         self.read_fill(filnam)
-        # print(self.ladata_df)
 
         # testInterp(self.ladata_df,self.vecopts)
         # exit()
@@ -173,8 +172,6 @@ class gtrack:
         # create interp for track (if data are present)
         if (len(self.ladata_df) > 0):
             if self.SpObj == None and self.XovOpt.get("SpInterp") == 2:
-                # print(filnam)
-                # print(self.ladata_df)
                 # create interp for track
                 self.interpolate()
             else:
@@ -213,17 +210,31 @@ class gtrack:
         gc.enable()
         return self
      
+    def load_df_from_id(self, gtrack_dir, track_id):
+       self.ladata_df = None
+       for pattern in ['ladata_', '']:
+          track_fn = 'gtrack_' + pattern + track_id
+          if pattern == 'ladata_':
+             track_fn += '.parquet'
+          else:
+             track_fn += '.pkl'
+          trackfil = os.path.join(gtrack_dir,track_fn)
+          if (os.path.isfile(trackfil)):
+             if pattern == 'ladata_':
+                self.load_df(trackfil)
+                break
+             else:
+                self.load(trackfil)
+       return self
+     
     # load ladata from file
     def load_df(self, filnam):
-        # disabling cyclic garbage collection
-        gc.disable()
         if os.path.isfile(filnam):
             self.ladata_df = pd.read_parquet(filnam, engine='pyarrow')
         else:
             if self.XovOpt.get("debug"):
                 print("No " + filnam + " found")
             self = None
-        gc.enable()
         return self
 
     def read_fill(self, infil, read_all=False, t_start=0, t_end=0):
