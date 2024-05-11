@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from pygeoloc.ground_track import gtrack
 from pyxover.xov_utils import get_ds_attrib
+from xovutil.project_coord import project_stereographic
+from pyxover.intersection import intersection
 
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("cloop_sim"), XovOpt.get("outdir"), XovOpt.get("partials")
 from config import XovOpt
@@ -47,7 +49,45 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
           exit()
        mladata[track_id] = track.ladata_df[['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt'] + pars + etbcs]
     
-    track = None    
+    track = None
+    
+    n_interp = XovOpt.get("n_interp")
+    
+    # Refine xovers before projection
+    # WD: In this case, fine search is unecessarily done twice...
+    if n_interp < msrm_smpl:
+       for index, xov in old_xovs.iterrows():
+
+         # extract mladata around xovers
+         tmp_ladataA = mladata[xov['orbA']][(mladata[xov['orbA']]['seqid'] >= xov['mla_idA']-msrm_smpl)
+                                           & (mladata[xov['orbA']]['seqid'] <= xov['mla_idA']+msrm_smpl)]
+         tmp_ladataB = mladata[xov['orbB']][(mladata[xov['orbB']]['seqid'] >= xov['mla_idB']-msrm_smpl)
+                                          & (mladata[xov['orbB']]['seqid'] <= xov['mla_idB']+msrm_smpl)]
+
+         # Project mladata around rough xovers for each tracks
+         # The projection is done once more later, but with partials
+         la_projA = project_stereographic(tmp_ladataA['LON'],
+                                           tmp_ladataA['LAT'],
+                                           xov['LON'],
+                                           xov['LAT'],
+                                           R=XovOpt.get("vecopts")['PLANETRADIUS'])
+
+         la_projB = project_stereographic(tmp_ladataB['LON'],
+                                           tmp_ladataB['LAT'],
+                                           xov['LON'],
+                                           xov['LAT'],
+                                           R=XovOpt.get("vecopts")['PLANETRADIUS'])
+
+         la_projA_df = pd.DataFrame(np.asarray(la_projA).T, columns=['X_stgprj', 'Y_stgprj'])
+         la_projB_df = pd.DataFrame(np.asarray(la_projB).T, columns=['X_stgprj', 'Y_stgprj'])
+
+         # Search for intersection between the projected ground tracks
+         x, y, ind_A, ind_B = intersection(la_projA_df['X_stgprj'],la_projA_df['Y_stgprj'],
+                                            la_projB_df['X_stgprj'],la_projB_df['Y_stgprj'])
+
+         # Assign the closest mla data point
+         xov['mla_idA'] = tmp_ladataA['seqid'].iloc[0] + np.floor(ind_A[0])
+         xov['mla_idB'] = tmp_ladataB['seqid'].iloc[0] + np.floor(ind_B[0])
 
     for track_id in tracks_in_xovs[:]:
 
@@ -99,9 +139,9 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
             xov_extract = xov_extract[['index', 'seqid', 'xovid', 'LON_proj', 'LAT_proj']]
 
             tmp = xov_extract.values
-            mla_close_to_xov = np.ravel([np.arange(i[0] - msrm_smpl, i[0] + (msrm_smpl + 1), 1) for i in tmp])
+            mla_close_to_xov = np.ravel([np.arange(i[0] - n_interp, i[0] + (n_interp + 1), 1) for i in tmp])
             tmp = np.hstack(
-                [mla_close_to_xov[:, np.newaxis], np.reshape(np.tile(tmp[:, 1:], (msrm_smpl * 2 + 1)), (-1, 4))])
+                [mla_close_to_xov[:, np.newaxis], np.reshape(np.tile(tmp[:, 1:], (n_interp * 2 + 1)), (-1, 4))])
             # genid: a local id for la_ranges; seqid: global id for la_ranges; xovid: global id for xovers
             # the same genid and seqid can belong to multiple xovers (so that genid can be not unique)
             xov_extract = pd.DataFrame(tmp, columns=['genid', 'seqid', 'xovid', 'LON_proj', 'LAT_proj'])
@@ -180,8 +220,6 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
     # save main part
     # mla_proj_df.to_pickle(outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
     #     cmb[1]) + '_mla_proj.pkl.gz')
-
-    # print({x:y.shape for x,y in part_proj_dict.items()})
 
     end_prepro = time.time()
 

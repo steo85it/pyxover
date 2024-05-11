@@ -34,10 +34,13 @@ def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
     proj_pkl_path = proj_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '_project.pkl.gz'
     if not XovOpt.get("import_proj"):
        
-        # projection of mla_data around old xovs        
+        # Fine xover search before projection of mla_data around old xovs (based on n_interp)      
+        # WD: Fine search should be done only once!
+        # Code restruction is needed to prevent processing time
         mla_proj_df = project_mla(old_xovs, msrm_smpl, gtrack_dirs, cmb)
         
         # Save intermediate result
+        # WD: col = ['R_A', 'R_B', 'dR'] are 0 -> drop them?
         mla_proj_df.to_pickle(proj_pkl_path)
         print("Projected df saved to:", proj_pkl_path)
 
@@ -49,8 +52,9 @@ def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
         print("No mla_proj_df found at ", proj_pkl_path)
         exit()
 
+    n_interp = XovOpt.get("n_interp")
     # compute new xovs
-    xov_tmp = compute_fine_xov(mla_proj_df, msrm_smpl, gtrack_dirs, cmb)
+    xov_tmp = compute_fine_xov(mla_proj_df, n_interp, gtrack_dirs, cmb)
 
     # Save to file
     xov_pklname = 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
