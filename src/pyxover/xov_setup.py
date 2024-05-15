@@ -145,7 +145,7 @@ class xov:
 
                 # Update general df
                 # self.xovers.append(self.xovtmp)
-        return multi_xov_check
+        return nxov
 
     def set_xov_offnadir(self):
         obslist = self.xovtmp[['cmb_idA', 'cmb_idB']].values.astype(int).tolist()
@@ -221,7 +221,7 @@ class xov:
             # print("Loading "+filnam+" failed")
         gc.enable()
 
-        return self
+        return self # found
 
     # remove outliers using the median method
     def remove_outliers(self, data_col, remove_bad=True):
@@ -280,7 +280,6 @@ class xov:
         ladata_df = self.ladata_df
         msrm_sampl = self.msrm_sampl
 
-        # print(ii, jj, ind_A, ind_B)
         try:
             ind_A_int = np.atleast_1d(ind_A.astype(int))
             ind_B_int = np.atleast_1d(ind_B.astype(int))
@@ -335,7 +334,6 @@ class xov:
             # exit()
             t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
 
-            # print(xyintA[0][1], xyintA[0][2])
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
 
             for k in range(len(ind_A_int)):
@@ -346,10 +344,8 @@ class xov:
 
                 if (bool(re.search('_pA?$', par))):
                     xyintA[k][1] += xyintA[k][3] * diff_step
-                    # print(par, k, xyintA[k][1])
                 elif (bool(re.search('_mA?$', par))):
                     xyintA[k][1] -= xyintA[k][3] * diff_step
-                    # print(par, k, xyintA[k][1])
 
         else:
 
@@ -364,7 +360,6 @@ class xov:
         tA_interp = [interpolate.interp1d(x=xyintA[k][2], y=t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
 
         R_A = [fA_interp[k](tA_interp[k](ind_A.item(k))) for k in range(0, ind_A.size)]
-        # exit()
 
         if XovOpt.get("debug") and False:
             ldA2_ = ladata_df.loc[ladata_df['orbID'] == arg[0]][['X_stgprj', 'Y_stgprj', 'R']].values
@@ -411,9 +406,6 @@ class xov:
             t_ldB = [xyintB[k][0] - ldB_[ind_B_int[k] - len(ldA_), 0] for k in range(0, len(ind_B_int))]
 
             diff_step = np.linalg.norm(param[par.partition('_')[0]])
-            # print('xyintB',self.tracks)
-            # print(len(xyintB))
-            # print(len(xyintB[0]))
 
             for k in range(len(ind_A_int)):
 
@@ -901,18 +893,14 @@ class xov:
             ladata_df.loc[ladata_df['orbID'] == arg[0]]['Y_stgprj'].values[::msrm_sampl],
             ladata_df.loc[ladata_df['orbID'] == arg[1]]['X_stgprj'].values[::msrm_sampl],
             ladata_df.loc[ladata_df['orbID'] == arg[1]]['Y_stgprj'].values[::msrm_sampl])
-
+        
         # plots
         if XovOpt.get("debug"):
             import geopandas as gpd
-            import matplotlib as mpl
 
-            mpl.use('TkAgg')  # !IMPORTANT
             print(f"debug rough intersection")
-            print(os.path.exists(XovOpt.get('tmpdir')))
             print(XovOpt.get('tmpdir'))
-            if not os.path.exists(XovOpt.get('tmpdir')):
-                os.mkdir(XovOpt.get('tmpdir'))
+            os.makedirs(XovOpt.get('tmpdir'), exist_ok=True)
 
             if XovOpt.get("selected_hemisphere") == 'N':
                 lat_0 = 90
@@ -921,14 +909,12 @@ class xov:
             plarad = XovOpt.get('vecopts')['PLANETRADIUS']
             crs_lonlat = f"+proj=lonlat +units=m +a={plarad}e3 +b={plarad}e3 +no_defs"
             crs_stereo_km = f'+proj=stere +lat_0={lat_0} +lon_0=0 +lat_ts={lat_0} +k=1 +x_0=0 +y_0=0 +units=km +a={plarad}e3 +b={plarad}e3 +no_defs'
-            print(crs_lonlat)
-            print(crs_stereo_km)
 
             print(x, y, ind_A, ind_B)
-            df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]]  # .values[::msrm_sampl]
+            df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]][::msrm_sampl]
             gdf0 = gpd.GeoDataFrame(
                 df0, geometry=gpd.points_from_xy(df0.LON, df0.LAT), crs=crs_lonlat)
-            df1 = ladata_df.loc[ladata_df['orbID'] == arg[1]]  # .values[::msrm_sampl]
+            df1 = ladata_df.loc[ladata_df['orbID'] == arg[1]][::msrm_sampl]
             gdf1 = gpd.GeoDataFrame(
                 df1, geometry=gpd.points_from_xy(df1.LON, df1.LAT), crs=crs_lonlat)
 
@@ -940,20 +926,43 @@ class xov:
             print(gdf1[['X_stgprj', 'Y_stgprj']])
             print(gdf1.to_crs(crs_stereo_km).columns)
             ax = plt.subplot()
-            gdf0.to_crs(crs_stereo_km).plot(ax=ax)  # , label=gdf0.orbID[0])  # , color='red')
-            gdf1.to_crs(crs_stereo_km).plot(ax=ax)  # , label=gdf1.orbID[0])  # , color='red')
+            gdf0.to_crs(crs_stereo_km).plot(ax=ax, markersize=1)  # , label=gdf0.orbID[0])  # , color='red')
+            gdf1.to_crs(crs_stereo_km).plot(ax=ax, markersize=1)  # , label=gdf1.orbID[0])  # , color='red')
             gdf2 = gpd.GeoDataFrame(
                 geometry=gpd.points_from_xy(x, y), crs=crs_stereo_km)
             gdf2.plot(ax=ax)
 
-            # plt.xlim(-1000, 1000)
-            # plt.ylim(-1000, 1000)
+            plt.xlim(-100, 100)
+            plt.ylim(-100, 100)
             # plt.legend()
             # print(gdf0.ET_TX.iloc[0], gdf1.ET_TX.iloc[0])
-            plt.savefig(f"{XovOpt.get('tmpdir')}rough_inters_{gdf0.ET_TX.iloc[0]}_{gdf1.ET_TX.iloc[0]}.png")
+            plt.savefig(f"{XovOpt.get('tmpdir')}rough_inters_{gdf0.ET_TX.iloc[0]}_{gdf1.ET_TX.iloc[0]}.png",dpi=200)
+            # plt.savefig(f"{XovOpt.get('tmpdir')}rough_inters_{gdf0.ET_TX.iloc[0]}_{gdf1.ET_TX.iloc[0]}.pdf", format="pdf")
             plt.clf()
 
-        return ind_A, ind_B, x, y
+        # If more than one intersection, remove the obvious wrong intersection
+        # based on the "distance" of the intersection to the bouncing points
+        if len(x)>1:
+           # Mean distance between the sampling points
+           mean_sampl = np.linalg.norm([np.mean(np.diff(arr)) for arr in
+                                        [ladata_df.loc[ladata_df['orbID'] == arg[j]][prj].values[::msrm_sampl]
+                                         for prj in ['X_stgprj','Y_stgprj']
+                                         for j in [0,1]]])
+
+           # Distance between the sampling points and the found intersections
+           intersect2pts = [np.linalg.norm([ladata_df.loc[ladata_df['orbID'] == arg[j]][prj].values[int(ind*msrm_sampl)]-xy
+                                            for prj, xy in zip(['X_stgprj','Y_stgprj'],[x[i],y[i]])
+                                            for j, ind in zip([0,1],[ind_A[i],ind_B[i]]) ])
+                            for i in range(0,len(x))]
+
+           index = [intersect2pts[i] < 10*mean_sampl for i in range(0,len(x))]
+
+           if XovOpt.get("debug"):
+              print(f"{sum(index)} intersection(s) selected among {len(x)} false intersection(s).")
+           
+           return ind_A[index], ind_B[index], x[index], y[index]
+        else:
+           return ind_A, ind_B, x, y
 
     ###@profile
     def get_xov(self):
@@ -1010,6 +1019,7 @@ class xov:
             return -1  # 0 xovers found
 
     ##@profile
+    # new_algo
     def get_xov_prelim(self):
         """
         Read ladata_df and compute all xovers, then updates xovers dataframe
@@ -1051,7 +1061,7 @@ class xov:
             # (can be used to extract orbit number with join btw ladata_df and xovers_df -
             # eg, (ladata_df.loc[ind0][['orbID']].values).reshape(1,-1) -
             # the orbit number can then be used to get the value at ind_A and ind_B by interpolation)
-            # ind0 and ind1 now are the indeces of the points just before the
+            # ind0 and ind1 now are the indices of the points just before the
             # intersection in ladata_df, so that (ind0,ind0+1) and (ind1,ind1+1) are the
             # bracketing points' indeces
             rough_indA = ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[ind_A].index.values
@@ -1059,6 +1069,10 @@ class xov:
 
             results = [[x[0] for x in [x, y, rough_indA, rough_indB, np.zeros(len(x)), np.zeros(len(x))]]]
         else:
+            if len(x) > 1:
+               
+               print("More than one xover was found between tracks", self.tracks)
+               
             results = None
 
         if results is not None:
@@ -1082,7 +1096,7 @@ class xov:
                     print("no xovers btw " + tmp[0] + " and " + tmp[1])
                     exit()
 
-            return -1  # 0 xovers found
+            return len(x)  # 0 xovers found
 
     # #@profile
     def postpro_xov_elev(self, ladata_df, results):
@@ -1093,8 +1107,6 @@ class xov:
         if len(xovtmp) == 1:
 
             xovtmp = dict(zip(['x0', 'y0', 'cmb_idA', 'cmb_idB', 'R_A', 'R_B'], [x[0] for x in xovtmp.T]))
-            # print(xovtmp)
-            # exit()
 
             # Get discrepancies (dR = R(obs1) - R(obs2)) at crossover time (where ideal dR=0)
             have_elev = (xovtmp['R_B'] == 0.) + (xovtmp['R_A'] == 0.)

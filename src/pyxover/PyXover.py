@@ -73,12 +73,11 @@ def launch_xov(
                 xov_tmp = xov(XovOpt.get("vecopts"))
 
                 xovers_list = []
-                xover_found = False
+                nxov = 0
+                n_multixov = 0
+                n_zeroxov = 0
                 # loop over all combinations containing track_id
                 for track_idA, track_idB in [s for s in comb if track_idA in s[0]]:
-
-                    # if debug:
-                    #    print("Processing " + gtrackA + " vs " + gtrackB)
 
                     if track_idB > track_idA:
 
@@ -109,13 +108,21 @@ def launch_xov(
                             # looping over all track combinations and updating the general df xov_tmp.xovers
                             # WD: Only ladata_df seems to be necessary
                             # Other attributes seem to be overwritten ...
-                            xover_found = xov_tmp.setup([trackA,trackB])
+                            nxov = xov_tmp.setup([trackA,trackB])
+                            if nxov == 0:
+                               n_zeroxov += 1
+                            elif nxov > 1:
+                               n_multixov += 1
+                               
 
-                    if XovOpt.get("new_algo") and xover_found:
+                    if XovOpt.get("new_algo") and nxov == 1:
                         xovers_list.append(xov_tmp.xovtmp)
-                    # except:
-                    #     print(
-                    #         'failed to load trackB ' + outdir + 'gtrack_' + gtrackB + '.pkl' + ' to process ' + outdir + 'gtrack_' + track_id + '.pkl')
+                        
+                if n_multixov > 0:
+                   print(f"More than one xover found in {n_multixov} track combinations.")
+                if n_zeroxov > 0:
+                   print(f"No xover found in {n_zeroxov} track combinations.")
+
 
                 if XovOpt.get("new_algo"):
                     xov_tmp.xovers = pd.DataFrame(xovers_list)
@@ -234,23 +241,19 @@ def main(args_in):
     
     if iter_in == 0 and XovOpt.get("compute_input_xov"):
 
+        xovtmp_dir = XovOpt.get("outdir") + outdir_in + 'xov/tmp/' 
+        os.makedirs(xovtmp_dir, exist_ok=True)
+
         # check if input_xov already exists, if yes don't recreate it (should be conditional...)
-        input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(misycmb_par[0]) + '_' + str(misycmb_par[1]) + '.pkl.gz'
+        input_xov_path = xovtmp_dir + 'xovin_' + str(misycmb_par[0]) + '_' + str(misycmb_par[1]) + '.pkl.gz'
         if os.path.exists(input_xov_path) and (XovOpt.get("instrument") == 'BELA' or XovOpt.get("instrument") == 'CALA'):
             print("input xov file already exists in", input_xov_path)
             print("Rerun without computing this cumbersome input, be smart!")
             exit(0)
 
-        # -------------------------------
-        # File reading and ground-tracks computation
-        # -------------------------------
-
-        # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
-        # for orbitA and orbitB.
-        # Geoloc, if active, will process all files in A+B. Xov will only process combinations
-        # of orbits from A and B
-        # allFilesA = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb_par[0] + '*.TAB'))
-        # allFilesB = glob.glob(os.path.join(data_pth, 'MLAS??RDR' + misycmb_par[1] + '*.TAB'))
+        # ---------------------
+        # ground-tracks reading
+        # ---------------------
 
         if XovOpt.get("weekly_sets"):
             import datetime as dt

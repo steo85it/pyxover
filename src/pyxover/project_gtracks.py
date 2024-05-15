@@ -1,7 +1,6 @@
 import multiprocessing as mp
 import time
 
-import os
 import numpy as np
 import pandas as pd
 from pyxover.xov_utils import get_ds_attrib
@@ -66,8 +65,6 @@ def project_mla(old_xovs, msrm_smpl, gtrack_dirs, cmb):
             result_chunks = {x: np.hstack([y, proc_results[idx].get()[:, 1:]]) for idx, (x, y) in
                              enumerate(proc_chunks.items())}
             # result_chunks = dict(zip(part_proj_dict.keys(),[r.get() for r in proc_results]))
-            # print(result_chunks)
-        # exit()
         # genid, LON_proj, LAT_proj, LON, LAT, ET_BC, dR / dp
 
         # concatenate results from worker processes and add to df
@@ -97,8 +94,6 @@ def project_mla(old_xovs, msrm_smpl, gtrack_dirs, cmb):
         for chunkid in range(n_chunks):
             tmp_chunks = {k: v for (k, v) in result_chunks.items() if str(chunkid) == k.split('_')[-1]}
             none_proj_df = pd.DataFrame(tmp_chunks['none_' + str(chunkid)][:, -2:], columns=['X_stgprj', 'Y_stgprj'])
-            # WD: why twice?
-            ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
             ind_mla_proj = [(chunksize) * (chunkid), (chunksize) * (chunkid) + len(none_proj_df)]
 
             if XovOpt.get("partials"):
@@ -114,7 +109,6 @@ def project_mla(old_xovs, msrm_smpl, gtrack_dirs, cmb):
 
                     partials_proj_df.append(tmp)
 
-                # print(partials_proj_df)
                 chunk_proj_df = pd.concat([mla_proj_df.iloc[ind_mla_proj[0]:ind_mla_proj[1]].reset_index(drop=True),
                                            none_proj_df] + partials_proj_df, axis=1)
                 projchunks.append(chunk_proj_df)
@@ -139,7 +133,7 @@ def project_mla(old_xovs, msrm_smpl, gtrack_dirs, cmb):
     else:
         mla_proj_df = pd.concat(
             [mla_proj_df, pd.DataFrame(result_chunks['none'][:, -2:], columns=['X_stgprj', 'Y_stgprj'])], axis=1)
-        #
+
         # split and re-concatenate rows related to partial derivatives
         if XovOpt.get("partials"):
             partials_df_list = []
@@ -182,7 +176,7 @@ def project_chunk(proc_chunk):
                                       proc_chunk[:, 1],
                                       proc_chunk[:, 2],
                                       R=XovOpt.get("vecopts")['PLANETRADIUS'])
-    # print(pd.DataFrame(chunk_res).T)
+
     # proc_chunk[['x','y']] = pd.DataFrame(chunk_res).T
 
     # proc_chunk['x'], proc_chunk['y'] = zip(*proc_chunk.apply(
@@ -191,8 +185,6 @@ def project_chunk(proc_chunk):
     #     axis=1))
 
     # chunk_res.index = proc_chunk.index
-    # print(proc_chunk[:,-1])
-    # print(np.asarray(chunk_res))
     proc_chunk = np.vstack([proc_chunk[:, 0], np.asarray(chunk_res)]).T
 
     return proc_chunk
