@@ -51,9 +51,10 @@ def project_mla(old_xovs, msrm_smpl, gtrack_dirs, cmb):
         # assert len(np.vstack(proc_chunks.values()))  == len(np.vstack(part_proj_dict.values()[:,0]))  # make sure all data is in the chunks
     else:
         proc_chunks = part_proj_dict
-    if XovOpt.get("parallel"):
+    if False: # XovOpt.get("parallel") #MG
 
         # distribute work to the worker processes
+        print(proc_chunks)
         with mp.get_context("spawn").Pool(processes=XovOpt.get("n_proc")) as pool:
             # starts the sub-processes without blocking
             # pass the chunk to each worker process

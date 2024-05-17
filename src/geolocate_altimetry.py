@@ -47,8 +47,8 @@ def geoloc(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
 
     :type inp_df: ladata_df containing TOF(sec) and ET_TX(sec from J2000)
     """
-    use_24 = False  # False # use pointing aberration
-    use_iter = True  # True
+    use_24 = True  # False # use pointing aberration
+    use_iter = False  # True
 
     #  ABCORR = 'NONE'
     # TODO check tof unit (sec or ns???)

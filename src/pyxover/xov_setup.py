@@ -360,8 +360,11 @@ class xov:
             xyintA = [ldA_[max(0, k - msrm_sampl):min(k + msrm_sampl, ldA_.shape[0])].T for k in ind_A_int]
             t_ldA = [xyintA[k][0] - ldA_[ind_A_int[k], 0] for k in range(0, len(ind_A_int))]
 
+        
         fA_interp = [interpolate.interp1d(x=t_ldA[k], y=xyintA[k][1], kind='cubic') for k in range(0, len(ind_A_int))]
         tA_interp = [interpolate.interp1d(x=xyintA[k][2], y=t_ldA[k], kind='linear') for k in range(0, len(ind_A_int))]
+        
+
 
         R_A = [fA_interp[k](tA_interp[k](ind_A.item(k))) for k in range(0, ind_A.size)]
         # exit()
@@ -390,6 +393,7 @@ class xov:
         # print("zA",R_A)
 
         # Apply elevation correction (if partial)
+
         if bool(re.search('_?B$', par)) or bool(re.search('_[p,m]$', par)):  # is not ''):
 
             if bool(re.search('_?B$', par)):
@@ -425,7 +429,7 @@ class xov:
                     xyintB[k][1] += xyintB[k][3] * diff_step
                 elif bool(re.search('_mB?$', par)):
                     xyintB[k][1] -= xyintB[k][3] * diff_step
-
+        
         else:
             index_cols = [ladata_df.columns.get_loc(col) for col in ['orbID', 'ET_BC', 'R', 'genID']]
             ldB_ = ladata_df.values[:, index_cols]
@@ -502,7 +506,7 @@ class xov:
             tmp = np.array([[t_ldA[k], xyintA[k][1]] for k in range(0, 1)])[0].T
             # print(tmp)
             fig = plt.figure(figsize=(12, 8))
-            plt.style.use('seaborn-poster')
+            #plt.style.use('seaborn-poster')
             ax = fig.add_subplot(111)
             ax.plot(tmp[:, 0], tmp[:, 1], 'k.', label="dR #" + str(0))
             ax.plot(tA_interp[0](ind_A.item(0)), R_A[0], 'ro')
@@ -524,8 +528,8 @@ class xov:
             # ax.set_title(title)
             plt.savefig(XovOpt.get("tmpdir") + 'test_elev_prof_.png')
 
-            if R_B[0] - R_A[0] > 100:
-                exit()
+            """if R_B[0] - R_A[0] > 100:
+                exit()"""
 
     def plot_xov_elev(self, arg, fA_interp, fB_interp, ind_A, ind_A_int, ind_B, ind_B_int, ladata_df, ldA_, ldB_,
                       tA_interp, tB_interp, t_ldA, t_ldB, param=''):
@@ -907,7 +911,7 @@ class xov:
             import geopandas as gpd
             import matplotlib as mpl
 
-            mpl.use('TkAgg')  # !IMPORTANT
+            #mpl.use('TkAgg')  # !IMPORTANT
             print(f"debug rough intersection")
             print(os.path.exists(XovOpt.get('tmpdir')))
             print(XovOpt.get('tmpdir'))

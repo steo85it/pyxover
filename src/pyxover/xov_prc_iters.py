@@ -39,6 +39,7 @@ def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
         # Code restruction is needed to prevent processing time
         mla_proj_df = project_mla(old_xovs, msrm_smpl, gtrack_dirs, cmb)
         
+        
         # Save intermediate result
         # WD: col = ['R_A', 'R_B', 'dR'] are 0 -> drop them?
         mla_proj_df.to_pickle(proj_pkl_path)
@@ -75,31 +76,31 @@ def retrieve_xov(outdir_in, xov_iter, cmb, useful_columns):
 
     # depending on available input xov, get xovers location from AbMat or from xov_rough
     if xov_iter > 0 or XovOpt.get("import_abmat")[0]:  # len(input_xov)==0:
-       # read old abmat file
-       if xov_iter > 0:
-          outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
-          abmat = XovOpt.get("outdir") + outdir_old + 'Abmat*.pkl'
-       else: # read a user defined abmat file
-          abmat = XovOpt.get("import_abmat")[1]
+        # read old abmat file
+        if xov_iter > 0:
+            outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
+            abmat = XovOpt.get("outdir") + outdir_old + 'Abmat*.pkl'
+        else: # read a user defined abmat file
+            abmat = XovOpt.get("import_abmat")[1]
 
-          tmp_Amat = Amat(XovOpt.get("vecopts"))
-          tmp = tmp_Amat.load(glob.glob(abmat)[0])
-          old_xovs = tmp.xov.xovers[useful_columns]
+        tmp_Amat = Amat(XovOpt.get("vecopts"))
+        tmp = tmp_Amat.load(glob.glob(abmat)[0])
+        old_xovs = tmp.xov.xovers[useful_columns]
     else:
-       xov_dir = XovOpt.get("outdir") + outdir_in + 'xov/'
-       input_xov_path = xov_dir + 'tmp/xovin_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl.gz'
-       if not XovOpt.get("compute_input_xov"):
-          if False and XovOpt.get("instrument") == 'BELA' and not XovOpt.get("monthly_sets"): #WD what is that ?
-             input_xov_path = glob.glob(
-                xov_dir + 'tmp/xovin_' + str(cmb[0]) + '??_' + str(cmb[1]) + '??.pkl.gz')
-             input_xov = pd.concat([pd.read_pickle(x) for x in input_xov_path]).reset_index()
-          else:
-             if os.path.exists(input_xov_path):
-                input_xov = pd.read_pickle(input_xov_path)
-                print("Input xovs read from", input_xov_path, ". Done!")
-             else:
-                print("No xov file at", input_xov_path)
-                exit()
+        xov_dir = XovOpt.get("outdir") + outdir_in + 'xov/'
+        input_xov_path = xov_dir + 'tmp/xovin_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl.gz'
+        if not XovOpt.get("compute_input_xov"):
+            if False and XovOpt.get("instrument") == 'BELA' and not XovOpt.get("monthly_sets"): #WD what is that ?
+                input_xov_path = glob.glob(
+                    xov_dir + 'tmp/xovin_' + str(cmb[0]) + '??_' + str(cmb[1]) + '??.pkl.gz')
+                input_xov = pd.concat([pd.read_pickle(x) for x in input_xov_path]).reset_index()
+            else:
+                if os.path.exists(input_xov_path):
+                    input_xov = pd.read_pickle(input_xov_path)
+                    print("Input xovs read from", input_xov_path, ". Done!")
+                else:
+                    print("No xov file at", input_xov_path)
+                    exit()
           # else:
               # if XovOpt.get("instrument") == 'BELA' and XovOpt.get("monthly_sets"):
               #    XovOpt.set("monthly_sets", False) # this should be enough # WD: Why??
@@ -107,9 +108,9 @@ def retrieve_xov(outdir_in, xov_iter, cmb, useful_columns):
                   # exit()
 
           # reindex and keep only useful columns
-          old_xovs = input_xov[useful_columns]
-          old_xovs = old_xovs.drop('xOvID', axis=1).rename_axis('xOvID').reset_index()
-          print(old_xovs)
+            old_xovs = input_xov[useful_columns]
+            old_xovs = old_xovs.drop('xOvID', axis=1).rename_axis('xOvID').reset_index()
+            print(old_xovs)
     return old_xovs
          
             

@@ -7,6 +7,7 @@
 #
 import logging
 import warnings
+import traceback
 
 from accumxov.Amat import Amat
 from pyxover.xov_prc_iters import xov_prc_iters_run, retrieve_xov
@@ -54,17 +55,11 @@ def launch_xov(
 
             trackA = gtrack(XovOpt.to_dict())
             
-            if False: # Load gtracks for the attributes: pert_cloop, pert_cloop_0, sol_prev_iter
-               if XovOpt.get("weekly_sets"):
-                  gtrack_dir = outdir + 'gtrack_' + misycmb_par[0] + '/'
-               elif XovOpt.get("monthly_sets"):
-                  gtrack_dir = outdir + 'gtrack_' + misycmb_par[0][:2] + '/'
-                  
-               trackA = trackA.load(gtrack_dir + 'gtrack_' + track_idA + '.pkl')
-               if trackA == None:
-                  print(gtrack_dir + 'gtrack_' + track_idA + '.pkl not found')
-            
             if trackA.ladata_df is None:
+               if XovOpt.get("debug"):
+                   print("\n track_idA: \n ", track_idA)
+                   print("mladata: ", mladata)
+
                trackA.ladata_df = mladata[track_idA]   # faster and less I/O which overloads PGDA
 
             if not trackA == None and len(trackA.ladata_df) > 0:
@@ -198,7 +193,7 @@ def main(args_in):
     # WD: Wouldn't it be more generic to set/select the combination outside of pyXover?
     par = int(cmb_y_in)
 
-    if not XovOpt.get("instrument") in ['BELA','CALA']:
+    if not XovOpt.get("instrument") == 'CALA':
        if XovOpt.get("monthly_sets") and not XovOpt.get("weekly_sets"):
            if XovOpt.get("instrument") == 'BELA':
                misy = ['26'] #,'27']
@@ -206,15 +201,17 @@ def main(args_in):
                misy = ['11', '12', '13', '14', '15']
            months = np.arange(1,13,1)
            misy = [x+f'{y:02}' for x in misy for y in months]
+           if XovOpt.get("instrument") != 'BELA':
+               misy = misy[2:-8]
        else:
            if XovOpt.get("instrument") == 'BELA':
-               misy = ['26','27']
+               misy = ['26','27'] #+str("{:02}".format(i)) for i in range(1,13,1)]
            elif XovOpt.get("instrument") == 'LOLA':
                misy = ['09', '10']
-           else: # MLA?
-               misy = ['08','11', '12', '13', '14', '15']
+           else:
+               misy = ['11', '12', '13', '14', '15']
        misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
-       print(f"combs:{misycmb}")
+       #print(f"combs:{misycmb}")
        misycmb_par = misycmb[par]
        if True: #XovOpt.get("debug"):
           print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
@@ -225,7 +222,7 @@ def main(args_in):
     
     # Folders containing the gtracks which will be used for this combination
     if XovOpt.get("weekly_sets") or XovOpt.get("monthly_sets"):
-       gtrack_dirs = [os.path.join(XovOpt.get("outdir"), indir_in + par ) for par in misycmb_par]
+       gtrack_dirs = [os.path.join(XovOpt.get("outdir"), indir_in + par[:2] ) for par in misycmb_par]
     else:
        gtrack_dirs = [os.path.join(XovOpt.get("outdir"), indir_in + par[:2] ) for par in misycmb_par]
 
@@ -234,6 +231,7 @@ def main(args_in):
     
     if iter_in == 0 and XovOpt.get("compute_input_xov"):
 
+        os.makedirs(XovOpt.get("outdir") + outdir_in + 'xov/tmp/', exist_ok=True)
         # check if input_xov already exists, if yes don't recreate it (should be conditional...)
         input_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(misycmb_par[0]) + '_' + str(misycmb_par[1]) + '.pkl.gz'
         if os.path.exists(input_xov_path) and (XovOpt.get("instrument") == 'BELA' or XovOpt.get("instrument") == 'CALA'):
@@ -266,6 +264,7 @@ def main(args_in):
         elif XovOpt.get("monthly_sets"):
           allFilesA = glob.glob(os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*'))
           allFilesB = glob.glob(os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*'))
+
         else:
           allFilesA = glob.glob(os.path.join(gtrack_dirs[0], '*'))
           allFilesB = glob.glob(os.path.join(gtrack_dirs[1], '*'))
@@ -275,12 +274,25 @@ def main(args_in):
                 allFiles = allFilesA
             else:
                 allFiles = allFilesA + allFilesB
-            print(allFiles)
+            print("dir: \n " , gtrack_dirs)
+            print(f"Searching files allFilesA {allFilesA} in : \n ", os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*'))
+            print(f"Searching files allFilesA {allFilesB} : \n ", os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*'))
+            
 
-        if len(allFilesA + allFilesB) == 0:
+        if len(allFilesA) == 0:
+            
             logging.error("** No gtrack files selected. Check path in PyXover.")
-            exit(1)
+            logging.error(f" No files found in {os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*')} ")
+            traceback.print_exc()
+            return
 
+
+        if len(allFilesB) == 0:
+            
+            logging.error("** No gtrack files selected. Check path in PyXover.")
+            logging.error(f" No files found in {os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*')} ")
+            traceback.print_exc()
+            return
         # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
         # comb=np.array(list(itert.combinations([fil.split('.')[0][-10:] for fil in allFiles], 2))) # this computes comb btw ALL files
         comb = list(
@@ -342,7 +354,12 @@ def main(args_in):
 
             try:
                 mladata[track_id] = track_obj.ladata_df.loc[:,cols]
+                
+                
             except:
+                print("ladata_df: ", track_obj.ladata_df)
+                print("track id : ", track_id)
+                print(" \n ladata_df: ", track_obj.ladata_df.columns)
                 print(f"*** PyXover: Issue with {track_id}. Skip.")
                 exit()
 

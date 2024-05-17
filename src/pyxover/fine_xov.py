@@ -50,7 +50,7 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, gtrack_dirs, cmb):
             cols_to_keep)]
     print("total memory proj_df_tmp:", proj_df_tmp.memory_usage(deep=True).sum() * 1.e-6)
 
-    if XovOpt.get("parallel"):
+    if False:  # XovOpt.get("parallel") #MG
         # pool = mp.Pool(processes=ncores)  # mp.cpu_count())
         # xov_list = pool.map(fine_xov_proc, args)  # parallel
         # apply_async example
@@ -97,10 +97,11 @@ def compute_fine_xov(mla_proj_df, msrm_smpl, gtrack_dirs, cmb):
         if XovOpt.get("local"):
             from tqdm import tqdm
             for xovi in tqdm(xovs_list):
-                fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
+                xov_tmp.xovers = pd.concat([xov_tmp.xovers, fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)])
+
         else:
             for xovi in xovs_list:
-                fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
+                xov_tmp.xovers = pd.concat([xov_tmp.xovers, fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)])
 
     # fill xov structure with info for LS solution
     xov_tmp.parOrb_xy = [x for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns]  # update partials list
@@ -203,6 +204,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
     # process partials from gtrack to xov, if required
     if XovOpt.get("partials"):
         xov_tmp.set_partials()
+
     else:
         # retrieve epoch to, e.g., trace tracks quality (else done inside set_partials)
         xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(
@@ -212,9 +214,11 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
             np.reshape(xov_tmp.get_tX(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
             columns=['tA', 'tB'])], axis=1)
 
+        
     # Remap track names to df
     xov_tmp.xovtmp['orbA'] = xov_tmp.xovtmp['orbA'].map({v: k for k, v in xov_tmp.tracks.items()})
     xov_tmp.xovtmp['orbB'] = xov_tmp.xovtmp['orbB'].map({v: k for k, v in xov_tmp.tracks.items()})
+
 
     xov_tmp.xovtmp['xOvID'] = xovi
 

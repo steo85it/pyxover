@@ -7,6 +7,7 @@
 #
 import re
 import warnings
+import traceback
 
 import pandas as pd
 
@@ -77,7 +78,14 @@ def launch_gtrack(args):
             if not os.path.exists(XovOpt.get("outdir") + outdir_in):
                 os.makedirs(XovOpt.get("outdir") + outdir_in, exist_ok=True)
 
-            track.setup()
+            try:
+                track.setup()
+            except Exception as e:
+                print("Exeption! " , e)
+                traceback.print_exc()
+                track.ladata_df = pd.DataFrame()
+
+                
             #
             if XovOpt.get("debug"):
                 print("track#:", track.name)
@@ -165,8 +173,9 @@ def main(args):
     # for orbitA and orbitB.
     # WD: Seems like the TAB extension is not required -> can be .TAB or .pkl
     allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
-    allFiles = allFiles+glob.glob(os.path.join(data_pth, str.lower(f'{XovOpt.get("instrument")}*rdr*' + epo_in + '*.*')))
+    allFiles = allFiles + glob.glob(os.path.join(data_pth, str.lower(f'{XovOpt.get("instrument")}*rdr*' + epo_in + '*.*')))
 
+    
     # Check if filenames are lower case
     if len(allFiles) == 0:
         print(str.lower(f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))

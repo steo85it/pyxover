@@ -208,24 +208,29 @@ class gtrack:
                 print("No " + filnam + " found")
             self = None
         gc.enable()
+        #print("ladata_df in load() : \n",  self.ladata_df)
         return self
      
     def load_df_from_id(self, gtrack_dir, track_id):
-       self.ladata_df = None
-       for pattern in ['ladata_', '']:
-          track_fn = 'gtrack_' + pattern + track_id
-          if pattern == 'ladata_':
-             track_fn += '.parquet'
-          else:
-             track_fn += '.pkl'
-          trackfil = os.path.join(gtrack_dir,track_fn)
-          if (os.path.isfile(trackfil)):
-             if pattern == 'ladata_':
-                self.load_df(trackfil)
-                break
-             else:
-                self.load(trackfil)
-       return self
+        self.ladata_df = None
+        for pattern in ['ladata_', '']:
+            track_fn = 'gtrack_' + pattern + track_id
+            if pattern == 'ladata_':
+                track_fn += '.parquet'
+            else:
+                track_fn += '.pkl'
+            trackfil = os.path.join(gtrack_dir,track_fn)
+            if (os.path.isfile(trackfil)):
+                if pattern == 'ladata_':
+                    self.load_df(trackfil)
+                    #print(" 1 ladata_df in load_df_from_id() : " , self.ladata_df)
+                    break
+                else:
+                    #print("trackfil before loading: ", trackfil)
+                    self.load(trackfil)
+                    #print("ladata_df in load_df_from_id() : " , self.ladata_df)
+        
+        return self
      
     # load ladata from file
     def load_df(self, filnam):
@@ -271,7 +276,7 @@ class gtrack:
         # if (self.XovOpt.get("debug")) or (self.XovOpt.get("instrument") == "BELA") or read_all:
         if (self.XovOpt.get("debug")) or (self.XovOpt.get("instrument") in ['BELA', 'CALA']) or read_all:
             df = df.loc[:,
-                 ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
+                 ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid']]
         else:
             df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid']]
 
@@ -307,7 +312,7 @@ class gtrack:
 
         # Reorder columns and reindex
         if self.XovOpt.get("debug") or read_all:
-            df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']
+            df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']
         else:
             df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']
 
@@ -504,7 +509,7 @@ class gtrack:
         # param_tmp = {k:v for k,v in param.items() if k not in ['dh2']} # issue with not having bounce time ET_BC for xov_setup
         if (
                 self.XovOpt.get("parallel") and self.XovOpt.get(
-            "SpInterp") > 0 and 1 == 2):  # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
+            "SpInterp") > 0):  # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
             # the orbit (single initial call) with an appropriate accuracy.
             # print((mp.cpu_count() - 1))
             pool = mp.Pool(processes=mp.cpu_count() - 1)
