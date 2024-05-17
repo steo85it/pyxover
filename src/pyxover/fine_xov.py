@@ -1,132 +1,49 @@
-import glob
 import multiprocessing as mp
 import time
-
 import numpy as np
 import pandas as pd
-from pygeoloc.ground_track import gtrack
-from pyxover.get_xov_latlon import get_xov_latlon
-from pyxover.xov_setup import xov
-import os
-
-# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("outdir"), XovOpt.get("parallel"), XovOpt.get("local"), XovOpt.get("parGlo"), XovOpt.get("debug"), XovOpt.get("partials"), XovOpt.get("n_proc")
-from config import XovOpt
 from memory_profiler import profile
 
+from config import XovOpt
+from pyxover.get_xov_latlon import get_xov_latlon
+from pyxover.xov_setup import xov
+
 # @profile
-def compute_fine_xov(mla_proj_df, msrm_smpl, gtrack_dirs, cmb):
+def fine_xov_intersection(mla_proj_df, msrm_smpl):
+    # Fine search of xovers, based on a rough search, and projected mla_df
+    # Only the indices, and the intersection stereographically projected
+    # are returned in a dataframe
+
     start_finexov = time.time()
     # initialize xov object
     xovs_list = mla_proj_df.xovid.unique()
-    xov_tmp = xov(XovOpt.get("vecopts"))
-    # pass measurements sampling to fine_xov computation through xov_tmp
-    xov_tmp.msrm_sampl = msrm_smpl
+    xovtmp = xov(XovOpt.get("vecopts"))
+    # pass measurements sampling to fine_xov computation through xovtmp
+    xovtmp.msrm_sampl = msrm_smpl
 
-    # store the imposed perturbation (if closed loop simulation) - get from any track uploaded in prepro step
-    track = gtrack(XovOpt.to_dict())
-    trackfiles = glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + str(cmb[0]) + '*.pkl'))
-    if len(trackfiles) > 0:
-       track = track.load(trackfiles[0])
-    else:
-       print(f"No file found for {gtrack_dirs[0]}gtrack_{str(cmb[0])}*.pkl")
-       exit()
-
-    xov_tmp.pert_cloop = {'0': track.pert_cloop}
-    xov_tmp.pert_cloop_0 = {'0': track.pert_cloop_0}
-    # store the solution from the previous iteration
-    xov_tmp.sol_prev_iter = {'0': track.sol_prev_iter}
-    # if huge_dataset:
-    #     for chunk_path in chunk_proj_df_paths:
-    #         mla_proj_df = pd.read_pickle(chunk_path)
-    #         print(mla_proj_df)
-    #         exit()
-    # select what to keep
+    # WD: probably less columns to keep
     cols_to_keep = mla_proj_df.loc[:,
                    mla_proj_df.columns.str.startswith('ET_BC') + mla_proj_df.columns.str.startswith('X_stgprj') +
                    mla_proj_df.columns.str.startswith('Y_stgprj') + mla_proj_df.columns.str.startswith(
-                       'dR/')].columns  # ,'X_stgprj','Y_stgprj'))
+                       'dR/')].columns
     proj_df_tmp = mla_proj_df[
         ['orbID', 'seqid_mla', 'ET_TX', 'LON', 'LAT', 'R', 'dt', 'offnadir', 'xovid', 'LON_proj', 'LAT_proj'] + list(
             cols_to_keep)]
     print("total memory proj_df_tmp:", proj_df_tmp.memory_usage(deep=True).sum() * 1.e-6)
 
-    if XovOpt.get("parallel"):
-        # pool = mp.Pool(processes=ncores)  # mp.cpu_count())
-        # xov_list = pool.map(fine_xov_proc, args)  # parallel
-        # apply_async example
-        if XovOpt.get("local"):
-            from tqdm import tqdm
-            pbar = tqdm(total=len(xovs_list))
-
-            def update(*a):
-                pbar.update()
-
-        xov_list = []
-        with mp.get_context("spawn").Pool(processes=XovOpt.get("n_proc")) as pool:
-            # for idx in range(len(xovs_list)):
-            # xov_list.append(pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], xov_tmp), callback=update))
-            for xovi in xovs_list:
-
-                if XovOpt.get("local"):
-                    xov_list.append(pool.apply_async(fine_xov_proc, args=(
-                        xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp), callback=update))
-                else:
-                    xov_list.append(pool.apply_async(fine_xov_proc, args=(
-                        xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)))
-
-            pool.close()
-            pool.join()
-
-        # blocks until all results are fetched
-        tmpl = []
-        for idx, r in enumerate(xov_list):
-            try:
-                tmpl.append(r.get())
-            except:
-                print("r.get failed on", idx)
-        xov_list = tmpl
-        print(len(xov_list))
-        # xov_list = [r.get() for r in xov_list]
-
-        # launch once in serial mode to get ancillary values
-        fine_xov_proc(0, proj_df_tmp.loc[proj_df_tmp['xovid'] == 0], xov_tmp)
-        # assign xovers to the new xov_tmp containing ancillary values
-        xov_tmp.xovers = pd.concat(xov_list, axis=0)
-
-    else:
-        if XovOpt.get("local"):
-            from tqdm import tqdm
-            for xovi in tqdm(xovs_list):
-                fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
-        else:
-            for xovi in xovs_list:
-                fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xov_tmp)
-
-    # fill xov structure with info for LS solution
-    xov_tmp.parOrb_xy = [x for x in xov_tmp.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns]  # update partials list
-    xov_tmp.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(XovOpt.get("parGlo").keys())]
-    xov_tmp.par_xy = xov_tmp.parOrb_xy + xov_tmp.parGlo_xy  # update partials list
-    if XovOpt.get("debug"):
-        print("Parameters:", xov_tmp.parOrb_xy, xov_tmp.parGlo_xy, xov_tmp.par_xy)
-    # update xovers table with LAT and LON
-    if len(xov_tmp.xovers) > 0:
-        xov_tmp = get_xov_latlon(xov_tmp, mla_proj_df.loc[mla_proj_df.partid == 'none'])
-        xov_tmp.xovers.drop('xovid', axis=1).reset_index(inplace=True, drop=True)
-    # print(xov_tmp.xovers.columns)
-    if XovOpt.get("debug"):
-        pd.set_option('display.max_columns', 500)
-        pd.set_option('display.max_rows', 500)
-
-    print(xov_tmp.xovers)  # .loc[xov_tmp.xovers['orbA']=='1504030011'])
+    fine_xov = []
+    for xovi in xovs_list:
+       # create a df storing xovi and the rest of the values
+       fine_xovi = fine_intersection_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xovtmp)
+       fine_xov.append(np.insert(np.concatenate(fine_xovi), 0 ,xovi))
+    fine_xov_df = pd.DataFrame(fine_xov,columns=['xovi', 'x', 'y', 'subldA', 'subldB', 'ldA', 'ldB'])
 
     end_finexov = time.time()
-    print("Fine_xov for", str(cmb) ,"finished after", int(end_finexov - start_finexov), "sec or ",
-          round((end_finexov - start_finexov) / 60., 2), " min and located", len(xov_tmp.xovers), "out of previous",
-          len(xovs_list), "xovers!")
-    return xov_tmp
+    print("Fine_xov finished after", int(end_finexov - start_finexov), "sec or ",
+          round((end_finexov - start_finexov) / 60., 2), " min")
+    return fine_xov_df
 
-
-def fine_xov_proc(xovi, df, xov_tmp):  # args):
+def fine_intersection_proc(xovi, df, all_xov):
 
     df = df.reset_index(
         drop=True).reset_index()
@@ -145,7 +62,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
         return
 
     if len(df) > 0:  # and {'LON_proj','LAT_proj'}.issubset(df.columns):
-        xov_tmp.proj_center = {'lon': df['LON_proj'].values[0], 'lat': df['LAT_proj'].values[0]}
+        # all_xov.proj_center = {'lon': df['LON_proj'].values[0], 'lat': df['LAT_proj'].values[0]}
         df.drop(columns=['LON_proj', 'LAT_proj'], inplace=True)
     else:
         if XovOpt.get("debug"):
@@ -153,22 +70,163 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
             print(df)
         return  # continue
 
-    # populate xov_tmp with local data for specific xov
-    xov_tmp.ladata_df = df.copy()
-    xov_tmp.tracks = dict(zip(df.orbID.unique(), list(range(2))))
-    xov_tmp.ladata_df['orbID'] = xov_tmp.ladata_df['orbID'].map(xov_tmp.tracks)
+    # populate all_xov with local data for specific xov
+    all_xov.ladata_df = df.copy()
+    all_xov.tracks = dict(zip(df.orbID.unique(), list(range(2))))
+    all_xov.ladata_df['orbID'] = all_xov.ladata_df['orbID'].map(all_xov.tracks)
 
-    msrm_smpl = xov_tmp.msrm_sampl
+    msrm_smpl = all_xov.msrm_sampl
+    
+    # attributes needed in all_xov: msrm_sampl, ladata_df, tracks, proj_center
 
     try:
-        x, y, subldA, subldB, ldA, ldB = xov_tmp.get_xover_fine([msrm_smpl], [msrm_smpl], '')
+        x, y, subldA, subldB, ldA, ldB = all_xov.get_xover_fine([msrm_smpl], [msrm_smpl], '')
     except:
         # if XovOpt.get("debug"):
         print("### get_xover_fine issue on xov #", xovi)
-        print(xov_tmp.ladata_df)
+        print(all_xov.ladata_df)
         return  # continue
 
-    ldA, ldB, R_A, R_B = xov_tmp.get_elev('', subldA, subldB, ldA, ldB, x=x, y=y)
+    # Above could be done before (no partial needed, just save x, y, subldA, subldB, ldA, ldB)
+
+    return x, y, subldA, subldB, ldA, ldB
+
+def compute_fine_xov(mla_proj_df, fine_xov_df, msrm_smpl):
+    # Using previously computed intersection, compute all the necessary
+    # quantitied related to the crossovers
+
+    start_finexov = time.time()
+    # initialize xov object
+    xovs_list = mla_proj_df.xovid.unique()
+    all_xov = xov(XovOpt.get("vecopts"))
+    # pass measurements sampling to fine_xov computation through all_xov
+    all_xov.msrm_sampl = msrm_smpl
+
+    # if huge_dataset:
+    #     for chunk_path in chunk_proj_df_paths:
+    #         mla_proj_df = pd.read_pickle(chunk_path)
+    #         print(mla_proj_df)
+    #         exit()
+    # select what to keep
+    cols_to_keep = mla_proj_df.loc[:,
+                   mla_proj_df.columns.str.startswith('ET_BC') + mla_proj_df.columns.str.startswith('X_stgprj') +
+                   mla_proj_df.columns.str.startswith('Y_stgprj') + mla_proj_df.columns.str.startswith(
+                       'dR/')].columns
+    proj_df_tmp = mla_proj_df[
+        ['orbID', 'seqid_mla', 'ET_TX', 'LON', 'LAT', 'R', 'dt', 'offnadir', 'xovid', 'LON_proj', 'LAT_proj'] + list(
+            cols_to_keep)]
+    print("total memory proj_df_tmp:", proj_df_tmp.memory_usage(deep=True).sum() * 1.e-6)
+    
+    # WD: Check above what is really useful now that the search is done way before
+    
+    if XovOpt.get("parallel"):
+        # pool = mp.Pool(processes=ncores)  # mp.cpu_count())
+        # xov_list = pool.map(fine_xov_proc, args)  # parallel
+        # apply_async example
+        if XovOpt.get("local"):
+            from tqdm import tqdm
+            pbar = tqdm(total=len(xovs_list))
+
+            def update(*a):
+                pbar.update()
+
+        xov_list = []
+        with mp.get_context("spawn").Pool(processes=XovOpt.get("n_proc")) as pool:
+            # for idx in range(len(xovs_list)):
+            # xov_list.append(pool.apply_async(fine_xov_proc, args=(xovs_list[idx], dfl[idx], all_xov), callback=update))
+            for xovi in xovs_list:
+
+                if XovOpt.get("local"):
+                    # xov_list.append(pool.apply_async(fine_xov_proc, args=(
+                    #     xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov), callback=update))
+                    xov_list.append(pool.apply_async(fine_compute_xov_proc, args=(
+                       xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov,
+                       fine_xov_df.loc[fine_xov_df['xovi'] == xovi]), callback=update))
+                else:
+                    # xov_list.append(pool.apply_async(fine_xov_proc, args=(
+                    #     xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov)))
+                    xov_list.append(pool.apply_async(fine_compute_xov_proc, args=(
+                       xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov,
+                       fine_xov_df.loc[fine_xov_df['xovi'] == xovi])))
+
+            pool.close()
+            pool.join()
+
+        # blocks until all results are fetched
+        tmpl = []
+        for idx, r in enumerate(xov_list):
+            try:
+                tmpl.append(r.get())
+            except:
+                print("r.get failed on", idx)
+        xov_list = tmpl
+        print(len(xov_list))
+        # xov_list = [r.get() for r in xov_list]
+
+        # launch once in serial mode to get ancillary values
+        # fine_xov_proc(0, proj_df_tmp.loc[proj_df_tmp['xovid'] == 0], all_xov)
+        fine_compute_xov_proc(0, proj_df_tmp.loc[proj_df_tmp['xovid'] == 0], all_xov, fine_xov_df.loc[fine_xov_df['xovi'] == 0])
+        # assign xovers to the new all_xov containing ancillary values
+        all_xov.xovers = pd.concat(xov_list, axis=0)
+
+    else:
+        if XovOpt.get("local"):
+            from tqdm import tqdm
+            for xovi in tqdm(xovs_list):
+                # fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov)
+                # xov_tmp.xovers = fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov)
+                fine_compute_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov, fine_xov_df.loc[fine_xov_df['xovi'] == xovi])
+        else:
+            for xovi in xovs_list:
+                # fine_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov)
+                fine_compute_xov_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], all_xov, fine_xov_df.loc[fine_xov_df['xovi'] == xovi])
+
+    # fill xov structure with info for LS solution
+    all_xov.parOrb_xy = [x for x in all_xov.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns]  # update partials list
+    all_xov.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(XovOpt.get("parGlo").keys())]
+    all_xov.par_xy = all_xov.parOrb_xy + all_xov.parGlo_xy  # update partials list
+    if XovOpt.get("debug"):
+        print("Parameters:", all_xov.parOrb_xy, all_xov.parGlo_xy, all_xov.par_xy)
+    # update xovers table with LAT and LON
+    if len(all_xov.xovers) > 0:
+        all_xov = get_xov_latlon(all_xov, mla_proj_df.loc[mla_proj_df.partid == 'none'])
+        all_xov.xovers.drop('xovid', axis=1).reset_index(inplace=True, drop=True)
+    if XovOpt.get("debug"):
+        pd.set_option('display.max_columns', 500)
+        pd.set_option('display.max_rows', 500)
+
+    print(all_xov.xovers)
+
+    end_finexov = time.time()
+    # print("Fine_xov for", str(cmb) ,"finished after", int(end_finexov - start_finexov), "sec or ",
+    print("Fine_xov finished after", int(end_finexov - start_finexov), "sec or ",
+          round((end_finexov - start_finexov) / 60., 2), " min and located", len(all_xov.xovers), "out of previous",
+          len(xovs_list), "xovers!")
+    return all_xov
+
+def fine_compute_xov_proc(xovi, df, all_xov, fine_xov_df):
+
+    df = df.reset_index(drop=True).reset_index()
+    df.rename(columns={'index': 'genID', 'seqid_mla': 'seqid'}, inplace=True)
+    
+    if len(df) > 0:  # and {'LON_proj','LAT_proj'}.issubset(df.columns):
+       all_xov.proj_center = {'lon': df['LON_proj'].values[0], 'lat': df['LAT_proj'].values[0]}
+       df.drop(columns=['LON_proj', 'LAT_proj'], inplace=True)
+    else:
+       if XovOpt.get("debug"):
+          print("### Empty proj_df_xovi on xov #", xovi)
+          print(df)
+       return  # continue
+
+    # populate all_xov with local data for specific xov
+    all_xov.ladata_df = df.copy()
+    all_xov.tracks = dict(zip(df.orbID.unique(), list(range(2))))
+    all_xov.ladata_df['orbID'] = all_xov.ladata_df['orbID'].map(all_xov.tracks)
+
+    [x, y, subldA, subldB, ldA, ldB] = fine_xov_df[['x', 'y', 'subldA', 'subldB', 'ldA', 'ldB']].values[0]
+
+    # Above could be done before (no partial needed, just save x, y, subldA, subldB, ldA, ldB)
+    ldA, ldB, R_A, R_B = all_xov.get_elev('', subldA, subldB, ldA, ldB, x=x, y=y)
 
     out = np.vstack((x, y, ldA, ldB, R_A, R_B)).T
 
@@ -178,7 +236,7 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
         return  # continue
 
     # post-processing
-    xovtmp = xov_tmp.postpro_xov_elev(xov_tmp.ladata_df, out)
+    xovtmp = all_xov.postpro_xov_elev(all_xov.ladata_df, out)
     try:
         xovtmp = pd.DataFrame(xovtmp, index=[0])  # TODO possibly avoid, very time consuming
     except:
@@ -193,35 +251,35 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
         return  # continue
 
     # Update xovtmp as attribute for partials
-    xov_tmp.xovtmp = xovtmp
+    all_xov.xovtmp = xovtmp
 
     # Compute and store distances between obs and xov coord
-    xov_tmp.set_xov_obs_dist()
+    all_xov.set_xov_obs_dist()
     # Compute and store offnadir state for obs around xov
-    xov_tmp.set_xov_offnadir()
+    all_xov.set_xov_offnadir()
 
     # process partials from gtrack to xov, if required
     if XovOpt.get("partials"):
-        xov_tmp.set_partials()
+        all_xov.set_partials()
     else:
         # retrieve epoch to, e.g., trace tracks quality (else done inside set_partials)
-        xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(
-            np.reshape(xov_tmp.get_dt(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
+        all_xov.xovtmp = pd.concat([all_xov.xovtmp, pd.DataFrame(
+            np.reshape(all_xov.get_dt(all_xov.ladata_df, all_xov.xovtmp), (len(all_xov.xovtmp), 2)),
             columns=['dtA', 'dtB'])], axis=1)
-        xov_tmp.xovtmp = pd.concat([xov_tmp.xovtmp, pd.DataFrame(
-            np.reshape(xov_tmp.get_tX(xov_tmp.ladata_df, xov_tmp.xovtmp), (len(xov_tmp.xovtmp), 2)),
+        all_xov.xovtmp = pd.concat([all_xov.xovtmp, pd.DataFrame(
+            np.reshape(all_xov.get_tX(all_xov.ladata_df, all_xov.xovtmp), (len(all_xov.xovtmp), 2)),
             columns=['tA', 'tB'])], axis=1)
 
     # Remap track names to df
-    xov_tmp.xovtmp['orbA'] = xov_tmp.xovtmp['orbA'].map({v: k for k, v in xov_tmp.tracks.items()})
-    xov_tmp.xovtmp['orbB'] = xov_tmp.xovtmp['orbB'].map({v: k for k, v in xov_tmp.tracks.items()})
+    all_xov.xovtmp['orbA'] = all_xov.xovtmp['orbA'].map({v: k for k, v in all_xov.tracks.items()})
+    all_xov.xovtmp['orbB'] = all_xov.xovtmp['orbB'].map({v: k for k, v in all_xov.tracks.items()})
 
-    xov_tmp.xovtmp['xOvID'] = xovi
+    all_xov.xovtmp['xOvID'] = xovi
 
     # Update general df (serial only, does not work in parallel since not a shared object)
     if not XovOpt.get("parallel"):
-        # xov_tmp.xovers = xov_tmp.xovers.append(xov_tmp.xovtmp, sort=True)
-        xov_tmp.xovers = pd.concat([xov_tmp.xovers, xov_tmp.xovtmp], sort=True)
+        # all_xov.xovers = all_xov.xovers.append(all_xov.xovtmp, sort=True)
+        all_xov.xovers = pd.concat([all_xov.xovers, all_xov.xovtmp], sort=True)
 
     # print used memory
     if XovOpt.get('debug'):
@@ -239,4 +297,4 @@ def fine_xov_proc(xovi, df, xov_tmp):  # args):
                                  key=lambda xm: -xm[1])[:10]:
             print("{:>30}: {:>8}".format(name, sizeof_fmt(size)))
 
-    return xov_tmp.xovtmp
+    return all_xov.xovtmp

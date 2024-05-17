@@ -4,16 +4,20 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
-from pygeoloc.ground_track import gtrack
 from pyxover.xov_utils import get_ds_attrib
 from xovutil.project_coord import project_stereographic
 from pyxover.intersection import intersection
+from pyxover.fine_xov import fine_xov_intersection
+from pyxover.project_gtracks import project_mla
+from pyxover.xov_prc_iters import load_mla_df
 
 # from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("cloop_sim"), XovOpt.get("outdir"), XovOpt.get("partials")
 from config import XovOpt
 # from memory_profiler import profile
 
+# Deprecated module
 # @profile
+
 def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
     start_prepro = time.time()
 
@@ -29,30 +33,23 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
         print("No tracks to be processed. Stop!")
         exit()
 
-    track = gtrack(XovOpt.to_dict())
     delta_pars, etbcs, pars = get_ds_attrib()
-    # part_proj_dict = dict.fromkeys([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']], [])
-    part_proj_dict = defaultdict(list)
-    mla_proj_list = []
-    mla_idx = ['mla_idA', 'mla_idB']
-    mladata = {}
-
-    # Populate mladata with laser altimeter data for each track
-    # WD: Whole gtrack is not needed.ladata_df could be passed as an
-    # argument, provided that necessary columns havent been dumped.
-    for track_id in tracks_in_xovs[:]:
-       track.load_df_from_id(gtrack_dirs[0], track_id)
-       if track.ladata_df is None:
-          track.load_df_from_id(gtrack_dirs[1], track_id)
-       if track.ladata_df is None:
-          print(f"*** PyXover: Issue loading ladata from {track_id} from {gtrack_dirs}.")
-          exit()
-       mladata[track_id] = track.ladata_df[['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt'] + pars + etbcs]
+    columns = ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt'] + pars + etbcs
     
-    track = None
+    # Populate mladata with laser altimeter data for each track
+    mladata = load_mla_df(gtrack_dirs, tracks_in_xovs, columns)
+    
+    # Projection w/o partials
+    mla_proj_df, part_proj_dict = extract_mla_xov(old_xovs, tracks_in_xovs, mladata, msrm_smpl, False)
+    
+    mla_proj_df = project_mla(mla_proj_df, part_proj_dict, False)
+
+    fine_xov_df = fine_xov_intersection(mla_proj_df, msrm_smpl) # to return anyway 
+    
+    # update ['mla_idA', 'mla_idB'] in old_xovs based on fine_xov_df
     
     n_interp = XovOpt.get("n_interp")
-    
+
     # Refine xovers before projection
     # WD: In this case, fine search is unecessarily done twice...
     if n_interp < msrm_smpl:
@@ -89,6 +86,30 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
          xov['mla_idA'] = tmp_ladataA['seqid'].iloc[0] + np.floor(ind_A[0])
          xov['mla_idB'] = tmp_ladataB['seqid'].iloc[0] + np.floor(ind_B[0])
 
+    # Extract relevant mladata for the tracks_in_xovs
+    mla_proj_df, part_proj_dict = extract_mla_xov(old_xovs, tracks_in_xovs, mladata, n_interp, XovOpt.get("partials"))
+    
+    # free-up memory
+    mladata.clear()
+
+    end_prepro = time.time()
+
+    print("Pre-processing finished after ", int(end_prepro - start_prepro), "sec or ",
+          round((end_prepro - start_prepro) / 60., 2), " min!")
+    
+    mla_proj_df = project_mla(mla_proj_df, part_proj_dict, XovOpt.get("partials"))
+
+    return mla_proj_df, fine_xov_df
+
+def extract_mla_xov(old_xovs, tracks_in_xovs, mladata, n_interp, partials):
+
+    delta_pars, etbcs, pars = get_ds_attrib()
+    # part_proj_dict = dict.fromkeys([x + '_' + y for x in delta_pars.keys() for y in ['p', 'm']], [])
+    part_proj_dict = defaultdict(list)
+    mla_proj_list = []
+    mla_idx = ['mla_idA', 'mla_idB']
+
+    # Extract relevant mladata for the tracks_in_xovs
     for track_id in tracks_in_xovs[:]:
 
         for idx, orb in enumerate(['orbA', 'orbB']):
@@ -151,8 +172,9 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
 
             mla_proj_df = pd.merge(xov_extract, ladata_extract, left_on='genid', right_index=True)
             mla_proj_df['partid'] = 'none'
+            
 
-            if XovOpt.get("partials"):
+            if partials:
                 # do stuff (unsure if sorted in the same way... merge would be safer)
                 tmp_ladata_partials = tmp_ladata.loc[tmp_ladata.index.isin(xov_extract.genid)][
                     ['seqid', 'LON', 'LAT', 'orbID'] + pars + etbcs]
@@ -205,9 +227,6 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
 
             mla_proj_list.append(mla_proj_df)
 
-    # free-up memory
-    mladata.clear()
-
     # concatenate lists
     mla_proj_df = pd.concat(mla_proj_list, sort=False).reset_index(drop=True)
     mla_proj_df.rename(columns={"seqid_x": "seqid_xov", "seqid_y": "seqid_mla"},
@@ -220,11 +239,5 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
     # save main part
     # mla_proj_df.to_pickle(outdir + outdir_in + 'xov/tmp/proj/xov_' + str(cmb[0]) + '_' + str(
     #     cmb[1]) + '_mla_proj.pkl.gz')
-
-    end_prepro = time.time()
-
-    print("Pre-processing finished after ", int(end_prepro - start_prepro), "sec or ",
-          round((end_prepro - start_prepro) / 60., 2),
-          " min!")
 
     return mla_proj_df, part_proj_dict

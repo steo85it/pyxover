@@ -8,9 +8,11 @@
 # Author: Stefano Bertone
 # Created: 18-Feb-2019
 import os.path
+import glob
 import warnings
 
 from pyaltsim import perlin2d
+from pygeoloc.ground_track import gtrack
 from scipy.interpolate import RectBivariateSpline
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -516,8 +518,8 @@ class xov:
             # ax.set_title(title)
             plt.savefig(XovOpt.get("tmpdir") + 'test_elev_prof_.png')
 
-            if R_B[0] - R_A[0] > 100:
-                exit()
+            # if R_B[0] - R_A[0] > 100:
+            #     exit()
 
     def plot_xov_elev(self, arg, fA_interp, fB_interp, ind_A, ind_A_int, ind_B, ind_B_int, ladata_df, ldA_, ldB_,
                       tA_interp, tB_interp, t_ldA, t_ldB, param=''):
@@ -584,8 +586,6 @@ class xov:
         :return: ind_B: xov.obsB index in ladata(orbA+orbB)
         """
 
-        # orb_lst = list(self.tracks.values())
-
         msrm_sampl = self.msrm_sampl
         # ladata_df = self.ladata_df.copy()
 
@@ -618,15 +618,7 @@ class xov:
 
         if (XovOpt.get("debug")):
             print("Check parts X_stg")
-            print(X_stgA,
-                  Y_stgA,
-                  X_stgB,
-                  Y_stgB)
-
-            # pd.set_option('display.max_columns', 500)
-            # df = ladata_df.loc[ladata_df['orbID'] == orb_lst[0]]
-            # print(df)
-            # exit()
+            print(X_stgA, Y_stgA, X_stgB, Y_stgB)
 
         # compute more accurate location
         # Retrieve ladata_df index of observations involved in the crossover
@@ -659,7 +651,6 @@ class xov:
                 ldB_ = df_[df_[:, 0] == 1][:, 1:]
 
             if XovOpt.get("debug"):
-                print("Fine", param, self.proj_center)
                 print("indA/B", rough_indA, rough_indB)
                 print('ldA/B:')
                 print(ldA_, ldB_)
@@ -730,11 +721,9 @@ class xov:
             ld_ind_B = np.where(tmp[:, 1] - len(ldA_) > 0, (tmp + intersec_ind)[:, 1], len(ldA_) + intersec_ind[:, 1])
 
             # plot and check intersections (rough, fine, ...)
-            # if (debug):
             if XovOpt.get("debug") and len(intersec_x) > 0 and param == '':
                 print("intersec_x, intersec_y", intersec_x, intersec_y)
                 self.plot_xov_curves(ldA_, ldB_, intersec_x, intersec_y, rough_indA, rough_indB, param)
-                # exit()
 
             isarray = all(intersec_x)
             if not isarray:
@@ -1510,3 +1499,18 @@ class xov:
                 print(elev_parder)
 
             return np.reshape(elev_parder[-2:], (-1, 2))
+
+    def store_pertubation(self, gtrack_dirs, cmb):
+       # store the imposed perturbation (if closed loop simulation) - get from any track uploaded in prepro step
+       track = gtrack(XovOpt.to_dict())
+       trackfiles = glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + str(cmb[0]) + '*.pkl'))
+       if len(trackfiles) > 0:
+          track = track.load(trackfiles[0])
+       else:
+          print(f"No file found for {gtrack_dirs[0]}gtrack_{str(cmb[0])}*.pkl")
+          exit()
+          
+       self.pert_cloop = {'0': track.pert_cloop}
+       self.pert_cloop_0 = {'0': track.pert_cloop_0}
+       # store the solution from the previous iteration
+       self.sol_prev_iter = {'0': track.sol_prev_iter}
