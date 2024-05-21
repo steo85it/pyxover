@@ -18,37 +18,37 @@ from memory_profiler import profile
 
 ## MAIN ##
 def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
-    start = time.time()
-    xov_dir = XovOpt.get("outdir") + outdir_in + 'xov/'
-    outpath = xov_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'
-    # Exit process if file already exists and no option to recreate
-    if (XovOpt.get("new_xov") != 2) and (os.path.isfile(outpath)):
-        print("Fine xov", outpath," already exists. Stop!")
-        return
+   start = time.time()
+   xov_dir = XovOpt.get("outdir") + outdir_in + 'xov/'
+   outpath = xov_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'
+   # Exit process if file already exists and no option to recreate
+   if (XovOpt.get("new_xov") != 2) and (os.path.isfile(outpath)):
+      print("Fine xov", outpath," already exists. Stop!")
+      return
 
-    # Compute fine intersection from old xovers and
-    # project the la data around the fine intersection
-    mla_proj_df, fine_xov_df = proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs)
+   # Compute fine intersection from old xovers and
+   # project the la data around the fine intersection
+   mla_proj_df, fine_xov_df = proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs)
 
     # compute new xovs
-    xov_tmp = compute_fine_xov(mla_proj_df, fine_xov_df, XovOpt.get("n_interp"))
+   xov_tmp = compute_fine_xov(mla_proj_df, fine_xov_df, XovOpt.get("n_interp"))
     
-    # Load auxilliary data from gtracks
-    xov_tmp.store_pertubation(gtrack_dirs, cmb)
+   # Load auxilliary data from gtracks
+   xov_tmp.store_pertubation(gtrack_dirs, cmb)
 
-    # Save to file
-    xov_pklname = 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
-    xov_tmp.save(xov_dir + xov_pklname)
+   # Save to file
+   xov_pklname = 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
+   xov_tmp.save(xov_dir + xov_pklname)
 
-    end = time.time()
+   end = time.time()
 
-    print('Xov for ' + str(cmb) + ' processed and written to ' + xov_dir + xov_pklname +
-        '@' + time.strftime("%H:%M:%S", time.gmtime()))
+   print('Xov for ' + str(cmb) + ' processed and written to ' + xov_dir + xov_pklname +
+         '@' + time.strftime("%H:%M:%S", time.gmtime()))
 
-    print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-    print(xov_tmp.xovers.columns)
-    print(xov_tmp.xovers.dR)
-    return xov_tmp
+   print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
+   print(xov_tmp.xovers.columns)
+   print(xov_tmp.xovers.dR)
+   return xov_tmp
 
 # @profile
 def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
@@ -83,7 +83,7 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
    n_interp = XovOpt.get("n_interp")
 
    # Populate mladata with laser altimeter data for each track
-   if n_interp < msrm_smpl or not XovOpt.get("import_proj"):
+   if not XovOpt.get("import_proj") or n_interp < msrm_smpl:
       mladata = load_mla_df(gtrack_dirs, tracks_in_xovs, columns)
    
    # First projection w/o partials only on a larger set of mla, 
@@ -100,22 +100,14 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
       
       # Free-up memory
       del mla_proj_df
-
+      
       # update ['mla_idA', 'mla_idB'] in old_xovs based on fine_xov_df
+      old_xovs[['mla_idA','mla_idB']] = fine_xov_df[['mla_idA', 'mla_idB']].values
       for index, xov in old_xovs.iterrows():
-         # extract mladata around xovers
-         tmp_ladataA = mladata[xov['orbA']][(mladata[xov['orbA']]['seqid'] >= xov['mla_idA']-msrm_smpl)
-                                           & (mladata[xov['orbA']]['seqid'] <= xov['mla_idA']+msrm_smpl)]
-         tmp_ladataB = mladata[xov['orbB']][(mladata[xov['orbB']]['seqid'] >= xov['mla_idB']-msrm_smpl)
-                                          & (mladata[xov['orbB']]['seqid'] <= xov['mla_idB']+msrm_smpl)]
-
-
-         [subldA, subldB, ldA, ldB] = fine_xov_df[['subldA', 'subldB', 'ldA', 'ldB']].values[0]
-
-         # Assign the closest mla data point
-         # Check what index to use
-         xov['mla_idA'] = tmp_ladataA['seqid'].iloc[0] + np.floor(subldA[0])
-         xov['mla_idB'] = tmp_ladataB['seqid'].iloc[0] + np.floor(subldB[0])
+         [xov['mla_idA'], xov['mla_idB']] = fine_xov_df[['mla_idA', 'mla_idB']].values[index]
+         # [subldA, subldB] = fine_xov_df[['mla_idA', 'mla_idB']].values[0]
+         # xov['mla_idA'] = subldA
+         # xov['mla_idB'] = subldB
 
    elif n_interp > msrm_smpl:
       print(f"n_interp ({n_interp}) can't be > msrm_smpl{msrm_smpl}")
@@ -134,6 +126,9 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
       mladata.clear()
 
       mla_proj_df = project_mla(mla_proj_df, part_proj_dict, XovOpt.get("partials"))
+      
+      # free-up memory
+      part_proj_dict.clear()
 
       # Save intermediate result
       # WD: col = ['R_A', 'R_B', 'dR'] are 0 -> drop them?
@@ -143,7 +138,6 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
    elif os.path.exists(proj_pkl_path): # or just retrieve them from file
       mla_proj_df = pd.read_pickle(proj_pkl_path)
       print("mla_proj_df loaded from", proj_pkl_path, ". Done!!")
-      fine_xov_df = fine_xov_intersection(mla_proj_df, msrm_smpl)
    else:
       print("No mla_proj_df found at ", proj_pkl_path)
       exit()
@@ -171,15 +165,7 @@ def extract_mla_xov(old_xovs, tracks_in_xovs, mladata, n_interp, partials):
          
          # load file if year of track corresponds to folder
          # TODO removed check on orbid for this test
-         if True: #track_id[:2] == str(cmb[idx]):
-            # track = track.load(outdir + outdir_in + 'gtrack_' + str(cmb[idx]) + '/gtrack_' + track_id + '.pkl')
-            tmp_ladata = mladata[track_id]  # faster and less I/O
-         else:
-            # print("### Track ",track_id,"does not exist in",outdir + outdir_in + 'gtrack_' + str(cmb[idx]))
-            # track = gtrack(vecopts) # reinitialize track to avoid error "'NoneType' object has no attribute 'load'"
-            continue
-
-         # tmp_ladata = track.ladata_df.copy()  # .reset_index()
+         tmp_ladata = mladata[track_id]  # faster and less I/O
 
          # xov df extract and expand to neighb obs
          tmp = old_xovs.loc[old_xovs[orb] == track_id][[mla_idx[idx], 'xOvID', 'LON', 'LAT']].astype(
@@ -348,12 +334,12 @@ def retrieve_xov(outdir_in, xov_iter, cmb, useful_columns):
 
 ## MAIN ##
 if __name__ == '__main__':
-    start = time.time()
+   start = time.time()
 
-    cmb = [12,18]
+   cmb = [12,18]
 
-    xov_tmp = xov_prc_iters_run()
+   xov_tmp = xov_prc_iters_run()
 
-    end = time.time()
+   end = time.time()
 
-    print("Process finished after", int(end - start), "sec or ", round((end - start)/60.,2), " min!")
+   print("Process finished after", int(end - start), "sec or ", round((end - start)/60.,2), " min!")
