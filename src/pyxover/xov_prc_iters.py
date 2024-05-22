@@ -101,13 +101,12 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
       # Free-up memory
       del mla_proj_df
       
-      # update ['mla_idA', 'mla_idB'] in old_xovs based on fine_xov_df
-      old_xovs[['mla_idA','mla_idB']] = fine_xov_df[['mla_idA', 'mla_idB']].values
+      # Update old_xovs based on fine_xov_df
+      # xovs_list = mla_proj_df.xovid.unique()
+      # for xovi in xovs_list:
+      # WD: Maybe a better way to do it...
       for index, xov in old_xovs.iterrows():
-         [xov['mla_idA'], xov['mla_idB']] = fine_xov_df[['mla_idA', 'mla_idB']].values[index]
-         # [subldA, subldB] = fine_xov_df[['mla_idA', 'mla_idB']].values[0]
-         # xov['mla_idA'] = subldA
-         # xov['mla_idB'] = subldB
+         [xov['mla_idA'], xov['mla_idB']]  = fine_xov_df.loc[fine_xov_df['xovi'] == xov['xOvID']][['mla_idA', 'mla_idB']].values[0]
 
    elif n_interp > msrm_smpl:
       print(f"n_interp ({n_interp}) can't be > msrm_smpl{msrm_smpl}")
@@ -143,7 +142,7 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
       exit()
 
    # Fine search with mla projectec with partials
-   if n_interp == msrm_smpl:
+   if n_interp == msrm_smpl: # also > ?
       fine_xov_df = fine_xov_intersection(mla_proj_df, msrm_smpl) # to return anyway
 
    end = time.time()
@@ -174,7 +173,6 @@ def extract_mla_xov(old_xovs, tracks_in_xovs, mladata, n_interp, partials):
          if len(tmp) == 0:
             logging.debug(f"no xovers for track={track_id} and orb={orb}, xov df extract empty. Continue.")
             continue
-            # exit()
 
          # WD: I don't understand why seqid and xovid are not int at this point...
          xov_extract = pd.DataFrame(tmp, columns=['seqid', 'xovid', 'LON_proj', 'LAT_proj'])

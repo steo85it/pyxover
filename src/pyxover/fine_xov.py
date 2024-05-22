@@ -35,6 +35,7 @@ def fine_xov_intersection(mla_proj_df, msrm_smpl):
    for xovi in xovs_list:
       # create a df storing xovi and the rest of the values
       fine_xovi = fine_intersection_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xovtmp)
+      # fine_xovi is None if pb with xover
       fine_xov.append(np.insert(fine_xovi, 0 ,xovi))
    fine_xov_df = pd.DataFrame(fine_xov,columns=['xovi', 'x', 'y', 'mla_idA', 'mla_idB', 'ldA', 'ldB'])
 
@@ -48,6 +49,8 @@ def fine_intersection_proc(xovi, df, all_xov):
    df = df.reset_index(drop=True).reset_index()
    df.rename(columns={'index': 'genID', 'seqid_mla': 'seqid'}, inplace=True)
 
+   # WD: I don't think this should be done here, but rahter at interpolation
+   #     if the xover is too close to the gtrack limit
    # check that we got the same number of rows for both tracks
    # TODO WHY is this happening with pandas 2.x.x
    points_per_track = df.groupby('orbID')['genID'].count().values
@@ -56,7 +59,7 @@ def fine_intersection_proc(xovi, df, all_xov):
       assert  np.diff(points_per_track) == 0
    except:
       # if XovOpt.get("debug"):
-      print(f"# Removing weird xover, difference between trackA/B = {np.diff(points_per_track)}. Check!")
+      print(f"# Removing weird xover {xovi}, difference between trackA/B = {np.diff(points_per_track)}. Check!")
       print(points_per_track)
       return
 
@@ -86,7 +89,6 @@ def fine_intersection_proc(xovi, df, all_xov):
       print(all_xov.ladata_df)
       return  # continue
 
-   
    # last alti point before xov
    mla_idA = all_xov.ladata_df[all_xov.ladata_df['orbID'] == 0]['seqid'].iloc[int(subldA[0])]
    mla_idB = all_xov.ladata_df[all_xov.ladata_df['orbID'] == 1]['seqid'].iloc[int(subldB[0])]
@@ -229,6 +231,10 @@ def fine_compute_xov_proc(xovi, df, all_xov, fine_xov_df, n_interp):
    all_xov.ladata_df['orbID'] = all_xov.ladata_df['orbID'].map(all_xov.tracks)
 
    [x, y, mla_idA, mla_idB, ldA, ldB] = fine_xov_df[['x', 'y', 'mla_idA', 'mla_idB', 'ldA', 'ldB']].values[0]
+   
+   if (np.isnan(mla_idA)):
+      print(f"xov {xovi} ignored in compute_fine_xov")
+      return
    
    # Compute ldX from seqidX
    # would be nicer, but get_elev would need to be modified
