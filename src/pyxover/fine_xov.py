@@ -40,7 +40,7 @@ def fine_xov_intersection(mla_proj_df, msrm_smpl):
    fine_xov_df = pd.DataFrame(fine_xov,columns=['xovi', 'x', 'y', 'mla_idA', 'mla_idB', 'ldA', 'ldB'])
 
    end_finexov = time.time()
-   print("Fine_xov finished after", int(end_finexov - start_finexov), "sec or ",
+   print("Fine intersection computation finished after", int(end_finexov - start_finexov), "sec or ",
          round((end_finexov - start_finexov) / 60., 2), " min")
    return fine_xov_df
 
@@ -89,6 +89,10 @@ def fine_intersection_proc(xovi, df, all_xov):
       print(all_xov.ladata_df)
       return  # continue
 
+   # You should check if there is indeed an intersection which has beeen found!
+   if len(subldA) == 0:
+      print("No intersection found on xov", int(xovi))
+      return
    # last alti point before xov
    mla_idA = all_xov.ladata_df[all_xov.ladata_df['orbID'] == 0]['seqid'].iloc[int(subldA[0])]
    mla_idB = all_xov.ladata_df[all_xov.ladata_df['orbID'] == 1]['seqid'].iloc[int(subldB[0])]
@@ -202,10 +206,9 @@ def compute_fine_xov(mla_proj_df, fine_xov_df, n_interp):
       pd.set_option('display.max_columns', 500)
       pd.set_option('display.max_rows', 500)
 
-   print(all_xov.xovers)
+   # print(all_xov.xovers)
 
    end_finexov = time.time()
-   # print("Fine_xov for", str(cmb) ,"finished after", int(end_finexov - start_finexov), "sec or ",
    print("Fine_xov finished after", int(end_finexov - start_finexov), "sec or ",
          round((end_finexov - start_finexov) / 60., 2), " min and located", len(all_xov.xovers), "out of previous",
          len(xovs_list), "xovers!")

@@ -256,6 +256,7 @@ class xov:
 
    # Compute elevation R at crossover points by interpolation
    # (should be put in a function and looped over - also, check the higher order interp)
+   # Should check if enough data for interpolation
    # @profile
    def get_elev(self, arg, ind_A, ind_B, n_interp, par='', x=0, y=0):
 
@@ -556,8 +557,7 @@ class xov:
             print(intersec_out)
 
          if len(rough_indA) > 1:
-            # print("len>1", len(rough_indA))
-            # print(intersec_out)
+
             x, y, a, b, rough_tmpA, rough_tmpB = [], [], [], [], [], []
             for idx, r in enumerate(intersec_out):
                rough_tmpA.extend(np.repeat(rough_indA[idx], len(r[0])))
@@ -1284,15 +1284,13 @@ class xov:
       # comb1 = self.tracks
       # ladata_df = self.ladata_df
       xovers_df = self.xovtmp
-        
-      msrm_sampl = self.msrm_sampl # 4?
 
       if XovOpt.get("debug"):
          print("xov fin")
          print(xovers_df[['cmb_idA']].values.astype(int).flatten(), l)
 
       out_finloc = np.vstack(self.get_xover_fine(xovers_df['cmb_idA'].values.astype(int).flatten(),
-                                                 xovers_df['cmb_idB'].values.astype(int).flatten(), msrm_sampl, l))  # seq
+                                                 xovers_df['cmb_idB'].values.astype(int).flatten(), 4, l))  # seq
 
       if len(xovers_df) != len(out_finloc[0]):
          if XovOpt.get("debug"):
