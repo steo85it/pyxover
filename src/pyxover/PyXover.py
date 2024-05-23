@@ -46,7 +46,7 @@ def launch_xov(
     xov_dir     = outdir + 'xov/'
 
     xov_pklname = 'xov_' + track_idA + '_' + misycmb_par[1] + '.pkl'
-    if XovOpt.get("new_xov"):  # and track_id=='1301232350':
+    if XovOpt.get("new_xov"):
         # print( "check", track_id, misycmb_par)
         if not os.path.isfile(xov_dir + xov_pklname) or XovOpt.get("new_xov") == 2:
 
@@ -73,11 +73,11 @@ def launch_xov(
                 xov_tmp = xov(XovOpt.get("vecopts"))
 
                 xovers_list = []
-                nxov = 0
                 n_multixov = 0
                 n_zeroxov = 0
                 # loop over all combinations containing track_id
                 for track_idA, track_idB in [s for s in comb if track_idA in s[0]]:
+                    nxov = 0
 
                     if track_idB > track_idA:
 
@@ -96,6 +96,7 @@ def launch_xov(
 
                         if trackB.ladata_df is None:
                            trackB.ladata_df = mladata[track_idB]  # faster and less I/O which overloads PGDA
+
 
                         if not trackB == None and len(trackB.ladata_df) > 0:
 
@@ -177,9 +178,6 @@ def main(args_in):
     # update options (needed when sending to slurm)
     XovOpt.clone(opts)
 
-    # locate data
-    data_pth = XovOpt.get("basedir") # '/explore/nobackup/people/sberton2/MLA/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-    data_pth += indir_in
     # # load kernels
     # spice.furnsh(auxdir + 'mymeta')  # 'aux/mymeta')
 
