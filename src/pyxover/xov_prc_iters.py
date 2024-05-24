@@ -46,7 +46,7 @@ def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
          '@' + time.strftime("%H:%M:%S", time.gmtime()))
 
    print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-   print(xov_tmp.xovers.columns)
+   # print(xov_tmp.xovers.columns)
    print(xov_tmp.xovers.dR)
    return xov_tmp
 
@@ -93,20 +93,22 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
       # Projection w/o partials
       mla_proj_df, part_proj_dict = extract_mla_xov(old_xovs, tracks_in_xovs, mladata, msrm_smpl, False)
       
+      if XovOpt.get("import_proj"):
+         del mladata
+      
       mla_proj_df = project_mla(mla_proj_df, part_proj_dict, False)
       
       # Fine search
       fine_xov_df = fine_xov_intersection(mla_proj_df, msrm_smpl) # to return anyway
+      # fine_xov_df[['xovi','mla_idA','mla_idB']] = fine_xov_df[['xovi','mla_idA','mla_idB']].astype('int')
       
       # Free-up memory
       del mla_proj_df
       
       # Update old_xovs based on fine_xov_df
-      # xovs_list = mla_proj_df.xovid.unique()
-      # for xovi in xovs_list:
-      # WD: Maybe a better way to do it...
-      for index, xov in old_xovs.iterrows():
-         [xov['mla_idA'], xov['mla_idB']]  = fine_xov_df.loc[fine_xov_df['xovi'] == xov['xOvID']][['mla_idA', 'mla_idB']].values[0]
+      old_xovs=old_xovs.set_index('xOvID')
+      old_xovs.update(fine_xov_df.set_index('xovi'))
+      old_xovs=old_xovs.reset_index()
 
    elif n_interp > msrm_smpl:
       print(f"n_interp ({n_interp}) can't be > msrm_smpl{msrm_smpl}")
