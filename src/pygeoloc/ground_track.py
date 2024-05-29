@@ -324,8 +324,6 @@ class gtrack:
         # Convert TOF to seconds
         df.TOF *= 1.e-9
 
-        # print(df)
-
         # copy cleaned data to attribute df
         self.ladata_df = df
 

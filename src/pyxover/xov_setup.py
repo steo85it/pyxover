@@ -905,8 +905,9 @@ class xov:
             nxov = 1  # np.max([len([x]) for x in xovtmp])
 
             if XovOpt.get("debug"):
-                print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " +
-                      list(self.tracks.keys())[1])
+               # WD: len(xovtmp) is not the number of xovers found ...
+               print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " +
+                     list(self.tracks.keys())[1])
 
             return nxov
 

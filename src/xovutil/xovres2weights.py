@@ -29,71 +29,71 @@ import pandas as pd
 # (https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1002/2014GL062162)
 # to associate error to each xover based on separation from MLA observations
 def get_interpolation_weight(xov_):
-    interp_weights = xov_.xovers.copy()
-    interp_weights = interp_weights[['LON', 'LAT', 'dist_min_mean']]
+   interp_weights = xov_.xovers.copy()
+   interp_weights = interp_weights[['LON', 'LAT', 'dist_min_mean']]
 
-    # get roughness at 700 meters from http://www.planetary.brown.edu/html_pages/mercury_roughness-maps.html
-    # ref baseline in meters (depending on input map)
-    ref_baseline = 700.
-    lonlat = interp_weights.loc[:, ['LON', 'LAT']].values
-    roughness_df = get_roughness_at_coord(lon=lonlat[:, 0], lat=lonlat[:, 1],
-                                          roughness_map=XovOpt.get("auxdir") + 'MLA_Roughness_composite.tif')
-    interp_weights['rough_700m'] = roughness_df.loc[:, 'rough_700m']
+   # get roughness at 700 meters from http://www.planetary.brown.edu/html_pages/mercury_roughness-maps.html
+   # ref baseline in meters (depending on input map)
+   ref_baseline = 700.
+   lonlat = interp_weights.loc[:, ['LON', 'LAT']].values
+   roughness_df = get_roughness_at_coord(lon=lonlat[:, 0], lat=lonlat[:, 1],
+                                         roughness_map=XovOpt.get("auxdir") + 'MLA_Roughness_composite.tif')
+   interp_weights['rough_700m'] = roughness_df.loc[:, 'rough_700m']
 
-    # get min separation between xovers and mla data (meters, mean of minimal sep for each track ... guess it makes sense)
-    interp_weights[
-        'meters_dist_min'] = interp_weights.dist_min_mean.values * 1.e3  # filter(regex='dist_[A,B].*').min(axis=1).values*1.e3
+   # get min separation between xovers and mla data (meters, mean of minimal sep for each track ... guess it makes sense)
+   interp_weights[
+      'meters_dist_min'] = interp_weights.dist_min_mean.values * 1.e3  # filter(regex='dist_[A,B].*').min(axis=1).values*1.e3
 
-    # get roughness at separation baseline
-    interp_weights['rough_at_mindist'] = roughness_at_baseline(interp_weights['rough_700m'].values,
-                                                               interp_weights['meters_dist_min'].values,
-                                                               ref_baseline=ref_baseline)
+   # get roughness at separation baseline
+   interp_weights['rough_at_mindist'] = roughness_at_baseline(interp_weights['rough_700m'].values,
+                                                              interp_weights['meters_dist_min'].values,
+                                                              ref_baseline=ref_baseline)
 
-    # get weight as inverse of roughness (relative, 0:1) value - could use factors given in ref + sim results to rescale
-    interp_weights['weight'] = 1. / interp_weights['rough_at_mindist'].values
+   # get weight as inverse of roughness (relative, 0:1) value - could use factors given in ref + sim results to rescale
+   interp_weights['weight'] = 1. / interp_weights['rough_at_mindist'].values
 
-    if XovOpt.get("debug"):
-        print(interp_weights)
-        print(interp_weights['weight'].mean(), interp_weights['weight'].median(), interp_weights['weight'].max(),
-              interp_weights['weight'].min())
+   if XovOpt.get("debug"):
+      print(interp_weights)
+      print(interp_weights['weight'].mean(), interp_weights['weight'].median(), interp_weights['weight'].max(),
+            interp_weights['weight'].min())
 
-    # plot some histos for debug
-    if XovOpt.get("debug"):
-        plt.figure()  # figsize=(8, 3))
-        num_bins = 'auto'  # 40  # v
+   # plot some histos for debug
+   if XovOpt.get("debug"):
+      plt.figure()  # figsize=(8, 3))
+      num_bins = 'auto'  # 40  # v
 
-        tmp = interp_weights['rough_700m'].values
-        n, bins, patches = plt.hist(tmp.astype(float), bins=num_bins, cumulative=True)
-        plt.xlabel('roughness@baseline700 (m/m)')
-        plt.savefig(XovOpt.get("tmpdir") + '/histo_roughn_at_700.png')
-        plt.clf()
+      tmp = interp_weights['rough_700m'].values
+      n, bins, patches = plt.hist(tmp.astype(float), bins=num_bins, cumulative=True)
+      plt.xlabel('roughness@baseline700 (m/m)')
+      plt.savefig(XovOpt.get("tmpdir") + '/histo_roughn_at_700.png')
+      plt.clf()
 
-        tmp = interp_weights['meters_dist_min'].values
-        n, bins, patches = plt.hist(np.where(tmp < 500., tmp, 500.).astype(float), bins=num_bins, cumulative=True)
-        plt.xlabel('distance (m)')
-        plt.savefig(XovOpt.get("tmpdir") + '/histo_interp_dist0.png')
-        plt.clf()
+      tmp = interp_weights['meters_dist_min'].values
+      n, bins, patches = plt.hist(np.where(tmp < 500., tmp, 500.).astype(float), bins=num_bins, cumulative=True)
+      plt.xlabel('distance (m)')
+      plt.savefig(XovOpt.get("tmpdir") + '/histo_interp_dist0.png')
+      plt.clf()
 
-        tmp = interp_weights['rough_at_mindist'].values
-        n, bins, patches = plt.hist(np.where(tmp < 255, tmp, 255).astype(float), bins=num_bins, cumulative=True)
-        plt.xlabel('roughness@separation (m/m)')
-        plt.xlim([0, 10])
-        plt.savefig(XovOpt.get("tmpdir") + '/histo_roughn_at_sep.png')
-        plt.clf()
+      tmp = interp_weights['rough_at_mindist'].values
+      n, bins, patches = plt.hist(np.where(tmp < 255, tmp, 255).astype(float), bins=num_bins, cumulative=True)
+      plt.xlabel('roughness@separation (m/m)')
+      plt.xlim([0, 10])
+      plt.savefig(XovOpt.get("tmpdir") + '/histo_roughn_at_sep.png')
+      plt.clf()
 
-        tmp = interp_weights['weight'].values
-        n, bins, patches = plt.hist(tmp.astype(float), bins=num_bins, cumulative=False)
-        plt.xlabel('weight')
-        plt.savefig(XovOpt.get("tmpdir") + '/histo_roughn_weight.png')
-        plt.clf()
+      tmp = interp_weights['weight'].values
+      n, bins, patches = plt.hist(tmp.astype(float), bins=num_bins, cumulative=False)
+      plt.xlabel('weight')
+      plt.savefig(XovOpt.get("tmpdir") + '/histo_roughn_weight.png')
+      plt.clf()
 
-        tmp = interp_weights['weight'].values
-        n, bins, patches = plt.hist(tmp.astype(float), bins=num_bins, cumulative=True)
-        plt.xlabel('roughness@separation (m/m)')
-        plt.savefig(XovOpt.get("tmpdir") + '/histo_roughn_weights.png')
-        plt.clf()
+      tmp = interp_weights['weight'].values
+      n, bins, patches = plt.hist(tmp.astype(float), bins=num_bins, cumulative=True)
+      plt.xlabel('roughness@separation (m/m)')
+      plt.savefig(XovOpt.get("tmpdir") + '/histo_roughn_weights.png')
+      plt.clf()
 
-    return interp_weights
+   return interp_weights
 
 
 # old function to get roughness from residuals, then use interpolated roughness and literature to
@@ -267,122 +267,122 @@ def generate_dR_regions(filnam, xov):
 
 
 def get_roughness_at_coord(lon, lat, roughness_map):
-    """
-    Interpolate input map to get (relative) roughness - for the template map, 0 = smooth, 255 = rough
-    :param lon:
-    :param lat:
-    :param roughness_map:
-    :return:
-    """
+   """
+   Interpolate input map to get (relative) roughness - for the template map, 0 = smooth, 255 = rough
+   :param lon:
+   :param lat:
+   :param roughness_map:
+   :return:
+   """
 
-    # set standard roughness for rest of planet ()
-    if XovOpt.get("roughn_map"):
+   # set standard roughness for rest of planet ()
+   if XovOpt.get("roughn_map"):
 
-        da = xr.open_rasterio(roughness_map)
+      da = xr.open_rasterio(roughness_map)
 
-        if False and XovOpt.get("debug") and XovOpt.get("local"):
-            fig = plt.figure(figsize=(12, 8))
-            da.plot.imshow()
-            plt.savefig(XovOpt.get("tmpdir") + 'test_roughness.png')
+      if False and XovOpt.get("debug") and XovOpt.get("local"):
+         fig = plt.figure(figsize=(12, 8))
+         da.plot.imshow()
+         plt.savefig(XovOpt.get("tmpdir") + 'test_roughness.png')
 
-        # select 0.7 km baseline only
-        da = da.loc[dict(band=3)]
+      # select 0.7 km baseline only
+      da = da.loc[dict(band=3)]
 
-        # ###########################
-        # rough500_map = pd.read_csv('/home/sberton2/Downloads/0.50km_g_for_gmt.xyz',header=None,names=['lon','lat','rough_500m'])
-        # print(rough500_map)
-        # xds = xr.Dataset.from_dataframe(rough500_map)
-        # print(xds)
-        # exit()
-        #
-        # ###########################
+      # ###########################
+      # rough500_map = pd.read_csv('/home/sberton2/Downloads/0.50km_g_for_gmt.xyz',header=None,names=['lon','lat','rough_500m'])
+      # print(rough500_map)
+      # xds = xr.Dataset.from_dataframe(rough500_map)
+      # print(xds)
+      # exit()
+      #
+      # ###########################
 
-        # reproject xovers coords in roughness dataArray (geotif) projection
-        p = pyproj.Proj(da.attrs['crs'])
-        x, y = p(lon, lat)
+      # reproject xovers coords in roughness dataArray (geotif) projection
+      p = pyproj.Proj(da.attrs['crs'])
+      x, y = p(lon, lat)
 
-        # reindex array to get interpolated roughness(x,y) only, and not on full mesh
-        x = xr.DataArray(x, dims='z')
-        y = xr.DataArray(y, dims='z')
-        dai = da.interp(x=x, y=y)
-        roughness_df = pd.DataFrame([x.values, y.values, dai.data]).T.fillna(0)
-        roughness_df['LON'] = lon
-        roughness_df['LAT'] = lat
-        roughness_df.columns = ['x_laea', 'y_laea', 'rough_700m', 'LON', 'LAT']
+      # reindex array to get interpolated roughness(x,y) only, and not on full mesh
+      x = xr.DataArray(x, dims='z')
+      y = xr.DataArray(y, dims='z')
+      dai = da.interp(x=x, y=y)
+      roughness_df = pd.DataFrame([x.values, y.values, dai.data]).T.fillna(0)
+      roughness_df['LON'] = lon
+      roughness_df['LAT'] = lat
+      roughness_df.columns = ['x_laea', 'y_laea', 'rough_700m', 'LON', 'LAT']
 
-        roughness_df['rough_700m'] /= 255.
-        roughness_df.loc[(roughness_df['LAT'] < 65) | (roughness_df['LAT'] > 84), 'rough_700m'] = 0.1
-        roughness_df.loc[roughness_df['rough_700m'] < 1.e-2] = 1.e-2
-    else:
-        roughness_df = pd.DataFrame(columns=['rough_700m', 'LON', 'LAT'])
-        roughness_df['LON'] = lon
-        roughness_df['LAT'] = lat
-        # if simulation with fixed small scale of 20 mt at 600 mt (important thing is that it's the same everywhere)
-        print("ACHTUNG!!!! Roughness fixed at constant value for simulations!!!!!")
-        roughness_df.loc[:, 'rough_700m'] = 0.1
+      roughness_df['rough_700m'] /= 255.
+      roughness_df.loc[(roughness_df['LAT'] < 65) | (roughness_df['LAT'] > 84), 'rough_700m'] = 0.1
+      roughness_df.loc[roughness_df['rough_700m'] < 1.e-2] = 1.e-2
+   else:
+      roughness_df = pd.DataFrame(columns=['rough_700m', 'LON', 'LAT'])
+      roughness_df['LON'] = lon
+      roughness_df['LAT'] = lat
+      # if simulation with fixed small scale of 20 mt at 600 mt (important thing is that it's the same everywhere)
+      print("ACHTUNG!!!! Roughness fixed at constant value for simulations!!!!!")
+      roughness_df.loc[:, 'rough_700m'] = 0.1
 
-        # roughness_df = roughness_df.fillna(0)
-        # print(roughness_df)
-        # exit()
+      # roughness_df = roughness_df.fillna(0)
+      # print(roughness_df)
+      # exit()
 
-    # roughness = roughness.round({'LAT':0,'LON':0, 'rough_700m':0})
+   # roughness = roughness.round({'LAT':0,'LON':0, 'rough_700m':0})
 
-    # check if interp and axes are aligned
-    if XovOpt.get("debug") and XovOpt.get("local") and XovOpt.get("roughn_map"):
-        # in lambert azimutal equal area projection
-        fig = plt.figure()  # figsize=(12, 8))
-        plt.xlim((-1.e6, 1.e6))
-        plt.ylim((-1.e6, 1.e6))
-        # plt.tricontour(roughness['x_laea'].values, roughness['y_laea'].values, roughness['rough_700m'].values, 15, linewidths=0.5, colors='k')
-        plt.tricontourf(roughness_df['x_laea'].values, roughness_df['y_laea'].values, roughness_df['rough_700m'].values,
-                        15)
-        plt.savefig(XovOpt.get("tmpdir") + 'test_roughness_interp2.png')
-        # in lat lon to see if frames are aligned
-        plt.clf()
-        fig = plt.figure()  # figsize=(12, 8))
-        plt.ylim((65, 84))
-        # plt.tricontour(roughness['x_laea'].values, roughness['y_laea'].values, roughness['rough_700m'].values, 15, linewidths=0.5, colors='k')
-        plt.tricontourf(roughness_df['LON'].values, roughness_df['LAT'].values, roughness_df['rough_700m'].values, 15)
-        plt.savefig(XovOpt.get("tmpdir") + 'test_roughness_interp3.png')
+   # check if interp and axes are aligned
+   if XovOpt.get("debug") and XovOpt.get("local") and XovOpt.get("roughn_map"):
+      # in lambert azimutal equal area projection
+      fig = plt.figure()  # figsize=(12, 8))
+      plt.xlim((-1.e6, 1.e6))
+      plt.ylim((-1.e6, 1.e6))
+      # plt.tricontour(roughness['x_laea'].values, roughness['y_laea'].values, roughness['rough_700m'].values, 15, linewidths=0.5, colors='k')
+      plt.tricontourf(roughness_df['x_laea'].values, roughness_df['y_laea'].values, roughness_df['rough_700m'].values,
+                      15)
+      plt.savefig(XovOpt.get("tmpdir") + 'test_roughness_interp2.png')
+      # in lat lon to see if frames are aligned
+      plt.clf()
+      fig = plt.figure()  # figsize=(12, 8))
+      plt.ylim((65, 84))
+      # plt.tricontour(roughness['x_laea'].values, roughness['y_laea'].values, roughness['rough_700m'].values, 15, linewidths=0.5, colors='k')
+      plt.tricontourf(roughness_df['LON'].values, roughness_df['LAT'].values, roughness_df['rough_700m'].values, 15)
+      plt.savefig(XovOpt.get("tmpdir") + 'test_roughness_interp3.png')
 
-    return roughness_df
+   return roughness_df
 
 
 # extrapolate roughness at baseline (meters) from given roughness at reference baseline (meters)
 def roughness_at_baseline(roughness_at_ref_baseline, out_baseline, ref_baseline=150):
-    """
-    :param roughness_at_ref_baseline: input roughness at reference baseline
-    :param out_baseline: output baseline (e.g., separation btw xovers and MLA data) in meters
-    :param ref_baseline: reference baseline in meters
-    :return: roughness at out_baseline
-    """
+   """
+   :param roughness_at_ref_baseline: input roughness at reference baseline
+   :param out_baseline: output baseline (e.g., separation btw xovers and MLA data) in meters
+   :param ref_baseline: reference baseline in meters
+   :return: roughness at out_baseline
+   """
 
-    # 0.65 = persistence factor of fractal noise used in simu (approx ln(2))
-    result = roughness_at_ref_baseline / np.power((2 * 0.65), np.log2(ref_baseline / out_baseline))
+   # 0.65 = persistence factor of fractal noise used in simu (approx ln(2))
+   result = roughness_at_ref_baseline / np.power((2 * 0.65), np.log2(ref_baseline / out_baseline))
 
-    return result
+   return result
 
 
 def regrms_to_regrough(rms):
-    roughness = (rms - 7.39) / 0.64
-    # fix minimum roughness to 4 meters @ 150 meters (similar to Moon, 0 does not make sense)
-    return np.where(roughness > 4, roughness, 4.)
+   roughness = (rms - 7.39) / 0.64
+   # fix minimum roughness to 4 meters @ 150 meters (similar to Moon, 0 does not make sense)
+   return np.where(roughness > 4, roughness, 4.)
 
 
 def roughness_to_error(roughness):
-    return (0.64 * roughness) + 7.39
+   return (0.64 * roughness) + 7.39
 
 
 def get_demz_at(dem_xarr, lattmp, lontmp):
-    # lontmp += 180.
-    lontmp[lontmp < 0] += 360.
-    # print("eval")
-    # print(np.sort(lattmp))
-    # print(np.sort(lontmp))
-    # print(np.sort(np.deg2rad(lontmp)))
-    # exit()
+   # lontmp += 180.
+   lontmp[lontmp < 0] += 360.
+   # print("eval")
+   # print(np.sort(lattmp))
+   # print(np.sort(lontmp))
+   # print(np.sort(np.deg2rad(lontmp)))
+   # exit()
 
-    return dem_xarr.ev(np.deg2rad(lattmp) + np.pi / 2., np.deg2rad(lontmp))
+   return dem_xarr.ev(np.deg2rad(lattmp) + np.pi / 2., np.deg2rad(lontmp))
 
 
 if __name__ == '__main__':

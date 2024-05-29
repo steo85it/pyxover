@@ -30,38 +30,10 @@ import numpy as np
 import time
 from tqdm import tqdm
 
-# mylib
 # from mapcount import mapcount
 from pygeoloc.ground_track import gtrack
 # from examples.MLA.options import XovOpt.get("parallel"), XovOpt.get("SpInterp"), XovOpt.get("new_gtrack"), XovOpt.get("outdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("vecopts"), XovOpt.get("debug"), XovOpt.get("OrbRep"), XovOpt.get("rawdir")
 from config import XovOpt
-
-
-# from xovutil import lflatten
-########################################
-# # test space
-#
-# tst = [np.array([ 89.72151033, 103.94256763]), np.array([139.94256763])]
-# tst = lflatten(tst)
-# print(tst)
-# exit()
-# vecopts = {'SCID':'-236'}
-#
-# tmp_ser = Amat(vecopts)
-# for f in glob.glob('/home/sberton2/Works/NASA/Mercury_tides/out/xov_130101*_13.pkl'):
-#     tmp_ser = tmp_ser.load(f)
-#
-#     print(tmp_ser.xovers)
-#
-# # tmp_par = Amat(vecopts)
-# # tmp_par = tmp_par.load('out/small_par/Amat_small_dataset.pkl')
-#
-# # print(tmp_par.spA.to_dense().equals(tmp_ser.spA.to_dense()))
-#
-# # print(tmp_par.spA)
-# # print(tmp_ser.spA)
-#
-# exit()
 
 ########################################
 
@@ -109,8 +81,6 @@ def launch_gtrack(args):
 
 def main(args):
     import datetime as dt
-
-    print(args)
 
     # read input args
     print('Number of arguments:', len(args), 'arguments.')

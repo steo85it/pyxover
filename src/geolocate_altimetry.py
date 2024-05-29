@@ -295,12 +295,7 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
     if (XovOpt.get("SpInterp") > 0):
         x_sc = np.transpose(SpObj['MGRx'].eval(et))
         v_sc = np.transpose(SpObj['MGRv'].eval(et))
-        # print(np.array(x_sc).shape)
-        # print(np.array(v_sc).shape)
         scpv = np.concatenate((x_sc, v_sc), axis=1)
-        # print(scpv)
-        # print(scpv.shape)
-        # exit()
     else:
         # try:
         scpv, lt = spice.spkezr(vecopts['SCNAME'],
@@ -317,8 +312,6 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
 
         scpv = np.atleast_2d(np.squeeze(scpv))
 
-    # print('check scpv', scpv)
-    # exit()
     scpos = 1.e3 * scpv[:, :3]
     scvel = 1.e3 * scpv[:, 3:]
     # scpos = 1.e3 * np.squeeze(scpv)[:, :3]
