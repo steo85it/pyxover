@@ -220,13 +220,12 @@ class sim_gtrack(gtrack):
          # st = time.time()
 
          if not XovOpt.get("local"):
-                if XovOpt.get("instrument") == "LOLA":
-                    dem_path = self.slewdir + "/SLDEM2015_512PPD.GRD"
-                else:
-                    dem_path = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            if XovOpt.get("instrument") == "LOLA":
+               dem_path = self.slewdir + "/SLDEM2015_512PPD.GRD"
+            else:
+               dem_path = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
          else:
-                dem_path = XovOpt.get(
-                    "auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            dem_path = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
 
          # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
          gmt = False
@@ -281,7 +280,7 @@ class sim_gtrack(gtrack):
          if gmt and XovOpt.get("instrument") == 'LOLA':
             gmt_in = 'gmt_' + self.name + '.in'
             if os.path.exists('tmp/' + gmt_in):
-                    os.remove('tmp/' + gmt_in)
+               os.remove('tmp/' + gmt_in)
 
             np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp, self.ladata_df.seqid.values)))
 
@@ -341,8 +340,8 @@ class sim_gtrack(gtrack):
             # Works but slower (interpolates each time, could be improved by https://github.com/JiaweiZhuang/xESMF/issues/24)
             # radius_xarr = dem_xarr.interp(lon=xr.DataArray(lontmp, dims='z'), lat= xr.DataArray(lattmp, dims='z')).z.values * 1.e3 #
 
-            # Convert to meters (if DEM given in km)
-            r_dem *= 1.e3
+         # Convert to meters (if DEM given in km)
+         r_dem *= 1.e3
       else:
          r_dem = 0.
 
@@ -354,7 +353,6 @@ class sim_gtrack(gtrack):
 
       # update Rmerc with r_dem/text (meters)
       radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
-      # print("radius etc",radius,r_dem,texture_noise)
 
       return radius
 
