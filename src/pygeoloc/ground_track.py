@@ -45,7 +45,7 @@ class gtrack:
       self.MERv = None  # Velocity
       self.MERx = None  # Position
       # Messenger (probe)
-      self.MGRa = None  # acceleration
+      self.MGRa = None  # attitude
       self.MGRv = None  # velocity
       self.MGRx = None  # position
       # Sun
@@ -194,7 +194,7 @@ class gtrack:
          self = None
       gc.enable()
       return self
-     
+
    def load_df_from_id(self, gtrack_dir, track_id):
       self.ladata_df = None
       for pattern in ['ladata_', '']:
@@ -211,7 +211,7 @@ class gtrack:
             else:
                self.load(trackfil)
       return self
-     
+
    # load ladata from file
    def load_df(self, filnam):
       if os.path.isfile(filnam):
@@ -524,15 +524,15 @@ class gtrack:
          ladata_df['dLON/dh2'] = 0
          ladata_df['dLAT/dh2'] = 0
          ladata_df['dR/dh2']   = 0
-         
+
          if self.sol_prev_iter == None:
             delta_par = 0
 
          if (self.vecopts['OUTPUTTYPE'] == 0):
-            
+
             if self.sol_prev_iter != None:
                delta_par = self.sol_prev_iter['glo']
-            
+
             xyz_bf = np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']])
 
          elif (self.vecopts['OUTPUTTYPE'] == 1):
@@ -544,7 +544,7 @@ class gtrack:
                # correcting for the perturbation applied for numerical partials
                # getting current value of h2 (no effect since we divide by h2)
                self.pertPar['dh2'] += self.XovOpt.get("parGlo")['dh2']
-            
+
             if self.sol_prev_iter != None:
                delta_par=self.pertPa
 
@@ -552,8 +552,8 @@ class gtrack:
                                                 ladata_df['LAT'].values, ladata_df['LON'].values))
 
          # WD: Check wether it works for more than one perturbing body
-         central_body = {"MERCURY": ['SUN'], "MOON": ['EARTH', 'SUN'], "CALLISTO": ['JUPITER']}         
-         for pertbody in central_body[XovOpt.get('body')]:   
+         central_body = {"MERCURY": ['SUN'], "MOON": ['EARTH', 'SUN'], "CALLISTO": ['JUPITER']}
+         for pertbody in central_body[XovOpt.get('body')]:
             # WD: check for (self.vecopts['OUTPUTTYPE'] == 0): it was ladata_df['ET_BC'] w/o values
             ladata_df['dR/dh2'] += tidepart_h2(self.vecopts, xyz_bf,
                                                ladata_df['ET_BC'].values, SpObj, pertbody,
@@ -848,7 +848,7 @@ class gtrack:
          # for idx in range(4):
          # stg_proj_cols=proj[:,0:4]
          # ladata_df[name]=proj[:,idx]
-         
+
          return np.array(proj).reshape(-1, 4)  # stg_proj_cols
 
 #################

@@ -38,16 +38,21 @@ def prepro_ilmNG(illumNGf):
 
    return df_
 
-# First a priori to generate altimetry data. It is generated based on a
-# spherical planet, and based on emission time = reception time
-# It is later used for iterations on the light time to generate
-# realistic altimetry data
 def prepro_BELA_sim(epo_in):
+   """
+    First a priori to generate altimetry data. It is generated based on a
+    spherical planet, and based on emission time = reception time
+    It is later used for iterations on the light time to generate
+    realistic altimetry data
+    @param epo_in:
+    @return: df,
+   """
+
    scpv, lt = spice.spkezr(XovOpt.get("vecopts")['SCNAME'],
-                           epo_in,
-                           XovOpt.get("vecopts")['PLANETFRAME'],
-                           'LT',
-                           XovOpt.get("vecopts")['PLANETNAME'])
+                               epo_in,
+                               XovOpt.get("vecopts")['PLANETFRAME'],
+                               'LT',
+                               XovOpt.get("vecopts")['PLANETNAME'])
 
    scpos = np.array(scpv)[:,:3]
    range_val = np.linalg.norm(scpos,axis=1) - XovOpt.get("vecopts")['PLANETRADIUS']
