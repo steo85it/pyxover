@@ -11,58 +11,62 @@
 
 import numpy as np
 
-from examples.MLA.options import vecopts, debug
-from src.xovutil.units import as2deg
+# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("debug")
+from config import XovOpt
+import spiceypy as spice
+from xovutil.units import as2deg
 
-AG = True
+AG = False # True
 ZAP = False
 
 def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
+   
+    nc, POLE_RA0 = spice.bodvrd(XovOpt.get('body'), 'POLE_RA', 3)
+    nc, POLE_DEC0 = spice.bodvrd(XovOpt.get('body'), 'POLE_DEC', 3)
+    nc, PM0 = spice.bodvrd(XovOpt.get('body'), 'PM', 3)
 
-    if AG:
-        POLE_RA0 = np.array([281.0082, -0.0328, 0.])
-        POLE_DEC0 = np.array([61.4164, -0.0049, 0.])
-        if vecopts['PM_ORIGIN'] == 'J2000':
-            PM0 = np.array([329.75, 6.1385054, 0.])
-        elif vecopts['PM_ORIGIN'] == 'J2013.0':
-            PM0 = np.array([318.4455, 6.1385054, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
-            #PM0 = np.array([318.2245, 6.1385054, 0.])
-    elif ZAP:
-        # from zero
-        POLE_RA0 = np.array([0., -0.0328, 0.])
-        POLE_DEC0 = np.array([0., -0.0049, 0.])
-        if vecopts['PM_ORIGIN'] == 'J2000':
-            PM0 = np.array([329.5469, 0., 0.])
-        elif vecopts['PM_ORIGIN'] == 'J2013.0':
-            PM0 = np.array([318.2245, 0., 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
+    # WD: Not sure if this can be removed ...
+    if XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2013.0':
+       if AG:
+          PM0 = np.array([318.4455, 6.1385054, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
+          #PM0 = np.array([318.2245, 6.1385054, 0.])
+       elif ZAP:
+          # from zero
+          PM0 = np.array([318.2245, 0., 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
+       elif XovOpt.get('body') == 'MERCURY':
+          PM0 = np.array([318.3201, 6.1385108, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
+       else:
+          print(f"*** orient_setup: {XovOpt.get('body')} not recognized.")
+          exit()
+
+    # WD: Find a generic way to retrieve these values
+    if XovOpt.get('body') == 'MERCURY':
+       n_nutpre = 5
+       nbody = '1'
+    elif XovOpt.get('body') == 'CALLISTO':
+       n_nutpre = 16
+       nbody = '5'
     else:
-        # IAU
-        POLE_RA0 = np.array([281.0103, -0.0328, 0.])
-        POLE_DEC0 = np.array([61.4155, -0.0049, 0.])
-        if vecopts['PM_ORIGIN'] == 'J2000':
-            PM0 = np.array([329.5988, 6.1385108, 0.])
-        elif vecopts['PM_ORIGIN'] == 'J2013.0':
-            PM0 = np.array([318.3201, 6.1385108, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
-        #old weird mix
-        #POLE_RA0 = np.array([281.0097, -0.0328, 0.])
-        #POLE_DEC0 = np.array([61.4143, -0.0049, 0.])
-        #if vecopts['PM_ORIGIN'] == 'J2000':
-        #    PM0 = np.array([329.5469, 6.1385025, 0.])
-        #elif vecopts['PM_ORIGIN'] == 'J2013.0':
-        #    PM0 = np.array([318.2245, 6.1385025, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
+       print(f"*** orient_setup: {XovOpt.get('body')} not recognized.")
+       exit()
 
+    nc, NUT_PREC_RA0     = spice.bodvrd(XovOpt.get('body'), 'NUT_PREC_RA', n_nutpre)
+    nc, NUT_PREC_DEC0    = spice.bodvrd(XovOpt.get('body'), 'NUT_PREC_DEC', n_nutpre)
+    nc, NUT_PREC_PM0     = spice.bodvrd(XovOpt.get('body'), 'NUT_PREC_PM', n_nutpre)
+    nc, NUT_PREC_ANGLES0 = spice.bodvrd(nbody, 'NUT_PREC_ANGLES', 2*n_nutpre)
+    
+    if XovOpt.get('body') == 'CALLISTO':
+       # Synthetic librations
+       NUT_PREC_ANGLES0[-2] = 96.968560
+       NUT_PREC_ANGLES0[-1] = 3729658.8916926
+       
     rotpar = {'ORIENT0': '',
-              'NUT_PREC_PM0': np.transpose([0.01067257,
-                                            -0.00112309,
-                                            -0.00011040,
-                                            -0.00002539,
-                                            -0.00000571]),
-              'NUT_PREC_ANGLES0': np.vstack([[174.791086, 4.092335],
-                                             [349.582171, 8.184670],
-                                             [164.373257, 12.277005],
-                                             [339.164343, 16.369340],
-                                             [153.955429, 20.461675]])
+              'NUT_PREC_RA0'     : NUT_PREC_RA0,
+              'NUT_PREC_DEC0'    : NUT_PREC_DEC0,
+              'NUT_PREC_PM0'     : NUT_PREC_PM0,
+              'NUT_PREC_ANGLES0' : np.vstack([[NUT_PREC_ANGLES0[i], NUT_PREC_ANGLES0[i+1]] for i in range(0,len(NUT_PREC_ANGLES0),2)])
               }
+
 
     rotpar['ORIENT0'] = np.vstack([POLE_RA0, POLE_DEC0, PM0])
 
@@ -72,16 +76,23 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
     PM = as2deg(offsetPM)/365.25 + PM0
 
     upd_rotpar = {'ORIENT': '',
-                  'NUT_PREC_PM': rotpar['NUT_PREC_PM0'] + as2deg(offsetL),
-                  'NUT_PREC_ANGLES': rotpar['NUT_PREC_ANGLES0']
+                  'NUT_PREC_RA'     : rotpar['NUT_PREC_RA0'],
+                  'NUT_PREC_DEC'    : rotpar['NUT_PREC_DEC0'],
+                  'NUT_PREC_PM'     : rotpar['NUT_PREC_PM0'],
+                  'NUT_PREC_ANGLES' : rotpar['NUT_PREC_ANGLES0']
                   }
+    if XovOpt.get('body') == 'MERCURY':
+       upd_rotpar['NUT_PREC_PM'] +=  as2deg(offsetL)
+    elif XovOpt.get('body') == 'CALLISTO':
+       upd_rotpar['NUT_PREC_PM'][-1] +=  as2deg(offsetL)
+       
     if AG:
         upd_rotpar['NUT_PREC_PM'] += as2deg(1.5)
     elif ZAP:
         upd_rotpar['NUT_PREC_PM'] = rotpar['NUT_PREC_PM0']
 
 
-    if debug:
+    if XovOpt.get("debug"):
         print("librations", rotpar['NUT_PREC_PM0'], offsetL * rotpar['NUT_PREC_PM0'])
         print(as2deg(offsetRA), as2deg(offsetDEC), as2deg(offsetPM)/365.25, as2deg(offsetL))
         # exit()

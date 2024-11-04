@@ -15,12 +15,15 @@ from math import pi
 
 import numpy as np
 
-from examples.MLA.options import vecopts
+# from examples.MLA.options import XovOpt.get("vecopts")
+from config import XovOpt
 
 
 def icrf2pbf(ET, rotpar):
 
     p = rotpar['ORIENT']
+    ra_np  = rotpar['NUT_PREC_RA']
+    dec_np = rotpar['NUT_PREC_DEC']
     w = rotpar['NUT_PREC_PM']
     a = rotpar['NUT_PREC_ANGLES']
 
@@ -35,16 +38,16 @@ def icrf2pbf(ET, rotpar):
     W2 = p[2, 2]
 
     ## time
-    # TODO T = ET / (86400. * 365.25 * 100) # 365.25 days per Julian year
-    T = ET / (86400. * 365. * 100)  # sec per Julian century
     d = ET / 86400.
+    T = d / 36525. # sec per Julian century
     d2013 = d - 4748.5
 
-    # print('ET, d, T', ET, d, T)
+    # Nutation and Precesion angles
+    nutpre = np.transpose([np.deg2rad(a[:, 0] + a[:, 1] * t) for t in T])
 
     ## Pole position
-    RA = RA0 + RA1 * T + RA2 * np.square(T) / 2
-    DEC = DEC0 + DEC1 * T + DEC2 * np.square(T) / 2
+    RA  = RA0  + RA1  * T + RA2  * np.square(T) / 2 + np.dot(ra_np, np.sin(nutpre))
+    DEC = DEC0 + DEC1 * T + DEC2 * np.square(T) / 2 + np.dot(dec_np, np.cos(nutpre))
 
     ## libration amplitude
     # rpd = pi / 180
@@ -54,13 +57,13 @@ def icrf2pbf(ET, rotpar):
     #     +w(3)*sin(rpd*(164.373257+12.277005*d)) ...
     #     +w(4)*sin(rpd*(339.164343+16.369340*d)) ...
     #     +w(5)*sin(rpd*(153.955429+20.461675*d));
-    amplibtmp = np.dot(w, np.transpose([np.sin(np.deg2rad(a[:, 0] + a[:, 1] * t)) for t in d]))
+    amplibtmp = np.dot(w, np.sin(nutpre))
 
     ## Longitude of the prime meridian
     # print("prime mer",W0,W1,W2,d, amplibtmp)
-    if vecopts['PM_ORIGIN'] == 'J2000':
+    if XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2000':
         W = W0 + W1 * d + W2 * np.square(d) / 2 + amplibtmp
-    elif vecopts['PM_ORIGIN'] == 'J2013.0':
+    elif XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2013.0':
         W = W0 + W1 * d2013 + W2 * np.square(d2013) / 2 + amplibtmp
     # # Bring PM0 J2000 --> J2013 (+365.25*2.)
     # d= 4748.5 # days 01012013 - J2000 (12h) # 13*365.25

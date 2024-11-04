@@ -47,10 +47,10 @@ import scipy.linalg as la
 # dh2   -0.084235  0.085218  0.084235
 from scipy.sparse import csr_matrix, diags
 
-from src.accumxov.Amat import Amat
-from examples.MLA.options import tmpdir, outdir, vecopts
-from src.xovutil.units import deg2as
-
+from accumxov.Amat import Amat
+# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("outdir"), XovOpt.get("vecopts")
+from xovutil.units import deg2as
+from config import XovOpt
 
 def other_groups():
 
@@ -66,15 +66,15 @@ if __name__ == '__main__':
                                       'dh2':-1.}
     pert_glb_init = pd.Series(pert_glb_init).apply(lambda x: np.linalg.norm(x))
 
-    sol_list = [outdir+'sim/archived/tp4_pertglb_fitglb/tp4_8/3res_20amp/Abmat_sim_tp4_9_3res_20amp.pkl',
-                outdir+'sim/archived/tp4_pertall_fitglborb/tp4_8/3res_20amp/Abmat_sim_tp4_9_3res_20amp.pkl',
-                outdir+'sim/archived/tp4_pertall_fitall/tp4_8/3res_20amp/Abmat_sim_tp4_9_3res_20amp.pkl']
+    sol_list = [XovOpt.get("outdir") + 'sim/archived/tp4_pertglb_fitglb/tp4_8/3res_20amp/Abmat_sim_tp4_9_3res_20amp.pkl',
+                XovOpt.get("outdir") + 'sim/archived/tp4_pertall_fitglborb/tp4_8/3res_20amp/Abmat_sim_tp4_9_3res_20amp.pkl',
+                XovOpt.get("outdir") + 'sim/archived/tp4_pertall_fitall/tp4_8/3res_20amp/Abmat_sim_tp4_9_3res_20amp.pkl']
         #np.sort(glob.glob(outdir+'sim/'+exp+'_'+str(iter)+'/3res_20amp/Abmat_sim_'+exp+'_'+str(iter+1)+'_3res_20amp.pkl'))
     list_exp = []
 
     for sol in sol_list:
         print("Processing",sol)
-        prev = Amat(vecopts)
+        prev = Amat(XovOpt.get("vecopts"))
         solmat = prev.load(sol)
         glbpar = ['dR/d'+x for x in ['RA','DEC','PM','L','h2']]
         solglb = {x:y for x,y in solmat.sol_dict['sol'].items() if x in glbpar}
@@ -163,4 +163,4 @@ if __name__ == '__main__':
     # ax.legend()
     plt.legend(err)
     # ax.set_ylim(top=1.5)
-    plt.savefig(tmpdir+'simul_errors.png')
+    plt.savefig(XovOpt.get("tmpdir") + 'simul_errors.png')

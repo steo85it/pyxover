@@ -7,9 +7,10 @@ setuptools.setup(
     # author_email='you@yourdomain.com',
     description='Python package to process altimetry crossovers for planetary geodesy',
     platforms='Posix; MacOS X; Windows',
-    packages=setuptools.find_packages(where='./src'),
+    # packages=setuptools.find_packages(where='src'),
+    #packages=['src'],
     package_dir={
-        '': 'src'
+        '': 'src',
     },
     include_package_data=True,
     install_requires=(

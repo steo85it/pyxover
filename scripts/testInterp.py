@@ -17,7 +17,8 @@ import spiceypy as spice
 
 from src.pygeoloc.ground_track import gtrack
 from src.xovutil.interp_obj import interp_obj
-from examples.MLA.options import outdir, vecopts, auxdir
+# from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("vecopts"), XovOpt.get("auxdir")
+from config import XovOpt
 
 pltcurve = 0
 pltdiff = 1
@@ -96,14 +97,14 @@ if __name__ == '__main__':
 
     # track_id = '1301052351'
     files = glob.glob('/home/sberton2/Works/NASA/Mercury_tides/out/sim/1301_per2_0/0res_1amp/gtrack_13/gtrack_*.pkl')
-    trackA = gtrack(vecopts)
+    trackA = gtrack(XovOpt.get("vecopts"))
     # load kernels
-    spice.furnsh(auxdir + 'mymeta')
+    spice.furnsh(XovOpt.get("auxdir") + 'mymeta')
 
     for f in files:
         trackA = trackA.load(f)
         # simple_test()
-        max = testInterp(trackA.ladata_df, vecopts)
+        max = testInterp(trackA.ladata_df, XovOpt.get("vecopts"))
         print(f.split('/')[-1],max)
 
     exit()

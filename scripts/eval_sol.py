@@ -21,7 +21,7 @@ from src.pyxover import xov_utils
 from src.accumxov.Amat import Amat
 from src.accumxov.accum_utils import get_xov_cov_tracks
 from src.xovutil.xovres2weights import get_roughness_at_coord, get_interpolation_weight
-from examples.MLA.options import outdir, tmpdir, local, OrbRep, pert_cloop, sol4_glo, sol4_orbpar, vecopts, auxdir
+from config import XovOpt
 # from AccumXov import plt_geo_dR
 # from ground_track import gtrack
 from src.pyxover.xov_setup import xov
@@ -127,7 +127,7 @@ def plt_xovrms(df_):
     #               cbar_kws={'label': 'RMS (m)'}, xticklabels=piv.columns.values.round(2), fmt='.4g')
     ax1.set(xlabel='Topog scale (1st octave, km)',
             ylabel='Topog ampl rms (1st octave, m)')
-    plt.savefig(tmpdir+'xover_month.png')
+    plt.savefig(XovOpt.get("tmpdir") + 'xover_month.png')
     plt.close()
 
 def print_corrmat(amat,filename):
@@ -234,7 +234,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
     # introduce reference solution in plot
     if ref_sol != '':
         ref = Amat(vecopts)
-        ref = ref.load(outdir + 'sim/' + subfolder + ref_sol + '/' + subexp + '/Abmat_sim_' + ref_sol.split('_')[0] + '_' + str(
+        ref = ref.load(XovOpt.get("outdir") + 'sim/' + subfolder + ref_sol + '/' + subexp + '/Abmat_sim_' + ref_sol.split('_')[0] + '_' + str(
             int(ref_sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
     dfs = []
@@ -243,11 +243,11 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
 
         try:
             tmp = tmp.load(
-                outdir + 'sim/' + subfolder + sol + '/' + subexp + '/Abmat_sim_' + sol.split('_')[0] + '_' + str(
+                XovOpt.get("outdir") + 'sim/' + subfolder + sol + '/' + subexp + '/Abmat_sim_' + sol.split('_')[0] + '_' + str(
                     int(sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
         except:
             tmp = tmp.load(
-                outdir + 'Abmat/Abmat_sim_' + sol.split('_')[0] + '_' + str(
+                XovOpt.get("outdir") + 'Abmat/Abmat_sim_' + sol.split('_')[0] + '_' + str(
                     int(sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
         # select subset, e.g., for tests
@@ -320,7 +320,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         plt.semilogy()
 
         plt.legend()
-        plt.savefig(tmpdir + '/weights.png')
+        plt.savefig(XovOpt.get("tmpdir") + '/weights.png')
         plt.clf()
 
         print(check_weights)
@@ -393,7 +393,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             ax.set_ylabel('sol (m)')
             ax.set_xlabel('track #')
 
-            plt.savefig(tmpdir + 'orbcorr_tseries_' + sols[idx] + '.png')
+            plt.savefig(XovOpt.get("tmpdir") + 'orbcorr_tseries_' + sols[idx] + '.png')
             plt.close()
             print("### plot_orbcorr: orbit solutions traced for sol", sols[idx])
 
@@ -425,7 +425,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         # plt.xlabel("value")
         # plt.ylabel("Frequency")
     plt.legend()
-    plt.savefig(tmpdir + "histo_resid.png")
+    plt.savefig(XovOpt.get("tmpdir") + "histo_resid.png")
 
     # exit()
 
@@ -450,7 +450,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
     # _ = tmp.xov.xovers.dR.values ** 2
     # print("Total RMS:", np.sqrt(np.mean(_[~np.isnan(_)], axis=0)), len(tmp.xov.xovers.dR.values))
 
-    if local and False:
+    if XovOpt.get("local") and False:
         from mpl_toolkits.basemap import Basemap
         mlacount = tmp.xov.xovers.round(0).groupby(['LON','LAT']).size().rename('count').reset_index()
         print(mlacount.sort_values(['LON']))
@@ -463,7 +463,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         map = m.scatter(x, y,c=np.log(mlacount['count'].values), cmap='afmhot') # , marker=',', s=3**piv.count(),
         plt.colorbar(map)
         draw_map(m)
-        fig.savefig(tmpdir+'mla_count_nps_'+sol+'_'+subexp+'.png')
+        fig.savefig(XovOpt.get("tmpdir") + 'mla_count_nps_' + sol + '_' + subexp + '.png')
         plt.clf()
         plt.close()
         print("npstere printed")
@@ -521,7 +521,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         ax.locator_params(nbins=10, axis='x')
         ax.set_ylabel('sol (m)')
         # ax.set_ylim(-5,5)
-        plt.savefig(tmpdir + 'orbcorr_tseries_' + sol + '.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'orbcorr_tseries_' + sol + '.png')
         plt.close()
 
         # num_bins = 'auto'
@@ -558,14 +558,14 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             #                                              downcast='float') + tmp.pert_cloop
             # postfit_res = postfit_res[["sol_dR/" + x for x in orbpar_sol]].fillna(0)
             tmp.pert_cloop.sort_index(axis=1, inplace=True)
-            print("par recovery avg, std:",tmp.pert_cloop.columns.values)
+            print("par recovery avg, std:", tmp.pert_cloop.columns.values)
             tmp_orb_sol.sort_index(axis=1, inplace=True)
             print("sol curr iter", tmp_orb_sol.mean(axis=0).values, tmp_orb_sol.std(axis=0).values)
             print("initial pert + corrections prev.iter.", tmp.pert_cloop.mean(axis=0).values, tmp.pert_cloop.std(axis=0).values)
-            print("rmse",rmse(tmp.pert_cloop,0).values)
+            print("rmse", rmse(tmp.pert_cloop, 0).values)
             if ref_sol != '':
                 ref.pert_cloop.sort_index(axis=1, inplace=True)
-                print("initial pert",ref.pert_cloop.mean(axis=0).values, ref.pert_cloop.std(axis=0).values)
+                print("initial pert", ref.pert_cloop.mean(axis=0).values, ref.pert_cloop.std(axis=0).values)
 
             fig, ax = plt.subplots(nrows=1)
             name = "Accent"
@@ -584,7 +584,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             ax.set_xlabel('orbit #')
             ax.set_ylabel('sol (m)')
             # ax.set_ylim(-500,500)
-            plt.savefig(tmpdir+'residuals_tseries_'+sol+'_'+subexp+'.png')
+            plt.savefig(XovOpt.get("tmpdir") + 'residuals_tseries_' + sol + '_' + subexp + '.png')
             plt.close()
 
             num_bins = 'auto'
@@ -593,11 +593,11 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             for idx, col in enumerate(cols):
                 ax.set_prop_cycle(color=colors)
                 if ref_sol != '' and len(ref.pert_cloop.columns) > 0:
-                    n, bins, patches = plt.hist(np.abs(ref.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
+                    n, bins, patches = plt.hist(np.abs(ref.pert_cloop[col.split('/')[-1]].values.astype(float)), bins=num_bins, density=False,
                                                 facecolor=colors[idx], label=col.split('/')[-1],
-                                            alpha=0.3)
-                # print(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)))
-                n, bins, patches = plt.hist(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(np.float)), bins=num_bins, density=False,
+                                                alpha=0.3)
+                # print(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(float)))
+                n, bins, patches = plt.hist(np.abs(tmp.pert_cloop[col.split('/')[-1]].values.astype(float)), bins=num_bins, density=False,
                                             facecolor=colors[idx], label=col.split('/')[-1],
                                             alpha=0.7)
 
@@ -605,7 +605,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             plt.xlabel('delta (m)')
             plt.ylabel('Probability')
             plt.title(r'Histogram of par corr')  #: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
-            plt.savefig(tmpdir + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
+            plt.savefig(XovOpt.get("tmpdir") + '/histo_orbiter_' + sol + "_" + str(idx) + '.png')
             plt.clf()
 
 
@@ -615,7 +615,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         fig, ax1 = plt.subplots(nrows=1)
         tmp_plot[['xOvID', 'dR/dL']].plot(x='xOvID',y=['dR/dL'], ax=ax1)
         # ax1.set_ylim(-30,30)
-        fig.savefig(tmpdir+'mla_dR_dL_'+sol+'.png')
+        fig.savefig(XovOpt.get("tmpdir") + 'mla_dR_dL_' + sol + '.png')
         plt.clf()
         plt.close()
 
@@ -634,7 +634,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         plt.tight_layout()
         ax1.invert_yaxis()
         #         ylabel='Topog ampl rms (1st octave, m)')
-        fig.savefig(tmpdir+'mla_dR_dL_piv_'+sol+'_'+subexp+'.png')
+        fig.savefig(XovOpt.get("tmpdir") + 'mla_dR_dL_piv_' + sol + '_' + subexp + '.png')
         plt.clf()
         plt.close()
         # exit()
@@ -647,7 +647,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         map = m.scatter(x, y,c=_['dR/dL'].values, s=_['dR/dL'].values, cmap='Reds') # afmhot') # , marker=',', s=3**piv.count(),
         plt.colorbar(map)
         draw_map(m)
-        fig.savefig(tmpdir+'mla_dR_dL_npstere_'+sol+'_'+subexp+'.png')
+        fig.savefig(XovOpt.get("tmpdir") + 'mla_dR_dL_npstere_' + sol + '_' + subexp + '.png')
         plt.clf()
         plt.close()
 
@@ -665,7 +665,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
         fig, ax1 = plt.subplots(nrows=1)
         tmp_plot[['xOvID', 'dR/dC', 'dR/dA','dR/dR']].plot(x='xOvID',y=['dR/dC','dR/dA','dR/dR'], ax=ax1)
         ax1.set_ylim(-3,3)
-        fig.savefig(tmpdir+'mla_dR_dCAR_'+sol+'.png')
+        fig.savefig(XovOpt.get("tmpdir") + 'mla_dR_dCAR_' + sol + '.png')
         plt.clf()
         plt.close()
 
@@ -710,7 +710,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             plt.tight_layout()
             ax1.invert_yaxis()
             #         ylabel='Topog ampl rms (1st octave, m)')
-            fig.savefig(tmpdir+'mla_'+par+'_'+sol+'.png')
+            fig.savefig(XovOpt.get("tmpdir") + 'mla_' + par + '_' + sol + '.png')
             plt.clf()
             plt.close()
 
@@ -732,7 +732,7 @@ def analyze_sol(sols, ref_sol = '', subexp = ''):
             plt.tight_layout()
             ax1.invert_yaxis()
             #         ylabel='Topog ampl rms (1st octave, m)')
-            fig.savefig(tmpdir+'mla_dh2_'+sol+'.png')
+            fig.savefig(XovOpt.get("tmpdir") + 'mla_dh2_' + sol + '.png')
             plt.clf()
             plt.close()
 
@@ -770,7 +770,7 @@ def compare_MLA_spk(dfs, sol, sols, tmp):
         plt.ylabel('# of xovs (log)')
         plt.semilogy()
 
-        plt.savefig(tmpdir + "histo_resid_" + sub + ".png")
+        plt.savefig(XovOpt.get("tmpdir") + "histo_resid_" + sub + ".png")
     df_merged = df_merged.astype({'orbA': 'int32', 'orbB': 'int32'})
     # select only if acceptable xovs (< 1km)
     acceptif = (df_merged.dRA < 2.e3) & (df_merged.dRB < 2.e3) & (df_merged.dRC < 2.e3)
@@ -803,7 +803,7 @@ def compare_MLA_spk(dfs, sol, sols, tmp):
     plt.xlabel('meters')
     plt.ylabel('# of tracks')
     # plt.semilogy()
-    plt.savefig(tmpdir + "histo_tracks1.png")
+    plt.savefig(XovOpt.get("tmpdir") + "histo_tracks1.png")
     print(df_median.sort_index())
     print(df_median.mean(axis=0))
     print(df_median.std(axis=0))
@@ -830,7 +830,7 @@ def check_iters(sol, subexp=''):
     np.set_printoptions(precision=3)
 
     sol_iters = sol.split('_')[:-1][0]
-    prev_sols = np.sort(glob.glob(outdir+'sim/'+subfolder+sol_iters+'_*/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
+    prev_sols = np.sort(glob.glob(XovOpt.get("outdir") + 'sim/' + subfolder + sol_iters + '_*/' + subexp + '/Abmat_sim_' + sol_iters + '_*_' + subexp + '.pkl'))
     # prev_sols = np.sort(glob.glob(outdir+'Abmat/KX1r4_AG2/'+subexp+'/Abmat_sim_'+sol_iters+'_*_'+subexp+'.pkl'))
 
     if len(prev_sols) == 0:
@@ -842,7 +842,7 @@ def check_iters(sol, subexp=''):
     iters_track_rms = []
     for idx,isol in enumerate(prev_sols[:]):
         # print(prev_sols)
-        amat = Amat(vecopts)
+        amat = Amat(XovOpt.get("vecopts"))
         amat = amat.load(isol)
         # solution of orbit pars
         sol_glb = {i:amat.sol_dict['sol']['dR/d' + i] for i in ind if 'dR/d' + i in amat.sol_dict['sol'].keys()}
@@ -919,7 +919,7 @@ def check_iters(sol, subexp=''):
 
     fig.tight_layout()
 
-    filnam = tmpdir + "evol_iters.png"
+    filnam = XovOpt.get("tmpdir") + "evol_iters.png"
     plt.savefig(filnam)
     print("### Iters plot saved as", filnam)
 
@@ -937,7 +937,7 @@ def check_iters_old(sol, subexp=''):
 
     sol_iters = sol.split('_')[:-1][0]
     prev_sols = np.sort(glob.glob(
-        outdir + 'sim/' + subfolder + sol_iters + '_*/' + subexp + '/Abmat_sim_' + sol_iters + '_*_' + subexp + '.pkl'))
+        XovOpt.get("outdir") + 'sim/' + subfolder + sol_iters + '_*/' + subexp + '/Abmat_sim_' + sol_iters + '_*_' + subexp + '.pkl'))
 
     iters_rms = []
     iters_orbcorr = []
@@ -958,7 +958,7 @@ def check_iters_old(sol, subexp=''):
 
     for idx,isol in enumerate(prev_sols[:]):
         # print(prev_sols)
-        prev = Amat(vecopts)
+        prev = Amat(XovOpt.get("vecopts"))
         prev = prev.load(isol)
 
         # if (plot_all_track_iters) or (idx == len(prev_sols)-1) or (idx == 0):
@@ -992,7 +992,7 @@ def check_iters_old(sol, subexp=''):
             # plt.ylabel("Frequency")
             plt.legend()
             if idx == len(prev_sols) - 1 :
-                plt.savefig(tmpdir + "histo_resid_iters.png")
+                plt.savefig(XovOpt.get("tmpdir") + "histo_resid_iters.png")
         ############################################
 
         # print(prev.xov.xovers[['dR', 'huber', 'weights']])
@@ -1035,7 +1035,7 @@ def check_iters_old(sol, subexp=''):
         # #print(prev.sol4_pars)
         # ##################
         # vTPv = lTPl # - xT@ATPb # TODO CORRECT THIS!!!!
-        degf = len(prev.xov.xovers['dR'].values) - len(sol4_glo)
+        degf = len(prev.xov.xovers['dR'].values) - len(XovOpt.get("sol4_glo"))
         #print("vTPv = ", vTPv, vTPv/degf)
         #print("degf = ", degf)
         # m_0 = np.sqrt(vTPv/degf)[0][0]
@@ -1066,8 +1066,8 @@ def check_iters_old(sol, subexp=''):
 
         ####################################
 
-        filter_string_orb = sol4_orbpar #["/dA","/dC","/dR","/dRl","/dPt"]
-        if OrbRep == 'lin':
+        filter_string_orb = XovOpt.get("sol4_orbpar") #["/dA","/dC","/dR","/dRl","/dPt"]
+        if XovOpt.get("OrbRep") == 'lin':
             filter_string_orb = list(set([x+y if x in ['dA', 'dC', 'dR'] else x for x in filter_string_orb for y in ['0','1'] ]))
         if filter_string_orb != [None]:
             sol_rms = []
@@ -1096,7 +1096,7 @@ def check_iters_old(sol, subexp=''):
                     # plt.ylabel("Frequency")
                     plt.legend()
                     if idx == len(prev_sols) - 1 and idx_filt==len(filter_string_orb)-1:
-                        plt.savefig(tmpdir+"histo_orbcorr_iters.png")
+                        plt.savefig(XovOpt.get("tmpdir") + "histo_orbcorr_iters.png")
                 ############################################
 
                 sol_rms_iter.append(np.median(filtered_dict_iter))
@@ -1107,7 +1107,7 @@ def check_iters_old(sol, subexp=''):
             iters_orbcorr_it.append(np.hstack([tst_id,sol_rms_iter]))
             iters_orbcorr_avg_it.append(np.hstack([tst_id,sol_avg_iter]))
 
-            if OrbRep == 'lin':
+            if XovOpt.get("OrbRep") == 'lin':
                 filter_string_orb_lin = ["/dA1","/dC1","/dR1"]
                 sol_rms = []
                 sol_avg = []
@@ -1132,7 +1132,7 @@ def check_iters_old(sol, subexp=''):
                     df_ = df_.replace(to_replace='None', value=np.nan).dropna()
                     df_sol = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'],
                                             aggfunc=np.sum).sol
-                    if OrbRep == 'lin':
+                    if XovOpt.get("OrbRep") == 'lin':
                         # print("isol",isol)
                         # print(prev.pert_cloop.columns)
                         # print(df_sol.columns.values)
@@ -1150,16 +1150,16 @@ def check_iters_old(sol, subexp=''):
                     _ = prev.pert_cloop.astype(float)
                     # _.columns = ['/' + k for k in _.columns]
                     #########################
-                    if local:
+                    if XovOpt.get("local"):
                         fig, ax1 = plt.subplots(nrows=1)
                         _.hist(ax=ax1,bins=np.arange(-120,120,10))
-                        fig.savefig(tmpdir + 'test_residuals_'+str(idx)+'.png')
+                        fig.savefig(XovOpt.get("tmpdir") + 'test_residuals_' + str(idx) + '.png')
                     ##########################
                     iters_orbres.append((_ ** 2).median(axis=0) ** 0.5)
                     iters_orbres_mean.append(_.median(axis=0))
 
-        if sol4_glo!=[None]:
-            filter_string_glo = ["/"+x.split('/')[-1] for x in sol4_glo] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
+        if XovOpt.get("sol4_glo")!=[None]:
+            filter_string_glo = ["/" + x.split('/')[-1] for x in XovOpt.get("sol4_glo")] #["/dRA","/dDEC","/dPM","/dL","/dh2"]
             sol_glb = []
             std_glb = []
             for filt in filter_string_glo:
@@ -1183,7 +1183,7 @@ def check_iters_old(sol, subexp=''):
     iters_rms = np.array(iters_rms)
     iters_rms = iters_rms[np.argsort(iters_rms[:,0])]
     #iters_rms[:,1:] = iters_rms[:,1:].round(3)
-    wrmse = iters_rms[:,2].astype(np.float)
+    wrmse = iters_rms[:,2].astype(float)
     perc_rms_change = np.concatenate([[None],np.abs((np.diff(wrmse)/wrmse[1:]*100.)).round(2)])
     print(np.concatenate([iters_rms,perc_rms_change[:,np.newaxis]],axis=1))
 
@@ -1210,7 +1210,7 @@ def check_iters_old(sol, subexp=''):
                 printout.plot(ax=ax2)
                 ax2.set_ylabel('rms (tot orb sol)')
 
-        if OrbRep == 'lin':
+        if XovOpt.get("OrbRep") == 'lin':
             print("Total RMS/avg for solutions (orbpar, lin): ")
             printout_list = [iters_orbcorr_lin, iters_orbcorr_avg_lin]
             for idx, printout in enumerate(printout_list):
@@ -1245,7 +1245,7 @@ def check_iters_old(sol, subexp=''):
             ax3.get_legend().remove()
             ax3.set_ylabel('rms (orb res)')
 
-    if sol4_glo!=[None]:
+    if XovOpt.get("sol4_glo")!=[None]:
 
         print("Cumulated solution (glopar): ")
         iters_glocorr = pd.DataFrame(iters_glocorr,columns=np.hstack(['tst_id',filter_string_glo]))
@@ -1267,14 +1267,14 @@ def check_iters_old(sol, subexp=''):
         # print((iters_glocorr.diff().abs()).div(m_X_iters[iters_glocorr.columns]))
         #
 
-        if simulated_data and len(pert_cloop['glo'])>0:
+        if simulated_data and len(XovOpt.get("pert_cloop")['glo'])>0:
             print("Real residuals (glopar): ")
             #pert_cloop_glo = {'dRA': np.linalg.norm([0., 0.001, 0.000]),
             #                                     'dDEC':np.linalg.norm([-0., 0.0013, 0.000]),
             #                                     'dPM':np.linalg.norm([0, 0.001, 0.000]),
             #                                     'dL':0.03*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]),
             #                     'dh2': 0.}
-            pert_cloop_glo = pert_cloop['glo']
+            pert_cloop_glo = XovOpt.get("pert_cloop")['glo']
             # pert_cloop_glo = [np.linalg.norm(x) for x in list(pert_cloop_glo.values())]
             #iters_glocorr.columns = [x[1:] for x in iters_glocorr.columns.values]
             pert_cloop_glo = { key:value for (key,value) in pert_cloop_glo.items() if key in iters_glocorr.columns.values}
@@ -1295,7 +1295,7 @@ def check_iters_old(sol, subexp=''):
         iters_glocorr.plot(ax=ax4)
         ax4.set_ylabel('sol (glo sol)')
 
-        if simulated_data and len(pert_cloop['glo'])>0:
+        if simulated_data and len(XovOpt.get("pert_cloop")['glo'])>0:
             iters_glores.plot(logy=True,ax=ax5)
             ax5.get_legend().remove()
             ax5.set_ylabel('resid (as,/day)')
@@ -1322,11 +1322,11 @@ def check_iters_old(sol, subexp=''):
     # ax1a.plot(iters_rms[:, 2].astype('float'), '.k')
     # ax1a.set_ylabel('num of obs (post-screening)')
     #
-    plt.savefig(tmpdir + 'rms_iters_' + sol + '.png')
+    plt.savefig(XovOpt.get("tmpdir") + 'rms_iters_' + sol + '.png')
     plt.close()
 
     # print(iters_track_rms)
-    plot_tracks_histo(iters_track_rms,filename=tmpdir + '/histo_tracks_eval' + sol +'.png')
+    plot_tracks_histo(iters_track_rms, filename=XovOpt.get("tmpdir") + '/histo_tracks_eval' + sol + '.png')
 
     # exit()
 

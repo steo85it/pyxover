@@ -14,10 +14,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 #from mpl_toolkits.basemap import Basemap
 
-from src.xovutil import pickleIO
+from xovutil import pickleIO
 from scripts.eval_sol import draw_map
-from examples.MLA.options import outdir, tmpdir, vecopts
-from src.xovutil.project_coord import project_stereographic
+# from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("tmpdir"), XovOpt.get("vecopts")
+from config import XovOpt
+
+from xovutil.project_coord import project_stereographic
 
 subdir = "" # archived/KX1r2_fitglborb/"
 subexp = '0res_1amp' # '3res_20amp'
@@ -34,7 +36,7 @@ def plot_topo(df):
                     cmap='Reds')  # afmhot') # , marker=',', s=3**piv.count(),
     plt.colorbar(map)
     draw_map(m)
-    fig.savefig(tmpdir + 'mla_altres_' + sol + '_' + subexp + '.png')
+    fig.savefig(XovOpt.get("tmpdir") + 'mla_altres_' + sol + '_' + subexp + '.png')
     plt.clf()
     plt.close()
 
@@ -65,7 +67,7 @@ def plot_topo(df):
     start = time.time()
 
     import scipy.interpolate as interp
-    x,y = project_stereographic(tmpdf.lonbin.values, tmpdf.latbin.values, 0, 90, R=vecopts['PLANETRADIUS'])
+    x,y = project_stereographic(tmpdf.lonbin.values, tmpdf.latbin.values, 0, 90, R=XovOpt.get("vecopts")['PLANETRADIUS'])
 
     def euclidean_norm_numpy(x1, x2):
         return np.linalg.norm(x1 - x2, axis=0)
@@ -76,7 +78,7 @@ def plot_topo(df):
 
     # zfun_smooth_rbf = interp.Rbf(x, y, tmpdf.R.values, function='cubic',
     #                              smooth=0)  # default smooth=0 for interpolation
-    pickleIO.save(zfun_smooth_rbf, tmpdir + "interp_R_" + sol + ".pkl")
+    pickleIO.save(zfun_smooth_rbf, XovOpt.get("tmpdir") + "interp_R_" + sol + ".pkl")
     # new_lats = np.deg2rad(np.arange(0, 180, 1))
     # new_lons = np.deg2rad(np.arange(0, 360, 1))
     start = time.time()
@@ -94,7 +96,7 @@ def plot_topo(df):
     fig, ax1 = plt.subplots(nrows=1)
     im = ax1.imshow(z_dense_smooth_rbf, origin='lower', cmap="RdBu")  # vmin=1,vmax=20,cmap="RdBu")
     fig.colorbar(im, ax=ax1, orientation='horizontal')
-    fig.savefig(tmpdir + 'test_interp_' + sol + '.png')
+    fig.savefig(XovOpt.get("tmpdir") + 'test_interp_' + sol + '.png')
     end = time.time()
     print('----- Runtime eval = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
 
@@ -146,7 +148,7 @@ if __name__ == '__main__':
 
     for sol in sols:
         if True:
-            files = glob.glob(outdir+"sim/"+subdir+sol+"/"+subexp+"/gtrack_*/gtrack_*.pkl")
+            files = glob.glob(XovOpt.get("outdir") + "sim/" + subdir + sol + "/" + subexp + "/gtrack_*/gtrack_*.pkl")
             name = subdir.split('/')[-1]
             print(name)
             dflist = []
@@ -158,5 +160,5 @@ if __name__ == '__main__':
             dflist = pd.concat(dflist)
             print("Done read+concat")
 
-            dflist.to_csv(tmpdir+"ladata_concat_"+sol+".txt", sep='\t', index=False,header=False)
+            dflist.to_csv(XovOpt.get("tmpdir") + "ladata_concat_" + sol + ".txt", sep='\t', index=False, header=False)
     exit()

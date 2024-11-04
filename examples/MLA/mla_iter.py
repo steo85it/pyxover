@@ -4,7 +4,8 @@ import time
 
 import numpy as np
 
-from examples.MLA.options import local, sim_altdata, monthly_sets, outdir, datasimopt, resopt, amplopt
+from config import XovOpt
+# from examples.MLA.options import XovOptgetsim_altdata, XovOpt.get("monthly_sets"), XovOpt.get("outdir"), XovOptgetdatasimopt, XovOptgetresopt, XovOptgetamplopt
 
 if __name__ == '__main__':
 
@@ -15,7 +16,7 @@ if __name__ == '__main__':
     for rt in rough_test:
         for iter in np.arange(0,1):
     
-            if local:
+            if XovOpt.get("local"):
                 print("Processing PyXover series at external iteration", iter)
 
                 # Preliminary step to fit orbits and pointing to current knowledge of topography (direct altimetry)
@@ -78,7 +79,7 @@ if __name__ == '__main__':
                 if iostat != 0:
                     print("*** PyAccum failed on iter", iter)
                 else:
-                    out_path = outdir+'/'+datasimopt+'/'+str(resopt[0])+'res_'+str(amplopt[0])+'amp/'
+                    out_path = XovOpt.get("outdir") + '/' + XovOpt.get("datasimopt") + '/' + str(XovOpt.get("resopt")[0]) + 'res_' + str(XovOpt.get("amplopt")[0]) + 'amp/'
                     from pathlib import Path
 
                     print(out_path)
@@ -110,7 +111,7 @@ if __name__ == '__main__':
                 loadfile.close()
                 load_fit2dem.close()
 
-                if monthly_sets:
+                if XovOpt.get("monthly_sets"):
                  for i in range(2):
                    loadfile = open("loadPyXover_"+str(i), "w")  # write mode
                    xovlist = np.arange(i*689,(i+1)*689,1)
@@ -164,7 +165,7 @@ if __name__ == '__main__':
                         print("*** PyGeol_" + str(rt) + " failed on iter", iter)
                         exit(iostat)
 
-                if monthly_sets:
+                if XovOpt.get("monthly_sets"):
                   for i in range(2):
                     iostat = s.call(
                         ['/home/sberton2/launchLISTslurm', 'loadPyXover_'+str(i), 'PyXov_' + str(rt) +'_' + str(iter)+'_' + str(i), '1', '06:00:00', '5Gb', '100'])

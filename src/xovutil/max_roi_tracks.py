@@ -16,9 +16,11 @@ import time
 import numpy as np
 import pandas as pd
 
-from src.xovutil.pickleIO import save, load
-from examples.MLA.options import tmpdir, local
-from src.pyxover.xov_setup import xov
+from xovutil.pickleIO import save, load
+# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("local")
+from pyxover.xov_setup import xov
+from config import XovOpt
+
 
 
 def intersection(lst1, lst2):
@@ -38,7 +40,7 @@ def intersect1d_searchsorted(A,B,assume_unique=False):
 
 def compare_subsets():
 
-    files = glob.glob(tmpdir+'bestROItracks100*.pkl')
+    files = glob.glob(XovOpt.get("tmpdir") + 'bestROItracks100*.pkl')
     tstnam = [f.split('/')[-1].split('_')[-1].split('.')[0] for f in files]
 
     tracks = []
@@ -52,10 +54,10 @@ def compare_subsets():
 
     return intersect_percent
 
-# note: revert with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${f%.BAK}.TAB";done**
-#       check with **for f in /att/nobackup/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
+# note: revert with **for f in /explore/nobackup/people/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do mv "$f" "${f%.BAK}.TAB";done**
+#       check with **for f in /explore/nobackup/people/sberton2/MLA/data/SIM_??/tp6/*res_*amp/*.BAK; do echo $f;done**
 # to generate soft links from main dataset before subsetting it, e.g.,
-# for f in {08..15}; do cp -rs /att/nobackup/sberton2/MLA/data/SIM_$f/KX1 /att/nobackup/sberton2/MLA/data/SIM_$f/KX1r4 ;done
+# for f in {08..15}; do cp -rs /explore/nobackup/people/sberton2/MLA/data/SIM_$f/KX1 /explore/nobackup/people/sberton2/MLA/data/SIM_$f/KX1r4 ;done
 
 def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
 
@@ -65,10 +67,10 @@ def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
     print(tracks)
     exit()
 
-    if local:
+    if XovOpt.get("local"):
         obsfil = glob.glob("/home/sberton2/Works/NASA/Mercury_tides/data/SIM_??/" + exp + "/" + kind + "/*.TAB")
     else:
-        obsfil = glob.glob("/att/nobackup/sberton2/MLA/data/SIM_??/" + exp + "/" + kind + "/*.TAB")
+        obsfil = glob.glob("/explore/nobackup/people/sberton2/MLA/data/SIM_??/" + exp + "/" + kind + "/*.TAB")
 
     # need tr[:-3] because of min:sec differences between sim and real data
     selected = [s for s in obsfil for tr in tracks if tr[:-3] in s]
@@ -78,7 +80,7 @@ def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
     remove_these = list(set(obsfil) ^ set(selected))
     print("removing:", len(remove_these), "out of", len(obsfil))
     for rmf in remove_these:
-        if local:
+        if XovOpt.get("local"):
             # print(rmf)
             shutil.move(rmf, rmf[:-3] + 'BAK')
             # os.remove(rmf)
@@ -91,7 +93,7 @@ def apply_selection(tracklist,exp='tp2',kind='3res_30amp'):
 def run(seed,sub_len=100):
     vecopts = {}
     xov_ = xov(vecopts)
-    xov_ = xov_.load(tmpdir+"dKX_clean.pkl")
+    xov_ = xov_.load(XovOpt.get("tmpdir") + "dKX_clean.pkl")
     print("Loaded...")
 
     # dR absolute value taken
@@ -130,7 +132,7 @@ def run(seed,sub_len=100):
             s_max = s
             nxov_old = nxov
             print("New max = ", nxov_old, " @ sample ",i)
-            save([np.array(s_max),nxov_old],tmpdir+'bestROItracks'+str(sub_len)+'_'+str(nxov_old)+'-'+str(i)+'.pkl')
+            save([np.array(s_max),nxov_old], XovOpt.get("tmpdir") + 'bestROItracks' + str(sub_len) + '_' + str(nxov_old) + '-' + str(i) + '.pkl')
 
     # print(load(tmpdir+'bestROItracks.pkl'))
     # print(nxov_old)
@@ -143,16 +145,17 @@ def run(seed,sub_len=100):
 
 def select_from_stats(sol ='KX1', subexp ='0res_1amp', outfil='bestROItracks.pkl'):
 
-    from src.accumxov.Amat import Amat
-    from examples.MLA.options import outdir, vecopts
+    from accumxov.Amat import Amat
+    # from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("vecopts")
     # import numpy as np
+    from config import XovOpt
 
     subfolder = ''
     # sol = 'KX1_0'  # r4_1'
     # subexp = '0res_1amp'
 
-    tmp = Amat(vecopts)
-    tmp = tmp.load(outdir + 'sim/' + subfolder + sol + '/' + subexp + '/Abmat_sim_' + sol.split('_')[0] + '_' + str(
+    tmp = Amat(XovOpt.get("vecopts"))
+    tmp = tmp.load(XovOpt.get("outdir") + 'sim/' + subfolder + sol + '/' + subexp + '/Abmat_sim_' + sol.split('_')[0] + '_' + str(
         int(sol.split('_')[-1]) + 1) + '_' + subexp + '.pkl')
 
     xov_df = tmp.xov.xovers
@@ -186,7 +189,7 @@ def select_from_stats(sol ='KX1', subexp ='0res_1amp', outfil='bestROItracks.pkl
     print(orbs)
     print(len(orbs), "orbits giving the 'best'", len(selected), "xovers out of", len(xov_df))
 
-    save([np.array(orbs)], tmpdir + outfil)
+    save([np.array(orbs)], XovOpt.get("tmpdir") + outfil)
     return orbs
 
 if __name__ == '__main__':
@@ -205,5 +208,5 @@ if __name__ == '__main__':
 
     tracks = select_from_stats(sol ='KX1_0', subexp ='0res_1amp', outfil=tracks_fil)
 
-    apply_selection(tracklist=tmpdir + tracks_fil, #'bestROItracks500_563-464424.pkl',
+    apply_selection(tracklist=XovOpt.get("tmpdir") + tracks_fil,  #'bestROItracks500_563-464424.pkl',
                     exp ='KX1r5', kind ='0res_1amp')

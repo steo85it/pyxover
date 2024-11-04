@@ -1,0 +1,15 @@
+\begindata
+
+PATH_VALUES  = ( '../examples/BELA/data/aux/kernels' )
+
+PATH_SYMBOLS = ( 'A' )
+
+KERNELS_TO_LOAD = ( '$A/bc_mpo_mlt_50037_20260314_20280529_v04.bsp',
+                    '$A/de432s.bsp',
+                    '$A/pck00010_msgr_v23.tpc',
+                    '$A/naif0012.tls',
+                    '$A/bc_mpo_v31.tf',
+                    '$A/bc_mpo_step_20220420.tsc',
+                    '$A/bc_sci_v10.tf')
+
+\begintext

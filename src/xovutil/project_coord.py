@@ -29,8 +29,6 @@ def project_stereographic(lon, lat, lon0, lat0, R=1):
     :param R: planetary radius (km)
     :return: stereographic projection xy coord from center (km)
     """
-    #
-    # exit()
 
     cosd_lat = cosd(lat)
     cosd_lon_lon0 = cosd(lon - lon0)

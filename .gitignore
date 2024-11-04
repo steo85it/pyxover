@@ -1,8 +1,11 @@
 # ignore folders
 *.bin
-examples/*/data/aux/
-examples/*/data/out/
-examples/*/data/tmp/
+examples/*/data/aux/*
+examples/*/data/out/*
+examples/*/data/tmp/*
+examples/*/data/raw/*
+examples/*/out/*
+examples/*/log_slurm/*
 pip-wheel-metadata/
 */*.egg-info
 *.obj
@@ -15,7 +18,7 @@ __pycache__
 *.pdf
 *.npy
 build
-env/
+env*/
 mem/
 illumNG/
 __pycache__/
@@ -29,6 +32,8 @@ loadPyXover*
 loadfit2dem*
 *~
 .idea/
+.*
+*.lprof
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -138,3 +143,16 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+/tests/MLA/data/tmp/
+/tests/MLA/data/out/*
+/tests/BELA/data/out/
+/tests/BELA/data/tmp/
+/tests/lidar_moon/out/
+/examples/BELA/data/out/
+/examples/BELA/data/tmp/
+/examples/BELA/data/raw/
+/examples/*/data/aux/*/*.pkl
+examples/CALA/*.out
+examples/CALA/old/*
+examples/CALA/data/aux/mymeta_*
+data/aux/kernels/*

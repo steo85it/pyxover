@@ -1,4 +1,5 @@
 # pyxover - Altimetry Analysis Tools For Planetary Geodesy
+[![DOI](https://zenodo.org/badge/319753409.svg)](https://zenodo.org/badge/latestdoi/319753409)
 
 Software suite for the analysis of laser altimetry data: from standard range data (PDS RDR) to planetary orientation and
  tides. Existing or simulated ranges (pyaltsim) are geolocated on the planetary surface
@@ -12,8 +13,7 @@ Software suite for the analysis of laser altimetry data: from standard range dat
 ## Disclaimer
 
 This is scientific code in ongoing development: using it might be tricky, reading it can cause 
- headaches and results need to be thoroughly checked and taken with an healthy degree of mistrust!
-A major clean-up and merging with concurrent local versions is pending, waiting for funding approval.
+ headaches and results need to be thoroughly checked and taken with a healthy degree of mistrust!
 Use it at your own risk and responsibility. 
  ## Installation ##
 
@@ -36,10 +36,13 @@ anything else below.
 Install the rest of the dependencies by running `pip install -r
 requirements.txt`.
 
-!! Cartopy (`https://scitools.org.uk/cartopy/docs/latest/index.html`) and GDAL 
-(`https://gdal.org`) libraries might be required by some routines 
-(especially plotting and evaluation tools) and they need to be installed 
-separately !!
+[//]: # (!! Cartopy &#40;`https://scitools.org.uk/cartopy/docs/latest/index.html`&#41; and GDAL )
+
+[//]: # (&#40;`https://gdal.org`&#41; libraries might be required by some routines )
+
+[//]: # (&#40;especially plotting and evaluation tools&#41; and they need to be installed )
+
+[//]: # (separately !!)
 
 ### Installing this package ###
 
@@ -72,3 +75,18 @@ python mla_iter.py
 Else, check out the `tests` directory for a "simpler" approach.
 
 For more details, refer to `docs/manual.stub` (in progress...)
+
+---
+
+## List of published articles and theses using PyXover ##
+
+<a id="1"></a>1. **Desprats W., S. Bertone, D. Arnold, et al.** (2024). *Combination of altimetry crossovers and Doppler observables for orbit determination and geodetic parameter recovery: application to Callisto*. Accepted by Acta Astronautica. [10.1016/j.actaastro.2024.10.045](https://doi.org/10.1016/j.actaastro.2024.10.045)  
+
+<a id="2"></a>2. **Grisolia, M.** (2024). *Validation of radioscience derived orbits by crossovers analyses of the Mercury Laser Altimeter*. B.Sc. Thesis, Polytechnic University of Turin (Italy).
+
+<a id="3"></a>3. **Desprats, W.** (2024). *Callisto geodesy: A simulation study to support further space missions to the Jovian system*. Ph.D. Thesis, Astronomical Institute, University of Bern (Switzerland) 
+
+[//]: # (Available at: [link]&#40;https://example.com&#41;  )
+<a id="4"></a>4. **Bertone S., E. Mazarico, M. K. Barker, et al.** (2021). *Deriving Mercury geodetic parameters with altimetric crossovers from the Mercury Laser Altimeter (MLA)*. Journal of Geophysical Research - Planets, **126**(4): e2020JE006683. [10.1029/2020JE006683](http://dx.doi.org/10.1029/2020JE006683)
+
+<a id="5"></a>5. **Hosseiniarani, A.** (2020). *BepiColombo Laser Altimeter (BELA) Performance Evaluation: From Laboratory Tests to Simulations of Flight Observations*. Ph.D. Thesis, Space Research & Planetary Sciences, University of Bern (Switzerland) 

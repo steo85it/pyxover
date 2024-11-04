@@ -3,8 +3,8 @@ import os
 import shutil
 import sys
 
-from examples.MLA.options import sim_altdata, local, outdir, datasimopt, expopt, resopt, amplopt
-
+from config import XovOpt
+# from examples.MLA.options import XovOptgetsim_altdata, XovOpt.get("outdir"), XovOptgetdatasimopt, XovOptgetexpopt, XovOptgetresopt, XovOptgetamplopt
 
 # Experiments
 #------------
@@ -13,14 +13,14 @@ from examples.MLA.options import sim_altdata, local, outdir, datasimopt, expopt,
 #@profile
 def main():
 
-    data_sim = datasimopt  #'sim'  # 'data' #
-    exp = expopt # 'BS0' # 'AGTP' # 'AGTP' # 'tp4' #
+    data_sim = XovOpt.get("datasimopt")  #'sim'  # 'data' #
+    exp = XovOpt.get("expopt") # 'BS0' # 'AGTP' # 'AGTP' # 'tp4' #
     # exp += '_'+str(ext_iter)
 
 #    res = [3]
 #    ampl = [5,10,20,30,40,60,80]
-    res = resopt #[0]
-    ampl = amplopt # [1]
+    res = XovOpt.get("resopt") #[0]
+    ampl = XovOpt.get("amplopt") # [1]
 
     if len(sys.argv) > 1:
         resampl = sys.argv[1]
@@ -54,7 +54,7 @@ def main():
     # print(dict(zip(range(len(cmb)),cmb)))
 
     if data_sim == 'sim':
-        if local:
+        if XovOpt.get("local"):
             dirnams = ['../data/SIM_' + subarg[:2] + '/' + exp + '/' + str(x[1]) + 'res_' + str(x[0]) + 'amp/' for x in
                        cmb]
         else:
@@ -86,15 +86,15 @@ def main():
         from src.pygeoloc import PyGeoloc
 
         # save options file to outdir
-        if not os.path.exists(outdir+outdirnams[0]):
-            os.makedirs(outdir+outdirnams[0], exist_ok=True)
-        shutil.copy(os.getcwd()+'/options.py', outdir+outdirnams[0])
+        if not os.path.exists(XovOpt.get("outdir") + outdirnams[0]):
+            os.makedirs(XovOpt.get("outdir") + outdirnams[0], exist_ok=True)
+        shutil.copy(os.getcwd() +'/examples/MLA/options.py', XovOpt.get("outdir") + outdirnams[0])
 
         # add option to spread over the cluster
         idx_tst = [i for i in range(len(cmb))]
-        if local == 0:
+        if XovOpt.get("local") == 0:
             ie = int(resampl)
-            if data_sim == 'sim' and sim_altdata and ext_iter == 0:
+            if data_sim == 'sim' and XovOpt.get("sim_altdata") and ext_iter == 0:
               print("Running PyAltSim with ", args_pyaltsim[ie], "...")
               PyAltSim.main(args_pyaltsim[ie])
               exit(0)
@@ -103,7 +103,7 @@ def main():
 
         else:
             for ie in range(len(args_pyaltsim)):
-                if data_sim == 'sim' and sim_altdata and ext_iter == 0:
+                if data_sim == 'sim' and XovOpt.get("sim_altdata") and ext_iter == 0:
                     ie = int(resampl)
                     print("Running PyAltSim with ", args_pyaltsim[ie], "...")
                     PyAltSim.main(args_pyaltsim[ie])

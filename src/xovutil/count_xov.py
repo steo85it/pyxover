@@ -1,5 +1,7 @@
-from src.accumxov.Amat import Amat
-from examples.MLA.options import outdir, vecopts, tmpdir
+from accumxov.Amat import Amat
+# from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("vecopts"), XovOpt.get("tmpdir")
+from config import XovOpt
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +16,7 @@ def plt_histo(series, xlim='', filename='test'):
     plt.xlim(-1.*xlim, xlim)
     # the histogram of the data
     num_bins = 200 # 'auto'
-    n, bins, patches = plt.hist(series.astype(np.float), bins=num_bins, density=True, facecolor='blue',
+    n, bins, patches = plt.hist(series.astype(float), bins=num_bins, density=True, facecolor='blue',
     alpha=1./(float(filename)+1.), range=[-1.*xlim, xlim],cumulative=False)
 
     plt.xlabel('dR (m)')
@@ -22,22 +24,22 @@ def plt_histo(series, xlim='', filename='test'):
     plt.title('Histogram of '+ filename) #dR: $\mu=' + str(mean_dR) + ', \sigma=' + str(std_dR) + '$')
     # Tweak spacing to prevent clipping of ylabel
     plt.subplots_adjust(left=0.15)
-    plt.savefig(tmpdir+'/weights_histo_' + filename + '.png')
+    plt.savefig(XovOpt.get("tmpdir") + '/weights_histo_' + filename + '.png')
     # plt.clf()
 
 def get_weights(iter):
 
-    sol_list = [outdir + 'sim/archived/KX1r4_KX/KX1r4_'+str(iter)+'/0res_1amp/Abmat_sim_KX1r4_'+str(iter+1)+'_0res_1amp.pkl',
-        #[outdir + 'Abmat/KX1r4_AG/KX1r4_'+str(iter)+'/0res_1amp/Abmat_sim_KX1r4_'+str(iter+1)+'_0res_1amp.pkl',
+    sol_list = [XovOpt.get("outdir") + 'sim/archived/KX1r4_KX/KX1r4_' + str(iter) + '/0res_1amp/Abmat_sim_KX1r4_' + str(iter + 1) + '_0res_1amp.pkl',
+                #[outdir + 'Abmat/KX1r4_AG/KX1r4_'+str(iter)+'/0res_1amp/Abmat_sim_KX1r4_'+str(iter+1)+'_0res_1amp.pkl',
                 # outdir + 'Abmat/KX1r4_IAU2/KX1r4_'+str(iter)+'/0res_1amp/Abmat_sim_KX1r4_'+str(iter+1)+'_0res_1amp.pkl']
-                outdir + 'sim/KX1_'+str(iter)+'/0res_1amp/Abmat_sim_KX1_' + str(iter + 1) + '_0res_1amp.pkl']
+                XovOpt.get("outdir") + 'sim/KX1_' + str(iter) + '/0res_1amp/Abmat_sim_KX1_' + str(iter + 1) + '_0res_1amp.pkl']
 
     # np.sort(glob.glob(outdir+'sim/'+exp+'_'+str(iter)+'/3res_20amp/Abmat_sim_'+exp+'_'+str(iter+1)+'_3res_20amp.pkl'))
     list_exp = []
 
     for idx,sol in enumerate(sol_list):
         # print("Processing", sol)
-        prev = Amat(vecopts)
+        prev = Amat(XovOpt.get("vecopts"))
         solmat = prev.load(sol)
 
         tmp = solmat.xov.xovers[['orbA', 'orbB', 'weights']].copy()

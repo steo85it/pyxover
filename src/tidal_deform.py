@@ -20,7 +20,7 @@
 # Variables:
 # LO = long. on planet's surface
 # TH = lat. on planet's surface
-
+import logging
 from math import pi
 
 import numpy as np
@@ -28,31 +28,53 @@ import pandas as pd
 import spiceypy as spice
 from scipy.special import lpmv
 
-from src.xovutil import astro_trans as astr
+from xovutil import astro_trans as astr
 # mylib
-from examples.MLA.options import SpInterp, tmpdir, debug, local
+# from examples.MLA.options import XovOpt.get("SpInterp"), XovOpt.get("tmpdir"), XovOpt.get("debug"), XovOpt.get("local")
+from config import XovOpt
 
 
 ##############################################
 
-def set_const(h2_sol):
-    from examples.MLA.options import pert_cloop
+def set_const(h2_sol, central_body):
+   # from examples.MLA.options import pert_cloop
+   # from config import XovOpt
+    
+   if XovOpt.get('body') == 'MERCURY':
+      h2 = 0.95 # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
+      l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
+      # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
+      tau = 0. #84480. # time lag in seconds, corresponding to 4 deg, G. Steinbrugge, 2018
 
-    h2 = 1.e-6 # 0.77 - 0.93 #Viscoelastic Tides of Mercury and the Determination
-    l2 = 0. # 0.17  # 0.17-0.2    #of its Inner Core Size, G. Steinbrugge, 2018
-    # https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2018JE005569
-    tau = 0. #84480. # time lag in seconds, corresponding to 4 deg, G. Steinbrugge, 2018
+      Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
+   elif XovOpt.get('body') == 'MOON':
+      h2 = 0.04 # https://doi.org/10.1007/s00190-020-01455-8
+      l2 = 0.
+      tau = 0. # time lag in seconds,
 
-    GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
-    Gm = 0.022032e15  # Mercury's GM value (m^3/s^2)
+      Gm = 4.90486959e12  # Moon's GM value (m^3/s^2)
+   elif XovOpt.get('body') == 'CALLISTO':
+      h2 = 1.2 # Genova et al 2022
+      l2 = 0.
+      tau = 0.
+      Gm = 0.7179292e13  # Callisto's GM value (m^3/s^2)
+   else:
+      print(f"*** tidal_deform: {XovOpt.get('body')} not recognized.")
+      exit()
 
-    # # check if h2 is perturbed
-    if 'dh2' in pert_cloop['glo'].keys():
-        h2 += pert_cloop['glo']['dh2']
-    h2 += h2_sol
-    #print('h2tot',h2)
+   if central_body == 'SUN':
+      GMsun = 1.32712440018e20  # Sun's GM value (m^3/s^2)
+   elif central_body == 'JUPITER':
+      GMsun = 0.1266865341960128e18  # Jupiter's GM value (m^3/s^2)
+   elif central_body == 'EARTH':
+      GMsun = 3.9860044188e14  # Earth's GM value (m^3/s^2)
 
-    return h2, l2, tau, GMsun, Gm
+   # # check if h2 is perturbed
+   if 'dh2' in XovOpt.get("pert_cloop")['glo'].keys():
+      h2 += XovOpt.get("pert_cloop")['glo']['dh2']
+   h2 += h2_sol
+
+   return h2, l2, tau, GMsun, Gm
 
 
 def sind(x):
@@ -69,66 +91,63 @@ def cosz(TH, LO, latSUN, lonSUN):
 
 
 # @profile
-def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
+def tidal_deform(vecopts, xyz_bf, ET, SpObj, central_body, delta_par):
 
-    # print("dpar",delta_par)
+   if isinstance(delta_par, dict) and 'dh2' in delta_par.keys():
+        h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'], central_body=central_body)
+   else:
+        h2, l2, tau, GMsun, Gm = set_const(0, central_body=central_body)
 
-    if isinstance(delta_par, dict) and 'dh2' in delta_par.keys():
-        h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'])
-    else:
-        h2, l2, tau, GMsun, Gm = set_const(0)
+   plarad = vecopts['PLANETRADIUS'] * 1.e3
+   gSurf = Gm / np.square(plarad)  # surface g of body (ok)
 
-    plarad = vecopts['PLANETRADIUS'] * 1.e3
-    gSurf = Gm / np.square(plarad)  # surface g of body (ok)
+   # dpr = 180 / pi
 
-    # dpr = 180 / pi
+   [R, TH, LO] = astr.cart2sph(xyz_bf)
 
-    [R, TH, LO] = astr.cart2sph(xyz_bf)
+   LO0 = LO
+   TH0 = TH
+   CO = 90. - TH
+   CO0 = CO
+   nmax = 3
 
-    LO0 = LO
-    TH0 = TH
-    CO = 90. - TH
-    CO0 = CO
-    nmax = 3
+   obs = vecopts['PLANETNAME']
+   frame = vecopts['PLANETFRAME']
 
-    obs = vecopts['PLANETNAME']
-    frame = vecopts['PLANETFRAME']
+   # get Sun position and distance from body
+   if (XovOpt.get("SpInterp") > 0):
+        if XovOpt.get('body') == 'MERCURY':
+            pertpos = np.transpose(SpObj['SUNx'].eval(ET-tau))
+            merpos = np.transpose(SpObj['MERx'].eval(ET-tau))
+            pertpos -= merpos
+        else:
+            logging.error(f"** tides with spice_interp not implemented for {XovOpt.get('body')}.")
+            exit()
+   else:
+       pertpos, tmp = spice.spkpos(central_body, ET-tau, frame, 'NONE', obs)
 
-    # get Sun position and distance from body
-    if (SpInterp > 0):
-        sunpos = np.transpose(SpObj['SUNx'].eval(ET-tau))
-        merpos = np.transpose(SpObj['MERx'].eval(ET-tau))
-        sunpos -= merpos
-    else:
-        sunpos, tmp = spice.spkpos('SUN', ET-tau, frame, 'NONE', obs)
+   pertpos = 1.e3 * np.array(pertpos)
+   dSUN = np.linalg.norm(pertpos, axis=1)
+   [rSUN, latSUN, lonSUN] = astr.cart2sph(pertpos)
 
-    sunpos = 1.e3 * np.array(sunpos)
-    dSUN = np.linalg.norm(sunpos, axis=1)
-    [rSUN, latSUN, lonSUN] = astr.cart2sph(sunpos)
+   coszSUN = cosz(TH, LO, latSUN, lonSUN)
 
-    coszSUN = cosz(TH, LO, latSUN, lonSUN)
+   # see, e.g., Van Hoolst, T., and Jacobs, C. ( 2003), Mercury's tides and interior structure,
+   # J. Geophys. Res., 108, 5121, doi:10.1029/2003JE002126, E11.
+   Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
 
-    # see, e.g., Van Hoolst, T., and Jacobs, C. ( 2003), Mercury's tides and interior structure,
-    # J. Geophys. Res., 108, 5121, doi:10.1029/2003JE002126, E11.
-    Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
+   # TODO should use plarad (fix) or radius from measurement? (difference is up to 2km)
+   terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
 
-    # TODO should use plarad (fix) or radius from measurement? (difference is up to 2km)
-    terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
+   Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
+   Vtot0 = Vsun
 
-    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
-    Vtot0 = Vsun
-
-    # explicit equation for degree 2 term (not used here)
-    # Vsun = (GMsun/(dSUN)) * np.square(plarad/dSUN) * 0.5*(3*np.square(coszSUN)-1);
-    # apply to get vertical displacement of surface due to tides
-    urtot = h2 * Vsun / gSurf
-    # print(Psun)
-    # print(Vsun)
-    # print(gSurf)
-    # print(h2)
-    # exit()
-    ##################################################
-    if debug and local:
+   # explicit equation for degree 2 term (not used here)
+   # Vsun = (GMsun/(dSUN)) * np.square(plarad/dSUN) * 0.5*(3*np.square(coszSUN)-1);
+   # apply to get vertical displacement of surface due to tides
+   urtot = h2 * Vsun / gSurf
+   ##################################################
+   if XovOpt.get("debug") and XovOpt.get("local"):
         import matplotlib.pyplot as plt
         fig, axes = plt.subplots(3)
 
@@ -142,7 +161,7 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
         axes[2].plot(ET,urtot)
         axes[2].set(xlabel='ET (secJ2000)', ylabel='ur_tid (m)')
         # axes[2].plot(ET,(GMsun / (dSUN))*np.power(plarad/dSUN,2))
-        plt.savefig(tmpdir+'test_tid.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'test_tid.png')
 
         import matplotlib.pyplot as plt
         from matplotlib import cm
@@ -162,16 +181,16 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
         h = plt.contourf(np.rad2deg(lon), np.rad2deg(lat), urtot, cmap=cm.coolwarm)
         # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
         cbar = fig.colorbar(h)
-        plt.savefig(tmpdir+'test_tid2.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'test_tid2.png')
 
         #loop on all Sun positions (176 Earth days)
         def plot_tides(d):
             step = 16
-            sunpos, tmp = spice.spkpos('SUN', ET+step*d*86400., frame, 'NONE', obs)
+            pertpos, tmp = spice.spkpos(central_body, ET+step*d*86400., frame, 'NONE', obs)
             # print(ET,sunpos)
-            sunpos = 1.e3 * np.array(sunpos)
-            dSUN = np.linalg.norm(sunpos, axis=1)
-            [rSUN, latSUN, lonSUN] = astr.cart2sph(sunpos)
+            pertpos = 1.e3 * np.array(pertpos)
+            dSUN = np.linalg.norm(pertpos, axis=1)
+            [rSUN, latSUN, lonSUN] = astr.cart2sph(pertpos)
 
             tmp = cosz(lat, lon, latSUN[0], lonSUN[0])
             Psun = [lpmv(0, j, tmp) for j in range(2, nmax)]
@@ -210,59 +229,56 @@ def tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par):
                  title='Amplitude range of vertical tides over Mercury solar year')
         # h = axes.imshow(urtot, interpolation='nearest', cmap=cm.coolwarm)
         cbar = fig.colorbar(h, label='ur (meters)')
-        plt.savefig(tmpdir + 'test_tid3.png')
+        plt.savefig(XovOpt.get("tmpdir") + 'test_tid3.png')
 
-        imageio.mimsave(tmpdir+'powers.gif', tmp[:,0], fps=1)
+        imageio.mimsave(XovOpt.get("tmpdir") + 'powers.gif', tmp[:, 0], fps=1)
 
 
         exit()
-    ###########################################
+   ###########################################
 
-    # lon displacement
-    dLO = 1. / 100.
-    LO_ = LO0 + dLO
+   # lon displacement
+   dLO = 1. / 100.
+   LO_ = LO0 + dLO
 
-    # computation with perturbed LO_
-    coszSUN = cosz(TH, LO_, latSUN, lonSUN)
+   # computation with perturbed LO_
+   coszSUN = cosz(TH, LO_, latSUN, lonSUN)
 
-    Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
-    terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
+   Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
+   terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
 
-    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
-    Vtot = Vsun
+   Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
+   Vtot = Vsun
 
-    # compute derivative of V w.r.t. a lon displacement
-    dV = (Vtot - Vtot0) / (np.deg2rad(dLO))
-    # apply to get longitude displacement
-    lotot = l2 * dV / (gSurf * sind(CO))
+   # compute derivative of V w.r.t. a lon displacement
+   dV = (Vtot - Vtot0) / (np.deg2rad(dLO))
+   # apply to get longitude displacement
+   lotot = l2 * dV / (gSurf * sind(CO))
 
-    # lat displacement - do in terms of CO = colatitude
-    dCO = 1. / 100.
-    CO_ = CO0 + dCO
-    CO_[CO_ > 180] = -1 * CO_[CO_ > 180]
-    CO_ = np.deg2rad(CO_)
+   # lat displacement - do in terms of CO = colatitude
+   dCO = 1. / 100.
+   CO_ = CO0 + dCO
+   CO_[CO_ > 180] = -1 * CO_[CO_ > 180]
+   CO_ = np.deg2rad(CO_)
 
-    # compute zenith angle from Sun with perturbed colatitude
-    coszSUN = np.cos(CO_) * np.sin(latSUN) + np.sin(CO_) * np.cos(latSUN) * np.cos(lonSUN - LO)
+   # compute zenith angle from Sun with perturbed colatitude
+   coszSUN = np.cos(CO_) * np.sin(latSUN) + np.sin(CO_) * np.cos(latSUN) * np.cos(lonSUN - LO)
 
-    Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
-    terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
+   Psun = [lpmv(0, j, coszSUN) for j in range(2, nmax)]
+   terms = [(plarad / dSUN) ** j * Psun[j - 2] for j in range(2, nmax)]
 
-    Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
-    Vtot = Vsun
+   Vsun = (GMsun / (dSUN)) * np.sum(terms, 0)
+   Vtot = Vsun
 
-    # compute derivative of V w.r.t. a lat displacement
-    dV = (Vtot - Vtot0) / (np.deg2rad(dCO))
-    # apply to get latitude displacement at surface
-    thtot = l2 * dV / gSurf
+   # compute derivative of V w.r.t. a lat displacement
+   dV = (Vtot - Vtot0) / (np.deg2rad(dCO))
+   # apply to get latitude displacement at surface
+   thtot = l2 * dV / gSurf
 
-    # print(urtot,lotot,thtot)
-    # exit()
-
-    return urtot, lotot, thtot
+   return urtot, lotot, thtot
 
 
-def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0):
+def tidepart_h2(vecopts, xyz_bf, ET, SpObj, central_body, delta_par=0):
     # print(  'vecopts check',  vecopts['PARTDER'])
     # print("partial call", delta_par)
 
@@ -275,9 +291,9 @@ def tidepart_h2(vecopts, xyz_bf, ET, SpObj, delta_par=0):
     # h2, l2, tau, GMsun, Gm = set_const(h2_sol=dh2)
 
     if isinstance(delta_par, dict) and 'dh2' in delta_par.keys():
-        h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'])
+        h2, l2, tau, GMsun, Gm = set_const(h2_sol=delta_par['dh2'], central_body=central_body)
     else:
-        h2, l2, tau, GMsun, Gm = set_const(0)
+        h2, l2, tau, GMsun, Gm = set_const(0, central_body=central_body)
     #print("dh2 partcall", dh2)
 
-    return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj, delta_par={'dh2':dh2})[0]) / h2, 0., 0.
+    return np.array(tidal_deform(vecopts, xyz_bf, ET, SpObj, central_body, delta_par={'dh2':dh2})[0]) / h2, 0., 0.

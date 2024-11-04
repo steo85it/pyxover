@@ -10,7 +10,8 @@ from __future__ import division
 import sys
 import matplotlib as mpl
 
-from examples.MLA.options import tmpdir
+# from examples.MLA.options import XovOpt.get("tmpdir")
+from config import XovOpt
 
 mpl.interactive(False)
 import matplotlib.pyplot as plt
@@ -66,7 +67,7 @@ def plot_multiple(data=''):
                                cmap=cmap, norm=norm,
                                azimuth=azimuths, elevation=elevations))
 
-    plt.savefig(tmpdir+'topo_tp4_0.png',dpi=1000)
+    plt.savefig(XovOpt.get("tmpdir") + 'topo_tp4_0.png', dpi=1000)
 
 
 if __name__ == "__main__":
