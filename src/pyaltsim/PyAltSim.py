@@ -10,7 +10,7 @@ import warnings
 import logging
 
 from pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
-from xovutil.dem_util import get_demz_at, import_dem, get_demz_tiff
+from xovutil.dem_util import get_demz_at, import_dem, get_demz_tiff, get_demslope_tiff
 from xovutil.icrf2pbf import icrf2pbf
 from xovutil.orient_setup import orient_setup
 
@@ -80,11 +80,15 @@ class sim_gtrack(gtrack):
 
       # actual processing
       self.lt_topo_corr(df=df_)
+      print("lt_topo_corr(df=df_) done")
 
       # add range noise
       if XovOpt.get("range_noise"):
-         self.add_range_noise(df_, XovOpt.get("range_noise_mean_std")[0],
-                              XovOpt.get("range_noise_mean_std")[1])
+         if XovOpt.get("instrument") == 'BELA':
+            self.add_range_noise_model(df_)
+         else:
+            self.add_range_noise(df_, XovOpt.get("range_noise_mean_std")[0],
+                                 XovOpt.get("range_noise_mean_std")[1])
 
       self.setup_rdr()
 
@@ -103,6 +107,32 @@ class sim_gtrack(gtrack):
       if XovOpt.get("debug"):
          plt.plot(df_.loc[:, 'ET_TX'], df_.TOF, 'bo', df_.loc[:, 'ET_TX'], df_.TOF - tof_noise, 'k')
          plt.savefig('tmp/noise.png')
+
+   def add_range_noise_model(self, df_):
+      """
+      Add range noise based on a probably density function of
+      the altitude and the slope to simulated time of flight (seconds)
+      :param df_: input altimetry dataframe
+      :param mean: mean value for normal distribution (meters)
+      :param std: standard deviation for normal distribution (meters)
+      """
+
+      np.random.seed(int(self.name))
+      mod_data = np.load(XovOpt.get("auxdir") + "probability_density.npy")
+      mod_alt  = np.linspace(200,1500,14) # [km]
+      mod_rerr = np.linspace(-10,10,100)  # [m]
+      mod_slp  = np.linspace(0,49,50)     # [degree]
+      
+      slopes = self.get_toposlope()
+   
+      index_a = [(np.abs(mod_alt - alt)).argmin() for alt in df_['rng']]
+      index_s = [(np.abs(mod_slp - slp)).argmin() for slp in slopes]
+      
+      range_noise = [np.random.choice(mod_rerr, p=mod_data[i_a,i_s,:]) for i_a, i_s in zip(index_a,index_s)]
+      
+      tof_noise = np.array(range_noise) / clight
+      df_.loc[:, 'TOF'] += tof_noise
+      self.ladata_df.loc[:, 'TOF'] += tof_noise
 
    def lt_topo_corr(self, df, itmax=50, tol=5.e-2):
       """
@@ -218,15 +248,7 @@ class sim_gtrack(gtrack):
 
       if XovOpt.get("apply_topo"):
          # st = time.time()
-
-         if not XovOpt.get("local"):
-            if XovOpt.get("instrument") == "LOLA":
-               dem_path = self.slewdir + "/SLDEM2015_512PPD.GRD"
-            else:
-               dem_path = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-         else:
-            dem_path = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-
+         
          # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
          gmt = False
 
@@ -240,27 +262,16 @@ class sim_gtrack(gtrack):
             # df['r_dem'] = df.apply(lambda x: get_demz_tiff(geotiff[0],lat=x.LAT,lon=x.LON) if x.LAT > 30
             #                         else get_demz_grd(filin=dem,lon=x.LON,lat=x.LAT), axis=1)
 
-            mask_np = (df['LAT'] >= 70)
-            mask_equat = (df['LAT'] < 70) & (df['LAT'] > -70)
-            mask_sp = (df['LAT'] <= -70)
+            masks = {'NP': (df['LAT'] >= 70),# NP (MLA DEM)
+                     'global': (df['LAT'] < 70) & (df['LAT'] > -70), # EQUAT (USGS)
+                     'SP': (df['LAT'] <= -70)} # SP (USGS)
 
             df['r_dem'] = 0
-            # NP (MLA DEM)
-            if len(df.loc[mask_np, :]) > 0:
-               # df.loc[mask_np, 'r_dem'] = get_demz_grd(filin=dem,lon=df.loc[mask_np,'LON'].values,lat=df.loc[mask_np,'LAT'].values).T
-               df.loc[mask_np, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['NP'],
-                                                                   lon=df.loc[mask_np, 'LON'].values,
-                                                                   lat=df.loc[mask_np, 'LAT'].values).T)
-            # EQUAT (USGS)
-            if len(df.loc[mask_equat, :]) > 0:
-               df.loc[mask_equat, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['global'],
-                                                                      lon=df.loc[mask_equat, 'LON'].values,
-                                                                      lat=df.loc[mask_equat, 'LAT'].values).T)
-            # SP (USGS)
-            if len(df.loc[mask_sp, :]) > 0:
-               df.loc[mask_sp, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff['SP'],
-                                                                   lon=df.loc[mask_sp, 'LON'].values,
-                                                                   lat=df.loc[mask_sp, 'LAT'].values).T)
+            for name, mask in masks.items():
+               if len(df.loc[mask, :]) > 0:
+                  df.loc[mask, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[name],
+                                                                   lon=df.loc[mask, 'LON'].values,
+                                                                   lat=df.loc[mask, 'LAT'].values).T)
 
             r_dem = df.r_dem.values
             if np.isnan(np.sum(r_dem)):
@@ -269,6 +280,11 @@ class sim_gtrack(gtrack):
          elif (not gmt) and (XovOpt.get("instrument") == 'LOLA'):
 
             if self.dem == None:
+               if not XovOpt.get("local"):
+                  dem_path = self.slewdir + "/SLDEM2015_512PPD.GRD"
+               else:
+                  dem_path = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+
                self.dem = import_dem(filein=dem_path, outdir=f"{self.slewdir}/")
             else:
                logging.info("DEM already read")
@@ -355,6 +371,30 @@ class sim_gtrack(gtrack):
       radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
 
       return radius
+   
+   def get_toposlope(self):
+      
+      df = pd.DataFrame(zip(self.ladata_df['LAT'], self.ladata_df['LON']), columns=['LAT', 'LON'])
+      df['slope'] = 0
+
+      if XovOpt.get("instrument") in ['BELA', 'CALA', 'MLA']:
+         
+         geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+                       'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
+                       'SP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif'}
+
+                  
+         masks = {'NP': (df['LAT'] >= 70),# NP (MLA DEM)
+                  'global': (df['LAT'] < 70) & (df['LAT'] > -70), # EQUAT (USGS)
+                  'SP': (df['LAT'] <= -70)} # SP (USGS)
+           
+         for name, mask in masks.items():
+            if len(df.loc[mask, :]) > 0:
+               df.loc[mask,'slope'] = get_demslope_tiff(geotiff[name],
+                                                        df.loc[mask, 'LON'].values,
+                                                        df.loc[mask, 'LAT'].values)      
+
+      return df.slope.values
 
    def get_sc_pos_bf(self, df):
       et_tx = df.loc[:, 'ET_TX'].values
@@ -423,13 +463,13 @@ def sim_track(args):
 
    filename = outdir_ + f'{XovOpt.get("instrument")}SIMRDR' + track.name + '.TAB'
    if os.path.isfile(filename) == False:
-      # track.setup(df[df['orbID'] == i])
-      try:
-         track.setup(df[df['orbID'] == i])
-      except:
-         logging.info('Error when simulating observations to', filename)
-         print('Error when simulating observations to', filename)
-         return
+      track.setup(df[df['orbID'] == i])
+      # try:
+      #    track.setup(df[df['orbID'] == i])
+      # except:
+      #    logging.info('Error when simulating observations to', filename)
+      #    print('Error when simulating observations to', filename)
+      #    return
       track.rdr_df.to_csv(filename, index=False, sep=',', na_rep='NaN')
       logging.info('Simulated observations written to', filename)
    else:
@@ -442,6 +482,9 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
    ampl_in = args[0]  # Ampl directory?
    res_in = args[1]  # Result directory?
    dirnam_in = args[2]  # Input directory
+   
+   print('Number of arguments:', len(args), 'arguments.')
+   print('Argument List:', str(args))
 
    if len(args) < 6:
       epos_in = args[3]  # Month to simulate (format: YYMM)
@@ -606,6 +649,10 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
       else:
          df = pd.read_pickle(illumpklf)
          print("simil-illumNG prediction read from ", illumpklf)
+
+   if df.empty:
+      print('No ranges to process after preprocessing')
+      return
 
    if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
       # read and interpolate DEM

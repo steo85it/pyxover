@@ -17,7 +17,6 @@ import xarray as xr
 from scipy.interpolate import RectBivariateSpline
 
 from xovutil import pickleIO
-# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("debug")
 from config import XovOpt
 
 import pandas as pd
@@ -29,8 +28,6 @@ def import_dem(filein, outdir=''):
     # nc_file = "/home/sberton2/Downloads/sresa1b_ncar_ccsm3-example.nc"
     nc_file = filein
     dem_xarr = xr.open_dataset(nc_file)
-
-    # print(filein)
 
     try:
         lats = np.deg2rad(dem_xarr.lat.values) + np.pi / 2.
@@ -67,7 +64,6 @@ def get_demz_at(dem_xarr, lattmp, lontmp):
     # lontmp += 180.
     lontmp[lontmp < 0] += 360.
 
-
     return dem_xarr.ev(np.deg2rad(lattmp) + np.pi / 2., np.deg2rad(lontmp))
 
 
@@ -89,7 +85,6 @@ def get_demz_tiff(filin, lon, lat):
     # Rasterio works with 1D arrays (but still need to pass whole mesh, flattened)
     # convert lon/lat to xy using intrinsic crs, then generate additional dimension for
     # advanced xarray interpolation
-    # print(da.crs)
     p = pyproj.Proj(da.rio.crs)
     xi, yi = p(lon, lat, inverse=False)
 
@@ -105,6 +100,26 @@ def get_demz_tiff(filin, lon, lat):
 
     return da_interp.band_data.data * 1.e-3  # convert to km for compatibility with grd
 
+def get_demslope_tiff(filin, lon, lat):
+    import pyproj
+    from xrspatial import slope
+
+    # Read the data
+    da = xr.open_dataarray(filin, engine='rasterio')  
+    slope_da = slope(da.squeeze())
+    # Rasterio works with 1D arrays (but still need to pass whole mesh, flattened)
+    # convert lon/lat to xy using intrinsic crs, then generate additional dimension for
+    # advanced xarray interpolation
+    p = pyproj.Proj(da.rio.crs)
+    xi, yi = p(lon, lat, inverse=False)
+
+    xi = xr.DataArray(xi, dims="z")
+    yi = xr.DataArray(yi, dims="z")
+
+    # interpolate & extrapolate from dem at ladata xy
+    slope_interp = slope_da.interp(x=xi, y=yi, kwargs={"fill_value": None})
+
+    return slope_interp.data
 
 def get_demz_grd(filin, lon, lat):
     da = xr.open_dataset(filin)

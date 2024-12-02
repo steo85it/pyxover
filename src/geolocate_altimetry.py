@@ -94,7 +94,15 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
       if (XovOpt.get("SpInterp") > 0):
          cmat = SpObj['MGRa'].evalCmat(et_tx)
       else:
-         cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
+         # print(min(et_tx),max(et_tx))
+         # print(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
+         # cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
+         try:
+            cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
+         except:
+            print(min(et_tx),max(et_tx))
+            print(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
+            exit(2)
 
       # rotate boresight dir to inertial frame
       zpt = [np.dot(cmat[i], zpt[i]) for i in range(0, np.size(zpt, 0))]

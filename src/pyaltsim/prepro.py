@@ -64,8 +64,10 @@ def prepro_BELA_sim(epo_in):
 
    # apply altitude cutoff (PFD too high)
    df_ = df_[df_.rng < XovOpt.get("max_range_altitude")]
+   if df_.empty:
+      return df_
+
    df_ = df_.rename(columns={"xyzd": "epo_tx"})
-   # print(df_.dtypes)
 
    ### used for MLA ###
    # df_['diff'] = df_.epo_tx.diff().fillna(0)
