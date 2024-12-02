@@ -315,6 +315,10 @@ def retrieve_xov(outdir_in, xov_iter, cmb, useful_columns):
       tmp_Amat = Amat(XovOpt.get("vecopts"))
       tmp = tmp_Amat.load(glob.glob(abmat)[0])
       old_xovs = tmp.xov.xovers[useful_columns]
+      if XovOpt.get("selected_hemisphere") == 'N':
+         old_xovs = old_xovs[old_xovs['LAT']>=0]
+      else:
+         old_xovs = old_xovs[old_xovs['LAT']<0]
    else:
       xov_dir = XovOpt.get("outdir") + outdir_in + 'xov/'
       input_xov_path = xov_dir + 'tmp/xovin_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl.gz'

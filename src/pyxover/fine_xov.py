@@ -37,6 +37,8 @@ def fine_xov_intersection(mla_proj_df, msrm_smpl):
       fine_xovi = fine_intersection_proc(xovi, proj_df_tmp.loc[proj_df_tmp['xovid'] == xovi], xovtmp)
       # fine_xovi is None if pb with xover
       fine_xov.append(np.insert(fine_xovi, 0 ,xovi))
+   if not fine_xov: # empty list
+      print("All rough xovers have been rejected")
    fine_xov_df = pd.DataFrame(fine_xov,columns=['xovi', 'x', 'y', 'mla_idA', 'mla_idB', 'ldA', 'ldB'])
 
    end_finexov = time.time()

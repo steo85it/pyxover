@@ -223,6 +223,7 @@ class gtrack:
       return self
 
    def read_fill(self, infil, read_all=False, t_start=0, t_end=0):
+      import datetime as dt
 
       if infil.split(".")[-1] in ["TAB", "tab"]:
          df = pd.read_csv(infil, sep=',', header=0)
@@ -239,9 +240,8 @@ class gtrack:
          if (t_start == 0):
             df['orbID'] = infil.split('.')[0][-10:]
          else:
-            import datetime as dt
             date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=t_start)
-            df['orbID'] = date.strftime('%y%m%d%H%m')
+            df['orbID'] = date.strftime('%y%m%d%H%M')
 
       self.name = df['orbID'].unique().squeeze()
 
@@ -258,7 +258,7 @@ class gtrack:
       else:
          df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid']]
 
-      # WD take only data in the timspan
+      # WD take only data in the timespan
       if (t_start != 0):
          df = df[df['ephemeristime'] >= t_start]
       if (t_end != 0):
@@ -281,6 +281,13 @@ class gtrack:
          if not self.XovOpt.get("debug"):
             df.drop(['geoc_long', 'geoc_lat', 'altitude'], axis=1, inplace=True)
 
+      if len(df['ephemeristime'])>0 and not('rdr_name' in df.columns):
+         print(df['ephemeristime'])
+         print(min(df['ephemeristime']))
+         date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=min(df['ephemeristime']))
+         df['orbid'] = date.strftime('%y%m%d%H%M')
+         self.name = df['orbid'].unique().squeeze()
+         
       # df = df[df['frm'] == 1]
       df.drop('frm', axis=1, inplace=True)
       # to compare to Mike's selection (chn >= 5 only ... )
@@ -503,7 +510,8 @@ class gtrack:
          ladata_df['LAT'] = results[0][:, 1]
          Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
          ladata_df['R'] = results[0][:, 2] - Rbase
-
+      if np.isnan(np.sum(ladata_df['LON'])):
+         print("isnan")
       if self.XovOpt.get("debug"):
          print(ladata_df)
          print(results[0][0, :], list(param)[0], len(param))
@@ -524,14 +532,13 @@ class gtrack:
          ladata_df['dLON/dh2'] = 0
          ladata_df['dLAT/dh2'] = 0
          ladata_df['dR/dh2']   = 0
-         
-         if self.sol_prev_iter == None:
-            delta_par = 0
 
          if (self.vecopts['OUTPUTTYPE'] == 0):
             
             if self.sol_prev_iter != None:
                delta_par = self.sol_prev_iter['glo']
+            else:
+               delta_par = 0 # WD: does it work?
             
             xyz_bf = np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']])
 
@@ -544,15 +551,15 @@ class gtrack:
                # correcting for the perturbation applied for numerical partials
                # getting current value of h2 (no effect since we divide by h2)
                self.pertPar['dh2'] += self.XovOpt.get("parGlo")['dh2']
-            
-            if self.sol_prev_iter != None:
-               delta_par=self.pertPa
+               delta_par=self.pertPar
+            else:
+               delta_par = 0 # WD: does it work?
 
             xyz_bf = np.transpose(astr.sph2cart(ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
                                                 ladata_df['LAT'].values, ladata_df['LON'].values))
 
          # WD: Check wether it works for more than one perturbing body
-         central_body = {"MERCURY": ['SUN'], "MOON": ['EARTH', 'SUN'], "CALLISTO": ['JUPITER']}         
+         central_body = {"MERCURY": ['SUN'], "MOON": ['EARTH', 'SUN'], "CALLISTO": ['JUPITER']}
          for pertbody in central_body[XovOpt.get('body')]:   
             # WD: check for (self.vecopts['OUTPUTTYPE'] == 0): it was ladata_df['ET_BC'] w/o values
             ladata_df['dR/dh2'] += tidepart_h2(self.vecopts, xyz_bf,
