@@ -10,7 +10,6 @@ from __future__ import division
 import sys
 import matplotlib as mpl
 
-# from examples.MLA.options import XovOpt.get("tmpdir")
 from config import XovOpt
 
 mpl.interactive(False)

@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 
 from accumxov import accum_opt, AccumXov as xovacc, accum_utils
 from accumxov.Amat import Amat
-# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("outdir")
 from config import XovOpt
 
 from xovutil.stat import rms

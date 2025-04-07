@@ -17,7 +17,6 @@ import numpy as np
 import pandas as pd
 
 from xovutil.pickleIO import save, load
-# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("local")
 from pyxover.xov_setup import xov
 from config import XovOpt
 
@@ -146,7 +145,6 @@ def run(seed,sub_len=100):
 def select_from_stats(sol ='KX1', subexp ='0res_1amp', outfil='bestROItracks.pkl'):
 
     from accumxov.Amat import Amat
-    # from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("vecopts")
     # import numpy as np
     from config import XovOpt
 

@@ -20,9 +20,6 @@ from statsmodels.tools.eval_measures import rmse
 
 # from AccumXov import remove_max_dist
 # from accum_utils import analyze_dist_vs_dR
-# from AccumXov import remove_max_dist
-# from accum_utils import analyze_dist_vs_dR
-# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("vecopts"), XovOpt.get("local"), XovOpt.get("debug"), XovOpt.get("sol4_orbpar"), XovOpt.get("parOrb"), XovOpt.get("parGlo")
 from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
@@ -196,7 +193,7 @@ def load_combine(xov_pth_,vecopts,dataset='sim'):
 
    # modify this selection to use sub-sample of xov only!!
    #------------------------------------------------------
-   # print(xov_pth_)
+   print(xov_pth_)
    # allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.pkl'))
    allFiles = []
    for xov_pth in xov_pth_:
@@ -238,7 +235,6 @@ def load_combine(xov_pth_,vecopts,dataset='sim'):
 
 def clean_xov(xov, par_list=[]):
    from accumxov.accum_utils import analyze_dist_vs_dR
-   # from accumxov.accum_opt import remove_max_dist
 
    # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
    # plus remove outliers with median method

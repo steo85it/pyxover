@@ -3,7 +3,6 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-# from examples.MLA.options import XovOpt.get("tmpdir")
 from config import XovOpt
 
 

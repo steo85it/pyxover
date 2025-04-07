@@ -11,7 +11,6 @@
 
 import numpy as np
 
-# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("debug")
 from config import XovOpt
 import spiceypy as spice
 from xovutil.units import as2deg

@@ -21,7 +21,6 @@ from pyaltsim.PyAltSim import sim_gtrack
 from xovutil.dem_util import get_demz_grd, get_demz_tiff
 from geolocate_altimetry import geoloc
 from pygeoloc.ground_track import gtrack
-# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("auxdir"), XovOpt.get("SpInterp"), XovOpt.get("tmpdir"), XovOpt.get("local"), XovOpt.get("debug"), pert_cloop, XovOpt.get("spauxdir")
 from config import XovOpt
 
 from xovutil import astro_trans as astr, pickleIO

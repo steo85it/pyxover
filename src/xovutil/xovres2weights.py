@@ -9,7 +9,6 @@
 import pickle
 
 import seaborn as sns
-# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("auxdir"), XovOpt.get("local"), XovOpt.get("debug"), XovOpt.get("outdir"), XovOpt.get("vecopts"), XovOpt.get("roughn_map")
 from config import XovOpt
 from xovutil.stat import rms
 

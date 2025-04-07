@@ -24,7 +24,6 @@ from pyaltsim.PyAltSim import sim_gtrack
 from xovutil.dem_util import get_demz_tiff, get_demz_grd
 # from geoloc_resid import lomb, fit_track_to_dem, import_dem, get_demz_at, read_dem
 from pygeoloc.ground_track import gtrack
-# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("auxdir"), XovOpt.get("SpInterp"), XovOpt.get("outdir"), XovOpt.get("local"), XovOpt.get("parallel"), XovOpt.get("tmpdir")
 from config import XovOpt
 
 from xovutil import astro_trans as astr, pickleIO
@@ -35,8 +34,6 @@ from scipy.sparse import csr_matrix
 from pyaltsim import perlin2d
 from diralt.geoloc_resid import lomb, fit_track_to_dem, import_dem, get_demz_at, lstsq_demfit, get_demres_full
 from pygeoloc.ground_track import gtrack
-# from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("tmpdir")
-# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("auxdir"), XovOpt.get("SpInterp")
 from config import XovOpt
 
 
@@ -293,7 +290,6 @@ def create_amat_csr(tid_df):
 
 if __name__ == '__main__':
 
-    # from examples.MLA.options import XovOptgetexpopt
     from config import XovOpt
 
     start = time.time()

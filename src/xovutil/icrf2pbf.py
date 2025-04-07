@@ -15,7 +15,6 @@ from math import pi
 
 import numpy as np
 
-# from examples.MLA.options import XovOpt.get("vecopts")
 from config import XovOpt
 
 

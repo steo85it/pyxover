@@ -30,14 +30,12 @@ from scipy.special import lpmv
 
 from xovutil import astro_trans as astr
 # mylib
-# from examples.MLA.options import XovOpt.get("SpInterp"), XovOpt.get("tmpdir"), XovOpt.get("debug"), XovOpt.get("local")
 from config import XovOpt
 
 
 ##############################################
 
 def set_const(h2_sol, central_body):
-   # from examples.MLA.options import pert_cloop
    # from config import XovOpt
     
    if XovOpt.get('body') == 'MERCURY':

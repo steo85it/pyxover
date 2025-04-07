@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 
 from xovutil import pickleIO
 from scripts.eval_sol import draw_map
-# from examples.MLA.options import XovOpt.get("outdir"), XovOpt.get("tmpdir"), XovOpt.get("vecopts")
 from config import XovOpt
 
 from xovutil.project_coord import project_stereographic

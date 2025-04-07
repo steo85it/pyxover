@@ -15,7 +15,6 @@ from scipy.sparse import diags
 from scipy.linalg import pinv, pinvh
 
 from accumxov.Amat import Amat
-# from examples.MLA.options import XovOpt.get("tmpdir"), XovOpt.get("outdir"), XovOpt.get("sol4_glo")
 from config import XovOpt
 
 from xovutil.iterables import mergsum

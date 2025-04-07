@@ -11,7 +11,6 @@ import subprocess
 import matplotlib.pyplot as plt
 import pandas as pd
 import xarray as xr
-# from examples.MLA.options import XovOpt.get("auxdir"), XovOpt.get("tmpdir"), XovOpt.get("outdir")
 from config import XovOpt
 
 from xovutil.plot_hillshade import plot_multiple
@@ -62,7 +61,7 @@ def plot_hillshade(data_grd):
     from matplotlib.colors import LightSource
 
     from xovutil.gtrack2dem import import_dem
-    # from examples.MLA.options import XovOpt.get("tmpdir")
+   
     from config import XovOpt
 
     with import_dem(data_grd) as dem:  # np.load(get_sample_data('jacksboro_fault_dem.npz')) as dem: #

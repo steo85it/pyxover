@@ -11,7 +11,6 @@ from pyxover.fine_xov import fine_xov_intersection
 from pyxover.project_gtracks import project_mla
 from pyxover.xov_prc_iters import load_mla_df
 
-# from examples.MLA.options import XovOpt.get("vecopts"), XovOpt.get("cloop_sim"), XovOpt.get("outdir"), XovOpt.get("partials")
 from config import XovOpt
 # from memory_profiler import profile
 
