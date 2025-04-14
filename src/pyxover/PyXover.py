@@ -22,7 +22,7 @@ from config import XovOpt
 from pygeoloc.ground_track import gtrack
 from pyxover.xov_setup import xov
 from accumxov.Amat import Amat
-from pyxover.xov_prc_iters import xov_prc_iters_run, retrieve_xov
+from pyxover.xov_prc_iters import xov_prc_iters_run, retrieve_xov, load_mla_df
 
 ########################################
 
@@ -34,8 +34,7 @@ def launch_xov(args):
    comb        = args[1]
    misycmb_par = args[2]
    mladata     = args[3]
-   outdir      = args[4]
-   xov_dir     = outdir + 'xov/'
+   xov_dir     = args[4] + 'xov/'
 
    xov_pklname = 'xov_' + track_idA + '_' + misycmb_par[1] + '.pkl'
    if XovOpt.get("new_xov"):
@@ -45,21 +44,9 @@ def launch_xov(args):
          # print("Processing " + track_id + " ...")
 
          trackA = gtrack(XovOpt.to_dict())
-            
-         if False: # Load gtracks for the attributes: pert_cloop, pert_cloop_0, sol_prev_iter
-            if XovOpt.get("weekly_sets"):
-               gtrack_dir = outdir + 'gtrack_' + misycmb_par[0] + '/'
-            elif XovOpt.get("monthly_sets"):
-               gtrack_dir = outdir + 'gtrack_' + misycmb_par[0][:2] + '/'
-                  
-            trackA = trackA.load(gtrack_dir + 'gtrack_' + track_idA + '.pkl')
-            if trackA == None:
-               print(gtrack_dir + 'gtrack_' + track_idA + '.pkl not found')
-            
-         if trackA.ladata_df is None:
-            trackA.ladata_df = mladata[track_idA]   # faster and less I/O which overloads PGDA
+         trackA.ladata_df = mladata[track_idA]   # faster and less I/O which overloads PGDA
 
-         if not trackA == None and len(trackA.ladata_df) > 0:
+         if len(trackA.ladata_df) > 0:
 
             xov_tmp = track_idA
             xov_tmp = xov(XovOpt.get("vecopts"))
@@ -67,6 +54,7 @@ def launch_xov(args):
             xovers_list = []
             n_multixov = 0
             n_zeroxov = 0
+            comb_noxov = []
             # loop over all combinations containing track_id
             for track_idA, track_idB in [s for s in comb if track_idA in s[0]]:
                nxov = 0
@@ -74,28 +62,9 @@ def launch_xov(args):
                if track_idB > track_idA:
                   
                   trackB = gtrack(XovOpt.to_dict())
-                        
-                  if False: # Load gtracks for the attributes: pert_cloop, pert_cloop_0, sol_prev_iter
-                     # TODO removed check on orbit for this test
-                     # only for "weekly_sets" or "monthly_sets":
-                     if XovOpt.get("weekly_sets"):
-                        gtrack_dir = outdir + 'gtrack_' + misycmb_par[1] + '/'
-                     elif XovOpt.get("monthly_sets"):
-                        gtrack_dir = outdir + 'gtrack_' + misycmb_par[1][:2] + '/'
-                     trackB = trackB.load(gtrack_dir + 'gtrack_' + track_idB + '.pkl')
-                     if trackB == None:
-                        print(gtrack_dir + 'gtrack_' + track_idB + '.pkl not found')
+                  trackB.ladata_df = mladata[track_idB]  # faster and less I/O which overloads PGDA
 
-                  if trackB.ladata_df is None:
-                     trackB.ladata_df = mladata[track_idB]  # faster and less I/O which overloads PGDA
-
-                  if not trackB == None and len(trackB.ladata_df) > 0:
-
-                     # # TODO remove when recomputing
-                     # trackA.ladata_df[['X_NPstgprj', 'Y_NPstgprj']] = trackA.ladata_df[['X_stgprj', 'Y_stgprj']]
-                     # trackB.ladata_df[['X_NPstgprj', 'Y_NPstgprj']] = trackB.ladata_df[['X_stgprj', 'Y_stgprj']]
-                     # trackA.ladata_df[] = trackA.ladata_df.rename(index=str, columns={"X_stgprj": "X_NPstgprj", "Y_stgprj": "Y_NPstgprj"})
-                     # trackB.ladata_df = trackB.ladata_df.rename(index=str, columns={"X_stgprj": "X_NPstgprj", "Y_stgprj": "Y_NPstgprj"})
+                  if len(trackB.ladata_df) > 0:
 
                      # looping over all track combinations and updating the general df xov_tmp.xovers
                      # WD: Only ladata_df seems to be necessary
@@ -103,6 +72,7 @@ def launch_xov(args):
                      nxov = xov_tmp.setup([trackA,trackB])
                      if nxov == 0:
                         n_zeroxov += 1
+                        comb_noxov.append((track_idA, track_idB))
                      elif nxov > 1:
                         n_multixov += 1
 
@@ -112,7 +82,9 @@ def launch_xov(args):
             if n_multixov > 0:
                print(f"More than one xover found in {n_multixov} track combinations.")
             if n_zeroxov > 0:
-               print(f"No xover found in {n_zeroxov} track combinations.")
+               print(f"No xover found between {track_idA} and the {n_zeroxov} following tracks:",
+                     [s[1] for s in comb_noxov])
+
 
             if XovOpt.get("new_algo"):
                xov_tmp.xovers = pd.DataFrame(xovers_list)
@@ -125,8 +97,8 @@ def launch_xov(args):
                xov_tmp.get_xov_latlon(trackA.ladata_df)
 
                # Save to file
-               if not os.path.exists(outdir + 'xov/'):
-                  os.mkdir(outdir + 'xov/')
+               if not os.path.exists(xov_dir):
+                  os.mkdir(xov_dir)
                if XovOpt.get("new_algo"):
                   # just pass rough_xovs to next step
                   return xov_tmp.xovers
@@ -136,12 +108,7 @@ def launch_xov(args):
                         xov_dir + xov_pklname + ' @' + time.strftime("%H:%M:%S", time.gmtime()))
                   return track_idA
 
-      # except:
-      #     print('failed to load trackA ' + outdir + 'gtrack_' + track_id + '.pkl'
-      #           + ' to process xov from ' + outdir + 'gtrack_' + track_id + '.pkl')
-
       else:
-         # track = track.load('out/xov_'+gtrackA+'.pkl')
          print('Xov for ' + track_idA + ' already exists in ' + xov_dir + xov_pklname + ' @' + time.strftime("%H:%M:%S", time.gmtime()))
 
    ########################################
@@ -150,18 +117,24 @@ def main(args_in):
    from config import XovOpt
 
    # read input args
-   print('Number of arguments:', len(args_in), 'arguments.')
-   print('Argument List:', str(args_in))
-
-   cmb_y_in = args_in[0]
-   indir_in = args_in[1]
-   outdir_in = args_in[2]
+   cmb_y_in    = args_in[0]
+   indir_in    = args_in[1]
+   outdir_in   = args_in[2]
    misycmb_par = args_in[3] # replaced in non BELA/CALA case
-   iter_in = args_in[4]
-   opts = args_in[5]
+   iter_in     = args_in[4]
+   opts        = args_in[5]
 
    # update options (needed when sending to slurm)
    XovOpt.clone(opts)
+   
+   print(f"Combination n°{cmb_y_in} (option to be removed, in progress...)")
+   print(f"Crossovers saved in {outdir_in}")
+   print(f"Combination: {misycmb_par}")
+   print(f"Iteration n°{iter_in}")
+   print("XovOpt")
+   print("------")
+   XovOpt.display()
+   print("\n")
 
    # set ncores
    ncores = 2 # mp.cpu_count() - 1  # 8
@@ -187,27 +160,19 @@ def main(args_in):
    par = int(cmb_y_in)
    if not XovOpt.get("instrument") in ['BELA','CALA','MLA']:
       if XovOpt.get("monthly_sets") and not XovOpt.get("weekly_sets"):
-         if XovOpt.get("instrument") == 'BELA':
-            misy = ['26'] #,'27']
-         else:
+         if XovOpt.get("instrument") == 'MLA':
             misy = ['11', '12', '13', '14', '15']
          months = np.arange(1,13,1)
          misy = [x+f'{y:02}' for x in misy for y in months]
       else:
-         if XovOpt.get("instrument") == 'BELA':
-            misy = ['26','27']
-         elif XovOpt.get("instrument") == 'LOLA':
+         if XovOpt.get("instrument") == 'LOLA':
             misy = ['09', '10']
-         else: # MLA?
+         elif XovOpt.get("instrument") == 'MLA':
             misy = ['08','11', '12', '13', '14', '15']
       misycmb = [x for x in itert.combinations_with_replacement(misy, 2)]
-      print(f"combs:{misycmb}")
+      print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
       misycmb_par = misycmb[par]
-      if True: #XovOpt.get("debug"):
-         print("Choose grid element among:",dict(map(reversed, enumerate(misycmb))))
       print(par, misycmb[par]," has been selected!")
-   else:
-      print(misycmb_par," has been selected!")
 
    ###########################
    startInit = time.time()
@@ -220,7 +185,9 @@ def main(args_in):
          gtrack_dirs = [os.path.join(XovOpt.get("outdir"), indir_in + par[:2] ) for par in misycmb_par]
    else:
       gtrack_dirs = indir_in
-      print("gtracks from argument", gtrack_dirs)
+   print(f"Tracks loaded from directories:")
+   for dir in gtrack_dirs:
+      print(dir)
 
    # useful columns for xovers fine search
    xov_useful_columns = ['LON', 'LAT', 'xOvID', 'orbA', 'orbB', 'mla_idA', 'mla_idB']
@@ -283,26 +250,15 @@ def main(args_in):
 
       # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
       # TODO, check wether one could safely save time by only considering xovers with a given weight
-      # iter = int(outdir_in.split('/')[1].split('_')[-1])
       iter = iter_in
       if iter > 0:
          comb = select_useful_comb(comb, iter, outdir_in)
 
+      print("Track combinations:")
       print(comb)
 
       # Load all tracks
       # ---------------
-      # tmp = [gtrack(vecopts) for i in range(len(allFiles))]
-
-      # if False:
-      #     tracklist = {}
-      #     for idx, fil in enumerate(allFiles):
-      #         try:
-      #             print(outdir)
-      #             _ = tmp[idx].load(outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
-      #             tracklist[str(_.name)] = _
-      #         except:
-      #             print('Failed to load' + outdir + '/gtrack_' + fil.split('.')[0][-10:] + '.pkl')
 
       # Read all ladata needed for these combinations
       # ---------------------------------------------
@@ -312,42 +268,13 @@ def main(args_in):
       cols = ['ET_TX', 'TOF', 'orbID', 'seqid', 'ET_BC', 'offnadir', 'LON', 'LAT', 'R',
               'X_stgprj', 'Y_stgprj']
 
-      for track_id in set(np.ravel(comb)):
-         #  Look for gtrack file in each gtrack directory
-         track_obj.load_df_from_id(gtrack_dirs[0], track_id)
-         if track_obj.ladata_df is None:
-            track_obj.load_df_from_id(gtrack_dirs[1], track_id)
-         if track_obj.ladata_df is None:
-            print(f"*** PyXover: Issue loading ladata from {track_id} in {gtrack_dirs}.")
-            exit()
-
-         # resurrect as soon as got also south part of obs track
-         #if instr == 'BELA':
-         #     print(track_obj.ladata_df['LAT'].max(axis=0))
-         #     print(track_obj.ladata_df['LAT'].min(axis=0))
-         #     exit()
-         #
-         #     # print("presel",len(track_obj.ladata_df))
-         #     mladata[track_id] =track_obj.ladata_df.loc[track_obj.ladata_df['LAT']>=0,cols]
-         #     # print("postsel",len(mladata[track_id]))
-         # else:
-         # print(track_id, XovOpt.get("outdir") + outdir_in + 'gtrack_' + track_id[:2] + '/gtrack_' + track_id + '.pkl')
-         # print(track_obj.ladata_df)
-
-         try:
-            mladata[track_id] = track_obj.ladata_df.loc[:,cols]
-         except:
-            print(f"*** PyXover: Issue with {track_id}. Skip.")
-            exit()
-
-         # transform to df to get memory
-         # print("total memory:",pd.from_dict(mladata).memory_usage(deep=True).sum()*1.e-6)
-         # exit()
-
-
+      # Wouldn't it be better to downsample the df with msrm_sampl here already?
+      # mladata = load_mla_df(gtrack_dirs, list(np.ravel(comb)), cols) # This takes much longer ...
+      mladata = load_mla_df(gtrack_dirs, list(set(np.ravel(comb))), cols)
+      
       endInit = time.time()
       print('----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' + str(
-         (endInit - startInit) / 60.) + ' min -----')
+         (endInit - startInit) / 60.) + ' min -----\n')
 
       # -------------------------------
       # Xovers setup
@@ -355,18 +282,9 @@ def main(args_in):
 
       startXov2 = time.time()
 
-      print("Memory of mladata (Mb):",sum([mladata[x].memory_usage(deep=True).sum() for x in mladata])/1.e6)
-      # mladata_1 = dict(list(mladata.items())[:len(mladata) // 3])
-      # mladata_2 = dict(list(mladata.items())[len(mladata) // 3:2*(len(mladata) // 3)])
-      # mladata_3 = dict(list(mladata.items())[2*(len(mladata) // 3):])
-      #
-      # # mask = np.all(np.any(comb[..., None] == np.array(list(mladata_1.keys()))[None, None], axis=1), axis=1)
-      # mask = np.isin(comb, list(mladata_1.keys()))
-      # comb_1 = comb[np.all(mask,axis=1),:]
-
       # WD: Should pert_cloop, pert_cloop_0, sol_prev_iter be somehow passed as an argument ?
       args = ((fil.split('.')[0].split('_')[-1], comb, misycmb_par, mladata, XovOpt.get("outdir") + outdir_in) for fil in allFilesA)
-      print("Looking for (potential) xovers within combinations of",len(allFilesA),"tracks (A) with",len(allFilesB),"tracks (B)...")
+      print("\nLooking for (potential) xovers within combinations of",len(allFilesA),"tracks (A) with",len(allFilesB),"tracks (B)...\n")
 
       # loop over all gtracks
       # parallel = 1
@@ -427,7 +345,7 @@ def main(args_in):
             rough_xov_path = XovOpt.get("outdir") + outdir_in + 'xov/tmp/xovin_' + str(misycmb_par[0]) + '_' + str(misycmb_par[1]) + '.pkl.gz'
             # WD: should save only xov_useful_columns? ['R_A', 'R_B', 'dR'] are anyway 0 ...
             rough_xov.to_pickle(rough_xov_path)
-            print(f"Rough xovers saved as {rough_xov_path}")
+            print(f"\nRough xovers saved as:\n{rough_xov_path}\n")
          else:
             acttracks = np.unique(np.array([x for x in result if x is not None]).flatten())
       else:
@@ -446,10 +364,9 @@ def main(args_in):
    else: # xovs are taken from old iter or from other file
       rough_xov = retrieve_xov(outdir_in, iter_in, misycmb_par, xov_useful_columns)
 
-   print(f"misycmb_par: {misycmb_par}")
-   print(f"number of rough xovers: {len(rough_xov)}")
+   print(f"\nNumber of rough xovers: {len(rough_xov)}\n")
    # called either with results from xov_rough (iter=0) or with empty df and xovers from old solution
-   # WD: Might be worth to pass mladata[track_id] if not XovOpt.get("import_proj"), but more cols are requires
+   # WD: Might be worth to pass mladata[track_id] if not XovOpt.get("import_proj"), but more cols are required
    if XovOpt.get("new_algo"):
       print("Calling a new awesome routine!!")
       xov_prc_iters_run(outdir_in, misycmb_par, rough_xov, gtrack_dirs)
