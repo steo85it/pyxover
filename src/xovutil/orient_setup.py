@@ -24,16 +24,16 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
     nc, POLE_DEC0 = spice.bodvrd(XovOpt.get('body'), 'POLE_DEC', 3)
     nc, PM0 = spice.bodvrd(XovOpt.get('body'), 'PM', 3)
 
-    # WD: Not sure if this can be removed ...
+    # Extrapolated from different a priori PM_rate and librations
     if XovOpt.get("vecopts")['PM_ORIGIN'] == 'J2013.0':
        if AG:
-          PM0 = np.array([318.4455, 6.1385054, 0.]) # @J2013.0 (extrapolated with a priori PM_rate and librations)
+          PM0 = np.array([318.4455, 6.1385054, 0.])
           #PM0 = np.array([318.2245, 6.1385054, 0.])
        elif ZAP:
           # from zero
-          PM0 = np.array([318.2245, 0., 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
+          PM0 = np.array([318.2245, 0., 0.])
        elif XovOpt.get('body') == 'MERCURY':
-          PM0 = np.array([318.3201, 6.1385108, 0.])  # @J2013.0 (extrapolated with a priori PM_rate and librations)
+          PM0 = np.array([318.3201, 6.1385108, 0.])
        else:
           print(f"*** orient_setup: {XovOpt.get('body')} not recognized.")
           exit()

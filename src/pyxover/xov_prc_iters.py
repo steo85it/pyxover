@@ -42,12 +42,12 @@ def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
 
    end = time.time()
 
-   print('Xov for ' + str(cmb) + ' processed and written to ' + xov_dir + xov_pklname +
-         '@' + time.strftime("%H:%M:%S", time.gmtime()))
+   print('Xov for ' + str(cmb) + ' processed @' + time.strftime("%H:%M:%S", time.gmtime()) +
+         'and written to:\n' + xov_dir + xov_pklname)
 
-   print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
+   print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!\n")
    # print(xov_tmp.xovers.columns)
-   print(xov_tmp.xovers.dR)
+   # print(xov_tmp.xovers.dR)
    return xov_tmp
 
 # @profile
@@ -70,7 +70,7 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
          (old_xovs['orbA'].str.startswith(str(cmb[0]))) & (old_xovs['orbB'].str.startswith(str(cmb[1])))]
 
    tracks_in_xovs = np.unique(old_xovs[['orbA', 'orbB']].values)
-   print("Processing", len(tracks_in_xovs), "tracks, previously resulting in", len(old_xovs), "xovers.")
+   print("\nProcessing", len(tracks_in_xovs), "tracks, previously resulting in", len(old_xovs), "xovers.")
    # check if tracks to process in this combination
    if len(tracks_in_xovs)==0:
       print("No tracks to be processed. Stop!")
@@ -149,7 +149,7 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
 
    end = time.time()
 
-   print("Pre-processing finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
+   print("Pre-processing finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!\n")
    return mla_proj_df, fine_xov_df
 
 def extract_mla_xov(old_xovs, tracks_in_xovs, mladata, n_interp, partials):
@@ -299,6 +299,8 @@ def load_mla_df(gtrack_dirs, tracks_in_xovs, columns):
          print(f"*** PyXover: Issue loading ladata from {track_id} from {gtrack_dirs}.")
          exit()
       mladata[track_id] = track.ladata_df[columns]
+      
+   print("Memory of mladata (Mb):",sum([mladata[x].memory_usage(deep=True).sum() for x in mladata])/1.e6)
 
    return mladata
  

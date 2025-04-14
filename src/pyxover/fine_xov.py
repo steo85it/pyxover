@@ -212,8 +212,9 @@ def compute_fine_xov(mla_proj_df, fine_xov_df, n_interp):
 
    end_finexov = time.time()
    print("Fine_xov finished after", int(end_finexov - start_finexov), "sec or ",
-         round((end_finexov - start_finexov) / 60., 2), " min and located", len(all_xov.xovers), "out of previous",
-         len(xovs_list), "xovers!")
+         round((end_finexov - start_finexov) / 60., 2), " min.")
+   print(f"{len(all_xov.xovers)/len(xovs_list)*100:.2f} % of the rough xovers have been located",
+         len(xovs_list)-len(all_xov.xovers), " were not found.")
    return all_xov
 
 def fine_compute_xov_proc(xovi, df, all_xov, fine_xov_df, n_interp):
@@ -303,6 +304,7 @@ def fine_compute_xov_proc(xovi, df, all_xov, fine_xov_df, n_interp):
    all_xov.xovtmp['xOvID'] = xovi
 
    # Update general df (serial only, does not work in parallel since not a shared object)
+   # FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
    if not XovOpt.get("parallel"):
       # all_xov.xovers = all_xov.xovers.append(all_xov.xovtmp, sort=True)
       all_xov.xovers = pd.concat([all_xov.xovers, all_xov.xovtmp], sort=True)

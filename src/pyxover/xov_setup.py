@@ -144,6 +144,8 @@ class xov:
 
    # @profile
    def combine(self, xov_list):
+      # Combine all xovers in xov_list, remove duplicates, reset index
+      # Retrieve all orbits involved in xov_list, and partials
 
         # Only select elements with number of xovers > 0
         xov_list = [x for x in xov_list if len(x.xovers) > 0]
@@ -152,14 +154,13 @@ class xov:
         if len(xov_list) > 0:
             self.xovers = pd.concat([x.xovers for x in xov_list], sort=True)
             # check for duplicate rows
-            print("len xovers (pre duplicate search):", len(self.xovers))
+            print(f"{len(self.xovers)} xovers found before duplicate search")
             if XovOpt.get("instrument") == "BELA":  # doesn't really make sense... useful to have working tests
                 self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'], errors='ignore').round(6).drop_duplicates()
             else:
                 self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'], errors='ignore').drop_duplicates()
-            # .reset_index().rename(
-            # columns={"index": "xOvID"})
-            print("new len xovers (post duplicates):", len(self.xovers))
+            print(f"{len(self.xovers)} xovers found after duplicate search")
+
             # reset index to have a sequential one
             self.xovers = self.xovers.reset_index(drop=True)
             self.xovers['xOvID'] = self.xovers.index
@@ -719,7 +720,6 @@ class xov:
             import geopandas as gpd
 
             print(f"debug rough intersection")
-            print(XovOpt.get('tmpdir'))
             os.makedirs(XovOpt.get('tmpdir'), exist_ok=True)
 
             if XovOpt.get("selected_hemisphere") == 'N':
@@ -731,10 +731,12 @@ class xov:
             crs_stereo_km = f'+proj=stere +lat_0={lat_0} +lon_0=0 +lat_ts={lat_0} +k=1 +x_0=0 +y_0=0 +units=km +a={plarad}e3 +b={plarad}e3 +no_defs'
 
             print(x, y, ind_A, ind_B)
-            df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]][::msrm_sampl]
+            # df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]][::msrm_sampl]
+            df0 = ladata_df.loc[ladata_df['orbID'] == arg[0]]
             gdf0 = gpd.GeoDataFrame(
                 df0, geometry=gpd.points_from_xy(df0.LON, df0.LAT), crs=crs_lonlat)
-            df1 = ladata_df.loc[ladata_df['orbID'] == arg[1]][::msrm_sampl]
+            # df1 = ladata_df.loc[ladata_df['orbID'] == arg[1]][::msrm_sampl]
+            df1 = ladata_df.loc[ladata_df['orbID'] == arg[1]]
             gdf1 = gpd.GeoDataFrame(
                 df1, geometry=gpd.points_from_xy(df1.LON, df1.LAT), crs=crs_lonlat)
 
@@ -746,11 +748,11 @@ class xov:
             print(gdf1[['X_stgprj', 'Y_stgprj']])
             print(gdf1.to_crs(crs_stereo_km).columns)
             ax = plt.subplot()
-            gdf0.to_crs(crs_stereo_km).plot(ax=ax, markersize=1)  # , label=gdf0.orbID[0])  # , color='red')
-            gdf1.to_crs(crs_stereo_km).plot(ax=ax, markersize=1)  # , label=gdf1.orbID[0])  # , color='red')
-            gdf2 = gpd.GeoDataFrame(
-                geometry=gpd.points_from_xy(x, y), crs=crs_stereo_km)
-            gdf2.plot(ax=ax)
+            gdf0.to_crs(crs_stereo_km).plot(ax=ax, markersize=1, label=arg[0])  # , color='red')
+            gdf1.to_crs(crs_stereo_km).plot(ax=ax, markersize=1, label=arg[1])  # , color='red')
+            if len(x)>0:
+               gdf2 = gpd.GeoDataFrame(geometry=gpd.points_from_xy(x, y), crs=crs_stereo_km)
+               gdf2.plot(ax=ax)
 
             plt.xlim(-100, 100)
             plt.ylim(-100, 100)
@@ -787,138 +789,134 @@ class xov:
    # @profile
    # Old algo
    def get_xov(self):
-        """
-        Read ladata_df and compute all xovers, then updates xovers dataframe
-        :return: number of detected xovers
-        """
-        ladata_df = self.ladata_df  # adapt
+      """
+      Read ladata_df and compute all xovers, then updates xovers dataframe
+      :return: number of detected xovers
+      """
+      ladata_df = self.ladata_df  # adapt
 
-        # Get intersections between all orbits (x of xover,y of xover,
-        # i=index in first orbit,j=index in second orbit)
+      # Get intersections between all orbits (x of xover,y of xover,
+      # i=index in first orbit,j=index in second orbit)
 
-        # Copy index to column for book-keeping of crossovers
-        ladata_df['genID'] = ladata_df.index
+      # Copy index to column for book-keeping of crossovers
+      ladata_df['genID'] = ladata_df.index
 
-        # Call sequence only
-        # Compute crossover position (2 steps procedure: first roughly locate,
-        # downsampling data to 'msrm_sampl', then with full sampling around the
-        # points located with the first pass). Use either the seq or parallel
-        # version.
+      # Call sequence only
+      # Compute crossover position (2 steps procedure: first roughly locate,
+      # downsampling data to 'msrm_sampl', then with full sampling around the
+      # points located with the first pass). Use either the seq or parallel
+      # version.
 
-        # if(parallel):
-        #  #print((mp.cpu_count() - 1))
-        #  pool = mp.Pool(processes = mp.cpu_count() - 1)
-        #  results = pool.map(self.get_xOver_elev, comb)  # parallel
-        # else:
-        results = self.get_xOver_elev(list(self.tracks.values()))  # seq
+      # if(parallel):
+      #  #print((mp.cpu_count() - 1))
+      #  pool = mp.Pool(processes = mp.cpu_count() - 1)
+      #  results = pool.map(self.get_xOver_elev, comb)  # parallel
+      # else:
+      results = self.get_xOver_elev(list(self.tracks.values()))  # seq
 
-        if results is not None:
-            # print(results)
-            xovtmp = self.postpro_xov_elev(ladata_df, results)
-            if len(results) == 1:
-                xovtmp = pd.DataFrame(xovtmp, index=[0])  # very slow and should be avoided if only 1 line
+      if results is not None:
+         # print(results)
+         xovtmp = self.postpro_xov_elev(ladata_df, results)
+         if len(results) == 1:
+            xovtmp = pd.DataFrame(xovtmp, index=[0])  # very slow and should be avoided if only 1 line
 
-            # print(xovtmp)
-            # exit()
+         # Update xovtmp as attribute for partials
+         self.xovtmp = xovtmp
 
-            # Update xovtmp as attribute for partials
-            self.xovtmp = xovtmp
+         if XovOpt.get("debug"):
+            print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " +
+                  list(self.tracks.keys())[1])
 
-            if XovOpt.get("debug"):
-                print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " +
-                      list(self.tracks.keys())[1])
+         return len(xovtmp)
 
-            return len(xovtmp)
+      else:
+         if XovOpt.get("debug"):
+            if len(self.tracks):
+               tmp = dict([v, k] for k, v in self.tracks.items())
+               print("no xovers btw " + tmp[0] + " and " + tmp[1])
+               # exit()
 
-        else:
-            if XovOpt.get("debug"):
-                if len(self.tracks):
-                    tmp = dict([v, k] for k, v in self.tracks.items())
-                    print("no xovers btw " + tmp[0] + " and " + tmp[1])
-                    exit()
-
-            return -1  # 0 xovers found
+         return -1  # 0 xovers found
 
    # @profile
    # new_algo
    def get_xov_prelim(self):
-        """
-        Read ladata_df and compute all xovers, then updates xovers dataframe
-        :return: number of detected xovers
-        """
-        ladata_df = self.ladata_df  # adapt
+      """
+      Read ladata_df and compute all xovers, then updates xovers dataframe
+      :return: number of detected xovers
+      """
+      ladata_df = self.ladata_df  # adapt
 
-        # Get intersections between all orbits (x of xover,y of xover,
-        # i=index in first orbit,j=index in second orbit)
+      # Get intersections between all orbits (x of xover,y of xover,
+      # i=index in first orbit,j=index in second orbit)
 
-        # Copy index to column for book-keeping of crossovers
-        ladata_df['genID'] = ladata_df.index
+      # Copy index to column for book-keeping of crossovers
+      ladata_df['genID'] = ladata_df.index
 
-        # Call sequence only
-        # Compute crossover position (2 steps procedure: first roughly locate,
-        # downsampling data to 'msrm_sampl', then with full sampling around the
-        # points located with the first pass). Use either the seq or parallel
-        # version.
+      # Call sequence only
+      # Compute crossover position (2 steps procedure: first roughly locate,
+      # downsampling data to 'msrm_sampl', then with full sampling around the
+      # points located with the first pass). Use either the seq or parallel
+      # version.
 
-        # if(parallel):
-        #  #print((mp.cpu_count() - 1))
-        #  pool = mp.Pool(processes = mp.cpu_count() - 1)
-        #  results = pool.map(self.get_xOver_elev, comb)  # parallel
-        # else:
-        # results = self.get_xOver_elev(list(self.tracks.values()))  # seq
+      # if(parallel):
+      #  #print((mp.cpu_count() - 1))
+      #  pool = mp.Pool(processes = mp.cpu_count() - 1)
+      #  results = pool.map(self.get_xOver_elev, comb)  # parallel
+      # else:
+      # results = self.get_xOver_elev(list(self.tracks.values()))  # seq
 
-        arg = list(self.tracks.values())
-        # ladata_df = self.ladata_df
-        msrm_sampl = self.msrm_sampl
+      arg = list(self.tracks.values())
+      # ladata_df = self.ladata_df
+      msrm_sampl = self.msrm_sampl
 
-        ind_A, ind_B, x, y = self.get_xover_rough(arg, ladata_df, msrm_sampl)
+      ind_A, ind_B, x, y = self.get_xover_rough(arg, ladata_df, msrm_sampl)
 
-        # reassign index to full list (from down-sampled index)
-        ind_A *= msrm_sampl
-        ind_B *= msrm_sampl
+      # reassign index to full list (from down-sampled index)
+      ind_A *= msrm_sampl
+      ind_B *= msrm_sampl
 
-        if len(x) == 1:
-            # Retrieve ladata_df index of observations involved in the crossover
-            # (can be used to extract orbit number with join btw ladata_df and xovers_df -
-            # eg, (ladata_df.loc[ind0][['orbID']].values).reshape(1,-1) -
-            # the orbit number can then be used to get the value at ind_A and ind_B by interpolation)
-            # ind0 and ind1 now are the indices of the points just before the
-            # intersection in ladata_df, so that (ind0,ind0+1) and (ind1,ind1+1) are the
-            # bracketing points' indeces
-            rough_indA = ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[ind_A].index.values
-            rough_indB = ladata_df.loc[ladata_df['orbID'] == arg[1]].iloc[ind_B].index.values
+      if len(x) == 1:
+         # Retrieve ladata_df index of observations involved in the crossover
+         # (can be used to extract orbit number with join btw ladata_df and xovers_df -
+         # eg, (ladata_df.loc[ind0][['orbID']].values).reshape(1,-1) -
+         # the orbit number can then be used to get the value at ind_A and ind_B by interpolation)
+         # ind0 and ind1 now are the indices of the points just before the
+         # intersection in ladata_df, so that (ind0,ind0+1) and (ind1,ind1+1) are the
+         # bracketing points' indeces
+         rough_indA = ladata_df.loc[ladata_df['orbID'] == arg[0]].iloc[ind_A].index.values
+         rough_indB = ladata_df.loc[ladata_df['orbID'] == arg[1]].iloc[ind_B].index.values
 
-            results = [[x[0] for x in [x, y, rough_indA, rough_indB, np.zeros(len(x)), np.zeros(len(x))]]]
-        else:
-            if len(x) > 1:
+         results = [[x[0] for x in [x, y, rough_indA, rough_indB, np.zeros(len(x)), np.zeros(len(x))]]]
+      else:
+         if len(x) > 1:
+            print("More than one xover was found between tracks", self.tracks)
                
-               print("More than one xover was found between tracks", self.tracks)
-               
-            results = None
+         results = None
 
-        if results is not None:
-            xovtmp = self.postpro_xov_elev(ladata_df, results)
+      if results is not None:
+         xovtmp = self.postpro_xov_elev(ladata_df, results)
 
-            # Update xovtmp as attribute for partials
-            self.xovtmp = xovtmp
-            # by default, just taking single xovers (will be an issue with other probes...)
-            nxov = 1  # np.max([len([x]) for x in xovtmp])
+         # Update xovtmp as attribute for partials
+         self.xovtmp = xovtmp
+         # by default, just taking single xovers (will be an issue with other probes...)
+         nxov = 1  # np.max([len([x]) for x in xovtmp])
 
-            if XovOpt.get("debug"):
-               # WD: len(xovtmp) is not the number of xovers found ...
-               print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " +
-                     list(self.tracks.keys())[1])
+         if XovOpt.get("debug"):
+            # WD: len(xovtmp) is not the number of xovers found ...
+            print(str(len(xovtmp)) + " xovers found btw " + list(self.tracks.keys())[0] + " and " +
+                  list(self.tracks.keys())[1])
 
-            return nxov
+         return nxov
 
-        else:
-            if XovOpt.get("debug"):
-                if len(self.tracks):
-                    tmp = dict([v, k] for k, v in self.tracks.items())
-                    print("no xovers btw " + tmp[0] + " and " + tmp[1])
-                    exit()
+      else:
+         if XovOpt.get("debug"):
+            if len(self.tracks):
+               tmp = dict([v, k] for k, v in self.tracks.items())
+               print("no xovers btw " + tmp[0] + " and " + tmp[1])
+               exit()
 
-            return len(x)  # 0 xovers found
+         return len(x)  # 0 xovers found
 
    # @profile
    def postpro_xov_elev(self, ladata_df, results):

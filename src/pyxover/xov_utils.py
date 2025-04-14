@@ -182,7 +182,7 @@ def plot_tracks_histo(postfit_list, filename=XovOpt.get("tmpdir") + '/histo_trac
     plt.clf()
 
 
-def load_combine(xov_pth_,vecopts,dataset='sim'):
+def load_combine(xov_pth_,vecopts):
    # -------------------------------
    # Amat setup
    # -------------------------------
@@ -193,7 +193,6 @@ def load_combine(xov_pth_,vecopts,dataset='sim'):
 
    # modify this selection to use sub-sample of xov only!!
    #------------------------------------------------------
-   print(xov_pth_)
    # allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.pkl'))
    allFiles = []
    for xov_pth in xov_pth_:

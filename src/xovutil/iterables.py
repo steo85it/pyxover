@@ -7,6 +7,7 @@
 #
 
 import numpy as np
+import time
 
 from scipy.sparse import csr_matrix, csc_matrix
 
@@ -56,6 +57,7 @@ def multiply_sparse_get_diag(a,b):
     # a, b = get_random_sparse(n=n, p=p, density=0.0002)
 
     print('start multiply_sparse_get_diag')
+    time1 = time.perf_counter()
     args = ((i, a, b) for i in range(n))
 
     if True: #parallel:
@@ -69,6 +71,8 @@ def multiply_sparse_get_diag(a,b):
         tmp = [row_times_cols(args[i]) for i in range(n)]
 
     print('end multiply_sparse_get_diag')
+    time2 = time.perf_counter()
+    print("Elapsed time: ", time2-time1)
 
     return np.array(tmp)
 

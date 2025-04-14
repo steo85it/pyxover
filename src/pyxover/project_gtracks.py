@@ -155,7 +155,7 @@ def project_mla(mla_proj_df, part_proj_dict, partials):
    ################################################
    end_proj = time.time()
    print("Projection finished after", int(end_proj - start_proj), "sec or ", round((end_proj - start_proj) / 60., 2),
-         " min!")
+         " min!\n")
    ################################################
 
    return mla_proj_df

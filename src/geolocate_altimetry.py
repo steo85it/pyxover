@@ -94,14 +94,14 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
       if (XovOpt.get("SpInterp") > 0):
          cmat = SpObj['MGRa'].evalCmat(et_tx)
       else:
-         # print(min(et_tx),max(et_tx))
-         # print(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
-         # cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
          try:
             cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
          except:
-            print(min(et_tx),max(et_tx))
-            print(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
+            print("\n*** geolocate_altimetry: Issue when reading attitude")
+            print("From: ",vecopts['SCFRAME'])
+            print("To: ",vecopts['INERTIALFRAME'])
+            print("Time interval: ", min(et_tx),max(et_tx))
+            cmat = pxform_array(vecopts['SCFRAME'], vecopts['INERTIALFRAME'], et_tx)
             exit(2)
 
       # rotate boresight dir to inertial frame
@@ -202,7 +202,7 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
       dr = np.sum(np.vstack(dr_part), axis=0)
       dlon = np.sum(np.vstack(dlon_part), axis=0)
       dlat = np.sum(np.vstack(dlat_part), axis=0)
-   else: # WD: TO DO: Clean a bit the shae mismatch
+   else: # WD: TO DO: Clean a bit the shape mismatch
       dr = np.array(dr_part)
       dlon = np.array(dlon_part)
       dlat = np.array(dlat_part)
@@ -305,8 +305,6 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
 
    scpos = 1.e3 * scpv[:, :3]
    scvel = 1.e3 * scpv[:, 3:]
-   # scpos = 1.e3 * np.squeeze(scpv)[:, :3]
-   # scvel = 1.e3 * np.squeeze(scpv)[:, 3:]
 
    # Compute and add ACR offset (if corrections != 0)
    # print([tmp_pertPar[k] for k in ['dA','dC','dR']])
