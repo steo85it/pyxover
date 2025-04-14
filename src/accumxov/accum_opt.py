@@ -23,7 +23,7 @@ class AccOpt:
       "offnad_threshold": 2,
       "h2_limit_on": False,
       # remove worse obs at first iter to speed up
-      "downsize": True,  # False #  # False for pawstel
+      "downsize": False,  # False #  # False for pawstel
       # extract sample for bootstrap
        "sampling": False,  #
       # rescaling factor for weight matrix, based on average error on xovers at Mercury
@@ -39,6 +39,9 @@ class AccOpt:
       "convergence_criteria": 0.05,  # =5%
       # VCE
       "compute_vce": False,  # True
+      
+      "Abmat_outfile": "",
+      "Abmat_infile": ""
 
    }
    __setters = list(__conf.keys())
@@ -59,6 +62,20 @@ class AccOpt:
    @staticmethod
    def get(name):
       return AccOpt.__conf[name]
+   
+   @staticmethod
+   def display():
+      for key, value in AccOpt.__conf.items():
+         print(f"{key}: {value}")
+   
+   @staticmethod
+   def to_dict():
+      return AccOpt.__conf
+     
+   @staticmethod
+   def clone(opts):
+      # print("- Updating XovOpt")
+      AccOpt.__conf = opts.copy()
 
    @staticmethod
    def set(name, value):

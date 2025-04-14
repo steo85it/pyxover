@@ -17,20 +17,17 @@ class XovOpt:
         "instrument" : "MLA", #"pawstel", #"BELA", #
         "selected_hemisphere" : 'N',
 
-        # dirs
+        # directories
         "basedir": 'pawstel/data/',
         "rawdir": f'raw/',
         "outdir": f'out/',
         "auxdir": f'aux/',
         "tmpdir": f'tmp/',
-        "inpdir": f'',
         "spauxdir": 'KX_spk/',  # 'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
 
         # pyxover options
         # set number of processors to use
         "n_proc": mp.cpu_count() - 3,
-        "import_proj": False,
-        "import_abmat": "",
 
         # processing opt
         "expopt" : 'BS0',
@@ -46,7 +43,8 @@ class XovOpt:
                   'dR/dC': 1.e2, 'dR/dR': 2.e1},  # , 'dR/dRl':5.e1, 'dR/dPt':5.e1} #
         # 'dR/dA1':1.e-1, 'dR/dC1':1.e-1,'dR/dR1':1.e-1, 'dR/dA2':1.e-2, 'dR/dC2':1.e-2,'dR/dR2':1.e-2} #, 'dR/dA2':1.e-4, 'dR/dC2':1.e-4,'dR/dR2':1.e-2} # 'dR/dA':100., 'dR/dC':100.,'dR/dR':100.} #, 'dR/dh2': 1} #
         "mean_constr": {'dR/dA': 1.e0, 'dR/dC': 1.e0, 'dR/dR': 1.e0},  # , 'dR/dRl':1.e-1, 'dR/dPt':1.e-1}
-        # define if it's a closed loop simulation run
+        
+        # define if it's a closed loop simulation run (WD: not sure what this is doing...)
         "cloop_sim": False,
 
         # perturbations for closed loop sims (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
@@ -65,25 +63,27 @@ class XovOpt:
         # orbital representation
         "OrbRep": 'cnt' , # 'lin' # 'quad' #
 
+        # Spice options (for pyAltSim and PyGeoloc)
         # interpolation/spice direct call (0: use spice, 1: yes, use interpolation, 2: yes, create interpolation)
         "SpInterp": 0,
         "spice_meta": 'mymeta',
         "spice_spk": [], # list of additional kernels to load
+
+        # PyGeoloc options
         # create new gtrack (0:no, 1:yes, if not already present, 2: yes, create and replace)
         "new_gtrack": 2,
+        
+        # PyXover options
+        "import_proj": False,
+        "import_abmat": "",
         # create new xov (0:no, 1:yes, if not already present, 2: yes, create and replace)
         "new_xov": 2,
-
         # Other options
         "weekly_sets": False,
         # monthly or yearly sets for PyXover
         "monthly_sets": False,
         # analyze multi-xov pairs
         "multi_xov": False,
-        # compute full covariance (could give memory issues)
-        "full_covar": False,  # True #
-        # roughness map
-        "roughn_map": False,
         # new algo
         "new_algo": True,  # False #
         # load input xov
@@ -92,20 +92,22 @@ class XovOpt:
         "msrm_sampl" : 2, # 4, 6, 8, 10 ...
         # number of la points around xovers (on both sides) for interpolation
         "n_interp" : 6,
+        
+        # AccumXov options
+        # compute full covariance (could give memory issues)
+        "full_covar": False,  # True #
+        # roughness map
+        "roughn_map": False,
 
         # PyAltSim options
-        # simulation mode ! WD: possible option to (0:no, 1:yes, use, 2: yes, create)
-        "sim_altdata": 0,
         # recompute a priori
-        "new_illumNG": 0,
-        # interpolation/spice direct call (0:no, 1:yes, use, 2: yes, create)
-        "new_sim" : 2,
+        "new_illumNG": True,
         # use large scale topography
-        "apply_topo": 0,
+        "apply_topo": True,
         # apply small scale topography (simulated)
         "small_scale_topo": False,
         # range noise
-        "range_noise": 0,
+        "range_noise": True,
         # range noise mean and std [m]
         "range_noise_mean_std" : [0.,0.],
         # local/global DEM (LOLA)
@@ -172,7 +174,8 @@ class XovOpt:
 
     @staticmethod
     def display():
-        print(XovOpt.__conf)
+        for key, value in XovOpt.__conf.items():
+           print(f"{key}: {value}")
 
     @staticmethod
     def to_dict():
