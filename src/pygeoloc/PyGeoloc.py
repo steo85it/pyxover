@@ -39,8 +39,14 @@ def launch_gtrack(args):
             os.makedirs(XovOpt.get("outdir") + outdir_in, exist_ok=True)
 
          track.setup()
+         
+         for index, row in track.ladata_df.iterrows():
+            if np.isnan(np.sum(row.values[4:])):
+               print("Found nan in")
+               print(row)
 
          if XovOpt.get("debug"):
+            pd.set_option('display.max_columns', 500)
             print("track#:", track.name)
             print("max diff R", abs(track.ladata_df.loc[:, 'R'] - (
                track.ladata_df.loc[:, 'altitude'] - XovOpt.get("vecopts")['PLANETRADIUS']) * 1.e3).max())
@@ -70,19 +76,26 @@ def launch_gtrack(args):
 def main(args):
 
    # read input args
-   print('Number of arguments:', len(args), 'arguments.')
-   print('Argument List:', str(args))
-
-   epo_in = args[0]  # WD: (list of?) epoch from input raw alti file
-   indir_in = args[1]  # Location of input raw alti file
+   epo_in = args[0]     # WD: (list of?) epoch from input raw alti file
+   indir_in = args[1]   # Location of input raw alti file
    outdir_in = args[2]  # Location of output pickle gtrack
-   d_tracks = args[3]  # list of date?
-   iter_in = args[4]  # iteration number (to load previous teration info)
-   #    if len(args) > 4:  # passing a fct to slurm doesn't pass these updated Opt
+   d_tracks = args[3]   # list of date?
+   iter_in = args[4]    # iteration number (to load previous teration info)
+   # if len(args) > 4:  # passing a fct to slurm doesn't pass these updated Opt
    opts = args[5]
 
    # update options (needed when sending to slurm)
    XovOpt.clone(opts)
+   
+   print(f"epo_in: {epo_in}")
+   print(f"Alimetry raw files located in {indir_in}")
+   print(f"Output gtrack files located in {outdir_in}")
+   print(f"List of dates: {d_tracks}")
+   print(f"Iteration n°{iter_in}")
+   print("XovOpt")
+   print("------")
+   XovOpt.display()
+   print("\n")
 
    # locate data
    data_pth = f'{XovOpt.get("rawdir")}'
@@ -92,8 +105,8 @@ def main(args):
    if XovOpt.get("SpInterp") in [0, 2]:
       spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
       # load additional kernels
-      print(XovOpt.get("spice_spk"))
       if XovOpt.get("spice_spk"):
+         print("Additional spice kernels loaded:", XovOpt.get("spice_spk"))
          spice.furnsh(XovOpt.get("spice_spk"))# or, add custom kernels
 
    # set ncores
@@ -131,6 +144,7 @@ def main(args):
          print("# No files found in", os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
 
    endInit = time.time()
+   # Useful?
    print('----- Runtime Init= ' + str(endInit - startInit) + ' sec -----' +
          str((endInit - startInit) / 60.) + ' min -----')
 
@@ -145,7 +159,6 @@ def main(args):
    dstr_files = [fil.split('.')[0][-10:] for fil in allFiles[:]]
    d_files = [dt.datetime.strptime(date, '%y%m%d%H%M') for date in dstr_files]
    d_files.sort()
-   print(d_files)
 
    dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
    try:
@@ -160,10 +173,12 @@ def main(args):
       # Import solution at previous iteration
       if int(iter_in) > 0:
          tmp = Amat(XovOpt.get("vecopts"))
-         tmp = tmp.load(
-            ('_').join(((XovOpt.get("outdir") + ('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1]) +
-            '_' + str(iter_in - 1) + '/' + outdir_in.split('/')[-2] +
-            '/Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
+         # previous_dir = ('_').join(((XovOpt.get("outdir") + ('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1]) \
+         #   + '_' + str(iter_in - 1) + '/' + outdir_in.split('/')[-2] + '/'
+         # tmp = tmp.load(previous_dir + 'Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
+         id = outdir_in.split('/')[0].split('_')[0]
+         previous_dir = XovOpt.get("outdir") + id + '_' + str(iter_in - 1)
+         tmp = tmp.load(previous_dir + '/Abmat_' + id +  '_' + str(iter_in - 1)  + '_' + str(iter_in) + '.pkl')
          import_prev_sol = hasattr(tmp, 'sol4_pars')
          if import_prev_sol:
             orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
@@ -205,8 +220,8 @@ def main(args):
             print("Arc discontinuity:")
             print(f"Track {track_name} ends at {t_end}")
 
-         print(t_start)
-         print(t_end)
+         print(f"t_start: {t_start}")
+         print(f"t_end: {t_end}")
 
          track = gtrack(XovOpt.to_dict())
          # try:
