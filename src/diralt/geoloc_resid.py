@@ -19,7 +19,7 @@ from scipy.interpolate import RectBivariateSpline
 
 from pyaltsim.PyAltSim import sim_gtrack
 from xovutil.dem_util import get_demz_grd, get_demz_tiff
-from geolocate_altimetry import geoloc
+from geolocate_altimetry import geolocate
 from pygeoloc.ground_track import gtrack
 from config import XovOpt
 
@@ -186,7 +186,7 @@ def get_demres_full(dorb, track, df, dem_file,
     old_tof = track.ladata_df.loc[:, 'TOF'].values
     rng_apr = old_tof * clight / 2.
     # read just lat, lon, elev from geoloc (reads ET and TOF and updates LON, LAT, R in df)
-    # track.geoloc(get_partials=False)
+    # track.geolocate(get_partials=False)
     tmp_pertPar = track.pertPar
     tmp_pertPar = {k:(np.array(v) if isinstance(v, list) else v) for k, v in tmp_pertPar.items()}
     # print(track.pertPar, tmp_pertPar)
@@ -195,7 +195,7 @@ def get_demres_full(dorb, track, df, dem_file,
     # print("call geoloc",track.pertPar)
     # exit()
     # print("in demres_full", df_['altdiff_dem'].max())
-    geoloc_out, et_bc, dr_tidal, dummy = geoloc(df_, XovOpt.get("vecopts"), tmp_pertPar, track.SpObj, t0=track.t0_orb)
+    geoloc_out, et_bc, dr_tidal, dummy = geolocate(df_, XovOpt.get("vecopts"), tmp_pertPar, track.SpObj, t0=track.t0_orb)
     # print(np.transpose(geoloc_out))
     # df_['LON'] = geoloc_out[:, 0]
     # df_['LAT'] = geoloc_out[:, 1]
