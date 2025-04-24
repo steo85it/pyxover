@@ -56,7 +56,6 @@ def prepro(dataset):
 
    return data_pth, XovOpt.get("vecopts")
 
-
 # #@profile
 def prepare_Amat(xov, vecopts, par_list=''):
 
@@ -93,7 +92,6 @@ def prepare_Amat(xov, vecopts, par_list=''):
       xovi_amat.xov.xovers = xovtmp.copy()
 
    return xovi_amat
-
 
 # #@profile
 def prepro_weights_constr(xovi_amat, previous_iter=None):
@@ -473,7 +471,7 @@ def compute_penalty_mat(xovi_amat):
          n_goodobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(
             axis=1).sort_values(ascending=False)
 
-      # WD: hardcoded year od MESSENGER flyby??
+      # WD: hardcoded year of MESSENGER flyby??
       to_constrain = [idx for idx, p in enumerate(sol4_pars) if
                       p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if
                       p.split('_')[0][:2] != '08']  # exclude flybys from this, else orbits are never improved
@@ -481,7 +479,6 @@ def compute_penalty_mat(xovi_amat):
       
       to_alteratively_constrain = [idx for idx, p in enumerate(sol4_pars) if p[0] == '2'] # tracks starting with 2 (i.e., BELA)
       par_alt_constr = {'dR/dA': 10,'dR/dC': 5, 'dR/dR': 0.2}
-      # par_alt_constr = {'dR/dA': 1e-3,'dR/dC': 1e-3, 'dR/dR': 1e-3}
       print("Hardcoded constraints for " + str(len(to_alteratively_constrain)) + " tracks starting with 2 (for BELA)")
       print(par_alt_constr)
 
@@ -510,12 +507,12 @@ def compute_penalty_mat(xovi_amat):
 
          csr.append(csr_matrix((np.power(AccOpt.get("sigma_0") / val, 2), (row, col)),
                                dtype=np.float32, shape=(len(sol4_pars), len(sol4_pars))))
-   # combine all constraints
-   penalty_matrix = sum(csr)
+   # combine all constraints and store penalties into amat
+   xovi_amat.penalty_mat = sum(csr)
 
    # does not work with only one set of orbit parameters solved
    # if len(sol4_orb)>1 and True:
-   if True:
+   if len(XovOpt.get("mean_constr")) > 0:
       csr_avg = []
       start = time.time()
       print("Loop over mean_constr")
@@ -524,11 +521,6 @@ def compute_penalty_mat(xovi_amat):
 
          if list(filter(regex.match, sol4_pars)):
             parindex = np.array([[idx, float(constrain[1])] for idx, p in enumerate(sol4_pars) if regex.match(p)])
-            # print("matching", list(filter(regex.match, sol4_pars)))
-            # # df_sol.columns = [x[:-1] if x in list(filter(regex.match, df_sol.columns)) else x for x in
-            # #                   df_sol.columns.values]
-            # print(parindex)
-            # print(len(parindex))
             if len(parindex) > 0:
                # Constrain tightly to 0 those parameters with few observations
                # nobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
@@ -553,13 +545,11 @@ def compute_penalty_mat(xovi_amat):
 
       end = time.time()
       print("End loop over mean_constr after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-      # penalty_matrix = penalty_matrix + sum(csr_avg)
-      penalty_matrix_avg = sum(csr_avg)
-      xovi_amat.penalty_mat_avg = penalty_matrix_avg
+      xovi_amat.penalty_mat_avg = sum(csr_avg)
+   else:
+      xovi_amat.penalty_mat_avg = None
 
-   # store penalties into amat
-   xovi_amat.penalty_mat = penalty_matrix
-   
+
 def svd_parameter_analysis(spA_sol4, obs_weights, parNames):
    # Compute the covariance matrix
    # print("full sparse",np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
@@ -628,8 +618,10 @@ def compute_vce_weights(amat):
    ATP = Amat.T * amat.weights
    ATPA = ATP * Amat
 
-   N = ((1. / s2_obs_apr) * ATPA + (1. / s2_constr_apr) * lP + (
-      1. / s2_constr_avg_apr) * amat.penalty_mat_avg).todense()
+   N =  (1. / s2_obs_apr) * ATPA + (1. / s2_constr_apr) * lP
+   if amat.penalty_mat_avg != None:
+      N += (1. / s2_constr_avg_apr) * amat.penalty_mat_avg
+   N = N.todense()
    Ninv = np.linalg.pinv(N, hermitian=True, rcond=1.e-20)  #
 
    if not np.allclose(N, N @ (Ninv @ N)):
@@ -648,8 +640,11 @@ def compute_vce_weights(amat):
                                sapr=1. / np.sqrt(amat.vce[0]), kind='obs')
    s2_constr_new = get_vce_factor(b=0., A=0., x=xsol, Cinv=lP, Ninv=Ninv, sapr=1. / np.sqrt(amat.vce[1]),
                                   kind='constr')
-   s2_constr_avg_new = get_vce_factor(b=0., A=0., x=xsol, Cinv=amat.penalty_mat_avg, Ninv=Ninv,
-                                      sapr=1. / np.sqrt(amat.vce[2]), kind='constr_avg')
+   if amat.penalty_mat_avg != None:
+      s2_constr_avg_new = get_vce_factor(b=0., A=0., x=xsol, Cinv=amat.penalty_mat_avg, Ninv=Ninv,
+                                         sapr=1. / np.sqrt(amat.vce[2]), kind='constr_avg')
+   else:
+      s2_constr_avg_new = s2_constr_avg_apr
 
    # print("avg weight:", 1./s2_constr_avg)
 
@@ -664,6 +659,18 @@ def compute_vce_weights(amat):
 
    return s2_obs_new, s2_constr_new, s2_constr_avg_new
 
+def sparse_cholesky(A): # The input matrix A must be a sparse symmetric positive-definite.
+   # from https://gist.github.com/omitakahiro/c49e5168d04438c5b20c921b928f1f5d
+   import sys
+  
+   n = A.shape[0]
+   LU = spla.splu(A,diag_pivot_thresh=0) # sparse LU decomposition
+  
+   if ( LU.perm_r == np.arange(n) ).all() and ( LU.U.diagonal() > 0 ).all(): # check the matrix A is positive definite.
+      return LU.L.dot( diags(LU.U.diagonal()**0.5) )
+   else:
+       sys.exit('The matrix is not positive definite')
+    
 def compute_solution(xovi_amat, previous_iter, xov_cmb, ext_iter):
    
    # xovi_amat attributes which are changes:
@@ -684,10 +691,19 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb, ext_iter):
       sqrt_weight_obs = np.sqrt(xovi_amat.vce[0])
       weight_constr = xovi_amat.vce[1:]
       # Choleski decompose matrix and append to design matrix (weight_constr[0] applied except for constrain on avg)
-      print("Cholesky decomposition of the constraint matrix")
-      Q = np.linalg.cholesky(
-         (weight_constr[0] * xovi_amat.penalty_mat + weight_constr[1] * xovi_amat.penalty_mat_avg).todense())
-      print("Cholesky decomposition done")
+      penalty = weight_constr[0] * xovi_amat.penalty_mat
+      if xovi_amat.penalty_mat_avg != None:
+         penalty += weight_constr[1] * xovi_amat.penalty_mat_avg.transpose() * xovi_amat.penalty_mat_avg
+      penalty = penalty.todense()
+      if np.count_nonzero(penalty - np.diag(np.diagonal(penalty))):
+         print("Cholesky decomposition of the constraint matrix")
+         # spQ = sparse_cholesky(penalty)
+         Q = np.linalg.cholesky(penalty)
+         print("Cholesky decomposition done")
+         spQ = csr_matrix(Q)
+      else:
+         print("Penalty matrix is diagonal")
+         spQ = diags(np.diagonal(penalty)**0.5)
 
       # add penalisation to residuals
       if previous_iter != None and previous_iter.sol_dict != None:
@@ -699,18 +715,19 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb, ext_iter):
                             key in previous_iter.sol_dict['sol'] else 0. for key in
                             xovi_amat.sol4_pars_iter]
                   
+            Q = spQ.todense()
             b_penal = np.hstack([sqrt_weight_obs * xovi_amat.weights * xovi_amat.b,
-                                 -1. * np.ravel(np.dot(Q, prev_sol_ord))])
-            # np.zeros(len(xovi_amat.sol4_pars_iter)))]) #
+                                 -1. * np.ravel(np.dot(Q, prev_sol_ord))]) # WD: to check !!
       else:
          b_penal = np.hstack([sqrt_weight_obs * xovi_amat.weights * xovi_amat.b,
                               -1. * np.zeros(len(xovi_amat.sol4_pars_iter))])
 
       # add penalisation to partials matrix
       if AccOpt.get("get_cov_only"):
+         Q = spQ.todense()
          weights_penal = diags(np.concatenate([xovi_amat.weights.diagonal(), np.ones(Q.shape[0])]), 0)
       
-      spA_sol4_penal = scipy.sparse.vstack([sqrt_weight_obs * xovi_amat.spA_weight_clean, 1. * csr_matrix(Q)])
+      spA_sol4_penal = scipy.sparse.vstack([sqrt_weight_obs * xovi_amat.spA_weight_clean, 1. * spQ])
       # spA_sol4_penal[np.abs(spA_sol4_penal) < 1.e-10] = 0
 
       # save penalised matrices
@@ -885,9 +902,9 @@ def clean_solution(sol_dict):
    sol_dict_iter_clean = {k: v for d in sol_dict_iter_clean for k, v in d.items()}
    std_dict_iter_clean = {k: v for d in std_dict_iter_clean for k, v in d.items()}
    sol_dict_iter_clean = dict(zip(['sol', 'std'], [sol_dict_iter_clean, std_dict_iter_clean]))
-   print("cleaned solution")
-   print(len(sol_dict_iter_clean['sol']))
-   print(len(sol_dict_iter_clean['std']))
+   # print("cleaned solution")
+   # print(len(sol_dict_iter_clean['sol']))
+   # print(len(sol_dict_iter_clean['std']))
    # this probably goes to 0 when sol4_orb = []
    # WD: -3*badcount?
    print("New length of cleaned sol", len(sol_dict_iter_clean['sol']) - bad_count)
@@ -904,7 +921,7 @@ def main(arg):
    datasets = arg[0]  # ['sim_mlatimes/0res_35amp']
    data_sim = arg[1] # not used?
    ext_iter = arg[2]
-   opts = arg[3]
+   opts     = arg[3]
    acc_opts = arg[4]
 
    # update options (needed when sending to slurm)
@@ -1011,10 +1028,12 @@ def main(arg):
       if True:
          compute_penalty_mat(xovi_amat)
          scipy.sparse.save_npz(penmat_fname,xovi_amat.penalty_mat)
-         scipy.sparse.save_npz(penavgmat_fname, xovi_amat.penalty_mat)
+         if xovi_amat.penalty_mat_avg != None:
+            scipy.sparse.save_npz(penavgmat_fname, xovi_amat.penalty_mat_avg)
       else:
          xovi_amat.penalty_mat = scipy.sparse.load_npz(penmat_fname)
-         xovi_amat.penalty_mat_avg = scipy.sparse.load_npz(penavgmat_fname)
+         if len(XovOpt.get("mean_constr")) > 0:
+            xovi_amat.penalty_mat_avg = scipy.sparse.load_npz(penavgmat_fname)
       end = time.time()
       print("Computation of the penalty matrices finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
@@ -1100,7 +1119,7 @@ def main(arg):
    endT = time.time()
    print('----- Runtime Amat = ' + str(endT - startT) + ' sec -----' + str(
       (endT - startT) / 60.) + ' min -----')
-   return xovi_amat
+   return
 
 
 ## Plotting utilities
