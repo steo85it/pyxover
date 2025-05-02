@@ -690,10 +690,10 @@ def get_lstsq_partials(dem_xarr, df_, dorb, track):
     print("The call for partial derivatives with respect to h2 have to be adapted.")
     exit()
 
-    dr_dorb.append(tidepart_h2(track.XovOpt.get("vecopts"), \
-                               np.transpose(astr.sph2cart(
-                                   df_['R'].values + 2440 * 1.e3,
-                                   df_['LAT'].values, df_['LON'].values)), \
+    dr_dorb.append(tidepart_h2(track.XovOpt.get("vecopts"),   \
+                               df_['R'].values + 2440 * 1.e3, \
+                               np.deg2rad(df_['LAT'].values), \
+                               np.deg2rad(df_['LON'].values), \
                                df_['ET_TX'].values + 0.5 * df_['TOF'].values, track.SpObj)[0])
     dr_dorb = np.vstack(dr_dorb).T
     # print(dr_dorb)

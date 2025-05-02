@@ -106,11 +106,9 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
 
       # rotate boresight dir to inertial frame
       zpt = [np.dot(cmat[i], zpt[i]) for i in range(0, np.size(zpt, 0))]
-      # print(np.array(vmbf).reshape(-1,3))
 
    if [tmp_pertPar[k] for k in ['dRl', 'dPt']] != [0, 0]:
       # Apply roll and pitch offsets to zpt (converted to radians)
-      # print(np.reshape(np.tile([tmp_pertPar[k] for k in ['dRl','dPt']],len(et_tx)),(-1,2)))
       ang_Rl = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 0]
       ang_Pt = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 1]
 
@@ -189,8 +187,9 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
    dr_part = []
    dlon_part = []
    dlat_part = []
+   [R, TH, LO] = astr.cart2sph(vmbf)
    for pertbody in central_body[XovOpt.get('body')]:
-      dr, dlon, dlat = tidal_deform(vecopts, vmbf, et_bc, SpObj, pertbody,
+      dr, dlon, dlat = tidal_deform(vecopts, R, TH, LO, et_bc, SpObj, pertbody,
                                     delta_par=tmp_pertPar)
       dr_part.append(dr), dlon_part.append(dlon), dlat_part.append(dlat)
 
@@ -209,6 +208,71 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
 
    # # # convert xyz to latlon, then apply correction
    rtmp, lattmp, lontmp = astr.cart2sph(np.array(vmbf).reshape(-1, 3))
+   rtmp += dr
+   lattmp += dlat / (vecopts['PLANETRADIUS'] * 1e3)
+   lontmp += dlon / (vecopts['PLANETRADIUS'] * 1e3) / np.cos(lattmp)
+
+   if (vecopts['OUTPUTTYPE'] == 0):
+      vmbf = astr.sph2cart(rtmp, lattmp, lontmp) # should be degree?
+      return np.array(vmbf).reshape(-1, 3), et_bc, dr, offndr  # 2 * oneway / clight;
+   elif (vecopts['OUTPUTTYPE'] == 1):
+      return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr, offndr  # 2 * oneway / clight
+
+
+def geolocate_DLRv2(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
+   """
+
+   :type inp_df: ladata_df containing TOF(sec) and ET_TX(sec from J2000)
+   """
+   tof = inp_df['TOF'].values
+   et_tx = inp_df['ET_TX'].values
+   et_bc = et_tx
+  
+   scpv, lt = spice.spkezr(vecopts['PLANETNAME'],
+                           et_tx,
+                           vecopts['PLANETFRAME'],
+                           'XLT',
+                           vecopts['SCNAME'])
+   
+   # compute off-nadir value and pass/save to df
+   offndr = 0
+
+   # rotate planet@bc to bounce point vector to body fixed frame
+   vmbf = [scpv[i][0:3]*(1.e3 - tof[i]*clight/np.linalg.norm(scpv[i][0:3])/2) for i in range(0, np.size(tof))]
+
+   ## apply tidal deformation (deformation in meters in radial, lon, lat) ##
+   # ---------------------------------------------------------------------
+   # set list of perturbers for each central body
+   central_body = {"MERCURY": ['SUN'], "MOON": ['EARTH', 'SUN'], "CALLISTO": ['JUPITER']}
+   dr_part = []
+   dlon_part = []
+   dlat_part = []
+   # convert xyz to latlon
+   [R, TH, LO] = astr.cart2sph(vmbf)
+   rtmp, lattmp, lontmp = astr.cart2sph(np.array(vmbf).reshape(-1, 3))
+   TH = -TH
+   LO =  LO + np.pi
+   lattmp = -lattmp
+   lontmp =  lontmp + np.pi
+   for pertbody in central_body[XovOpt.get('body')]:
+      dr, dlon, dlat = tidal_deform(vecopts, R, TH, LO, et_bc, SpObj, pertbody,
+                                    delta_par=tmp_pertPar)
+      dr_part.append(dr), dlon_part.append(dlon), dlat_part.append(dlat)
+
+   # combine to get total displacement due to tides for each epoch
+   if len(central_body[XovOpt.get('body')]) > 1:
+      dr = np.sum(np.vstack(dr_part), axis=0)
+      dlon = np.sum(np.vstack(dlon_part), axis=0)
+      dlat = np.sum(np.vstack(dlat_part), axis=0)
+   else: # WD: TO DO: Clean a bit the shape mismatch
+      dr = np.array(dr_part)
+      dlon = np.array(dlon_part)
+      dlat = np.array(dlat_part)
+      dr = dr[0][:]
+      dlon = dlon[0][:]
+      dlat = dlat[0][:]
+
+   # Apply corrections
    rtmp += dr
    lattmp += dlat / (vecopts['PLANETRADIUS'] * 1e3)
    lontmp += dlon / (vecopts['PLANETRADIUS'] * 1e3) / np.cos(lattmp)
@@ -304,7 +368,6 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
    scvel = 1.e3 * scpv[:, 3:]
 
    # Compute and add ACR offset (if corrections != 0)
-   # print([tmp_pertPar[k] for k in ['dA','dC','dR']])
    orb_pert_dict = {k: v for (k, v) in tmp_pertPar.items() for filter_string in
                     ['dA$', 'dC$', 'd[A,C,R][0,1,2,c,s]', 'dR$'] if re.search(filter_string, k)}
 
