@@ -137,19 +137,38 @@ def get_vce_factor(Ninv, Cinv, x, b=None, A=None, sapr=1., kind='obs'):
    # a priori squared sigma (inverse of weight associated)
    s2apr = sapr ** 2
 
+   start = time.time()
    if kind == 'obs':
       ri = (b - A * x)
       Ni = A.T * Cinv * A
    else:
       ri = x
       Ni = Cinv
+   end = time.time()
+   print("Ni computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
    # numerator (basically the quantity to minimize)
    rTw = csr_matrix(ri.T) * Cinv
    # print(csr_matrix(ri.T),rTw * ri, Cinv,Cinv.max(),Cinv.min())
    rTwr = (rTw * ri)[0]
    # basically a modified dof for the subset
-   redundancy = nelem - (1. / s2apr) * np.trace(Ni @ Ninv)
+   # Compute trace(NixNinv)
+   # start = time.time()
+   # tr_NiNinv = estimate_trace2(Ni, N, m=50)
+   # end = time.time()
+   # print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
+   # print("tr_NiNinv", tr_NiNinv)
+   # start = time.time()
+   # tr_NiNinv = estimate_trace(Ni, Ninv,m=50)
+   # end = time.time()
+   # print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
+   # print("tr_NiNinv", tr_NiNinv)
+   start = time.time()
+   tr_NiNinv = np.einsum('ij,ji->',Ni.todense(),Ninv) # more efficient
+   end = time.time()
+   print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
+   print("tr_NiNinv", tr_NiNinv)
+   redundancy = nelem - (1. / s2apr) * tr_NiNinv
    print("kind, sqrt(rTwr),redundancy,chi2:", kind, np.sqrt(rTwr), redundancy, np.trace(Ni.todense()),
          rTwr / redundancy)
 
@@ -232,9 +251,6 @@ def get_stats(amat):
 
    xsol = []
    xstd = []
-   # print(amat.sol_dict['sol'])
-   # print(amat.sol4_pars)
-   # print(amat.sol_dict['sol'].items())
    start = time.time()
    # WD: What is that? takes a bit of time...
    for filt in amat.sol4_pars:
@@ -261,11 +277,8 @@ def get_stats(amat):
    end = time.time()
    print("End getstats loop on sol4_pars after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
    xT = np.array(xsol).reshape(1, -1)
-   start = time.time()
    ATP = amat.spA.T * amat.weights
    ATPb = ATP * amat.b
-   end = time.time()
-   print("ATPb computation lasted ", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
    # when iterations have inconsistent npars, some are imported from previous sols for
    # consistency reasons. Here we remove these values from the computation of vTPv
@@ -295,15 +308,11 @@ def get_stats(amat):
    dof = nobs - npar
    # m0 = np.sqrt(vTPv / dof)
    m0 = np.linalg.norm(np.sqrt(vTPv / dof))
-   # print("test-m0", m0)
    
-   print(nobs, npar)
+   print(f"{nobs} observations, {npar} parameters")
    print("pre-RMS=", np.sqrt(lTPl / dof), " post-RMS=", m0)
 
    # alternative method to compute chi2 for constrained least-square (not involving inverse)
-   # print("xT",xT)
-   # print("pen",amat.penalty_mat)
-   # print("weig",amat.weights)
    # xTlP = xT @ amat.penalty_mat
    # xTlPx = xTlP @ xT.T
    # print("check wrmse", vTPv,xTlPx)
@@ -416,10 +425,6 @@ def analyze_sol(xovi_amat, xov, mode='full'):
    else:
       sol4_pars = xovi_amat.sol4_pars_iter
       
-   print(len(np.reshape(sol4_pars, (-1, 1))))
-   print(len(np.reshape(xovi_amat.sol[0], (-1, 1))))
-   print(len(np.reshape(xovi_amat.sol[-1], (-1, 1))))
-
    # Ordering is important here, don't use set or other "order changing" functions
    _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
                   np.reshape(xovi_amat.sol[0], (-1, 1)),
@@ -502,7 +507,6 @@ def analyze_sol(xovi_amat, xov, mode='full'):
    print(orb_sol.filter(regex='sol_dR/').median(axis=0))
    print("Mean values:")
    print(orb_sol.filter(regex='sol_dR/').mean(axis=0))
-   # exit()
 
    # print([isinstance(i,tuple) for i in table.columns])
    # print(['_'.join(i) for i in table.columns if isinstance(i,tuple)])
@@ -521,9 +525,11 @@ def analyze_sol(xovi_amat, xov, mode='full'):
    # plt.savefig('tmp/plotsol.png')
 
    # rescale with sigma0
+   print("glb_sol['std']")
    print(glb_sol['std'].values)
 
    # sol_dict['std'] *= sigma_0
+   glb_sol['std'] = np.sqrt(glb_sol['std'].astype('float').values)
    glb_sol['std'] = glb_sol['std'].astype('float').values / AccOpt.get("sigma_0")
    for col in orb_sol.filter(regex='std_*').columns:
       orb_sol[col] = orb_sol[col].astype('float').values / AccOpt.get("sigma_0")
@@ -575,3 +581,24 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
       previous_iter = None  # Amat(vecopts)
       # previous_iter.sol_dict_iter = previous_iter.sol_dict
    return previous_iter
+
+def estimate_trace(Ni, Ninv, m=20):
+    dim = Ni.shape[0]
+    total = 0.0
+    for _ in range(m):
+        z = np.random.choice([1.0, -1.0], size=dim)     # Rademacher probe
+        w = Ninv.dot(z)                                 # solve N w = z
+        Nz = Ni.dot(w.T)                                # multiply back by N
+        total += z @ Nz
+    return total[0][0] / m
+
+def estimate_trace2(Ni, N, m=20):
+    from scipy.sparse.linalg import cg
+    dim = Ni.shape[0]
+    total = 0.0
+    for _ in range(m):
+        z = np.random.choice([1.0, -1.0], size=dim)     # Rademacher probe
+        w = cg(N, z)[0]                                 # solve N w = z
+        Nz = Ni.dot(w.T)                                # multiply back by N
+        total += z @ Nz
+    return total[0][0] / m
