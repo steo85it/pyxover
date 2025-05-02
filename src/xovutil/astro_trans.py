@@ -16,11 +16,6 @@ def cosd(x):
 def rsw_2_xyz(vec_in, r_vec, v_vec):
     rot_mat = get_rotmat_xyz_2_rsw(r_vec, v_vec, vec_in)
 
-    # print("vec_in rsw2xyz", vec_in)
-    # print("rot_mat rsw2xyz", rot_mat)
-    # print("vec_out rsw2xyz", np.einsum('ijk,ij->ik', rot_mat, vec_in))
-    # print("vec_out_norm rsw2xyz", np.linalg.norm(vec_in,axis=1))
-
     # multiply along the right axes (transposed rot_mat)
     return np.einsum('ijk,ij->ik', rot_mat, vec_in)
 
@@ -48,15 +43,6 @@ def get_rotmat_xyz_2_rsw(r_vec, v_vec, vec_in):
     # write rotation matrix XYZ -> ACR
     rot_mat = np.concatenate((vec_A, vec_C, vec_B), axis=1).reshape(-1, 3, 3)
 
-    # print("A", vec_A, np.linalg.norm(vec_A))
-    # print("C", vec_C, np.linalg.norm(vec_C))
-    # print("R", vec_R, np.linalg.norm(vec_R))
-    # print("B", vec_B, np.linalg.norm(vec_B))
-
-    # print("vec_in xyz2rsw", vec_in)
-    # print("rot_mat xyz2rsw", rot_mat, "det", np.linalg.det(rot_mat))
-    # print("vec_out xyz2rsw", np.einsum('ijk,ik->ij', rot_mat, vec_in))
-    # print("vec_out_norm xyz2rsw", np.linalg.norm(vec_in, axis=1))
     # if XovOpt.get("instrument") == "LOLA":
     #     # TODO check if this makes sense
     #     # multiply along the right axes (good luck!^^)
@@ -90,8 +76,6 @@ def rp_2_xyz(vec_in, ang_Rl, ang_Pt):
 
 # transform cartesian to spherical (meters, radians)
 def cart2sph(xyz):
-    #print("cart2sph in",np.array(xyz))
-    #print(xyz.shape)
 
     rtmp = np.linalg.norm(np.array(xyz).reshape(-1, 3), axis=1)
     lattmp = np.arcsin(np.array(xyz).reshape(-1, 3)[:, 2] / rtmp)
@@ -102,7 +86,6 @@ def cart2sph(xyz):
 
 # transform spherical 9 (meters, degrees) to cartesian (meters)
 def sph2cart(r, lat, lon):
-    # print("sph2cart in",r,lat,lon)
 
     x = r * cosd(lon) * cosd(lat)
     y = r * sind(lon) * cosd(lat)

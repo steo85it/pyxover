@@ -200,8 +200,7 @@ def main(args):
          else:
             d_track = dt.datetime.strptime(track_name, '%y%m%d%H%M')
             duration = [(date - d_track).total_seconds() for date in d_files]
-            print("duration")
-            print(duration)
+            print(f"Duration: {duration}")
             index = [i for i, x in enumerate(duration) if x < 0]
             print("index")
             print(index)
