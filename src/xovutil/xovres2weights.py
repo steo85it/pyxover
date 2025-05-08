@@ -27,8 +27,8 @@ import pandas as pd
 # use roughness map from Kreslavski et al, GRL, 2014
 # (https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1002/2014GL062162)
 # to associate error to each xover based on separation from MLA observations
-def get_interpolation_weight(xov_):
-   interp_weights = xov_.xovers.copy()
+def get_interpolation_weight(xovers):
+   interp_weights = xovers.copy()
    interp_weights = interp_weights[['LON', 'LAT', 'dist_min_mean']]
 
    # get roughness at 700 meters from http://www.planetary.brown.edu/html_pages/mercury_roughness-maps.html
@@ -97,8 +97,8 @@ def get_interpolation_weight(xov_):
 
 # old function to get roughness from residuals, then use interpolated roughness and literature to
 # extrapolate roughness at separation=baseline, then reconvert to expected rms
-def get_weight_regrough(xov_, tstnam='', new_map=False):
-    regbas_weights = xov_.xovers.copy()
+def get_weight_regrough(xovers, tstnam='', new_map=False):
+    regbas_weights = xovers.copy()
 
     # TODO This screens data and modifies xov!!!!
     if new_map:
@@ -138,8 +138,8 @@ def get_weight_regrough(xov_, tstnam='', new_map=False):
     regbas_weights['meters_dist_min'] = regbas_weights.filter(regex='dist_[A,B].*').min(axis=1).values
     regbas_weights['rough_at_mindist'] = roughness_at_baseline(regbas_weights['reg_rough_150'].values,
                                                                regbas_weights['meters_dist_min'].values)
-    # xov_.xovers['rough_at_max'] = roughness_at_baseline(xov_.xovers['reg_rough_150'].values,
-    #                                                         xov_.xovers.filter(regex='dist_max').values)
+    # xovers['rough_at_max'] = roughness_at_baseline(xovers['reg_rough_150'].values,
+    #                                                         xovers.filter(regex='dist_max').values)
 
     regbas_weights = regbas_weights[['region', 'reg_rough_150', 'meters_dist_min', 'rough_at_mindist', 'dR']]
     # 'rough_at_max','dR']])
@@ -149,8 +149,6 @@ def get_weight_regrough(xov_, tstnam='', new_map=False):
         print(regbas_weights)
         print(regbas_weights[['region', 'reg_rough_150', 'meters_dist_min', 'rough_at_mindist', 'dR']].corr())  # ,
         # 'rough_at_max','dR']].corr())
-
-    # exit()
 
     # fig = plt.figure(figsize=(10, 8), edgecolor='w')
     # m = Basemap(projection='moll', #'cea', #
@@ -373,13 +371,8 @@ def roughness_to_error(roughness):
 
 
 def get_demz_at(dem_xarr, lattmp, lontmp):
-   # lontmp += 180.
+
    lontmp[lontmp < 0] += 360.
-   # print("eval")
-   # print(np.sort(lattmp))
-   # print(np.sort(lontmp))
-   # print(np.sort(np.deg2rad(lontmp)))
-   # exit()
 
    return dem_xarr.ev(np.deg2rad(lattmp) + np.pi / 2., np.deg2rad(lontmp))
 
