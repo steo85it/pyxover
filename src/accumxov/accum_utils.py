@@ -109,13 +109,11 @@ def get_xov_cov_tracks(df, plot_stuff=False):
    return cov_xov_tracks
 
 
-def get_vce_factor(Ninv, Cinv, x, b=None, A=None, s2apr=1., kind='obs',N=None):
+def get_vce_factor(Ninv, Cinv, x, b=None, A=None, s2apr=1., kind='obs',nelem=0):
    """
    compute vce factor for subset of data or constraint
    see eq. 17-21 of https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1002/jgre.20118
    Lemoine 2013, JGRE
-   # from scipy.sparse import csr_matrix, issparse
-   # import numpy as np
    :param Ninv: full covariance matrix (inverse of full normal matrix), (npar,npar)
    :param Cinv: weight matrix (inverse of apriori covariance), (nele,nele), nele= npar if constraint, nobs if data
    :param x: solution vector (for iter if kind=obs, total if constraint), (nele,), nele= npar if constraint, nobs if data
@@ -123,6 +121,7 @@ def get_vce_factor(Ninv, Cinv, x, b=None, A=None, s2apr=1., kind='obs',N=None):
    :param A: partials matrix (kind=obs only), (nobs,npar)
    :param s2apr: a priori squared sigma of the subset (inverse of weight associated), scalar
    :param kind: 'obs' if computing weights for a subset of data, whatever else for a constraint (influences arguments)
+   :param nelem: nobs for a subset of data or nparam for a constraint
    :return: new sigma^2 (inverse of estimated vce weight) associated to the subset of data or constraint
    """
 
@@ -132,37 +131,28 @@ def get_vce_factor(Ninv, Cinv, x, b=None, A=None, s2apr=1., kind='obs',N=None):
    if not issparse(Cinv):
       Cinv = csr_matrix(Cinv)
 
-   # nelem is nobs for a subset of data or nparam for a constraint
-   nelem = Cinv.shape[0]
-
    if kind == 'obs':
       ri = (b - A * x)
       Ni = A.T * Cinv * A
    else:
-      ri = x
+      ri = x # constraining to a priori !
       Ni = Cinv
 
    # numerator (basically the quantity to minimize)
    rTw = csr_matrix(ri.T) * Cinv
-   # print(csr_matrix(ri.T),rTw * ri, Cinv,Cinv.max(),Cinv.min())
    rTwr = (rTw * ri)[0]
    # basically a modified dof for the subset
    # Compute trace(NixNinv)
    # start = time.time()
-   # tr_NiNinv = estimate_trace2(Ni, N, m=50)
+   # tr_NiNinv = estimate_trace(Ni, N, m=50)
    # end = time.time()
    # print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
    # print("tr_NiNinv", tr_NiNinv)
    # start = time.time()
-   # tr_NiNinv = estimate_trace(Ni, Ninv,m=50)
+   tr_NiNinv = np.einsum('ij,ji->',Ni.todense(),Ninv) # more efficient
    # end = time.time()
    # print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
    # print("tr_NiNinv", tr_NiNinv)
-   start = time.time()
-   tr_NiNinv = np.einsum('ij,ji->',Ni.todense(),Ninv) # more efficient
-   end = time.time()
-   print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-   print("tr_NiNinv", tr_NiNinv)
    redundancy = nelem - (1. / s2apr) * tr_NiNinv
    print("kind, sqrt(rTwr),redundancy,chi2:", kind, np.sqrt(rTwr), redundancy, np.trace(Ni.todense()),
          rTwr / redundancy)
@@ -233,21 +223,18 @@ def subsample_xovers(xov_df, size_samples=1.e5, rand_seed=0):
    return xov_df.iloc[boot]
 
 
-def get_stats(amat):
-   # amat attributes are changed: spA, b, postfit_res, resid_wrmse
+def get_stats(amat, spAmat, bmat):
+   # The weights are already applied to spAmat, bmat
+   # amat attributes are changed: spA, b, postfit_res
    
    # xover residuals
-   w = amat.xov.xovers['dR'].values
-   nobs = len(w)
+   l = bmat
+   nobs = len(l)
    npar = len(amat.sol_dict['sol'].values())
 
-   lTP = np.hstack(w).reshape(1, -1) @ amat.weights  # hstack converts "object" to "float" for product
-   lTPl = lTP @ np.hstack(w).reshape(-1, 1)
+   lTPl = bmat.T @ bmat
 
    xsol = []
-   xstd = []
-   start = time.time()
-   # WD: What is that? takes a bit of time...
    for filt in amat.sol4_pars:
       filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
       if len(list(filtered_dict.values())) > 0:
@@ -255,46 +242,30 @@ def get_stats(amat):
       else:
          print(np.array(filt), "not found")
          xsol.append(0.)
-      filtered_dict = {k: v for (k, v) in amat.sol_dict['std'].items() if filt in k}
-      if len(list(filtered_dict.values())) > 0:
-         xstd.append(list(filtered_dict.values())[0])
-      else:
-         xstd.append(0.)
 
-   if amat.sol4_pars != []:
-      # select columns of design matrix corresponding to chosen parameters to solve for
-      # print([xovi_amat.parNames[p] for p in sol4_pars])
-      amat.spA = amat.spA[:, [amat.parNames[p] for p in amat.parNames.keys()]]
-      # set b=0 for rows not involving chosen set of parameters
-      nnz_per_row = amat.spA.getnnz(axis=1)
-      amat.b[np.where(nnz_per_row == 0)[0]] = 0
-
-   end = time.time()
-   print("End getstats loop on sol4_pars after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
    xT = np.array(xsol).reshape(1, -1)
-   ATP = amat.spA.T * amat.weights
-   ATPb = ATP * amat.b
+   ATPl = spAmat.T * l
 
    # when iterations have inconsistent npars, some are imported from previous sols for
    # consistency reasons. Here we remove these values from the computation of vTPv
    # else matrix shapes don't match
-   if len(ATPb) != xT.shape[1]:
-      print("removing stuff...", len(ATPb), (xT.shape[1]))
+   if len(ATPl) != xT.shape[1]:
+      print("removing stuff...", len(ATPl), (xT.shape[1]))
       missing = [x for x in amat.sol4_pars if x not in amat.parNames]
       missing = [amat.sol4_pars.index(x) for x in missing]
       xT = np.delete(xT, missing)
       # remove parameters not in sol4_pars
       tmp_sol4pars = [amat.parNames[x] for x in amat.sol4_pars if x in amat.parNames.keys()]
-      ATPb = ATPb[tmp_sol4pars]
+      ATPl = ATPl[tmp_sol4pars]
       ATP = ATP[tmp_sol4pars, :]
-      spA_tmp = amat.spA[:, tmp_sol4pars]
+      spA_tmp = spAmat[:, tmp_sol4pars]
    else:
-      spA_tmp = amat.spA
+      spA_tmp = spAmat
    ##################
-   vTPv = lTPl - xT @ ATPb
+   vTPv = lTPl - xT @ ATPl
    if False:
       amat.postfit_res = spA_tmp @ xT.T
-      amat.postfit_res = amat.postfit_res - w
+      amat.postfit_res = amat.postfit_res - l
    
    # degrees of freedom in case of constrained least square
    # Atmp = (ATP@spA_tmp + amat.penalty_mat)
@@ -312,16 +283,15 @@ def get_stats(amat):
    # xTlPx = xTlP @ xT.T
    # print("check wrmse", vTPv,xTlPx)
    # m0 = np.linalg.norm(np.sqrt((vTPv + xTlPx) / nobs))
-   amat.resid_wrmse = m0
 
    print("Weighted a-posteriori RMS is ", m0.round(4), " - chi2 = ", (m0 / AccOpt.get("sigma_0")).round(4))
 
    if XovOpt.get("local") and XovOpt.get("debug"):
       plt.figure()  # figsize=(8, 3))
       num_bins = 200  # 'auto'  #
-      n, bins, patches = plt.hist((amat.weights @ (np.abs(w).reshape(-1, 1))).astype(float), bins=num_bins,
+      n, bins, patches = plt.hist((amat.weights @ (np.abs(l).reshape(-1, 1))).astype(float), bins=num_bins,
                                   cumulative=-1, range=[0.1, 50.])
-      # n, bins, patches = plt.hist(w.astype(float), bins=num_bins, cumulative=True)
+      # n, bins, patches = plt.hist(l.astype(float), bins=num_bins, cumulative=True)
       # plt.xlabel('roughness@baseline700 (m/m)')
       plt.savefig(XovOpt.get("tmpdir") + '/histo_residuals.png')
       plt.clf()
@@ -331,6 +301,8 @@ def get_stats(amat):
       nobs_tracks = xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(
          axis=1).sort_values(ascending=False)
       print(nobs_tracks)
+   
+   return m0
 
 
 def analyze_dist_vs_dR(xov):
@@ -454,7 +426,7 @@ def analyze_sol(xovi_amat, xov, mode='full'):
       df_.drop('key', axis=1, inplace=True)
       # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
       df_ = df_.replace(to_replace='None', value=np.nan).dropna()
-      table = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'], aggfunc=np.sum)
+      table = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'], aggfunc='sum')
 
       if any(xov.xovers.filter(like='dist', axis=1)):
          xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
@@ -494,14 +466,21 @@ def analyze_sol(xovi_amat, xov, mode='full'):
    else:
       orb_sol = pd.DataFrame()
 
-   print("Max values:")
-   print(orb_sol.filter(regex='sol_dR/').max(axis=0))
-   print("Min values:")
-   print(orb_sol.filter(regex='sol_dR/').min(axis=0))
-   print("Median values:")
-   print(orb_sol.filter(regex='sol_dR/').median(axis=0))
-   print("Mean values:")
-   print(orb_sol.filter(regex='sol_dR/').mean(axis=0))
+   # Prepare the statistics
+   orb_sol_filtered = orb_sol.filter(regex='sol_dR/')
+   result = []
+   for col in orb_sol_filtered.columns:
+      stats = [
+         col,
+         orb_sol_filtered[col].min(axis=0),
+         orb_sol_filtered[col].max(axis=0),
+         orb_sol_filtered[col].mean(axis=0),
+         orb_sol_filtered[col].median(axis=0)
+         ]
+      result.append(stats)
+
+   # Print statistics as a DataFrame for pretty display
+   print(pd.DataFrame(result, columns=['Label', 'Min', 'Max', 'Mean', 'Median']))
 
    # print([isinstance(i,tuple) for i in table.columns])
    # print(['_'.join(i) for i in table.columns if isinstance(i,tuple)])
@@ -520,8 +499,6 @@ def analyze_sol(xovi_amat, xov, mode='full'):
    # plt.savefig('tmp/plotsol.png')
 
    # rescale with sigma0
-   print("glb_sol['std']")
-   print(glb_sol['std'].values)
 
    # sol_dict['std'] *= sigma_0
    glb_sol['std'] = np.sqrt(glb_sol['std'].astype('float').values)
@@ -577,17 +554,7 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
       # previous_iter.sol_dict_iter = previous_iter.sol_dict
    return previous_iter
 
-def estimate_trace(Ni, Ninv, m=20):
-    dim = Ni.shape[0]
-    total = 0.0
-    for _ in range(m):
-        z = np.random.choice([1.0, -1.0], size=dim)     # Rademacher probe
-        w = Ninv.dot(z)                                 # solve N w = z
-        Nz = Ni.dot(w.T)                                # multiply back by N
-        total += z @ Nz
-    return total[0][0] / m
-
-def estimate_trace2(Ni, N, m=20):
+def estimate_trace(Ni, N, m=20):
     from scipy.sparse.linalg import cg
     dim = Ni.shape[0]
     total = 0.0
