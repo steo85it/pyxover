@@ -17,7 +17,6 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 
 # from mapcount import mapcount
-# from examples.MLA.options import XovOpt.get("debug"), XovOpt.get("cloop_sim")
 from config import XovOpt
 
 
@@ -31,21 +30,26 @@ class Amat:
       self.pert_cloop_glo = None
       self.pert_cloop_0 = None
       self.sol = None
-      self.sol_dict = None
-      self.sol_iter = None
-      self.sol_dict_iter = None
-      self.weights = None
-      self.vce = None
-      self.penalty_mat = None
-      self.spA = None
+      self.sol_dict = None  # 2 x npar
+      self.sol_iter = None  # 2 x npar
+      self.sol_dict_iter = None # npar
+      self.weights = None # nobsxnobs
+      self.vce_obs = None
+      self.vce_pen = None
+      self.penalty_mat = None  # nobsxnobs
+      self.spA = None # nobsxnpar
+      self.spA_sol4 = None # nobsxnpar
       self.b = None
-      self.spA_penal = None
+      # self.b_penal = None
+      self.spA_penal = None # nobsxnpar
       self.converged = False
       self.resid_wrmse = None
       self.xov = None
-      self.to_constrain = None
-      self.sol4_pars = None
-      self.sol4_pars_iter = None
+      self.to_constrain    = None # can be removed
+      self.sol4_pars       = None # npar
+      self.sol4_pars_iter  = None # npar
+      self.penalty_mat     = None
+      self.penalty_mat_avg = None
 
    def setup(self, xov):
 
@@ -90,7 +94,7 @@ class Amat:
          print(tmp.spA)
          print(tmp.sol)
 
-   # load groundtrack from file
+   # load Abmat from file
    def load(self, filnam):
 
       pklfile = open(filnam, 'rb')
