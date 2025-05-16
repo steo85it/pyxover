@@ -56,8 +56,8 @@ class sim_gtrack(gtrack):
    def setup(self, df):
       df_ = df.copy()
 
-      # get time of flight in ns from probe one-way range in km
-      df_['TOF'] = df_['rng'] * 2. * 1.e3 / clight
+      # get time of flight in ns from probe one-way range in m
+      df_['TOF'] = df_['altitude'] * 2. / clight
       # preparing df for geoloc
       df_['seqid'] = df_.index
 
@@ -125,7 +125,7 @@ class sim_gtrack(gtrack):
       
       slopes = self.get_toposlope()
    
-      index_a = [(np.abs(mod_alt - alt)).argmin() for alt in df_['rng']]
+      index_a = [(np.abs(mod_alt*1e3 - alt)).argmin() for alt in df_['altitude']]
       index_s = [(np.abs(mod_slp - slp)).argmin() for slp in slopes]
       
       range_noise = [np.random.choice(mod_rerr, p=mod_data[i_a,i_s,:]) for i_a, i_s in zip(index_a,index_s)]
@@ -147,7 +147,6 @@ class sim_gtrack(gtrack):
       :param itmax: max iters allowed
       :param tol: tolerance for convergence
       """
-      # self.ladata_df[["TOF"]] = self.ladata_df.loc[:,"TOF"] + 200./clight
 
       # a priori values for internal FULL df
       df.loc[:, 'converged'] = False
@@ -302,7 +301,7 @@ class sim_gtrack(gtrack):
 
             if XovOpt.get("local") == 0:
                if XovOpt.get("instrument") == 'LOLA':
-                  if local_dem:
+                  if XovOpt.get("local_dem"):
                      dem = self.slewdir + "/SLDEM2015_512PPD.GRD"
                   else:
                      dem = "/explore/nobackup/projects/pgda/LOLA/data/LOLA_GDR/CYLINDRICAL/raw/LDEM_4.GRD"
@@ -320,7 +319,7 @@ class sim_gtrack(gtrack):
                # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
 
             # print(['grdtrack', gmt_in, '-G' + dem,'-R0.0/360.0/-50.0/50.0'])
-            if local_dem:
+            if XovOpt.get("local_dem"):
                r_dem = subprocess.check_output(['grdtrack', gmt_in, '-G' + dem],
                                                universal_newlines=True, cwd='tmp')
             else:  # replace -RLON0/LONMAX/LAT0/LATMAX with appropriate bbox
@@ -404,9 +403,6 @@ class sim_gtrack(gtrack):
          rotpar, upd_rotpar = orient_setup(self.pertPar['dRA'], self.pertPar['dDEC'], self.pertPar['dPM'],
                                            self.pertPar['dL'])
          tsipm = icrf2pbf(et_tx, upd_rotpar)
-      elif XovOpt.get('body') == 'MOON':
-         pxform_array = np.frompyfunc(spice.pxform, 3, 1)
-         tsipm = pxform_array(XovOpt.get("vecopts")['INERTIALFRAME'], XovOpt.get("vecopts")['PLANETFRAME'], et_tx)
       else:
          pxform_array = np.frompyfunc(spice.pxform, 3, 1)
          tsipm = pxform_array(XovOpt.get("vecopts")['INERTIALFRAME'], XovOpt.get("vecopts")['PLANETFRAME'], et_tx)
@@ -426,7 +422,7 @@ class sim_gtrack(gtrack):
       #                'UTC', 'TOF_ns_ET', 'Sat_long', 'Sat_lat', 'Sat_alt', 'Offnad', 'Phase',
       #                'Sol_inc', 'SCRNGE', 'seqid']
       mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime',
-                     'frm', 'chn', 'UTC', 'TOF_ns_ET', 'seqid']
+                     'chn', 'UTC', 'TOF_ns_ET', 'seqid']
       self.rdr_df = pd.DataFrame(columns=mlardr_cols)
 
       # assign "bad chn" to non converged observations
@@ -470,21 +466,21 @@ def sim_track(args):
       #    logging.info('Error when simulating observations to', filename)
       #    print('Error when simulating observations to', filename)
       #    return
+      track.rdr_df['altitude'] *=1e3 # write altitude in km
       track.rdr_df.to_csv(filename, index=False, sep=',', na_rep='NaN')
       logging.info('Simulated observations written to', filename)
+      print('Simulated observations written to', filename)
    else:
       logging.info('Simulated observations ', filename + ' already exists. Skip.')
+      print('Simulated observations ', filename + ' already exists. Skip.')
 
 
-def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
+def main(args):
    import datetime as dt
 
-   ampl_in = args[0]  # Ampl directory?
-   res_in = args[1]  # Result directory?
-   dirnam_in = args[2]  # Input directory
-   
-   print('Number of arguments:', len(args), 'arguments.')
-   print('Argument List:', str(args))
+   ampl_in   = args[0]
+   res_in    = args[1]
+   dirnam_in = args[2]
 
    if len(args) < 6:
       epos_in = args[3]  # Month to simulate (format: YYMM)
@@ -509,16 +505,22 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
       opts = args[5]  # Options (dictionnary)
       epos_in = d_first.strftime('%y%m%d')
 
+     
    # update options (needed when sending to slurm)
    XovOpt.clone(opts)
-    
+   XovOpt.check_consistency()
+
+   if XovOpt.get("small_scale_topo"):
+      print(f"Small-scale topgraphy: amplitude:{ampl_in}, resolution{res_in}")
+   print(f"Alimetry files created in {dirnam_in}")
+   print("XovOpt")
+   print("------")
+   XovOpt.display()
+   print("\n")
    print(f'Simulation of {XovOpt.get("instrument")} data from {d_first} to {d_last}')
 
    # locate data
-   data_pth = f'{XovOpt.get("rawdir")}'
-   dataset = dirnam_in
-   data_pth += dataset
-   outdir_ = data_pth # WD: Could be merged with data_path
+   outdir_ = f'{XovOpt.get("rawdir")}' + dirnam_in
 
    # load kernels
    if (not XovOpt.get("instrument") == "LOLA"): # and (XovOpt.get("SpInterp") in [0, 2]):
@@ -528,26 +530,6 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
 
    if not os.path.exists(XovOpt.get('tmpdir')):
       os.makedirs(XovOpt.get('tmpdir'))
-
-   # if not XovOpt.get("local"):
-   # data_pth = '/explore/nobackup/people/sberton2/MLA/data/MLA_'+epos_in[:2]  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-   # dataset = ''  # 'small_test/' #'test1/' #'1301/' #
-   # data_pth += dataset
-   # TODO Avoid/remove explicit paths!!!
-   # load kernels
-   # if XovOpt.get("instrument") == "BELA":
-   #     spice.furnsh(['/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'
-   #                  ,
-   #                  '/explore/nobackup/people/sberton2/MLA/aux/spk/bc_sci_v06.tf',
-   #                  '/explore/nobackup/people/sberton2/MLA/aux/spk/bc_mpo_mlt_50037_20260314_20280529_v03.bsp']
-   #     )  # 'aux/mymeta')
-   # else:
-   #     spice.furnsh('/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def')
-
-   # else:
-   # data_pth = '/home/sberton2/Works/NASA/Mercury_tides/data/'  # /home/sberton2/Works/NASA/Mercury_tides/data/'
-   # dataset = "test/"  # ''  # 'small_test/' #'1301/' #
-   # data_pth += dataset
 
    if XovOpt.get("parallel"):
       # set ncores
@@ -590,7 +572,7 @@ def main(args):  # dirnam_in = 'tst', ampl_in=35,res_in=0):
       else: # already given in ET?
          dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
          sec_j2000_first = (d_first - dj2000).total_seconds()
-         sec_j2000_last  = (d_last - dj2000).total_seconds()
+         sec_j2000_last  = (d_last  - dj2000).total_seconds()
 
       # get vector of epochs J2000 in year-month, with step equal to the laser sampling rate
       epo_tx = np.arange(sec_j2000_first, sec_j2000_last, 1/XovOpt.get("sampling_rate"))
