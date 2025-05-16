@@ -154,12 +154,15 @@ class xov:
         if len(xov_list) > 0:
             self.xovers = pd.concat([x.xovers for x in xov_list], sort=True)
             # check for duplicate rows
-            print(f"{len(self.xovers)} xovers found before duplicate search")
+            nxov = len(self.xovers)
             if XovOpt.get("instrument") == "BELA":  # doesn't really make sense... useful to have working tests
                 self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'], errors='ignore').round(6).drop_duplicates()
             else:
                 self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'], errors='ignore').drop_duplicates()
-            print(f"{len(self.xovers)} xovers found after duplicate search")
+            if (nxov == len(self.xovers)):
+               print(f"No dupplicate found in the {nxov} xovers.")
+            else:
+               print(f"{nxov-len(self.xovers)} dupplicates found in the {nxov} xovers.")
 
             # reset index to have a sequential one
             self.xovers = self.xovers.reset_index(drop=True)

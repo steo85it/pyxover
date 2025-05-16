@@ -86,6 +86,7 @@ def main(args):
 
    # update options (needed when sending to slurm)
    XovOpt.clone(opts)
+   XovOpt.check_consistency()
    
    print(f"epo_in: {epo_in}")
    print(f"Alimetry raw files located in {indir_in}")

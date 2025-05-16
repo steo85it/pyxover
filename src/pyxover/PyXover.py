@@ -126,6 +126,7 @@ def main(args_in):
 
    # update options (needed when sending to slurm)
    XovOpt.clone(opts)
+   XovOpt.check_consistency()
    
    print(f"Combination n°{cmb_y_in} (option to be removed, in progress...)")
    print(f"Crossovers saved in {outdir_in}")
@@ -247,6 +248,7 @@ def main(args_in):
       comb = list(
          itert.product([fil.split('.')[0].split('_')[-1] for fil in allFilesA], [fil.split('.')[0].split('_')[-1] for fil in allFilesB]))
       comb = np.array([c for c in comb if c[0] != c[1]])
+      # comb = []
 
       # if iter>0, don't test all combinations, only those resulting in xovers at previous iter
       # TODO, check wether one could safely save time by only considering xovers with a given weight
