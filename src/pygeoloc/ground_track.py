@@ -79,30 +79,30 @@ class gtrack:
     # contain interpolated s/c and planets orbits for covered timespan
    def setup(self, filnam=""):
 
-      if len(self.ladata_df) > 0:
-         if self.SpObj == None and self.XovOpt.get("SpInterp") == 2:
-            # create interp for track
-            self.interpolate()
-         elif self.XovOpt.get("SpInterp") > 0:
-            self.SpObj = pickleIO.load(self.XovOpt.get("auxdir") + self.XovOpt.get("spauxdir") +
-                                       'spaux_' + self.name + '.pkl')
+      if len(self.ladata_df) == 0:
+         print("No data for track ", self.name)
+         return
 
-         if self.XovOpt.get("debug"):
-            pd.set_option('display.max_columns', 500)
+      if self.SpObj == None and self.XovOpt.get("SpInterp") == 2:
+         # create interp for track
+         self.interpolate()
+      elif self.XovOpt.get("SpInterp") > 0:
+         self.SpObj = pickleIO.load(self.XovOpt.get("auxdir") + self.XovOpt.get("spauxdir") +
+                                    'spaux_' + self.name + '.pkl')
 
-         # set t0
-         self.t0_orb = self.ladata_df.ET_TX.iloc[0]
-         # geolocate observations in orbit
-         self.geoloc(get_partials=XovOpt.get('partials'))
-         # project observations (polar stereo, choose pole N/S depending on data selection)
-         if self.XovOpt.get("selected_hemisphere") == 'S':
-            self.project(lat0=-90)
-         else:
-            self.project(lat0=90)
-         # update df
+      # set t0
+      self.t0_orb = self.ladata_df.ET_TX.iloc[0]
+      # geolocate observations in orbit
+      self.geoloc(get_partials=XovOpt.get('partials'))
+      # project observations (polar stereo, choose pole N/S depending on data selection)
+      if self.XovOpt.get("selected_hemisphere") == 'S':
+         self.project(lat0=-90)
+      else:
+         self.project(lat0=90)
+      # update df
 
-         # WD: Numerical errors. Should we assume a given sampling somehow?
-         self.ladata_df['dt'] = self.ladata_df.ET_TX - self.t0_orb
+      # WD: Numerical errors
+      self.ladata_df['dt'] = self.ladata_df.ET_TX - self.t0_orb
 
    # create groundtrack from data and save to file
    def prepro(self, filnam, read_all=False, t_start=0, t_end=0):
@@ -117,11 +117,11 @@ class gtrack:
       # self.check_coverage()
 
       # create interp for track (if data are present)
-      if (len(self.ladata_df) > 0):
+      if (self.XovOpt.get("SpInterp") > 0 and len(self.ladata_df) > 0):
          if self.SpObj == None and self.XovOpt.get("SpInterp") == 2:
             # create interp for track
             self.interpolate()
-         elif self.XovOpt.get("SpInterp") > 0:
+         else:
             try:
                self.SpObj = pickleIO.load(
                         self.XovOpt.get("auxdir") + self.XovOpt.get("spauxdir") + 'spaux_' + self.name + '.pkl')
@@ -234,6 +234,10 @@ class gtrack:
          print("*** ground_track.read_fill: only .TAB (MLA-like) and .pkl formats (also MLA-like) are accepted.")
          exit(1)
 
+      df.columns = df.columns.str.lower()
+      df.rename(columns={'ephemeristime': 'ET_TX','tof_ns_et': 'TOF'}, inplace=True)
+      df.TOF *= 1.e-9 # Convert TOF to seconds
+
       if 'rdr_name' in df.columns:  # if LOLA rdr
          df['orbID'] = df.rdr_name.str.split('_', expand=True).values[:, -1]
       else:
@@ -242,30 +246,21 @@ class gtrack:
          else:
             date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=t_start)
             df['orbID'] = date.strftime('%y%m%d%H%M')
+         if len(df['ET_TX'])>0: # same thing?
+            date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=min(df['ET_TX']))
+            df['orbID'] = date.strftime('%y%m%d%H%M')
 
       self.name = df['orbID'].unique().squeeze()
 
       # strip and lower case all column names
       df.columns = df.columns.str.strip()
-      df.columns = df.columns.str.lower()
-
-      # only select the required data (column)
-      # self.df_input = df.copy() # WD: not used
-      # self.XovOpt.display()
-
-      if (self.XovOpt.get("debug")) or (self.XovOpt.get("instrument") in ['BELA', 'CALA']) or read_all:
-         df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
-      else:
-         df = df.loc[:, ['ephemeristime', 'tof_ns_et', 'frm', 'chn', 'orbid', 'seqid']]
 
       # WD take only data in the timespan
       if (t_start != 0):
-         df = df[df['ephemeristime'] >= t_start]
+         df = df[df['ET_TX'] >= t_start]
       if (t_end != 0):
-         df = df[df['ephemeristime'] <= t_end]
+         df = df[df['ET_TX'] <= t_end]
 
-      # pd.set_option('display.max_columns', 500)
-      # pd.set_option('display.max_rows', 500)
       df.chn = pd.to_numeric(df.chn, errors='coerce').fillna(8).astype(np.int64)
 
       # remove bad data (chn > 4)
@@ -278,31 +273,23 @@ class gtrack:
          elif self.XovOpt.get("selected_hemisphere") == 'S':
             df = df[df['geoc_lat'] < 0]
 
-         if not self.XovOpt.get("debug"):
-            df.drop(['geoc_long', 'geoc_lat', 'altitude'], axis=1, inplace=True)
+      # altitude cutoff
+      df = df[df['altitude'] < XovOpt.get("max_range_altitude")]
 
-      if len(df['ephemeristime'])>0 and not('rdr_name' in df.columns):
-         print(df['ephemeristime'])
-         print(min(df['ephemeristime']))
-         date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=min(df['ephemeristime']))
-         df['orbid'] = date.strftime('%y%m%d%H%M')
-         self.name = df['orbid'].unique().squeeze()
-         
-      # df = df[df['frm'] == 1]
-      df.drop('frm', axis=1, inplace=True)
-      # to compare to Mike's selection (chn >= 5 only ... )
-      # df = df[df['EphemerisTime']>415023259.3]
-
-      # df = df.drop(['chn'], axis=1)  # .set_index('seqid')
-
-      # Reorder columns and reindex
-      if self.XovOpt.get("debug") or read_all:
-         df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']
+      # only select the required data (column)
+      if (self.XovOpt.get("debug")) or read_all:
+         df = df.loc[:, ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
+         df_['altitude']*=1e3 # store altitude in m
       else:
-         df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']
+         df = df.loc[:, ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']]
+
+      # Reorder columns and reindex (still needed?)
+      # if self.XovOpt.get("debug") or read_all:
+      #    df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']
+      # else:
+      #    df.columns = ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']
 
       # df = df.reset_index(drop=True)
-      # print(df.index.is_unique)
 
       # Drop doublons from df, keeping the best chn for each observation
       # doublons = df.sort_values(['ET_TX','chn']).loc[df.round(3).duplicated(['ET_TX'],keep='first')].index
@@ -310,9 +297,6 @@ class gtrack:
       df['doublons'] = df.sort_values(['ET_TX', 'chn']).duplicated(['ET_TX'])
       df = df.loc[df.doublons == False].drop('doublons', axis=1)
       df = df.reset_index(drop=True)
-
-      # Convert TOF to seconds
-      df.TOF *= 1.e-9
 
       # copy cleaned data to attribute df
       self.ladata_df = df
@@ -363,6 +347,8 @@ class gtrack:
       if self.XovOpt.get("instrument") in ['BELA', 'CALA']:
          pass
          # cmat = pxform_array('MPO', self.vecopts['INERTIALFRAME'], t_spc)
+      elif self.XovOpt.get("instrument") == 'BELA':
+         cmat = pxform_array(self.vecopts['SCFRAME'], self.vecopts['INERTIALFRAME'], t_spc)
       elif self.XovOpt.get("instrument") == "LOLA":
          cmat = pxform_array('LRO_SC_BUS', self.vecopts['INERTIALFRAME'], t_spc)
       else:
@@ -417,9 +403,10 @@ class gtrack:
 
    # TODO check if False doesn't create issues...
    def geoloc(self, get_partials=False):
-
       # Compute geolocalisation and dxyz/dP, where P = (A,C,R,Rl,Pt)
-      startGeoloc = time.time()
+
+      if (self.XovOpt.get("debug")):
+         startGeoloc = time.time()
 
       # Prepare
       if get_partials:
@@ -440,7 +427,7 @@ class gtrack:
          self.pert_cloop = _.copy()
       else:
          self.pert_cloop = {}
-
+         
       # randomize and assign pert for closed loop sim IF orbit in pert_tracks
       if self.name in self.XovOpt.get("pert_tracks") or self.XovOpt.get("pert_tracks") == []:
 
@@ -494,6 +481,8 @@ class gtrack:
       # store ladata_df for update
       ladata_df = self.ladata_df.copy()
 
+      Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
+         
       if (self.vecopts['OUTPUTTYPE'] == 0):
          ladata_df['X'] = results[0][:, 0]
          ladata_df['Y'] = results[0][:, 1]
@@ -502,13 +491,11 @@ class gtrack:
          #   _, _, Rbase = subprocess.check_call([PGM_HOME+'diff_res_format', d+'/resid.asc', d_part+'/resid.asc', dif_dir+'/diff.resid_'+d],
          #           universal_newlines=True)
          # else:
-         Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
          ladata_df['R'] = np.linalg.norm(results[0], axis=1) - Rbase
 
       elif (self.vecopts['OUTPUTTYPE'] == 1):
          ladata_df['LON'] = results[0][:, 0]
          ladata_df['LAT'] = results[0][:, 1]
-         Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
          ladata_df['R'] = results[0][:, 2] - Rbase
       if np.isnan(np.sum(ladata_df['LON'])):
          print("isnan")
@@ -539,8 +526,8 @@ class gtrack:
                delta_par = self.sol_prev_iter['glo']
             else:
                delta_par = 0 # WD: does it work?
-            
-            xyz_bf = np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']])
+
+            [R, TH, LO] = astr.cart2sph(np.hstack([ladata_df['X'], ladata_df['Y'], ladata_df['Z']]))
 
          elif (self.vecopts['OUTPUTTYPE'] == 1):
 
@@ -555,14 +542,15 @@ class gtrack:
             else:
                delta_par = 0 # WD: does it work?
 
-            xyz_bf = np.transpose(astr.sph2cart(ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3,
-                                                ladata_df['LAT'].values, ladata_df['LON'].values))
+            R  = ladata_df['R'].values + self.vecopts['PLANETRADIUS'] * 1.e3
+            TH = np.deg2rad(ladata_df['LAT'].values)
+            LO = np.deg2rad(ladata_df['LON'].values)
 
          # WD: Check wether it works for more than one perturbing body
          central_body = {"MERCURY": ['SUN'], "MOON": ['EARTH', 'SUN'], "CALLISTO": ['JUPITER']}
          for pertbody in central_body[XovOpt.get('body')]:   
             # WD: check for (self.vecopts['OUTPUTTYPE'] == 0): it was ladata_df['ET_BC'] w/o values
-            ladata_df['dR/dh2'] += tidepart_h2(self.vecopts, xyz_bf,
+            ladata_df['dR/dh2'] += tidepart_h2(self.vecopts, R, TH, LO,
                                                ladata_df['ET_BC'].values, SpObj, pertbody,
                                                delta_par=delta_par)[0]
 
@@ -574,8 +562,8 @@ class gtrack:
          ladata_df['ET_TX'] = ladata_df['ET_TX'].astype('int64')
          print(ladata_df)
 
-      endGeoloc = time.time()
       if (self.XovOpt.get("debug")):
+         endGeoloc = time.time()
          print('----- Runtime Geoloc = ' + str(endGeoloc - startGeoloc) + ' sec -----' +
                str((endGeoloc - startGeoloc) / 60.) + ' min -----')
 
@@ -660,12 +648,9 @@ class gtrack:
       # if needed (for partials AND for closed loop sim)
       tmp_pertPar = self.perturb_orbits(diff_step)
 
-      # tmp_pertPar = {**tmp_pertPar, **self.pert_cloop}
-      # print('norm',tmp_pertPar, diff_step)
       # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
       geoloc_out, et_bc, dr_tidal, offndr = geolocate(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
 
-      # print(self.ladata_df)
       if self.vecopts['PARTDER'] != '':
          tmp_df['ET_BC_' + self.vecopts['PARTDER'] + '_p'] = et_bc
       else:
@@ -729,6 +714,7 @@ class gtrack:
       tmp_pertPar = tmp_pertPar.fromkeys(tmp_pertPar, 0)
 
       # setup pert for partial derivatives
+      # WD: What is that?
       tmp_pertPar[self.vecopts['PARTDER']] = diff_step
 
       if sign != 1:
@@ -774,8 +760,6 @@ class gtrack:
          pool.join()
       else:
          results = [self.launch_stereoproj(i, lon0, lat0) for i in param.items()]  # seq
-
-      # print(results)
 
       # prepare column names
       col_sim = np.array(['X_stgprj', 'Y_stgprj'])
