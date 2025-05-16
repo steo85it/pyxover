@@ -154,7 +154,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
       obs_weights = diags(xovi_amat.xov.xovers['weights'].values, 0)
 
    xovi_amat.weights = obs_weights
-   xovers['weights'] = xovi_amat.weights.diagonal()
+   xovi_amat.xov.xovers['weights'] = xovi_amat.weights.diagonal()
 
    ## DIRECT SOLUTION FOR DEBUG AND SMALL PROBLEMS (e.g., global only)
    if XovOpt.get("debug"):
@@ -456,6 +456,10 @@ def compute_penalty_matrices(xovi_amat):
       # par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if not your_key.startswith('1')}
       if par_constr:
          penalty_mat.append(compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars))
+         
+      # par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if your_key.startswith('d')}
+      # if par_constr:
+      #    penalty_mat.append(compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars))
    
    if len(XovOpt.get("mean_constr")) > 0:
       penalty_mat.append(compute_penalty_mat_avg(xovi_amat.sol4_pars))
@@ -839,10 +843,7 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
          pd.set_option('display.width', None)
          pd.set_option('display.max_colwidth', -1)
 
-      start = time.time()
       xovi_amat.resid_wrmse = get_stats(xovi_amat, xovi_amat.spA_penal, xovi_amat.b_penal)
-      end = time.time()
-      print("get_stats finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
       print(f"Solution for iteration {i}")
       print_sol(orb_sol, glb_sol, xov, xovi_amat)
@@ -882,7 +883,10 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
 
       # VCE
       if AccOpt.get("compute_vce"):
+         start = time.time()
          sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat, spAmat, penalty, Ndiag=True)
+         end = time.time()
+         print("compute_vce_weights finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
          w_obs_impovement    = [np.abs(w - 1. / s)/w for (w,s) in zip(weight_obs,sigma2_obs)]
          w_constr_impovement = [np.abs(w - 1. / s)/w for (w,s) in zip(weight_constr,sigma2_constr)]
@@ -991,7 +995,9 @@ def main(arg):
 
    # update options (needed when sending to slurm)
    XovOpt.clone(opts)
+   XovOpt.check_consistency()
    AccOpt.clone(acc_opts)
+   AccOpt.check_consistency()
    
    print("Crossovers loaded from directories:")
    print(datasets)
@@ -1034,7 +1040,8 @@ def main(arg):
 
    if XovOpt.get("partials"):
       # load previous iter from disk (orbs, sols, etc) if available
-      previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
+      previous_iter = None
+      # previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
       # WD: try before ..., since xov_cmb seems to be modified
       # par_list = ['orbA', 'orbB', 'xOvID']
       # xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
@@ -1094,23 +1101,14 @@ def main(arg):
             "sec or ", round((end - start) / 60., 2), " min!")
 
       # Where all the weight from the penalty matrix went???
-      if previous_iter != None and previous_iter.vce != None:
-         xovi_amat.vce = previous_iter.vce
+      if previous_iter != None and previous_iter.vce_obs != None and previous_iter.vce_pen != None:
+         xovi_amat.vce_obs = previous_iter.vce_obs
+         xovi_amat.vce_pen = previous_iter.vce_pen
       else:
-         # TODO move to options
-         if XovOpt.get("instrument") == "pawstel":
-            weight_obs = 1.  # .e-3
-            weight_constr = 1.
-            weight_constr_avg = 1.  # e-2
-         else:
-            weight_obs = 1.e-3
-            weight_constr = 5.
-            weight_constr_avg = 1.e-2
-
-         xovi_amat.vce_obs = [weight_obs]
-         xovi_amat.vce_pen = [weight_constr, weight_constr_avg]
-         xovi_amat.vce_obs = np.ones(len(xovi_amat.obs_blocks))
-         xovi_amat.vce_pen = np.ones(len(xovi_amat.penalty_mat))
+         xovi_amat.vce_obs = AccOpt.get("weight_obs")
+         xovi_amat.vce_pen = AccOpt.get("weight_constr")
+         # xovi_amat.vce_obs = np.ones(len(xovi_amat.obs_blocks))
+         # xovi_amat.vce_pen = np.ones(len(xovi_amat.penalty_mat))
          # xovi_amat.vce = [0.0002247404434024504, 5.0025679108113685, 0.0010878786212904351]
 
       start = time.time()

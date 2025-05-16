@@ -31,8 +31,8 @@ class AccOpt:
       # useless now, superseeded by adjusting VCE weights
       "sigma_0": 1.,  # 1.e-2 * 2. * 182 # * 0.85 # 0.16 #
       # weights updated by VCE
-      "weight_obs": 1.,  # 1.57174113e-06 # 1.
-      "weight_constr": 30,  # 2.29140788e-05 # 1.
+      "weight_obs": [1.],  # 1.57174113e-06 # 1. # 1e-3
+      "weight_constr": [1, 1] ,#30,  # 2.29140788e-05 # 1. # [5 1e-2]
 
       "use_advanced_weighting": True,
       # convergence criteria for fixing weights
