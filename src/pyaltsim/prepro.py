@@ -14,22 +14,17 @@ def prepro_ilmNG(illumNGf):
       df = pd.read_csv(f, index_col=None, header=0, names=[f.split('.')[-1]])
       li.append(df)
 
-   # df_ = dfin.copy()
    df_ = pd.concat(li, axis=1)
    df_ = df_.apply(pd.to_numeric, errors='coerce')
-   # print(df_.rng.min())
 
-   df_ = df_[df_.rng < 1600]
+   df_ = df_[df_.altitude < 1600]
    df_ = df_.rename(columns={"xyzd": "epo_tx"})
-   # print(df_.dtypes)
 
    df_['diff'] = df_.epo_tx.diff().fillna(0)
-   # print(df_[df_['diff'] > 1].index.values)
    arcbnd = [df_.index.min()]
    # new arc if observations separated by more than 1h
    arcbnd.extend(df_[df_['diff'] > 3600].index.values)
    arcbnd.extend([df_.index.max() + 1])
-   # print(arcbnd)
    df_['orbID'] = 0
    for i, j in zip(arcbnd, arcbnd[1:]):
       orbid = (datetime.datetime(2000, 1, 1, 12, 0) + datetime.timedelta(seconds=df_.loc[i, 'epo_tx'])).strftime(
@@ -57,17 +52,19 @@ def prepro_BELA_sim(epo_in):
 
    df_ = pd.DataFrame(approx_bounce_point,columns=['x','y','z'])
    df_['epo_tx'] = epo_in
-   df_['rng'] = range_val
+   df_['altitude'] = range_val
 
    approx_bounce_point_sph = astr.cart2sph(approx_bounce_point)
    df_['lat']= np.rad2deg(approx_bounce_point_sph[1]) # pd.DataFrame(approx_bounce_point_sph,columns=['r','lat','lon'])
 
    # apply altitude cutoff (PFD too high)
-   df_ = df_[df_.rng < XovOpt.get("max_range_altitude")]
+   df_ = df_[df_['altitude'] < XovOpt.get("max_range_altitude")]
+   df_['altitude']*=1e3 # store altitude in m
    if df_.empty:
       return df_
 
-   df_ = df_.rename(columns={"xyzd": "epo_tx"})
+   # WD: What for?
+   # df_ = df_.rename(columns={"xyzd": "epo_tx"})
 
    ### used for MLA ###
    # df_['diff'] = df_.epo_tx.diff().fillna(0)
