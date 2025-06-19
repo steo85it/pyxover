@@ -13,7 +13,7 @@ from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
 from accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
-    analyze_sol, subsample_xovers, load_previous_iter_if_any
+    analyze_sol, subsample_xovers, load_previous_iter_if_any, stochastic_diag_estimate
 from xovutil.iterables import mergsum
 from xovutil.xovres2weights import get_interpolation_weight
 from pyxover.xov_utils import load_combine, clean_xov, clean_partials
@@ -27,9 +27,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import time
 
-import scipy
-from scipy.sparse import csr_matrix, diags
-from scipy.sparse.linalg import lsqr
+from scipy.sparse import csr_matrix, diags, issparse
+import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import scipy.linalg as la
 
@@ -495,6 +494,8 @@ def compute_penalty_mat_abs(xovi_amat, par_constr, sol4_pars):
             axis=1).sort_values(ascending=False)
 
       # WD: hardcoded year of MESSENGER flyby??
+      # WD: Is it there to tightly constrain parameters while leaving the corresponding observation?
+      #     It may damage other tracks is the track is not good enough
       to_tightly_constrain = [idx for idx, p in enumerate(sol4_pars) if
                       p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if
                       p.split('_')[0][:2] != '08']  # exclude flybys from this, else orbits are never improved
@@ -617,62 +618,71 @@ def svd_parameter_analysis(spA_sol4, obs_weights, parNames):
          print("Norm of Vh", np.round(np.linalg.norm(Vh.T[:, :i + 1], axis=1) * 100., 1),
                "% up to lambda= ",S[i])
                                                                      
-def compute_vce_weights(amat, Amat, penalty, Ndiag=False):
-   xsol = []
-   for filt in amat.sol4_pars_iter:
-      filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
-      xsol.append(list(filtered_dict.values())[0])
-   xsol = np.array(xsol)
+def compute_vce_weights(amat, L=None, N=None, spA_penal=None, Ndiag=False):
+   # VCE for observations NEQs is well approximated by Ndiag=True.
+   # VCE for constraint NEQs require more care (because diagonal).
+   # Stochastic trace estimators with approximate solver are not very efficient.
+   # Making use of Cholesky factor improve the convergence.
+   # Combining Cholesky factor with stochastic trace estimators is efficient (albeit less accurate)
 
-   xsol_iter = []
-   for filt in amat.sol4_pars_iter:
-      filtered_dict = {k: v for (k, v) in amat.sol_dict_iter['sol'].items() if filt in k}
-      if len(list(filtered_dict.values())) > 0:
-         xsol_iter.append(list(filtered_dict.values())[0])
-   xsol_iter = np.array(xsol_iter)
+   xsol = np.array([
+      next(v for k, v in amat.sol_dict['sol'].items() if filt in k)
+      for filt in amat.sol4_pars_iter
+      ])
 
    s2_obs_apr = [1. / v for v in amat.vce_obs]
    s2_constr_apr = [1. / v for v in amat.vce_pen]
+   
+   if N is None and (Ndiag or L is None):
+      N = spA_penal.T * spA_penal
 
-   # compute total N^{-1}
-   N = Amat.T * Amat + penalty
-   if Ndiag:
-      Ninv = diags(1/N.diagonal())
-      Ninv = Ninv.todense()
-   else:
-      N = N.todense()
-      start = time.time()
+   if Ndiag: # N^-1=1/diag(N) seems enough for VCE_obs
+      if issparse(N):
+         Ninv = diags(1/N.diagonal()).todense()
+      else:
+         Ninv = np.diag(1/np.diag(N))
+   elif (L is None):
+      # compute total N^{-1}
+      if issparse(N):
+         N = N.todense()              
       Ninv = np.linalg.pinv(N, hermitian=True, rcond=1.e-20)
       end = time.time()
       print("Ninv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-      
+
       if not np.allclose(N, N @ (Ninv @ N)):
          print('### N is almost singular!! Help!!!')
+   else:
+      Ninv = None
 
-   # TODO this should be handled differently!!!
-   # if len(xsol)!=len(xsol_iter):
-   #     print("### updating xsol=xsol_iter for VCE")
-   #     xsol = xsol_iter
-   #     print('then xsol=\n',xsol)
-   # print("len of full and iter sol",len(amat.sol_dict['sol']),len(amat.sol_dict_iter['sol']))
-   # print('xTx=', xsol.T@xsol,'xTx_iter=', xsol_iter.T@xsol_iter)
-   
-   # s2_obs_new = [get_vce_factor(b=amat.b, A=amat.spA_sol4, x=xsol_iter, Cinv=amat.weights * diags(mask_obs.astype(float)), Ninv=Ninv,
-   #                              s2apr=s2_obs, kind='obs', nelem=sum(mask_obs)) for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
-   s2_obs_new = [get_vce_factor(b=diags(mask_obs.astype(float)) @ amat.b,
-                                A=diags(mask_obs.astype(float)) @ amat.spA_sol4,
-                                x=xsol_iter, Cinv=amat.weights, Ninv=Ninv,
-                                s2apr=s2_obs, kind='obs', nelem=sum(mask_obs)) for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]   
+   start = time.time()
+
+   # for obs, one could change to A=spA_penal[mask_obs, :], Cinv=I
+   if Ndiag:
+      s2_obs_new = [get_vce_factor(x=xsol, Cinv=amat.weights, L=None, Ninv=Ninv,
+                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs, :],
+                                   s2apr=s2_obs, kind='obs', nelem=sum(mask_obs))
+                    for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
+   else:
+      s2_obs_new = [get_vce_factor(x=xsol, Cinv=amat.weights, L=L, Ninv=Ninv,
+                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs, :],
+                                   s2apr=s2_obs, kind='obs', nelem=sum(mask_obs),stoch=True)
+                    for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
+
+   end = time.time()
+   print(f"Building s2_obs_new: {int(end - start)} sec")
+   for s in s2_obs_new: # new weights have to be > 0
+      assert s > 0
+
+   start = time.time()
    # WD: works only if penalty_mat is a NEQ
-   s2_constr_new = [get_vce_factor(b=0., A=0., x=xsol, Cinv=penalty_mat,
-                                   Ninv=Ninv, s2apr=s2_constr, 
-                                   kind='constr', nelem=penalty_mat.nnz) for s2_constr, penalty_mat in zip(s2_constr_apr,amat.penalty_mat)]
-
-   # new weights have to be > 0
-   for s2_constr in s2_obs_new:
-      assert s2_constr > 0
-   for s2_constr in s2_constr_new:
-      assert s2_constr > 0
+   s2_constr_new = [get_vce_factor(x=xsol, Cinv=penalty_mat, L=L, Ninv=Ninv,
+                                   s2apr=s2_constr, kind='constr',
+                                   nelem=penalty_mat.nnz, stoch=True)
+                    for s2_constr, penalty_mat in zip(s2_constr_apr,amat.penalty_mat)]
+   end = time.time()
+   print(f"Building s2_constr_new: {int(end - start)} sec")
+   for s in s2_constr_new: # new weights have to be > 0
+      assert s > 0
 
    return s2_obs_new, s2_constr_new
 
@@ -687,9 +697,29 @@ def sparse_cholesky(A): # The input matrix A must be a sparse symmetric positive
       return LU.L.dot( diags(LU.U.diagonal()**0.5) )
    else:
        sys.exit('The matrix is not positive definite')
-    
-def compute_solution(xovi_amat, previous_iter, xov_cmb):
+
+def remove_tracks(xovi_amat, tracks_to_remove):
+   # remove tracks and related observations
+   # works only for one block one penalty matrix
+
+   par_to_keep = [idx for idx, val in enumerate(xovi_amat.sol4_pars) if
+                    not any(val.startswith(t) for t in tracks_to_remove)]
    
+   obs_to_keep = (~xovi_amat.xov.xovers['orbA'].isin(tracks_to_remove) & ~xovi_amat.xov.xovers['orbB'].isin(tracks_to_remove))
+   
+   weight_d = xovi_amat.weights.diagonal()
+   xovi_amat.b = xovi_amat.b[obs_to_keep]
+   xovi_amat.weights = diags(weight_d[obs_to_keep])
+   xovi_amat.spA_sol4 = xovi_amat.spA_sol4[:, par_to_keep]
+   xovi_amat.spA_sol4 = xovi_amat.spA_sol4[obs_to_keep,:]
+   xovi_amat.obs_blocks[0] = xovi_amat.obs_blocks[0][obs_to_keep]
+   xovi_amat.penalty_mat[0] = xovi_amat.penalty_mat[0][:,par_to_keep]
+   xovi_amat.penalty_mat[0] = xovi_amat.penalty_mat[0][par_to_keep,:]
+   sol4_pars = [xovi_amat.sol4_pars[par] for par in par_to_keep]
+   xovi_amat.sol4_pars = [xovi_amat.sol4_pars[par] for par in par_to_keep]
+   xovi_amat.sol4_pars_iter = xovi_amat.sol4_pars    
+
+def compute_solution(xovi_amat, previous_iter, xov_cmb):
    # xovi_amat attributes which are changes:
    # spA_penal, b_penal, sol, sol_dict
    # sol_dict_iter, sol_iter, sol4_pars, vce
@@ -697,15 +727,25 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
    # xovi_amat attributes changed via get_stats
    # spA, b, postfit_res, resid_wrmse
    
+   weight_d = xovi_amat.weights.diagonal()
+   
+   weights_mean = np.mean(weight_d)
+   n_goodobs_tracks = xovi_amat.xov.xovers.loc[weight_d > 0.1 * weights_mean][
+      ['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False)
+   
+   tracks_to_remove = n_goodobs_tracks[n_goodobs_tracks < 10].axes[0].tolist()
+
+   remove_tracks(xovi_amat, tracks_to_remove)
+
    if (xovi_amat.weights !=  diags(xovi_amat.weights.diagonal())).nnz == 0:
       print("Weight matrix is diagonal")
-      L = diags(xovi_amat.weights.diagonal()**0.5)
+      W_L = diags(xovi_amat.weights.diagonal()**0.5)
    else:
       print("Cholesky decomposition of the weight matrix")
-      L = la.cholesky(xovi_amat.weights.todense(), lower=True)
+      W_L = la.cholesky(xovi_amat.weights.todense(), lower=True)
 
-   keep_iterating_vce = True
-   for i in (i for i in range(10) if keep_iterating_vce):
+   last_iteration = not AccOpt.get("compute_vce")
+   for i in (i for i in range(10)):
       print(f"\nIteration {i}:")
       print(f"------------")
       
@@ -717,21 +757,25 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
       sqrt_weight_obs = np.sqrt(weight_obs)
       weight_constr = xovi_amat.vce_pen
       # Choleski decompose matrix and append to design matrix (weight_constr[0] applied except for constrain on avg)
-      penalty = weight_constr[0] * xovi_amat.penalty_mat[0]
-      if len(xovi_amat.penalty_mat) > 1:
-         # penalty += weight_constr[1] * xovi_amat.penalty_mat[1].transpose() * xovi_amat.penalty_mat[1]
-         penalty += weight_constr[1] * xovi_amat.penalty_mat[1]
-      if np.count_nonzero(penalty - np.diag(penalty.diagonal())):
-         print("Cholesky decomposition of the constraint matrix")
-         # spQ = sparse_cholesky(penalty)
-         Q = la.cholesky(penalty.todense())
-         print("Cholesky decomposition done")
-         spQ = csr_matrix(Q)
+      if len(xovi_amat.penalty_mat) > 0:
+         penalty = weight_constr[0] * xovi_amat.penalty_mat[0]
+         if len(xovi_amat.penalty_mat) > 1:
+            # penalty += weight_constr[1] * xovi_amat.penalty_mat[1].transpose() * xovi_amat.penalty_mat[1]
+            penalty += weight_constr[1] * xovi_amat.penalty_mat[1]
+         if np.count_nonzero(penalty - np.diag(penalty.diagonal())):
+            print("Cholesky decomposition of the constraint matrix")
+            # spQ = sparse_cholesky(penalty)
+            Q = la.cholesky(penalty.todense())
+            print("Cholesky decomposition done")
+            spQ = csr_matrix(Q)
+         else:
+            print("Penalty matrix is diagonal")
+            spQ = diags(penalty.diagonal()**0.5)
       else:
-         print("Penalty matrix is diagonal")
-         spQ = diags(penalty.diagonal()**0.5)
+         penalty = []
 
-      bmat =  sum([ w * diags(mask_obs.astype(float)) @ xovi_amat.b for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
+      bmat =  sum([ w * mask_obs.astype(float) * xovi_amat.b  for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
+      b_penal = W_L.T * bmat
       # add penalisation to residuals
       if previous_iter != None and previous_iter.sol_dict != None:
          # get previous solution reordered as sol4_pars_iter (and hence as Q) - contains the full solution but only for the
@@ -743,20 +787,21 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
                             xovi_amat.sol4_pars_iter]
                   
             Q = spQ.todense()
-            b_penal = np.hstack([L.T * bmat, -1. * np.ravel(np.dot(Q, prev_sol_ord))]) # WD: to check !!
+            b_penal = np.hstack([b_penal, -1. * np.ravel(np.dot(Q, prev_sol_ord))]) # WD: to check !!
       else:
-         b_penal = np.hstack([L.T * bmat,-1. * np.zeros(len(xovi_amat.sol4_pars_iter))])
+         if len(xovi_amat.penalty_mat) > 0:
+            b_penal = np.hstack([b_penal, -1. * np.zeros(penalty.shape[0])])
 
       spAmat = sum([ w * diags(mask_obs.astype(float)) @ xovi_amat.spA_sol4 for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
 
       # apply weights
       # TODO clean-up: applying weights at this point makes it impossible to get covariance matrix
       if XovOpt.get("instrument") != "pawstel":
-         spA_sol4_penal = scipy.sparse.vstack([ L.T * spAmat, 1. * spQ])
+         spA_sol4_penal = W_L.T * spAmat
       else:
-         spA_sol4_penal = scipy.sparse.vstack([spAmat, 1. * spQ])
-
-      # spA_sol4_penal[np.abs(spA_sol4_penal) < 1.e-10] = 0
+         spA_sol4_penal = spAmat
+      if len(xovi_amat.penalty_mat) > 0:
+         spA_sol4_penal = sp.vstack([spA_sol4_penal, 1. * spQ])
 
       # save penalised matrices
       xovi_amat.spA_penal = spA_sol4_penal
@@ -768,14 +813,14 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
          weights_penal = diags(np.concatenate([xovi_amat.weights.diagonal(), np.ones(Q.shape[0])]), 0)
 
          try:
-            std_par_unconstrained = np.sqrt(scipy.sparse.linalg.inv(
+            std_par_unconstrained = np.sqrt(spla.inv(
                xovi_amat.spA.transpose() * xovi_amat.weights * xovi_amat.spA).diagonal())
          except:
             print("** Factor is exactly singular, need some constraints")
             std_par_unconstrained = np.tile(0., len(xovi_amat.parNames))
 
          try:
-            std_par = np.sqrt(scipy.sparse.linalg.inv(
+            std_par = np.sqrt(spla.inv(
                xovi_amat.spA_penal.transpose() * weights_penal * xovi_amat.spA_penal).diagonal())
          except:
             print("** Matrix not positive definite, modify constraints.")
@@ -787,49 +832,147 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
       else:
          # solve using lsqr
          print("Starting LSQR")
-         start = time.time()
+         method = 3
+         scaling = False
+         # scaling is helpful for method relying on approximated solvers
+         if method != 3:
+            scaling = True
+         start_sol = time.time()
+         if scaling:
+            # Column scaling: make each column of A have unit 2-norm
+            col_norms = np.sqrt(xovi_amat.spA_penal.power(2).sum(axis=0)).A1
+
+            # avoid divide-by-zero
+            col_norms[col_norms==0] = 1.0
+            
+            A_scaled = xovi_amat.spA_penal @ diags(1.0 / col_norms)
+            b_scaled = xovi_amat.b_penal                     # unchanged (unless you do row scaling too)
          
-         # Column scaling: make each column of A have unit 2-norm
-         # col_norms = np.sqrt(xovi_amat.spA_penal.power(2).sum(axis=0)).A1
-         # col_norms = np.linalg.norm(xovi_amat.spA_penal, axis=0)
-         # avoid divide-by-zero
-         # col_norms[col_norms==0] = 1.0
-         #D_col_inv = diags(1/col_norms)
+            print("Columns scaled with max:", np.max(col_norms))
+         else:
+            A_scaled = xovi_amat.spA_penal
+            b_scaled = xovi_amat.b_penal   
+            
+         tol = (1.e-10 / AccOpt.get("sigma_0"))
  
-         # A_scaled = xovi_amat.spA_penal.dot(D_col_inv)    # N×M
-         #A_scaled = xovi_amat.spA_penal/col_norms    # N×M
-         #b_scaled = xovi_amat.b_penal                     # unchanged (unless you do row scaling too)
- 
-         # # Solve A_scaled x̂ = b_scaled
-         # result = lsqr(A_scaled, b_scaled, damp=0, show=False, iter_lim=100000,
-         #                       atol=1.e-8 / AccOpt.get("sigma_0"),
-         #                       btol=1.e-8 / AccOpt.get("sigma_0"), calc_var=True)
-         # xovi_amat.sol  = result
- 
-         # Recover the true x
-         # xovi_amat.sol = (D_col_inv.dot(xovi_amat.sol[0]), *xovi_amat.sol[1:-1],
-         #                  D_col_inv.power(2).dot(xovi_amat.sol[-1]))
-         # xovi_amat.sol = (xovi_amat.sol[0]/col_norms, *xovi_amat.sol[1:-1],
-         #                  xovi_amat.sol[-1]/(col_norms ** 2))
+         if method == 1:
+            print("Solving using lsqr")
+            result = spla.lsqr(A_scaled, b_scaled, damp=0, show=False, iter_lim=100000,
+                                  atol=tol, conlim=1e8, btol=tol, calc_var=True)
+         
+         if method == 2:
+            print("Solving using lsmr")
+            result = spla.lsmr(A_scaled, b_scaled, damp=0, show=False, maxiter=100000,
+                                  atol=tol, conlim=1e8, btol=tol)
+         
+         if method < 3:
+            result = list(result)
+            end = time.time()
+            print(f"lsqr/lsmr finished: {int(end - start)} sec")
+         
+            istop = result[1]
+            if istop == 1:
+               print("LSQR solution is an approximate solution to Ax = b.")
+            elif (istop == 2):
+               print("LSQR solution approximately solves the least-squares problem.")
+               u, s, vt = spla.svds(A_scaled, k=6)
+               print("Estimated condition number:", max(s) / min(s))
+               print("LSQR condition number:",result[6])
+               if (max(s) / min(s) > 100):
+                  print("Unreliable variance")
+            elif istop > 2:
+               print("*** Accumxov.compute_solution: the system may be inconsistent.")
+               print("The solution is an approximate solution to the corresponding least-squares problem.")
+               exit(2)
 
-         xovi_amat.sol = lsqr(xovi_amat.spA_penal, xovi_amat.b_penal, damp=0, show=False, iter_lim=100000,
-                              atol=1.e-8 / AccOpt.get("sigma_0"),
-                              btol=1.e-8 / AccOpt.get("sigma_0"), calc_var=True)
-         # xovi_amat.sol = lsqr(xovi_amat.spA, xovi_amat.b,damp=0,show=True,iter_lim=100000,atol=1.e-8,btol=1.e-8,calc_var=True)
+         if method > 2:
+            # compute normal equation system (N,bn)
+            N  = A_scaled.T * A_scaled
+            bn = A_scaled.T * b_scaled
+         
+         if method == 3:
+            print("Solving using Cholesky factorization")
+            start = time.time()
+            # Cholesky factor (lower triangular)
+            N = N.todense()
+            L = la.cholesky(N, lower=True)
+            end = time.time()
+            print(f"Cholesky factor: {int(end - start)} sec")
+
+            if last_iteration: # compute also variance
+               start = time.time()
+               # Compute L^{-1} efficiently
+               # Each column of Linv satisfies: L @ x = e_i
+               # So we can solve for all columns at once
+               identity = np.eye(L.shape[0])
+               Linv = la.solve_triangular(L, identity, lower=True)
+               end = time.time()
+               print(f"solve_triangular L^-1: {int(end - start)} sec")
+
+               y = Linv @ bn
+               x = Linv.T @ y
+            
+               var_ref = np.sum(Linv**2, axis=0)
+
+               result = [x, var_ref]
+            else:
+               # Forward solve L y = b
+               y = la.solve_triangular(L, bn, lower=True)
+               # Backward solve L.T x = y
+               x = la.solve_triangular(L.T, y, lower=False)
+               result = [x]
+               result.append([])
+
+            sol_ref = x
+         
+         if method == 4:
+            print("Solving using conjugate-gradient (cg)")
+            start = time.time()
+            x, info = spla.cg(N, bn, tol=tol, maxiter=1000)
+            end = time.time()
+            print(f"Solve using cg: {int(end - start)} sec")
+            if info != 0:
+               print("cg finished with info=", info)
+            diff = np.abs(sol_ref-x)
+            print(max(diff), np.std(diff))
+
+         # Estimate variance if not availabe
+         if method != 3 and last_iteration:
+               start = time.time()
+               # estimate variance with N and cg may give <0 values
+               # result.append(stochastic_diag_estimate(A_scaled, num_samples=10, tol=1e-8)
+
+               # 130s, d=37
+               var_est = stochastic_diag_estimate(A_scaled, num_samples=10, tol=1e-10)
+               end = time.time()
+               print(f"Variance estimator using lsqr(A) s=10: {int(end - start)} sec")
+               if np.min(var_est)<0:
+                  print(f"{len(var_est[var_est<0])}/{len(var_est)}")
+               # diff = np.abs(var_ref-var_est)
+               # print(max(diff), np.std(diff))
+
+               result = [result[0], var_est]
+               
+               if np.min(var_est)<0:
+                  print(f"{len(var_est[var_est<0])}/{len(var_est)}")
+
+         if scaling:
+            result[0] = result[0]/col_norms
+         
+         xovi_amat.sol = result[0]
+         if last_iteration:
+            if scaling:
+               xovi_amat.std = result[-1]/(col_norms ** 2)
+            else:
+               xovi_amat.std = result[-1]
+         else:
+            xovi_amat.std = None
+
          end = time.time()
-         print("lsqr finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-
-         if xovi_amat.sol[1] == 1:
-            print("LSQR solution is an approximate solution to Ax = b.")
-         elif (xovi_amat.sol[1] == 2):
-            print("LSQR solution approximately solves the least-squares problem.")
-         elif xovi_amat.sol[1] > 2:
-            print("*** Accumxov.compute_solution: the system may be inconsistent.")
-            print("The solution is an approximate solution to the corresponding least-squares problem.")
-            exit(2)
+         print("lsqr finished after", int(end - start_sol), "sec or ", round((end - start) / 60., 2), " min!")
 
       # Save to pkl
-      orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb, mode='iter')
+      orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb.xovers, mode='iter')
 
       # check std of orbital parameters for systematics
       if XovOpt.get("debug"):
@@ -847,51 +990,30 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
 
       print(f"Solution for iteration {i}")
       print_sol(orb_sol, glb_sol, xov, xovi_amat)
-
+      
       # store improvments from current iteration
       xovi_amat.sol_dict_iter = xovi_amat.sol_dict.copy()
-      xovi_amat.sol_iter = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1],
-                            list(xovi_amat.sol_dict['std'].values()))
+      xovi_amat.sol_iter = list(xovi_amat.sol_dict['sol'].values())
 
-      # Cumulate with solution from previous iter (or from pre-processing)
-      if previous_iter != None:  # (int(ext_iter) > 0) and (previous_iter != None):
-         if previous_iter.sol_dict != None:
-            # def dict2np(x):
-            #     return np.array(list(x.values()))
-            # print("test xTx update -soldictiter- pre=",np.sqrt(dict2np(xovi_amat.sol_dict_iter['sol']).T@dict2np(xovi_amat.sol_dict_iter['sol'])))
-            # print("test xTx update -prevsol- pre=",np.sqrt(dict2np(previous_iter.sol_dict['sol']).T@dict2np(previous_iter.sol_dict['sol'])))
-            # sum the values with same keys
-            updated_sol = mergsum(xovi_amat.sol_dict_iter['sol'], previous_iter.sol_dict['sol'])
-            updated_std = mergsum(xovi_amat.sol_dict_iter['std'],
-                                  previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
-            # WD: is previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.) to enforce 0 values?
-            # print("test xTx update -soldictiter- post=",np.sqrt(dict2np(xovi_amat.sol_dict_iter['sol']).T@dict2np(xovi_amat.sol_dict_iter['sol'])))
-            # print("test xTx update -prevsol- post=",np.sqrt(dict2np(previous_iter.sol_dict['sol']).T@dict2np(previous_iter.sol_dict['sol'])))
-            # print("test xTx update post=",np.sqrt(dict2np(updated_sol).T@dict2np(updated_sol)))
-
-            # save total list of parameters (previous iters + current)
-            xovi_amat.sol4_pars = list(updated_sol.keys())
-            xovi_amat.sol_dict = {'sol': updated_sol, 'std': updated_std}
-            # use dict to update amat.sol, keep std
-            xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1],
-                             list(xovi_amat.sol_dict['std'].values()))
-            orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb, mode='full')
-            print("Cumulated solution")
-            print_sol(orb_sol, glb_sol, xov, xovi_amat)
-         else:
-            print("previous_iter.sol_dict=", previous_iter.sol_dict)
+      if last_iteration:
+         break
 
       # VCE
       if AccOpt.get("compute_vce"):
          start = time.time()
-         sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat, spAmat, penalty, Ndiag=True)
+         if method == 3: # if cholesky decomposition was performed
+            sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat,  L  ,   N , spA_sol4_penal, Ndiag=True)
+         elif scaling: # N should be recomputed
+            sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat, None, None, spA_sol4_penal, Ndiag=True)
+         else: # N is directly passed
+            sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat, None,   N , spA_sol4_penal, Ndiag=True)
          end = time.time()
          print("compute_vce_weights finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
          w_obs_impovement    = [np.abs(w - 1. / s)/w for (w,s) in zip(weight_obs,sigma2_obs)]
          w_constr_impovement = [np.abs(w - 1. / s)/w for (w,s) in zip(weight_constr,sigma2_constr)]
 
-         keep_iterating_vce = any(w > 0.01 for w in w_obs_impovement) or any(w > 0.01 for w in w_constr_impovement)
+         keep_iterating_vce = any(w > 0.01 for w in w_obs_impovement) or any(w > 0.1 for w in w_constr_impovement)
 
          print("vce iter,weight (obs,constr):", i, xovi_amat.vce_obs, xovi_amat.vce_pen, keep_iterating_vce)
          print("w_obs updated by", [w * 100. for w in w_obs_impovement],
@@ -903,26 +1025,156 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
             xovi_amat.vce_obs = weight_obs
             xovi_amat.vce_pen = weight_constr
          else:
-            print("Stop VCE")
+            print("Stop VCE, next iteratin will be the last one.")
+            last_iteration = True
+   
+   # Cumulate with solution from previous iter (or from pre-processing)
+   if previous_iter != None:  # (int(ext_iter) > 0) and (previous_iter != None):
+      if previous_iter.sol_dict != None:
+         # def dict2np(x):
+         #     return np.array(list(x.values()))
+         # print("test xTx update -soldictiter- pre=",np.sqrt(dict2np(xovi_amat.sol_dict_iter['sol']).T@dict2np(xovi_amat.sol_dict_iter['sol'])))
+         # print("test xTx update -prevsol- pre=",np.sqrt(dict2np(previous_iter.sol_dict['sol']).T@dict2np(previous_iter.sol_dict['sol'])))
+         # sum the values with same keys
+         updated_sol = mergsum(xovi_amat.sol_dict_iter['sol'], previous_iter.sol_dict['sol'])
+         updated_std = mergsum(xovi_amat.sol_dict_iter['std'],
+                               previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
+         # WD: is previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.) to enforce 0 values?
+         # print("test xTx update -soldictiter- post=",np.sqrt(dict2np(xovi_amat.sol_dict_iter['sol']).T@dict2np(xovi_amat.sol_dict_iter['sol'])))
+         # print("test xTx update -prevsol- post=",np.sqrt(dict2np(previous_iter.sol_dict['sol']).T@dict2np(previous_iter.sol_dict['sol'])))
+         # print("test xTx update post=",np.sqrt(dict2np(updated_sol).T@dict2np(updated_sol)))
+
+         # save total list of parameters (previous iters + current)
+         xovi_amat.sol4_pars = list(updated_sol.keys())
+         xovi_amat.sol_dict = {'sol': updated_sol, 'std': updated_std}
+         # use dict to update amat.sol, keep std
+         # xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1],
+         #                  list(xovi_amat.sol_dict['std'].values()))
+         xovi_amat.sol = list(xovi_amat.sol_dict['sol'].values())
+         xovi_amat.std = list(xovi_amat.sol_dict['std'].values())
+         orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb, mode='full')
+         print("Cumulated solution")
+         print_sol(orb_sol, glb_sol, xov, xovi_amat)
       else:
-         keep_iterating_vce = False
+         print("previous_iter.sol_dict=", previous_iter.sol_dict)
 
 def create_observation_blocks(xovers):
+   
+   orbA0 = xovers['orbA'].str[0]
+   orbB0 = xovers['orbB'].str[0]
       
-   unique_chars = list(set(pd.concat([xovers['orbA'].str[0], xovers['orbB'].str[0]])))
+   unique_chars = list(set(pd.concat([orbA0, orbB0])))
+   if len(unique_chars) > 1:
+      unique_chars = unique_chars.sort()
    
    print("Creating observation blocks based on orbA/B starting with", unique_chars)
    
-   blocks = [(xovers['orbA'].str[0] == c) & (xovers['orbB'].str[0] == c) for c in unique_chars]
-   if len(unique_chars) > 1:
-      blocks.append((xovers['orbA'].str[0] == unique_chars[0]) & (xovers['orbB'].str[0] == unique_chars[1]) |
-                    (xovers['orbA'].str[0] == unique_chars[1]) & (xovers['orbB'].str[0] == unique_chars[0]))   
+   if True:
+      blocks = [(xovers['orbA'].str[0] == c) & (xovers['orbB'].str[0] == c) for c in unique_chars]
+      if len(unique_chars) > 1:
+         blocks.append((xovers['orbA'].str[0] == unique_chars[0]) & (xovers['orbB'].str[0] == unique_chars[1]) |
+                       (xovers['orbA'].str[0] == unique_chars[1]) & (xovers['orbB'].str[0] == unique_chars[0]))   
+   elif False:
+      lat_threshold = 88
+      blocks = []
+      i = 0
+      for c in unique_chars:
+         i+=1
+         # if c == '2':
+         #    lat_threshold = 85
+         # else:
+         #    lat_threshold = 75            
+         print(f"Block #{i}: orbA=orbB={c}*, |lat|<{lat_threshold}°")
+         blocks.append((xovers['orbA'].str[0] == c) & (xovers['orbB'].str[0] == c) & (np.abs(xovers['LAT'])<lat_threshold))
+         i+=1
+         print(f"Block #{i}: orbA=orbB={c}*, |lat|>={lat_threshold}°")
+         blocks.append((xovers['orbA'].str[0] == c) & (xovers['orbB'].str[0] == c) & (np.abs(xovers['LAT'])>=lat_threshold))
+      if len(unique_chars) > 1:
+         lat_threshold = 75
+         i+=1
+         print(f"Block #{i}: (orbA,orbB)=({unique_chars})*, |lat|<{lat_threshold}°")
+         blocks.append(((xovers['orbA'].str[0] == unique_chars[0]) & (xovers['orbB'].str[0] == unique_chars[1]) |
+                       (xovers['orbA'].str[0] == unique_chars[1]) & (xovers['orbB'].str[0] == unique_chars[0])) &
+                       (np.abs(xovers['LAT'])<lat_threshold))
+         i+=1
+         print(f"Block #{i}: (orbA,orbB)=({unique_chars})*, |lat|>={lat_threshold}°")
+         blocks.append(((xovers['orbA'].str[0] == unique_chars[0]) & (xovers['orbB'].str[0] == unique_chars[1]) |
+                       (xovers['orbA'].str[0] == unique_chars[1]) & (xovers['orbB'].str[0] == unique_chars[0])) &
+                       (np.abs(xovers['LAT'])>=lat_threshold))
+   else:
+      blocks = []
+      threshold=1000
+      i = 0
+      abs_lat = np.abs(xovers['LAT'])
 
+      def process_block(filter_mask, label):
+         nonlocal i
+         lat_0, lat_1 = 0, 10
+         while lat_0 < 90:
+            lat_mask = (abs_lat >= lat_0) & (abs_lat < lat_1)
+            b = filter_mask & lat_mask
+            count = b.sum()
+            if count > threshold or lat_1 == 90:
+                i += 1
+                print(f"Block #{i}: {label}, {lat_0}°<=|lat|<{lat_1}°")
+                blocks.append(b)
+                lat_0 = lat_1
+            else:
+                print(f"{count} obs for {label}, {lat_0}°<=|lat|<{lat_1}°: accumulating...")
+            lat_1 += 10
+
+      # Process same-orbit blocks
+      for c in unique_chars:
+         mask = (orbA0 == c) & (orbB0 == c)
+         process_block(mask, f"orbA=orbB={c}*")
+
+      # Process mixed-orbit block if more than one unique char
+      if len(unique_chars) > 1:
+         c1, c2 = unique_chars[:2]
+         mask = ((orbA0 == c1) & (orbB0 == c2)) | ((orbA0 == c2) & (orbB0 == c1))
+         process_block(mask, f"(orbA,orbB)=({c1},{c2})*")
+  
    print(f"Separating observations in {len(blocks)} block(s) of {[sum(b) for b in blocks]} observations")
 
    assert sum([sum(b) for b in blocks]) == len(blocks[0])
 
    return blocks
+
+def make_blocks(xovers, unique_chars, threshold=100):
+    blocks = []
+    i = 0
+    abs_lat = np.abs(xovers['LAT'])
+
+    def process_block(filter_mask, label):
+        nonlocal i
+        lat_0, lat_1 = 0, 10
+        while lat_0 < 90:
+            lat_mask = (abs_lat >= lat_0) & (abs_lat < lat_1)
+            b = filter_mask & lat_mask
+            count = b.sum()
+            if count > threshold or lat_1 == 90:
+                i += 1
+                print(f"Block #{i}: {label}, {lat_0}°<=|lat|<{lat_1}°")
+                blocks.append(b)
+                lat_0 = lat_1
+            else:
+                print(f"{count} obs for {label}, {lat_0}°<=|lat|<{lat_1}°: accumulating...")
+            lat_1 += 10
+
+    # Process same-orbit blocks
+    orbA0 = xovers['orbA'].str[0]
+    orbB0 = xovers['orbB'].str[0]
+    for c in unique_chars:
+        mask = (orbA0 == c) & (orbB0 == c)
+        process_block(mask, f"orbA=orbB={c}*")
+
+    # Process mixed-orbit block if more than one unique char
+    if len(unique_chars) > 1:
+        c1, c2 = unique_chars[:2]
+        mask = ((orbA0 == c1) & (orbB0 == c2)) | ((orbA0 == c2) & (orbB0 == c1))
+        process_block(mask, f"(orbA,orbB)=({c1},{c2})*")
+
+    return blocks
 
 def clean_solution(sol_dict):
    # remove corrections OF SINGLE ITER if "unreasonable" (larger than 100 meters in any direction, or 50 meters/day, or 20 arcsec)
@@ -935,7 +1187,8 @@ def clean_solution(sol_dict):
    for tr in tracks:
       regex = re.compile("^" + tr + "*")
       soltmp = dict([(x, v) for x, v in sol_dict_iter['sol'].items() if regex.match(x)])
-      stdtmp = dict([(x, v) for x, v in sol_dict_iter['std'].items() if regex.match(x)])
+      if 'std' in sol_dict_iter.keys():
+         stdtmp = dict([(x, v) for x, v in sol_dict_iter['std'].items() if regex.match(x)])
       regex = re.compile(".*_dR/d[A,C,R]0{0,1}$")
       max_orb_corr = np.max(np.abs([v if regex.match(x) else 0 for x, v in soltmp.items()]))
       regex = re.compile(".*_dR/d[A,C,R]1$")
@@ -959,18 +1212,23 @@ def clean_solution(sol_dict):
          sol_dict_iter_clean.append(soltmp)
 
       # keep std also for bad orbits
-      std_dict_iter_clean.append(stdtmp)
+      if 'std' in sol_dict_iter.keys():
+         std_dict_iter_clean.append(stdtmp)
 
    # add back global parameters
    if len(XovOpt.get("sol4_glo")) > 0:
       sol_dict_iter_clean.append(
          dict([(x, v) for x, v in sol_dict_iter['sol'].items() if x in XovOpt.get("sol4_glo")]))
-      std_dict_iter_clean.append(
-         dict([(x, v) for x, v in sol_dict_iter['std'].items() if x in XovOpt.get("sol4_glo")]))
+      if 'std' in sol_dict_iter.keys():
+         std_dict_iter_clean.append(
+            dict([(x, v) for x, v in sol_dict_iter['std'].items() if x in XovOpt.get("sol4_glo")]))
 
    sol_dict_iter_clean = {k: v for d in sol_dict_iter_clean for k, v in d.items()}
-   std_dict_iter_clean = {k: v for d in std_dict_iter_clean for k, v in d.items()}
-   sol_dict_iter_clean = dict(zip(['sol', 'std'], [sol_dict_iter_clean, std_dict_iter_clean]))
+   if 'std' in sol_dict_iter.keys():
+      std_dict_iter_clean = {k: v for d in std_dict_iter_clean for k, v in d.items()}
+      sol_dict_iter_clean = dict(zip(['sol', 'std'], [sol_dict_iter_clean, std_dict_iter_clean]))
+   else:
+      sol_dict_iter_clean = {'sol': sol_dict_iter_clean}
    # print("cleaned solution")
    # print(len(sol_dict_iter_clean['sol']))
    # print(len(sol_dict_iter_clean['std']))
@@ -1107,8 +1365,14 @@ def main(arg):
       else:
          xovi_amat.vce_obs = AccOpt.get("weight_obs")
          xovi_amat.vce_pen = AccOpt.get("weight_constr")
-         # xovi_amat.vce_obs = np.ones(len(xovi_amat.obs_blocks))
-         # xovi_amat.vce_pen = np.ones(len(xovi_amat.penalty_mat))
+         if len(xovi_amat.vce_obs) != len(xovi_amat.obs_blocks):
+            print(f"{len(xovi_amat.obs_blocks)} penalty matrices for {xovi_amat.vce_obs}")
+            xovi_amat.vce_obs = np.ones(len(xovi_amat.obs_blocks))
+            print(f"Initial VCE weights set to {xovi_amat.vce_obs}")
+         if len(xovi_amat.vce_pen) != len(xovi_amat.penalty_mat):
+            print(f"{len(xovi_amat.penalty_mat)} penalty matrices for {xovi_amat.vce_pen}")
+            xovi_amat.vce_pen = np.ones(len(xovi_amat.penalty_mat))
+            print(f"Initial VCE weights set to {xovi_amat.vce_pen}")
          # xovi_amat.vce = [0.0002247404434024504, 5.0025679108113685, 0.0010878786212904351]
 
       start = time.time()

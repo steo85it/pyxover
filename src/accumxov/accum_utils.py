@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.sparse import csr_matrix, diags, issparse
+from scipy.sparse.linalg import cg, lsqr
+from scipy.linalg import solve_triangular
 
 # from accumxov.accum_opt import remove_3sigma_median
 from accumxov.accum_opt import AccOpt
@@ -109,7 +111,7 @@ def get_xov_cov_tracks(df, plot_stuff=False):
    return cov_xov_tracks
 
 
-def get_vce_factor(Ninv, Cinv, x, b=None, A=None, s2apr=1., kind='obs',nelem=0):
+def get_vce_factor(Cinv, x, L=None, Ninv=None, b=None, A=None, s2apr=1., kind='obs',nelem=0, stoch=False):
    """
    compute vce factor for subset of data or constraint
    see eq. 17-21 of https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1002/jgre.20118
@@ -117,6 +119,7 @@ def get_vce_factor(Ninv, Cinv, x, b=None, A=None, s2apr=1., kind='obs',nelem=0):
    :param Ninv: full covariance matrix (inverse of full normal matrix), (npar,npar)
    :param Cinv: weight matrix (inverse of apriori covariance), (nele,nele), nele= npar if constraint, nobs if data
    :param x: solution vector (for iter if kind=obs, total if constraint), (nele,), nele= npar if constraint, nobs if data
+   :param L: Cholesky factor of N
    :param b: residuals vector (kind=obs only), (nobs,)
    :param A: partials matrix (kind=obs only), (nobs,npar)
    :param s2apr: a priori squared sigma of the subset (inverse of weight associated), scalar
@@ -126,7 +129,8 @@ def get_vce_factor(Ninv, Cinv, x, b=None, A=None, s2apr=1., kind='obs',nelem=0):
    """
 
    # A and w should be csr sparse matrices (else multiplication doesn't work, should replace by @)
-   if not issparse(A) and A != None:
+   if not(A is None):
+      if not issparse(A):
       A = csr_matrix(A)
    if not issparse(Cinv):
       Cinv = csr_matrix(Cinv)
@@ -142,20 +146,31 @@ def get_vce_factor(Ninv, Cinv, x, b=None, A=None, s2apr=1., kind='obs',nelem=0):
    rTw = csr_matrix(ri.T) * Cinv
    rTwr = (rTw * ri)[0]
    # basically a modified dof for the subset
+   
+   start = time.time()
    # Compute trace(NixNinv)
    # start = time.time()
-   # tr_NiNinv = estimate_trace(Ni, N, m=50)
-   # end = time.time()
-   # print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-   # print("tr_NiNinv", tr_NiNinv)
-   # start = time.time()
-   tr_NiNinv = np.einsum('ij,ji->',Ni.todense(),Ninv) # more efficient
-   # end = time.time()
-   # print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-   # print("tr_NiNinv", tr_NiNinv)
+   if L is None:
+      if stoch:
+         tr_NiNinv = stochastic_trace_estimate_full(Ni, N, m=50)
+      else:
+         tr_NiNinv = np.einsum('ij,ji->',Ni.todense(),Ninv) # more efficient
+   elif stoch:
+      tr_NiNinv = stochastic_trace_estimate_chol(L, Ni.todense(), num_samples=5)
+   else:
+      # Forward solve L y = Ni
+      Y = solve_triangular(L, Ni.todense(), lower=True)
+      # Backward solve L.T x = y
+      X = solve_triangular(L.T, Y, lower=False)
+      # Compute trace(Ni N^{-1})
+      tr_NiNinv = np.trace(X)
+      
+   end = time.time()
+   print("tr_NiNinv computation finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
+   print("tr_NiNinv", tr_NiNinv)
    redundancy = nelem - (1. / s2apr) * tr_NiNinv
-   print("kind, sqrt(rTwr),redundancy,chi2:", kind, np.sqrt(rTwr), redundancy, np.trace(Ni.todense()),
-         rTwr / redundancy)
+   # print("kind, sqrt(rTwr),redundancy,chi2:", kind, np.sqrt(rTwr), redundancy, np.trace(Ni.todense()),
+   #       rTwr / redundancy)
 
    # the new sigma^2 associated to the subset of data or constraint
    return rTwr / redundancy
@@ -324,11 +339,15 @@ def print_sol(orb_sol, glb_sol, xov, xovi_amat):
    print('-- Solutions -- ')
    if len(soltmp) > 0:
       # formal errors based on inv(ATA) according to scipy.linalg.sparse.lsqr
-      stdtmp = [(x.split('_')[0], 'std_' + x.split('_')[1], v) for x, v in xovi_amat.sol_dict['std'].items() if
-                regex.match(x)]
-      soltmp = pd.DataFrame(np.vstack([soltmp, stdtmp]))
-      soltmp[2] = soltmp[2].astype(float)
+      if 'std' in xovi_amat.sol_dict.keys():
+         stdtmp = [(x.split('_')[0], 'std_' + x.split('_')[1], v) for x, v in xovi_amat.sol_dict['std'].items() if
+                   regex.match(x)]
+         soltmp = pd.DataFrame(np.vstack([soltmp, stdtmp]))
+         soltmp[2] = soltmp[2].astype(float)
+      else:
+         soltmp = pd.DataFrame(soltmp)
       soltmp = pd.pivot_table(soltmp, index=[0], columns=[1], values=[2])
+         
       print('Orbit parameters: ')
       print('-- -- -- -- ')
       print(soltmp)
@@ -384,7 +403,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
    return sol4_pars
 
 
-def analyze_sol(xovi_amat, xov, mode='full'):
+def analyze_sol(xovi_amat, xovers, mode='full'):
 
    # check wheter list contains full list of pars or just those from this iter
    if mode == 'full':
@@ -393,19 +412,28 @@ def analyze_sol(xovi_amat, xov, mode='full'):
       sol4_pars = xovi_amat.sol4_pars_iter
       
    # Ordering is important here, don't use set or other "order changing" functions
-   _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
-                  np.reshape(xovi_amat.sol[0], (-1, 1)),
-                  np.reshape(xovi_amat.sol[-1], (-1, 1))
-                  ))
-   sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float))),
-               'std': dict(zip(_[:, 0], np.sqrt(_[:, 2].astype(float))))}
+   if xovi_amat.std is None:
+      _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
+                  np.reshape(xovi_amat.sol, (-1, 1))))
+      sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float)))}
+   else:
+      _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
+                     np.reshape(xovi_amat.sol, (-1, 1)),
+                     np.reshape(xovi_amat.std, (-1, 1))
+                     ))
+      sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float))),
+                  'std': dict(zip(_[:, 0], np.sqrt(_[:, 2].astype(float))))}
 
    if XovOpt.get("debug"):
       print("sol_dict_analyze_sol")
       print(sol_dict)
 
    # Extract solution for global parameters
-   glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(XovOpt.get("parGlo").keys()) for x in _[:, 0]]],
+   if xovi_amat.std is None:
+      glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(XovOpt.get("parGlo").keys()) for x in _[:, 0]]],
+                          columns=['par', 'sol'])
+   else:
+      glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(XovOpt.get("parGlo").keys()) for x in _[:, 0]]],
                           columns=['par', 'sol', 'std'])
    partemplate = set([x.split('/')[1] for x in sol_dict['sol'].keys()])
    # regex = re.compile(".*"+str(list(partemplate))+"$")
@@ -420,31 +448,40 @@ def analyze_sol(xovi_amat, xov, mode='full'):
    solved4orb = list(set(parOrbKeys) & set(solved4))
 
    if len(solved4orb) > 0:
-      df_ = pd.DataFrame(_, columns=['key', 'sol', 'std'])
+      if xovi_amat.std is None:
+         df_ = pd.DataFrame(_, columns=['key', 'sol'])
+      else:
+         df_ = pd.DataFrame(_, columns=['key', 'sol', 'std'])
       df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
-      df_ = df_.astype({'sol': 'float64', 'std': 'float64'})
+      if xovi_amat.std is None:
+         df_ = df_.astype({'sol': 'float64'})
+      else:
+         df_ = df_.astype({'sol': 'float64', 'std': 'float64'})
       df_.drop('key', axis=1, inplace=True)
       # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
       df_ = df_.replace(to_replace='None', value=np.nan).dropna()
-      table = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'], aggfunc='sum')
+      if xovi_amat.std is None:
+         table = pd.pivot_table(df_, values=['sol'], index=['orb'], columns=['par'], aggfunc='sum')
+      else:
+         table = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'], aggfunc='sum')
 
-      if any(xov.xovers.filter(like='dist', axis=1)):
-         xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
-         tmp = xov.xovers.copy()
-         tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
-         tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
+      if any(xovers.filter(like='dist', axis=1)):
+         xovers['dist_max'] = xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
+         tmp = xovers.copy()
+         tmp['dist_minA'] = xovers.filter(regex='^dist_A.*$').min(axis=1)
+         tmp['dist_minB'] = xovers.filter(regex='^dist_B.*$').min(axis=1)
          tmp['dist_min_mean'] = tmp.filter(regex='^dist_min.*$').mean(axis=1)
-         xov.xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
+         xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
 
          if AccOpt.get("remove_max_dist"):
-            xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
-            # xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+            xovers = xovers[xovers.dist_max < 0.4]
+            # xovers = xovers[xovers.dist_min_mean < 1]
 
-         _ = xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1)
+         _ = xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1)
          table['num_obs'] = _
 
-         df1 = xov.xovers.groupby(['orbA'], sort=False)['dist_max'].max().reset_index()
-         df2 = xov.xovers.groupby(['orbB'], sort=False)['dist_max'].max().reset_index()
+         df1 = xovers.groupby(['orbA'], sort=False)['dist_max'].max().reset_index()
+         df2 = xovers.groupby(['orbB'], sort=False)['dist_max'].max().reset_index()
 
          merged_Frame = pd.merge(df1, df2, left_on='orbA', right_on='orbB', how='outer')
          merged_Frame['orbA'] = merged_Frame['orbA'].fillna(merged_Frame['orbB'])
@@ -499,15 +536,16 @@ def analyze_sol(xovi_amat, xov, mode='full'):
    # plt.savefig('tmp/plotsol.png')
 
    # rescale with sigma0
-
-   # sol_dict['std'] *= sigma_0
-   glb_sol['std'] = np.sqrt(glb_sol['std'].astype('float').values)
-   glb_sol['std'] = glb_sol['std'].astype('float').values / AccOpt.get("sigma_0")
-   for col in orb_sol.filter(regex='std_*').columns:
-      orb_sol[col] = orb_sol[col].astype('float').values / AccOpt.get("sigma_0")
+   
+   if not (xovi_amat.std is None):
+      # sol_dict['std'] *= sigma_0
+      glb_sol['std'] = np.sqrt(glb_sol['std'].astype('float').values)
+   
+      glb_sol['std'] = glb_sol['std'].astype('float').values / AccOpt.get("sigma_0")
+      for col in orb_sol.filter(regex='std_*').columns:
+         orb_sol[col] = orb_sol[col].astype('float').values / AccOpt.get("sigma_0")
 
    return orb_sol, glb_sol, sol_dict
-
 
 def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
    from accumxov.Amat import Amat
@@ -554,8 +592,32 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
       # previous_iter.sol_dict_iter = previous_iter.sol_dict
    return previous_iter
 
-def estimate_trace(Ni, N, m=20):
-    from scipy.sparse.linalg import cg
+def stochastic_diag_estimate_A(A, num_samples=20, tol=1e-5):
+    n = A.shape[1]
+    diag_est = np.zeros(n)
+
+    for _ in range(num_samples):
+        z = np.random.choice([-1, 1], size=n)
+        y = lsqr(A,A @ z, atol=tol,btol=tol, iter_lim=500)[0]
+        diag_est += z * y
+
+    return diag_est / num_samples
+ 
+def stochastic_diag_estimate_N(N, num_samples=20, tol=1e-5):
+    n = N.shape[0]
+    diag_est = np.zeros(n)
+
+    for _ in range(num_samples):
+        z = np.random.choice([-1, 1], size=n)
+        y, info = cg(N, z, tol=tol, maxiter=500)
+        if info != 0:
+           print("cg did not converge")
+           continue
+        diag_est += z * y
+
+    return diag_est / num_samples
+
+def stochastic_trace_estimate_full(Ni, N, m=20):
     dim = Ni.shape[0]
     total = 0.0
     for _ in range(m):
@@ -564,3 +626,21 @@ def estimate_trace(Ni, N, m=20):
         Nz = Ni.dot(w.T)                                # multiply back by N
         total += z @ Nz
     return total[0][0] / m
+  
+def stochastic_trace_estimate_chol(L, Ni, num_samples=20):
+   n = L.shape[0]
+   total = 0.0
+
+   trace_estimates = []
+   for _ in range(num_samples):
+      z = np.random.choice([-1, 1], size=n)
+        
+      # Solve N x = z using Cholesky: L y = z, L.T x = y
+      y = solve_triangular(L, z, lower=True)
+      x = solve_triangular(L.T, y, lower=False)
+      x = (Ni.dot(x))
+
+      trace_estimates.append(z.dot(x.T))  # zᵀ M x
+
+   
+   return  np.mean(trace_estimates)
