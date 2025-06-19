@@ -81,6 +81,9 @@ class sim_gtrack(gtrack):
       # actual processing
       self.lt_topo_corr(df=df_)
       print("lt_topo_corr(df=df_) done")
+      if self.ladata_df.size == 0:
+         print("### PyAltsim.setup: ladata_df is empty")
+         return
 
       # add range noise
       if XovOpt.get("range_noise"):
@@ -154,12 +157,14 @@ class sim_gtrack(gtrack):
 
       for it in range(itmax):
 
-         # tof and rng from previous iter as input for new geoloc
-         old_tof = self.ladata_df.loc[:, 'TOF'].values
-         rng_apr = old_tof * clight / 2.
-
          # read just lat, lon, elev from geoloc (reads ET and TOF and updates LON, LAT, R in df)
          self.geoloc()
+         
+         # Remove nan
+         self.ladata_df = self.ladata_df.dropna(subset=['LON'])
+         if self.ladata_df.size == 0:
+            print("### lt_topo_corr: ladata_df is empty")
+            return
          lontmp, lattmp, rtmp = np.transpose(self.ladata_df[['LON', 'LAT', 'R']].values)
          r_bc = rtmp + XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
 
@@ -195,6 +200,10 @@ class sim_gtrack(gtrack):
 
          # compute residual between "real" elevation and geoloc (based on a priori TOF)
          dr = (r_bc - radius) * np.cos(offndr)
+         
+         # tof and rng from previous iter
+         old_tof = self.ladata_df.loc[:, 'TOF'].values
+         rng_apr = old_tof * clight / 2.
 
          # update range
          rng_new = rng_apr + dr

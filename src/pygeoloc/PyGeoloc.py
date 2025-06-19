@@ -64,7 +64,7 @@ def launch_gtrack(args):
             if not XovOpt.get("local") or XovOpt.get("debug"):
                print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
          else:
-            print(f"Orbit {track_id.split('_')[1]} contains no valid data. No gtrack created.")
+            print(f"Orbit {track.name} contains no valid data. No gtrack created.")
             # except:
             #    print('failed to process ' + track_id)
       else:
