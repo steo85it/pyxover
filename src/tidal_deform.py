@@ -30,6 +30,8 @@ from scipy.special import lpmv
 from xovutil import astro_trans as astr
 from config import XovOpt
 
+from wspice import spice_spkpos
+
 
 ##############################################
 
@@ -210,10 +212,9 @@ def get_sun_pos(SpObj, ET, tau, central_body, vecopts):
       else:
          logging.error(f"** tides with spice_interp not implemented for {XovOpt.get('body')}.")
          exit()
+      return  1.e3 * np.array(pertpos)
    else:
-       pertpos, tmp = spice.spkpos(central_body, ET-tau, vecopts['PLANETFRAME'], 'NONE', vecopts['PLANETNAME'])
-   
-   return  1.e3 * np.array(pertpos)
+      return spice_spkpos(central_body, ET-tau, vecopts['PLANETFRAME'], vecopts['PLANETNAME'], "get_sun_pos")
 
 # compute cos of Sun zenith angle
 def cosz(TH, LO, latSUN, lonSUN):
@@ -277,8 +278,7 @@ def plot_whatever2(ET,nmax, GMsun, gSurf, h2, vecopts, central_body):
    #loop on all Sun positions (176 Earth days)
    def plot_tides(d):
       step = 16
-      pertpos, tmp = spice.spkpos(central_body, ET+step*d*86400., frame, 'NONE', obs)
-      pertpos = 1.e3 * np.array(pertpos)
+      pertpos = spice_spkpos(central_body, ET+step*d*86400., frame, obs, "plot_tides")
       dSUN = np.linalg.norm(pertpos, axis=1)
       [rSUN, latSUN, lonSUN] = astr.cart2sph(pertpos)
 

@@ -34,6 +34,7 @@ from config import XovOpt
 from xovutil.orient_setup import orient_setup
 from tidal_deform import tidal_deform
 from xovutil.units import rad2as, as2rad, sec2day
+from wspice import spice_spkezr, spice_spkpos
 
 
 def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
@@ -71,14 +72,10 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
 
    if (XovOpt.get("SpInterp") > 0):
       plapos_bc = np.transpose(SpObj['MERx'].eval(et_bc))
+      plapos_bc = 1.e3 * np.array(plapos_bc)
    else:
-      plapos_bc, lt = spice.spkpos(vecopts['PLANETNAME'],
-                                   et_bc,
-                                   vecopts['INERTIALFRAME'],
-                                   'NONE',
-                                   vecopts['INERTIALCENTER'])
-
-   plapos_bc = 1.e3 * np.array(plapos_bc)
+      plapos_bc = spice_spkpos(vecopts['PLANETNAME'], et_bc, vecopts['INERTIALFRAME'],
+                                   vecopts['INERTIALCENTER'], "geolocate plapos_bc")
 
    # compute SSB to bounce point vector
    pxform_array = np.frompyfunc(spice.pxform, 3, 1)
@@ -151,13 +148,8 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
       # --------------------------------------------------
       et_bc = et_tx + (tof / 2.) * (1 + betanorm * costheta)
 
-      plapos_bc, lt = spice.spkpos(vecopts['PLANETNAME'],
-                                   et_bc,
-                                   vecopts['INERTIALFRAME'],
-                                   'NONE',
-                                   vecopts['INERTIALCENTER'])
-
-      plapos_bc = 1.e3 * np.vstack(plapos_bc)
+      plapos_bc = spice_spkpos(vecopts['PLANETNAME'], et_bc, vecopts['INERTIALFRAME'],
+                               vecopts['INERTIALCENTER'], "geolocate w/ aberration")
 
       if use_24:
          tmp = clight * tof / 2. * (1 - betanorm * betanorm * (1 - costheta * costheta))
@@ -227,7 +219,7 @@ def geolocate_DLRv2(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
    tof = inp_df['TOF'].values
    et_tx = inp_df['ET_TX'].values
    et_bc = et_tx
-  
+
    scpv, lt = spice.spkezr(vecopts['PLANETNAME'],
                            et_tx,
                            vecopts['PLANETFRAME'],
@@ -340,32 +332,12 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
       x_sc = np.transpose(SpObj['MGRx'].eval(et))
       v_sc = np.transpose(SpObj['MGRv'].eval(et))
       scpv = np.concatenate((x_sc, v_sc), axis=1)
-   else:
-      try:
-         scpv, lt = spice.spkezr(vecopts['SCNAME'],
-                                 et,
-                                 vecopts['INERTIALFRAME'],
-                                 'NONE',
-                                 vecopts['INERTIALCENTER'])
-      except:
-         # Unvectorized
-         print("Not all probe CoM state were retieved for get_sc_ssb")
-         scpv = []
-         for et_loc in et:
-            try:
-               scpv_loc, lt = spice.spkezr(vecopts['SCNAME'],
-                                            et_loc,
-                                            vecopts['INERTIALFRAME'],
-                                            'NONE',
-                                            vecopts['INERTIALCENTER'])
-            except:
-               print("Probe CoM state not retrieved for ET=",et_loc)
-               scpv_loc = [np.nan for i in range(0,6)]
-         scpv.append(scpv_loc)
-      scpv = np.atleast_2d(np.squeeze(scpv))
+      scpos = 1.e3 * scpv[:, :3]
+      scvel = 1.e3 * scpv[:, 3:]
 
-   scpos = 1.e3 * scpv[:, :3]
-   scvel = 1.e3 * scpv[:, 3:]
+   else:
+      scpos, scvel = spice_spkezr(vecopts['SCNAME'], et, vecopts['INERTIALFRAME'], 
+                                        vecopts['INERTIALCENTER'], "get_sc_ssb")
 
    # Compute and add ACR offset (if corrections != 0)
    orb_pert_dict = {k: v for (k, v) in tmp_pertPar.items() for filter_string in
@@ -415,22 +387,12 @@ def get_sc_pla(et, x_sc, v_sc, SpObj, vecopts):
       x_pla = np.transpose(SpObj['MERx'].eval(et))
       v_pla = np.transpose(SpObj['MERv'].eval(et))
       scpv_p = np.concatenate((x_sc * 1.e-3 - x_pla, v_sc * 1.e-3 - v_pla), axis=1)
+      scpos_p = 1.e3 * np.array(scpv_p)[:, :3]
+      scvel_p = 1.e3 * np.array(scpv_p)[:, 3:]
    else:
-      try:
-         scpv_p, lt = spice.spkezr(vecopts['SCNAME'],
-                                   et,
-                                   vecopts['INERTIALFRAME'],
-                                   'NONE',
-                                   vecopts['PLANETNAME'])
-      except:
-         scpv_p = np.array([spice.spkez(vecopts['SCID'],
-                                        t,
-                                        vecopts['INERTIALFRAME'],
-                                        'NONE',
-                                        vecopts['PLANETID'])[0] for t in et])
+      scpos_p, scvel_p = spice_spkezr(vecopts['SCID'], et, vecopts['INERTIALFRAME'], 
+                                        vecopts['PLANETID'], "get_sc_pla")
 
-   scpos_p = 1.e3 * np.array(scpv_p)[:, :3]
-   scvel_p = 1.e3 * np.array(scpv_p)[:, 3:]
    return scpos_p, scvel_p
 
 #######################################################################
