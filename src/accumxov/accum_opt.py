@@ -41,7 +41,9 @@ class AccOpt:
       "compute_vce": False,  # True
       
       "Abmat_outfile": "",
-      "Abmat_infile": ""
+      "Abmat_infile": "",
+      
+      "solving_method": "cg" #, "lsqr", "lsmr", "cholesky"
 
    }
    __setters = list(__conf.keys())

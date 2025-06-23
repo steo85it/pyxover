@@ -13,7 +13,7 @@ from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
 from accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
-    analyze_sol, subsample_xovers, load_previous_iter_if_any, stochastic_diag_estimate
+    analyze_sol, subsample_xovers, load_previous_iter_if_any, stochastic_diag_estimate_N, estimate_diag_inv_AtA
 from xovutil.iterables import mergsum
 from xovutil.xovres2weights import get_interpolation_weight
 from pyxover.xov_utils import load_combine, clean_xov, clean_partials
@@ -31,6 +31,10 @@ from scipy.sparse import csr_matrix, diags, issparse
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import scipy.linalg as la
+
+from memory_profiler import profile
+
+# from sksparse.cholmod import cholesky as sparse_chol
 
 from pyxover.xov_setup import xov
 from accumxov.Amat import Amat
@@ -427,7 +431,7 @@ def advanced_weighting(xovers, previous_iter):
    
    return obs_weights
 
-def compute_penalty_matrices(xovi_amat):
+def compute_penalty_matrices(xovi_amat, tracks_to_remove):
    
    if XovOpt.get("OrbRep") in ['lin', 'quad', 'per']: #WD: Not sure what this is for
       for par in ['dA', 'dC', 'dR']:
@@ -439,7 +443,7 @@ def compute_penalty_matrices(xovi_amat):
       mod_par = [your_key.split('_')[1] if len(your_key.split('_')) > 1 else your_key for your_key in xovi_amat.sol4_pars]
       par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par}
       # par_constr = {".*" + your_key + "$": XovOpt.get("par_constr")[your_key] for your_key in mod_par}
-      penalty_mat = [compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars)]
+      penalty_mat = [compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars, tracks_to_remove)]
    else: # track constraints are already regex
       mod_par = [f"{your_key[:1]}.*{your_key.split('_')[1]}" if len(your_key.split('_')) > 1 else your_key for your_key in xovi_amat.sol4_pars]
       # par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par}
@@ -449,23 +453,23 @@ def compute_penalty_matrices(xovi_amat):
       # par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if not your_key.startswith('2')}
       par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if your_key.startswith('1')}
       if par_constr:
-         penalty_mat.append(compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars))
+         penalty_mat.append(compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars, tracks_to_remove))
 
       par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if your_key.startswith('2')}
       # par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if not your_key.startswith('1')}
       if par_constr:
-         penalty_mat.append(compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars))
+         penalty_mat.append(compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars, tracks_to_remove))
          
       # par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if your_key.startswith('d')}
       # if par_constr:
-      #    penalty_mat.append(compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars))
+      #    penalty_mat.append(compute_penalty_mat_abs(xovi_amat, par_constr, xovi_amat.sol4_pars, tracks_to_remove))
    
    if len(XovOpt.get("mean_constr")) > 0:
       penalty_mat.append(compute_penalty_mat_avg(xovi_amat.sol4_pars))
 
    return penalty_mat
 
-def compute_penalty_mat_abs(xovi_amat, par_constr, sol4_pars):
+def compute_penalty_mat_abs(xovi_amat, par_constr, sol4_pars, tracks_to_remove):
    # penalty_mat from xovi_amat are set
    # xovi_amat.weights, xovi_amat.xov are used
    
@@ -479,25 +483,12 @@ def compute_penalty_mat_abs(xovi_amat, par_constr, sol4_pars):
    csr = []
    if par_constr: # If constraints:
       # Constrain tightly to 0 those parameters with few observations (or with few GOOD observations)
-      if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get(
-         "remove_dR200"):
-         # TODO should use weights or measurement error threshold, but using huber-threshold-like criteria for now
-         # TODO to mimic what I was doing without weights
-         # nobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.xov.xovers.huber > 0.5][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
-         # ascending=False)
-         weights_mean = np.mean(xovi_amat.weights.diagonal())
-         # n_goodobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.weights.diagonal() > 0.5*AccOpt.get("sigma_0")][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
-         n_goodobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.weights.diagonal() > 0.1 * weights_mean][
-            ['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False)
-      else:
-         n_goodobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(
-            axis=1).sort_values(ascending=False)
-
+   
       # WD: hardcoded year of MESSENGER flyby??
       # WD: Is it there to tightly constrain parameters while leaving the corresponding observation?
       #     It may damage other tracks is the track is not good enough
       to_tightly_constrain = [idx for idx, p in enumerate(sol4_pars) if
-                      p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 10].index if
+                      p.split('_')[0] in tracks_to_remove.index if
                       p.split('_')[0][:2] != '08']  # exclude flybys from this, else orbits are never improved
       # to_tightly_constrain = [idx for idx, p in enumerate(sol4_pars) if p.split('_')[0] in n_goodobs_tracks[n_goodobs_tracks < 1].index if p.split('_')[0][:2]!='08'] # exclude flybys from this, else orbits are never improved
 
@@ -526,6 +517,25 @@ def compute_penalty_mat_abs(xovi_amat, par_constr, sol4_pars):
    # combine all constraints and store penalties into amat
    return sum(csr)
 
+def get_bad_tracks(xovi_amat):
+
+   # Constrain tightly to 0 those parameters with few observations (or with few GOOD observations)
+   if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get(
+      "remove_dR200"):
+      # TODO should use weights or measurement error threshold, but using huber-threshold-like criteria for now
+      # TODO to mimic what I was doing without weights
+      # nobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.xov.xovers.huber > 0.5][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
+      # ascending=False)
+      weights_mean = np.mean(xovi_amat.weights.diagonal())
+      # n_goodobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.weights.diagonal() > 0.5*AccOpt.get("sigma_0")][['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(
+      n_goodobs_tracks = xovi_amat.xov.xovers.loc[xovi_amat.weights.diagonal() > 0.1 * weights_mean][
+         ['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False)
+   else:
+      n_goodobs_tracks = xovi_amat.xov.xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(
+         axis=1).sort_values(ascending=False)
+
+   return n_goodobs_tracks[n_goodobs_tracks < 10]
+   
 def compute_penalty_mat_avg(sol4_pars):
    # penalty_mat_avg from xovi_amat is set
    # xovi_amat.weights, xovi_amat.xov are used
@@ -656,14 +666,14 @@ def compute_vce_weights(amat, L=None, N=None, spA_penal=None, Ndiag=False):
 
    start = time.time()
 
-   # for obs, one could change to A=spA_penal[mask_obs, :], Cinv=I
+   # amat.weights.diagonal()[mask_obs] works because it is truyl diagonal
    if Ndiag:
-      s2_obs_new = [get_vce_factor(x=xsol, Cinv=amat.weights, L=None, Ninv=Ninv,
+      s2_obs_new = [get_vce_factor(x=xsol, Cinv=diags(amat.weights.diagonal()[mask_obs]), L=None, Ninv=Ninv,
                                    b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs, :],
                                    s2apr=s2_obs, kind='obs', nelem=sum(mask_obs))
                     for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
    else:
-      s2_obs_new = [get_vce_factor(x=xsol, Cinv=amat.weights, L=L, Ninv=Ninv,
+      s2_obs_new = [get_vce_factor(x=xsol, Cinv=diags(amat.weights.diagonal()[mask_obs]), L=L, N=N, Ninv=Ninv,
                                    b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs, :],
                                    s2apr=s2_obs, kind='obs', nelem=sum(mask_obs),stoch=True)
                     for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
@@ -675,7 +685,7 @@ def compute_vce_weights(amat, L=None, N=None, spA_penal=None, Ndiag=False):
 
    start = time.time()
    # WD: works only if penalty_mat is a NEQ
-   s2_constr_new = [get_vce_factor(x=xsol, Cinv=penalty_mat, L=L, Ninv=Ninv,
+   s2_constr_new = [get_vce_factor(x=xsol, Cinv=penalty_mat, L=L, Ninv=Ninv, N=N,
                                    s2apr=s2_constr, kind='constr',
                                    nelem=penalty_mat.nnz, stoch=True)
                     for s2_constr, penalty_mat in zip(s2_constr_apr,amat.penalty_mat)]
@@ -712,13 +722,13 @@ def remove_tracks(xovi_amat, tracks_to_remove):
    xovi_amat.weights = diags(weight_d[obs_to_keep])
    xovi_amat.spA_sol4 = xovi_amat.spA_sol4[:, par_to_keep]
    xovi_amat.spA_sol4 = xovi_amat.spA_sol4[obs_to_keep,:]
-   xovi_amat.obs_blocks[0] = xovi_amat.obs_blocks[0][obs_to_keep]
-   xovi_amat.penalty_mat[0] = xovi_amat.penalty_mat[0][:,par_to_keep]
-   xovi_amat.penalty_mat[0] = xovi_amat.penalty_mat[0][par_to_keep,:]
-   sol4_pars = [xovi_amat.sol4_pars[par] for par in par_to_keep]
+   xovi_amat.obs_blocks = [obs[obs_to_keep] for obs in xovi_amat.obs_blocks]
+   xovi_amat.penalty_mat = [pen[np.ix_(par_to_keep, par_to_keep)] for pen in xovi_amat.penalty_mat]
+
    xovi_amat.sol4_pars = [xovi_amat.sol4_pars[par] for par in par_to_keep]
    xovi_amat.sol4_pars_iter = xovi_amat.sol4_pars    
 
+# @profile
 def compute_solution(xovi_amat, previous_iter, xov_cmb):
    # xovi_amat attributes which are changes:
    # spA_penal, b_penal, sol, sol_dict
@@ -726,23 +736,17 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
    
    # xovi_amat attributes changed via get_stats
    # spA, b, postfit_res, resid_wrmse
-   
-   weight_d = xovi_amat.weights.diagonal()
-   
-   weights_mean = np.mean(weight_d)
-   n_goodobs_tracks = xovi_amat.xov.xovers.loc[weight_d > 0.1 * weights_mean][
-      ['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False)
-   
-   tracks_to_remove = n_goodobs_tracks[n_goodobs_tracks < 10].axes[0].tolist()
 
-   remove_tracks(xovi_amat, tracks_to_remove)
-
-   if (xovi_amat.weights !=  diags(xovi_amat.weights.diagonal())).nnz == 0:
+   # if (xovi_amat.weights !=  diags(xovi_amat.weights.diagonal())).nnz == 0:
+   # Get the row and column indices of non-zero elements
+   coo = xovi_amat.weights.tocoo()
+   if (np.all(coo.row == coo.col)):
       print("Weight matrix is diagonal")
       W_L = diags(xovi_amat.weights.diagonal()**0.5)
    else:
       print("Cholesky decomposition of the weight matrix")
       W_L = la.cholesky(xovi_amat.weights.todense(), lower=True)
+      # W_L = sparse_cholesky(xovi_amat.weights.todense())
 
    last_iteration = not AccOpt.get("compute_vce")
    for i in (i for i in range(10)):
@@ -758,24 +762,20 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
       weight_constr = xovi_amat.vce_pen
       # Choleski decompose matrix and append to design matrix (weight_constr[0] applied except for constrain on avg)
       if len(xovi_amat.penalty_mat) > 0:
-         penalty = weight_constr[0] * xovi_amat.penalty_mat[0]
-         if len(xovi_amat.penalty_mat) > 1:
-            # penalty += weight_constr[1] * xovi_amat.penalty_mat[1].transpose() * xovi_amat.penalty_mat[1]
-            penalty += weight_constr[1] * xovi_amat.penalty_mat[1]
+         penalty = sum(w * p for w, p in zip(weight_constr, xovi_amat.penalty_mat))
          if np.count_nonzero(penalty - np.diag(penalty.diagonal())):
             print("Cholesky decomposition of the constraint matrix")
             # spQ = sparse_cholesky(penalty)
-            Q = la.cholesky(penalty.todense())
+            spQ = csr_matrix(la.cholesky(penalty.todense()))
             print("Cholesky decomposition done")
-            spQ = csr_matrix(Q)
          else:
             print("Penalty matrix is diagonal")
             spQ = diags(penalty.diagonal()**0.5)
       else:
          penalty = []
 
-      bmat =  sum([ w * mask_obs.astype(float) * xovi_amat.b  for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
-      b_penal = W_L.T * bmat
+      b_penal =  sum([ w * mask_obs.astype(float) * xovi_amat.b  for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
+      b_penal = W_L.T * b_penal
       # add penalisation to residuals
       if previous_iter != None and previous_iter.sol_dict != None:
          # get previous solution reordered as sol4_pars_iter (and hence as Q) - contains the full solution but only for the
@@ -792,20 +792,19 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
          if len(xovi_amat.penalty_mat) > 0:
             b_penal = np.hstack([b_penal, -1. * np.zeros(penalty.shape[0])])
 
-      spAmat = sum([ w * diags(mask_obs.astype(float)) @ xovi_amat.spA_sol4 for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
+      spA_sol4_penal = sum([ w * diags(mask_obs.astype(float)) @ xovi_amat.spA_sol4 for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
 
       # apply weights
       # TODO clean-up: applying weights at this point makes it impossible to get covariance matrix
       if XovOpt.get("instrument") != "pawstel":
-         spA_sol4_penal = W_L.T * spAmat
-      else:
-         spA_sol4_penal = spAmat
+         spA_sol4_penal = W_L.T * spA_sol4_penal
       if len(xovi_amat.penalty_mat) > 0:
          spA_sol4_penal = sp.vstack([spA_sol4_penal, 1. * spQ])
 
-      # save penalised matrices
-      xovi_amat.spA_penal = spA_sol4_penal
-      xovi_amat.b_penal = b_penal
+
+      # # save penalised matrices
+      # xovi_amat.spA_penal = spA_sol4_penal
+      # xovi_amat.b_penal = b_penal
 
       if AccOpt.get("get_cov_only"):
          # add penalisation to partials matrix
@@ -821,7 +820,7 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
 
          try:
             std_par = np.sqrt(spla.inv(
-               xovi_amat.spA_penal.transpose() * weights_penal * xovi_amat.spA_penal).diagonal())
+               spA_sol4_penal.transpose() * weights_penal * spA_sol4_penal).diagonal())
          except:
             print("** Matrix not positive definite, modify constraints.")
             print("** Passing unconstrained formal errors")
@@ -832,144 +831,12 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
       else:
          # solve using lsqr
          print("Starting LSQR")
-         method = 3
-         scaling = False
-         # scaling is helpful for method relying on approximated solvers
-         if method != 3:
-            scaling = True
-         start_sol = time.time()
-         if scaling:
-            # Column scaling: make each column of A have unit 2-norm
-            col_norms = np.sqrt(xovi_amat.spA_penal.power(2).sum(axis=0)).A1
-
-            # avoid divide-by-zero
-            col_norms[col_norms==0] = 1.0
-            
-            A_scaled = xovi_amat.spA_penal @ diags(1.0 / col_norms)
-            b_scaled = xovi_amat.b_penal                     # unchanged (unless you do row scaling too)
-         
-            print("Columns scaled with max:", np.max(col_norms))
-         else:
-            A_scaled = xovi_amat.spA_penal
-            b_scaled = xovi_amat.b_penal   
-            
-         tol = (1.e-10 / AccOpt.get("sigma_0"))
- 
-         if method == 1:
-            print("Solving using lsqr")
-            result = spla.lsqr(A_scaled, b_scaled, damp=0, show=False, iter_lim=100000,
-                                  atol=tol, conlim=1e8, btol=tol, calc_var=True)
-         
-         if method == 2:
-            print("Solving using lsmr")
-            result = spla.lsmr(A_scaled, b_scaled, damp=0, show=False, maxiter=100000,
-                                  atol=tol, conlim=1e8, btol=tol)
-         
-         if method < 3:
-            result = list(result)
-            end = time.time()
-            print(f"lsqr/lsmr finished: {int(end - start)} sec")
-         
-            istop = result[1]
-            if istop == 1:
-               print("LSQR solution is an approximate solution to Ax = b.")
-            elif (istop == 2):
-               print("LSQR solution approximately solves the least-squares problem.")
-               u, s, vt = spla.svds(A_scaled, k=6)
-               print("Estimated condition number:", max(s) / min(s))
-               print("LSQR condition number:",result[6])
-               if (max(s) / min(s) > 100):
-                  print("Unreliable variance")
-            elif istop > 2:
-               print("*** Accumxov.compute_solution: the system may be inconsistent.")
-               print("The solution is an approximate solution to the corresponding least-squares problem.")
-               exit(2)
-
-         if method > 2:
-            # compute normal equation system (N,bn)
-            N  = A_scaled.T * A_scaled
-            bn = A_scaled.T * b_scaled
-         
-         if method == 3:
-            print("Solving using Cholesky factorization")
-            start = time.time()
-            # Cholesky factor (lower triangular)
-            N = N.todense()
-            L = la.cholesky(N, lower=True)
-            end = time.time()
-            print(f"Cholesky factor: {int(end - start)} sec")
-
-            if last_iteration: # compute also variance
-               start = time.time()
-               # Compute L^{-1} efficiently
-               # Each column of Linv satisfies: L @ x = e_i
-               # So we can solve for all columns at once
-               identity = np.eye(L.shape[0])
-               Linv = la.solve_triangular(L, identity, lower=True)
-               end = time.time()
-               print(f"solve_triangular L^-1: {int(end - start)} sec")
-
-               y = Linv @ bn
-               x = Linv.T @ y
-            
-               var_ref = np.sum(Linv**2, axis=0)
-
-               result = [x, var_ref]
-            else:
-               # Forward solve L y = b
-               y = la.solve_triangular(L, bn, lower=True)
-               # Backward solve L.T x = y
-               x = la.solve_triangular(L.T, y, lower=False)
-               result = [x]
-               result.append([])
-
-            sol_ref = x
-         
-         if method == 4:
-            print("Solving using conjugate-gradient (cg)")
-            start = time.time()
-            x, info = spla.cg(N, bn, tol=tol, maxiter=1000)
-            end = time.time()
-            print(f"Solve using cg: {int(end - start)} sec")
-            if info != 0:
-               print("cg finished with info=", info)
-            diff = np.abs(sol_ref-x)
-            print(max(diff), np.std(diff))
-
-         # Estimate variance if not availabe
-         if method != 3 and last_iteration:
-               start = time.time()
-               # estimate variance with N and cg may give <0 values
-               # result.append(stochastic_diag_estimate(A_scaled, num_samples=10, tol=1e-8)
-
-               # 130s, d=37
-               var_est = stochastic_diag_estimate(A_scaled, num_samples=10, tol=1e-10)
-               end = time.time()
-               print(f"Variance estimator using lsqr(A) s=10: {int(end - start)} sec")
-               if np.min(var_est)<0:
-                  print(f"{len(var_est[var_est<0])}/{len(var_est)}")
-               # diff = np.abs(var_ref-var_est)
-               # print(max(diff), np.std(diff))
-
-               result = [result[0], var_est]
-               
-               if np.min(var_est)<0:
-                  print(f"{len(var_est[var_est<0])}/{len(var_est)}")
-
-         if scaling:
-            result[0] = result[0]/col_norms
-         
-         xovi_amat.sol = result[0]
-         if last_iteration:
-            if scaling:
-               xovi_amat.std = result[-1]/(col_norms ** 2)
-            else:
-               xovi_amat.std = result[-1]
-         else:
-            xovi_amat.std = None
-
+         start = time.time()
+         xovi_amat.sol, xovi_amat.std, N, L = solve(spA_sol4_penal, b_penal, last_iteration,
+                                                    tol=(1.e-10 / AccOpt.get("sigma_0")),
+                                                    solving_method=AccOpt.get("solving_method"))
          end = time.time()
-         print("lsqr finished after", int(end - start_sol), "sec or ", round((end - start) / 60., 2), " min!")
+         print("lsqr finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
       # Save to pkl
       orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb.xovers, mode='iter')
@@ -986,7 +853,7 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
          pd.set_option('display.width', None)
          pd.set_option('display.max_colwidth', -1)
 
-      xovi_amat.resid_wrmse = get_stats(xovi_amat, xovi_amat.spA_penal, xovi_amat.b_penal)
+      xovi_amat.resid_wrmse = get_stats(xovi_amat, spA_sol4_penal, b_penal)
 
       print(f"Solution for iteration {i}")
       print_sol(orb_sol, glb_sol, xov, xovi_amat)
@@ -1001,12 +868,10 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
       # VCE
       if AccOpt.get("compute_vce"):
          start = time.time()
-         if method == 3: # if cholesky decomposition was performed
-            sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat,  L  ,   N , spA_sol4_penal, Ndiag=True)
-         elif scaling: # N should be recomputed
-            sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat, None, None, spA_sol4_penal, Ndiag=True)
-         else: # N is directly passed
-            sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat, None,   N , spA_sol4_penal, Ndiag=True)
+         if AccOpt.get("solving_method") == "cholesky": # if cholesky decomposition was performed
+            sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat,  L  , N, spA_sol4_penal, Ndiag=True)
+         else: # N is directly passed (if scaling, N=None, and will be recomputed)
+            sigma2_obs, sigma2_constr = compute_vce_weights(xovi_amat, None, N, spA_sol4_penal, Ndiag=True)
          end = time.time()
          print("compute_vce_weights finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
@@ -1058,6 +923,156 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
       else:
          print("previous_iter.sol_dict=", previous_iter.sol_dict)
 
+# @profile
+def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
+
+   start = time.time()
+   L = None
+   N = None
+   scaling = False
+   # scaling is helpful for method relying on approximated solvers
+   if solving_method != "cholesky":
+      scaling = True
+
+   if scaling:
+      # Column scaling: make each column of A have unit 2-norm
+      col_norms = np.sqrt(spA.power(2).sum(axis=0)).A1
+
+      # avoid divide-by-zero
+      col_norms[col_norms==0] = 1.0
+            
+      spA = spA @ diags(1.0 / col_norms)
+         
+      print("Columns scaled with max:", np.max(col_norms))
+ 
+   if solving_method == "lsqr":
+      print("Solving using lsqr")
+      result = spla.lsqr(spA, b_penal, damp=0, show=False, iter_lim=100000,
+                         atol=tol, conlim=1e8, btol=tol, calc_var=True)
+         
+   if solving_method == "lsmr":
+      print("Solving using lsmr")
+      result = spla.lsmr(spA, b_penal, damp=0, show=False, maxiter=100000,
+                         atol=tol, conlim=1e8, btol=tol)
+         
+   if solving_method in  ["lsqr","lsmr"]:
+      result = list(result)
+      end = time.time()
+      print(f"lsqr/lsmr finished: {int(end - start)} sec")
+         
+      istop = result[1]
+      if istop == 1:
+         print("LSQR solution is an approximate solution to Ax = b.")
+      elif (istop == 2):
+         print("LSQR solution approximately solves the least-squares problem.")
+         u, s, vt = spla.svds(spA, k=6)
+         print("Estimated condition number:", max(s) / min(s))
+         print("LSQR condition number:",result[6])
+         if (max(s) / min(s) > 100):
+            print("Unreliable variance")
+      elif istop > 2:
+         print("*** Accumxov.compute_solution: the system may be inconsistent.")
+         print("The solution is an approximate solution to the corresponding least-squares problem.")
+         exit(2)
+
+   if solving_method in  ["cholesky","cg"] or last_iteration:
+      # compute normal equation system (N,bn)
+      N  = spA.T * spA
+      if solving_method in  ["cholesky","cg"]:
+         bn = spA.T * b_penal
+         
+   if solving_method == "cholesky":
+      print("Solving using Cholesky factorization")
+      start = time.time()
+      # Cholesky factor (lower triangular)
+      density = N.nnz / (N.shape[0] * N.shape[1])
+      print(f"Density: {density:.6f}")
+      N = N.todense()
+      print("densified")
+      L = la.cholesky(N, lower=True)
+      # L = sparse_cholesky(N)
+      end = time.time()
+      print(f"Cholesky factor: {int(end - start)} sec")
+
+      if last_iteration: # compute also variance
+         start = time.time()
+         # Compute L^{-1} efficiently
+         # Each column of Linv satisfies: L @ x = e_i
+         # So we can solve for all columns at once
+         Linv = la.solve_triangular(L, np.eye(L.shape[0]), lower=True)
+         end = time.time()
+         print(f"solve_triangular L^-1: {int(end - start)} sec")
+
+         y = Linv @ bn
+         x = Linv.T @ y
+            
+         var_ref = np.sum(Linv**2, axis=0)
+
+         result = [x, var_ref]
+      else:
+         # Forward solve L y = b
+         y = la.solve_triangular(L, bn, lower=True)
+         # Backward solve L.T x = y
+         x = la.solve_triangular(L.T, y, lower=False)
+         result = [x]
+         result.append([])
+
+      sol_ref = x
+         
+   if solving_method == "cg":
+      print("Solving using conjugate-gradient (cg)")
+      start = time.time()
+      # x = spla.spsolve(N, bn)  # Solves Ax = b without forming Cholesky explicitly
+      info = 2
+      x, info = spla.cg(N, bn, tol=tol, maxiter=1000)
+            
+      end = time.time()
+      print(f"Solve using cg: {int(end - start)} sec")
+      if info != 0:
+         print("cg finished with info=", info)
+      result = [x]
+      # diff = np.abs(sol_ref-x)
+      # print(max(diff), np.std(diff))
+
+   # Estimate variance if not availabe
+   if solving_method != "cholesky" and last_iteration:
+      start = time.time()
+      # estimate variance with N and cg may give <0 values
+      # result.append(stochastic_diag_estimate_A(spA, num_samples=10, tol=1e-8)
+
+      # 130s, d=37
+      # var_est = stochastic_diag_estimate_A(spA, num_samples=20, tol=1e-10)
+      # var_est = stochastic_diag_estimate_N(N, num_samples=20, tol=1e-8)
+      var_est = estimate_diag_inv_AtA(spA, num_probes=5, tol=1e-8)
+      end = time.time()
+      # print(f"Variance estimator using lsqr(A) s=20: {int(end - start)} sec")
+      print(f"Variance estimator using cg(N) s=5: {int(end - start)} sec")
+      if np.min(var_est)<0:
+         print(f"{len(var_est[var_est<0])}/{len(var_est)}")
+      # diff = np.abs(var_ref-var_est)
+      # print(max(diff), np.std(diff))
+
+      result = [result[0], var_est]
+               
+      if np.min(var_est)<0:
+         print(f"{len(var_est[var_est<0])}/{len(var_est)}")
+
+   if scaling:
+      spA = spA @ diags(col_norms) # scale back
+      result[0] = result[0]/col_norms
+      N = None
+         
+   sol = result[0]
+   if last_iteration:
+      if scaling:
+         var = result[-1]/(col_norms ** 2)
+      else:
+         var = result[-1]
+   else:
+      var = None
+
+   return sol, var, N, L
+
 def create_observation_blocks(xovers):
    
    orbA0 = xovers['orbA'].str[0]
@@ -1065,15 +1080,15 @@ def create_observation_blocks(xovers):
       
    unique_chars = list(set(pd.concat([orbA0, orbB0])))
    if len(unique_chars) > 1:
-      unique_chars = unique_chars.sort()
+      unique_chars.sort()
    
    print("Creating observation blocks based on orbA/B starting with", unique_chars)
    
    if True:
-      blocks = [(xovers['orbA'].str[0] == c) & (xovers['orbB'].str[0] == c) for c in unique_chars]
+      blocks = [(orbA0 == c) & (orbB0 == c) for c in unique_chars]
       if len(unique_chars) > 1:
-         blocks.append((xovers['orbA'].str[0] == unique_chars[0]) & (xovers['orbB'].str[0] == unique_chars[1]) |
-                       (xovers['orbA'].str[0] == unique_chars[1]) & (xovers['orbB'].str[0] == unique_chars[0]))   
+         blocks.append((orbA0 == unique_chars[0]) & (orbB0 == unique_chars[1]) |
+                       (orbA0 == unique_chars[1]) & (orbB0 == unique_chars[0]))   
    elif False:
       lat_threshold = 88
       blocks = []
@@ -1085,21 +1100,21 @@ def create_observation_blocks(xovers):
          # else:
          #    lat_threshold = 75            
          print(f"Block #{i}: orbA=orbB={c}*, |lat|<{lat_threshold}°")
-         blocks.append((xovers['orbA'].str[0] == c) & (xovers['orbB'].str[0] == c) & (np.abs(xovers['LAT'])<lat_threshold))
+         blocks.append((orbA0 == c) & (orbB0 == c) & (np.abs(xovers['LAT'])<lat_threshold))
          i+=1
          print(f"Block #{i}: orbA=orbB={c}*, |lat|>={lat_threshold}°")
-         blocks.append((xovers['orbA'].str[0] == c) & (xovers['orbB'].str[0] == c) & (np.abs(xovers['LAT'])>=lat_threshold))
+         blocks.append((orbA0 == c) & (orbB0 == c) & (np.abs(xovers['LAT'])>=lat_threshold))
       if len(unique_chars) > 1:
          lat_threshold = 75
          i+=1
          print(f"Block #{i}: (orbA,orbB)=({unique_chars})*, |lat|<{lat_threshold}°")
-         blocks.append(((xovers['orbA'].str[0] == unique_chars[0]) & (xovers['orbB'].str[0] == unique_chars[1]) |
-                       (xovers['orbA'].str[0] == unique_chars[1]) & (xovers['orbB'].str[0] == unique_chars[0])) &
+         blocks.append(((orbA0 == unique_chars[0]) & (orbB0 == unique_chars[1]) |
+                       (orbA0 == unique_chars[1]) & (orbB0 == unique_chars[0])) &
                        (np.abs(xovers['LAT'])<lat_threshold))
          i+=1
          print(f"Block #{i}: (orbA,orbB)=({unique_chars})*, |lat|>={lat_threshold}°")
-         blocks.append(((xovers['orbA'].str[0] == unique_chars[0]) & (xovers['orbB'].str[0] == unique_chars[1]) |
-                       (xovers['orbA'].str[0] == unique_chars[1]) & (xovers['orbB'].str[0] == unique_chars[0])) &
+         blocks.append(((orbA0 == unique_chars[0]) & (orbB0 == unique_chars[1]) |
+                       (orbA0 == unique_chars[1]) & (orbB0 == unique_chars[0])) &
                        (np.abs(xovers['LAT'])>=lat_threshold))
    else:
       blocks = []
@@ -1239,6 +1254,7 @@ def clean_solution(sol_dict):
    return sol_dict_iter_clean
 
 ######## MAIN ##########
+# @profile
 def main(arg):
    ##############################################
    # launch program and clock
@@ -1279,7 +1295,7 @@ def main(arg):
       
    start = time.time()
    print("Load xovers from datasets")
-   xov_cmb = load_combine(datasets, vecopts)   
+   # xov_cmb = load_combine(datasets, vecopts)   
    # if AccOpt.get("Abmat_infile") == "":
    #    # xov_cmb = load_combine(data_pth, vecopts)
    #    # WD: Can xov_cmb be saved at this point?
@@ -1350,13 +1366,16 @@ def main(arg):
          xovi_amat = Amat(vecopts)
          xovi_amat = xovi_amat.load(data_pth + AccOpt.get("Abmat_infile"))
 
+      if not AccOpt.get("get_cov_only"):
+         xovi_amat.spA = None
+
       xovi_amat.obs_blocks = create_observation_blocks(xovi_amat.xov.xovers)
-      start = time.time()
-      print("Computation of the penalty matrices")
-      xovi_amat.penalty_mat = compute_penalty_matrices(xovi_amat)
-      end = time.time()
-      print("Computation of the penalty matrices finished after", int(end - start),
-            "sec or ", round((end - start) / 60., 2), " min!")
+      
+      tracks_to_remove = get_bad_tracks(xovi_amat)
+
+      xovi_amat.penalty_mat = compute_penalty_matrices(xovi_amat, tracks_to_remove)
+      
+      remove_tracks(xovi_amat, tracks_to_remove.axes[0].tolist())
 
       # Where all the weight from the penalty matrix went???
       if previous_iter != None and previous_iter.vce_obs != None and previous_iter.vce_pen != None:
@@ -1376,7 +1395,8 @@ def main(arg):
          # xovi_amat.vce = [0.0002247404434024504, 5.0025679108113685, 0.0010878786212904351]
 
       start = time.time()
-      compute_solution(xovi_amat, previous_iter, xov_cmb)
+      # compute_solution(xovi_amat, previous_iter, xov_cmb)
+      compute_solution(xovi_amat, previous_iter, xovi_amat.xov)
       end = time.time()
 
       print("compute_solution finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")

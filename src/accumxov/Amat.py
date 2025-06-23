@@ -40,8 +40,6 @@ class Amat:
       self.spA = None # nobsxnpar
       self.spA_sol4 = None # nobsxnpar
       self.b = None
-      # self.b_penal = None
-      self.spA_penal = None # nobsxnpar
       self.converged = False
       self.resid_wrmse = None
       self.xov = None
