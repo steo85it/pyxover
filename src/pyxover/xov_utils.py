@@ -209,7 +209,15 @@ def load_combine(xov_pth_,vecopts):
    xov_cmb.combine(xov_list)
 
    # save cloop perturbations to xov_cmb
-   pertdict = [x.pert_cloop for x in xov_list if hasattr(x, 'pert_cloop')]
+   pertdict = []
+   pertdict0 = []
+
+   for x in xov_list:
+      if hasattr(x, 'pert_cloop'):
+         pertdict.append(x.pert_cloop)
+      if hasattr(x, 'pert_cloop_0'):
+         pertdict0.append(x.pert_cloop_0)
+
    if pertdict != []:
       xov_cmb.pert_cloop = pd.concat([pd.DataFrame(l) for l in pertdict],axis=1,sort=True).T
    else:
@@ -221,10 +229,9 @@ def load_combine(xov_pth_,vecopts):
    else:
       test_pert = 0
 
-   pertdict = [x.pert_cloop_0 for x in xov_list if hasattr(x, 'pert_cloop_0')]
-   if test_pert>0 and len([v for x in pertdict for k,v in x.items() if v]) > 0 and XovOpt.get("sol4_orbpar") != [None]:
-      pertdict = {k: v for x in pertdict for k, v in x.items() if v is not None}
-      xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict).T
+   if test_pert>0 and len([v for x in pertdict0 for k,v in x.items() if v]) > 0 and XovOpt.get("sol4_orbpar") != [None]:
+      pertdict0 = {k: v for x in pertdict0 for k, v in x.items() if v is not None}
+      xov_cmb.pert_cloop_0 = pd.DataFrame(pertdict0).T
       xov_cmb.pert_cloop_0.drop_duplicates(inplace=True)
    else:
       xov_cmb.pert_cloop_0 = pd.DataFrame()
