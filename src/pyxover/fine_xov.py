@@ -51,7 +51,7 @@ def fine_intersection_proc(xovi, df, all_xov):
    df = df.reset_index(drop=True).reset_index()
    df.rename(columns={'index': 'genID', 'seqid_mla': 'seqid'}, inplace=True)
 
-   # WD: I don't think this should be done here, but rahter at interpolation
+   # WD: I don't think this should be done here, but rather at interpolation
    #     if the xover is too close to the gtrack limit
    # check that we got the same number of rows for both tracks
    # TODO WHY is this happening with pandas 2.x.x
@@ -195,6 +195,9 @@ def compute_fine_xov(mla_proj_df, fine_xov_df, n_interp):
                                   fine_xov_df.loc[fine_xov_df['xovi'] == xovi], n_interp)
 
    # fill xov structure with info for LS solution
+   start_fill_struct = time.time()
+   print("fine_compute_xov_proc finished after", int(start_fill_struct - start_finexov), "sec or ",
+         round((start_fill_struct - start_finexov) / 60., 2), " min.")
    all_xov.parOrb_xy = [x for x in all_xov.xovers.filter(regex='^dR/[a-zA-Z0-9]+_.*$').columns]  # update partials list
    all_xov.parGlo_xy = [(a + b) for a in ['dR/'] for b in list(XovOpt.get("parGlo").keys())]
    all_xov.par_xy = all_xov.parOrb_xy + all_xov.parGlo_xy  # update partials list
@@ -207,8 +210,6 @@ def compute_fine_xov(mla_proj_df, fine_xov_df, n_interp):
    if XovOpt.get("debug"):
       pd.set_option('display.max_columns', 500)
       pd.set_option('display.max_rows', 500)
-
-   # print(all_xov.xovers)
 
    end_finexov = time.time()
    print("Fine_xov finished after", int(end_finexov - start_finexov), "sec or ",
@@ -255,7 +256,10 @@ def fine_compute_xov_proc(xovi, df, all_xov, fine_xov_df, n_interp):
 
    ldA, ldB, R_A, R_B = all_xov.get_elev('', ldA, ldB, n_interp, x=x, y=y)
 
-   out = np.vstack((x, y, ldA, ldB, R_A, R_B)).T
+   if len(R_A) == 0 or len(R_B) == 0:
+      out = []
+   else:
+      out = np.vstack((x, y, ldA, ldB, R_A, R_B)).T
 
    if len(out) == 0:
       if XovOpt.get("debug"):
