@@ -13,7 +13,7 @@ from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
 from accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
-    analyze_sol, subsample_xovers, load_previous_iter_if_any, stochastic_diag_estimate_N, estimate_diag_inv_AtA
+    analyze_sol, subsample_xovers, load_previous_iter_if_any, stochastic_diag_estimate_N, estimate_diag_inv_AtA, blockwise_cholesky
 from xovutil.iterables import mergsum
 from xovutil.xovres2weights import get_interpolation_weight
 from pyxover.xov_utils import load_combine, clean_xov, clean_partials
@@ -33,8 +33,6 @@ import scipy.sparse.linalg as spla
 import scipy.linalg as la
 
 from memory_profiler import profile
-
-# from sksparse.cholmod import cholesky as sparse_chol
 
 from pyxover.xov_setup import xov
 from accumxov.Amat import Amat
@@ -696,18 +694,6 @@ def compute_vce_weights(amat, L=None, N=None, spA_penal=None, Ndiag=False):
 
    return s2_obs_new, s2_constr_new
 
-def sparse_cholesky(A): # The input matrix A must be a sparse symmetric positive-definite.
-   # from https://gist.github.com/omitakahiro/c49e5168d04438c5b20c921b928f1f5d
-   import sys
-  
-   n = A.shape[0]
-   LU = spla.splu(A,diag_pivot_thresh=0) # sparse LU decomposition
-  
-   if ( LU.perm_r == np.arange(n) ).all() and ( LU.U.diagonal() > 0 ).all(): # check the matrix A is positive definite.
-      return LU.L.dot( diags(LU.U.diagonal()**0.5) )
-   else:
-       sys.exit('The matrix is not positive definite')
-
 def remove_tracks(xovi_amat, tracks_to_remove):
    # remove tracks and related observations
    # works only for one block one penalty matrix
@@ -737,8 +723,6 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
    # xovi_amat attributes changed via get_stats
    # spA, b, postfit_res, resid_wrmse
 
-   # if (xovi_amat.weights !=  diags(xovi_amat.weights.diagonal())).nnz == 0:
-   # Get the row and column indices of non-zero elements
    coo = xovi_amat.weights.tocoo()
    if (np.all(coo.row == coo.col)):
       print("Weight matrix is diagonal")
@@ -800,7 +784,6 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
          spA_sol4_penal = W_L.T * spA_sol4_penal
       if len(xovi_amat.penalty_mat) > 0:
          spA_sol4_penal = sp.vstack([spA_sol4_penal, 1. * spQ])
-
 
       # # save penalised matrices
       # xovi_amat.spA_penal = spA_sol4_penal
@@ -925,6 +908,8 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
 
 # @profile
 def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
+   
+   estimate_var = False # not accurate enough
 
    start = time.time()
    L = None
@@ -934,8 +919,9 @@ def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
    if solving_method != "cholesky":
       scaling = True
 
+   # Column scaling
    if scaling:
-      # Column scaling: make each column of A have unit 2-norm
+      # make each column of A have unit 2-norm
       col_norms = np.sqrt(spA.power(2).sum(axis=0)).A1
 
       # avoid divide-by-zero
@@ -956,7 +942,6 @@ def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
                          atol=tol, conlim=1e8, btol=tol)
          
    if solving_method in  ["lsqr","lsmr"]:
-      result = list(result)
       end = time.time()
       print(f"lsqr/lsmr finished: {int(end - start)} sec")
          
@@ -974,9 +959,10 @@ def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
          print("*** Accumxov.compute_solution: the system may be inconsistent.")
          print("The solution is an approximate solution to the corresponding least-squares problem.")
          exit(2)
+      sol = result[0]
 
+   # compute normal equation system (N,bn) if needed
    if solving_method in  ["cholesky","cg"] or last_iteration:
-      # compute normal equation system (N,bn)
       N  = spA.T * spA
       if solving_method in  ["cholesky","cg"]:
          bn = spA.T * b_penal
@@ -984,16 +970,17 @@ def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
    if solving_method == "cholesky":
       print("Solving using Cholesky factorization")
       start = time.time()
-      # Cholesky factor (lower triangular)
-      density = N.nnz / (N.shape[0] * N.shape[1])
-      print(f"Density: {density:.6f}")
       N = N.todense()
-      print("densified")
-      L = la.cholesky(N, lower=True)
-      # L = sparse_cholesky(N)
-      end = time.time()
-      print(f"Cholesky factor: {int(end - start)} sec")
-
+      if N.shape[0] < 25000:
+         L = la.cholesky(N, lower=True, overwrite_a=True)
+         end = time.time()
+         print(f"Cholesky factor: {int(end - start)} sec")
+         N = None
+      else:
+         L = blockwise_cholesky(N, block_size=20000)
+         end = time.time()
+         print(f"Blockwise-Cholesky factor: {int(end - start)} sec")
+         
       if last_iteration: # compute also variance
          start = time.time()
          # Compute L^{-1} efficiently
@@ -1004,71 +991,50 @@ def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
          print(f"solve_triangular L^-1: {int(end - start)} sec")
 
          y = Linv @ bn
-         x = Linv.T @ y
-            
-         var_ref = np.sum(Linv**2, axis=0)
-
-         result = [x, var_ref]
+         sol = Linv.T @ y
+         var = np.sum(Linv**2, axis=0)
+         
       else:
          # Forward solve L y = b
          y = la.solve_triangular(L, bn, lower=True)
-         # Backward solve L.T x = y
-         x = la.solve_triangular(L.T, y, lower=False)
-         result = [x]
-         result.append([])
-
-      sol_ref = x
+         # Backward solve L.T sol = y
+         sol = la.solve_triangular(L.T, y, lower=False)
          
    if solving_method == "cg":
       print("Solving using conjugate-gradient (cg)")
       start = time.time()
-      # x = spla.spsolve(N, bn)  # Solves Ax = b without forming Cholesky explicitly
-      info = 2
-      x, info = spla.cg(N, bn, tol=tol, maxiter=1000)
+      sol, info = spla.cg(N, bn, tol=tol, maxiter=1000)
             
       end = time.time()
       print(f"Solve using cg: {int(end - start)} sec")
       if info != 0:
          print("cg finished with info=", info)
-      result = [x]
-      # diff = np.abs(sol_ref-x)
-      # print(max(diff), np.std(diff))
 
-   # Estimate variance if not availabe
+   # Compute variance if not available (full inverse or stochastic estimator)
    if solving_method != "cholesky" and last_iteration:
       start = time.time()
-      # estimate variance with N and cg may give <0 values
-      # result.append(stochastic_diag_estimate_A(spA, num_samples=10, tol=1e-8)
-
-      # 130s, d=37
-      # var_est = stochastic_diag_estimate_A(spA, num_samples=20, tol=1e-10)
-      # var_est = stochastic_diag_estimate_N(N, num_samples=20, tol=1e-8)
-      var_est = estimate_diag_inv_AtA(spA, num_probes=5, tol=1e-8)
-      end = time.time()
-      # print(f"Variance estimator using lsqr(A) s=20: {int(end - start)} sec")
-      print(f"Variance estimator using cg(N) s=5: {int(end - start)} sec")
-      if np.min(var_est)<0:
-         print(f"{len(var_est[var_est<0])}/{len(var_est)}")
-      # diff = np.abs(var_ref-var_est)
-      # print(max(diff), np.std(diff))
-
-      result = [result[0], var_est]
-               
-      if np.min(var_est)<0:
-         print(f"{len(var_est[var_est<0])}/{len(var_est)}")
-
-   if scaling:
-      spA = spA @ diags(col_norms) # scale back
-      result[0] = result[0]/col_norms
-      N = None
-         
-   sol = result[0]
-   if last_iteration:
-      if scaling:
-         var = result[-1]/(col_norms ** 2)
+      if estimate_var:
+         # estimate variance with N and cg may give <0 values
+         # var = stochastic_diag_estimate_N(N, num_samples=20, tol=1e-8)
+         var = estimate_diag_inv_AtA(spA, num_probes=5, tol=1e-8)
+         end = time.time()
+         print(f"Variance estimator using cg(N) s=5: {int(end - start)} sec")
+         if np.min(var)<0:
+            print(f"{len(var[var<0])}/{len(var)}")
       else:
-         var = result[-1]
-   else:
+         var = np.asarray(np.linalg.inv(N.todense()).diagonal())
+         end = time.time()
+         print(f"Variance from inv: {int(end - start)} sec")
+
+   # scale back
+   if scaling:
+      spA = spA @ diags(col_norms) # (for later use?)
+      sol = sol/col_norms
+      N = None # cannot be use as it is, will have to be recomputed
+      if last_iteration:
+         var = var/(col_norms ** 2)
+
+   if not last_iteration:
       var = None
 
    return sol, var, N, L
@@ -1294,19 +1260,20 @@ def main(arg):
    print(data_pth)
       
    start = time.time()
-   print("Load xovers from datasets")
+   
    # xov_cmb = load_combine(datasets, vecopts)   
-   # if AccOpt.get("Abmat_infile") == "":
-   #    # xov_cmb = load_combine(data_pth, vecopts)
-   #    # WD: Can xov_cmb be saved at this point?
-   #    xov_cmb = load_combine(datasets, vecopts)
+   if AccOpt.get("Abmat_infile") == "":
+      print("Load xovers from datasets")
+      # xov_cmb = load_combine(data_pth, vecopts)
+      # WD: Can xov_cmb be saved at this point?
+      xov_cmb = load_combine(datasets, vecopts)
    # else: # same xovers actually saved?
    #    # Load from Abmat_infile
    #    xovi_amat = Amat(vecopts)
    #    xovi_amat = xovi_amat.load(data_pth + AccOpt.get("Abmat_infile"))
    #    xov_cmb = xovi_amat.xov
-   end = time.time()
-   print("Xovers loaded in ", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
+      end = time.time()
+      print("Xovers loaded in ", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
 
    # # count occurrences for each orbit ID

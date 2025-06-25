@@ -251,9 +251,9 @@ def get_stats(amat, spAmat, bmat):
 
    xsol = []
    for filt in amat.sol4_pars:
-      filtered_dict = {k: v for (k, v) in amat.sol_dict['sol'].items() if filt in k}
-      if len(list(filtered_dict.values())) > 0:
-         xsol.append(list(filtered_dict.values())[0])
+      match = next((v for k, v in amat.sol_dict['sol'].items() if filt in k), None)
+      if match is not None:
+         xsol.append(match)
       else:
          print(np.array(filt), "not found")
          xsol.append(0.)
@@ -287,8 +287,7 @@ def get_stats(amat, spAmat, bmat):
    # trR = np.diagonal(np.linalg.pinv(Atmp.todense())@ATP@spA_tmp).sum()
    # dof = nobs - trR
    dof = nobs - npar
-   # m0 = np.sqrt(vTPv / dof)
-   m0 = np.linalg.norm(np.sqrt(vTPv / dof))
+   m0 = np.sqrt(vTPv[0] / dof)
    
    print(f"{nobs} observations, {npar} parameters")
    print("pre-RMS=", np.sqrt(lTPl / dof), " post-RMS=", m0)
@@ -672,3 +671,50 @@ def stochastic_trace_estimate_chol(L, Ni, num_samples=20):
 
    
    return  np.mean(trace_estimates)
+
+def sparse_cholesky(A): # The input matrix A must be a sparse symmetric positive-definite.
+   # from https://gist.github.com/omitakahiro/c49e5168d04438c5b20c921b928f1f5d
+   import sys
+  
+   n = A.shape[0]
+   LU = spla.splu(A,diag_pivot_thresh=0) # sparse LU decomposition
+  
+   if ( LU.perm_r == np.arange(n) ).all() and ( LU.U.diagonal() > 0 ).all(): # check the matrix A is positive definite.
+      return LU.L.dot( diags(LU.U.diagonal()**0.5) )
+   else:
+       sys.exit('The matrix is not positive definite')
+
+def blockwise_cholesky(A, block_size):
+    """
+    Blockwise Cholesky decomposition of a symmetric positive definite matrix A.
+    
+    Parameters:
+        A (ndarray): Symmetric positive definite matrix of shape (n, n).
+        block_size (int): Size of blocks to partition the matrix.
+
+    Returns:
+        L (ndarray): Lower-triangular Cholesky factor such that A = L @ L.T
+    """
+    n = A.shape[0]
+    assert A.shape[0] == A.shape[1], "Matrix must be square"
+    
+    L = np.zeros_like(A)
+    
+    for i in range(0, n, block_size):
+        i_end = min(i + block_size, n)
+
+        # Diagonal block
+        Aii = A[i:i_end, i:i_end] - L[i:i_end, :i] @ L[i:i_end, :i].T
+        L[i:i_end, i:i_end] = np.linalg.cholesky(Aii)
+
+        for j in range(i_end, n, block_size):
+            j_end = min(j + block_size, n)
+
+            Aji = A[j:j_end, i:i_end] - L[j:j_end, :i] @ L[i:i_end, :i].T
+            L[j:j_end, i:i_end] = np.linalg.solve(
+                L[i:i_end, i:i_end], Aji.T
+            ).T
+
+    return L
+   
+   
