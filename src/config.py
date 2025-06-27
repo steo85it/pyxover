@@ -145,8 +145,6 @@ class XovOpt:
         XovOpt.set("auxdir", f'{XovOpt.get("basedir")}aux/'),
         XovOpt.set("tmpdir", f'{XovOpt.get("basedir")}tmp/'),
 
-        XovOpt.set("import_abmat",
-                   (False, XovOpt.get("outdir") + "sim/BS2_0/0res_1amp/Abmat*.pkl")),
         XovOpt.set("pert_cloop", {'orb': XovOpt.get("pert_cloop_orb"),
                                   'glo': XovOpt.get("pert_cloop_glo")}),
 
