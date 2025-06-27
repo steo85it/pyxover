@@ -24,7 +24,7 @@ def spice_spkezr(targ, et, ref, obs, fname):
          except:
             print("State vector not retrieved at ET=",et_loc)
             scpv_loc = [np.nan for i in range(0,6)]
-      scpv.append(scpv_loc)
+         scpv.append(scpv_loc)
    scpv = np.atleast_2d(np.squeeze(scpv))
 
    scpos = 1.e3 * scpv[:, :3]
