@@ -35,7 +35,6 @@ def get_xov_cov_tracks(df, plot_stuff=False):
    # print(tracks_rms_df.reindex(tracks_rms_df.pre.abs().sort_values().index))
    # pd.reset_option("display.max_rows")
 
-   # print(xovi_amat.xov.xovers)
    tmp = df[['xOvID', 'orbA', 'orbB']].astype('int32')
    # get unique tracksID in dataset
    unique_orb = np.sort(np.unique(tmp[['orbA','orbB']].values.ravel()))
@@ -553,23 +552,23 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
    if int(ext_iter) > 0:
       previous_iter = Amat(XovOpt.get("vecopts"))
       id = ds.split('/')[0].split('_')[0]
-      previous_dir = XovOpt.get("outdir") + id + '_' + str(ext_iter - 1)
-      print(previous_dir, id)
-      previous_iter = previous_iter.load(previous_dir + '/Abmat_' + id + 
-                                         '_' + str(ext_iter - 1)  + '_' + str(ext_iter) + '.pkl')
-      print(('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-          '_' + str(ext_iter - 1) + '/' +
-          ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+      previous_dir = XovOpt.get("outdir") + id + '_' + str(ext_iter - 1) + '/'
+      Abmatfile = XovOpt.get("import_abmat")
+      if Abmatfile == "":
+         Abmatfile =  'Abmat_' + id + '_' + str(ext_iter - 1)  + '_' + str(ext_iter) + '.pkl'
+         print(('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+               '_' + str(ext_iter - 1) + '/' +
+               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
       
-      # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-      # previous_iter = previous_iter.load(
-      #    ('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-      #    '_' + str(ext_iter - 1) + '/' +
-      #    ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+         # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
+         # previous_iter = previous_iter.load(
+         #    ('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
+         #    '_' + str(ext_iter - 1) + '/' +
+         #    ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+      
+      previous_iter = previous_iter.load(previous_dir + Abmatfile)
       print("initial sol dict=", len(previous_iter.sol_dict['sol']))
 
-      # print(previous_iter.sol_dict)
-      # exit()
    # if pre-processing took place (else, if perturbing simulation, also pert_cloop_orb should contain something)
    elif xov_cmb.pert_cloop.shape[1] > 0:  # and len(pert_cloop_orb) == 0:
       parsk = list(xov_cmb.pert_cloop.to_dict().keys())

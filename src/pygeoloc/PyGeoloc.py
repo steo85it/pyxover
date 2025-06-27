@@ -178,11 +178,17 @@ def main(args):
          #   + '_' + str(iter_in - 1) + '/' + outdir_in.split('/')[-2] + '/'
          # tmp = tmp.load(previous_dir + 'Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
          id = outdir_in.split('/')[0].split('_')[0]
-         previous_dir = XovOpt.get("outdir") + id + '_' + str(iter_in - 1)
-         tmp = tmp.load(previous_dir + '/Abmat_' + id +  '_' + str(iter_in - 1)  + '_' + str(iter_in) + '.pkl')
+         previous_dir = XovOpt.get("outdir") + id + '_' + str(iter_in - 1) + '/'
+         if XovOpt.get("import_abmat") == "":
+            Abmat_infile = 'Abmat_' + id +  '_' + str(iter_in - 1)  + '_' + str(iter_in) + '.pkl'
+         else:
+            Abmat_infile = XovOpt.get("import_abmat")
+            print(previous_dir)
+            print(Abmat_infile)
+         tmp = tmp.load(os.path.join(previous_dir + Abmat_infile))
          import_prev_sol = hasattr(tmp, 'sol4_pars')
          if import_prev_sol:
-            orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov)
+            orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov.xovers)
       tracks = []
       for d_start, d_end in tqdm(zip(d_track_start, d_track_end), total=len(d_track_start)):
          track_name = d_start.strftime('%y%m%d%H%M')
