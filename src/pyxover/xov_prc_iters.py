@@ -306,7 +306,7 @@ def load_mla_df(gtrack_dirs, tracks_in_xovs, columns):
  
 def retrieve_xov(outdir_in, xov_iter, cmb, useful_columns):
    # depending on available input xov, get xovers location from AbMat or from xov_rough
-   if xov_iter > 0 or XovOpt.get("import_abmat") == "":  # len(input_xov)==0:
+   if xov_iter > 0 or XovOpt.get("import_abmat") != "":  # len(input_xov)==0:
       # read old abmat file
       if xov_iter > 0:
          outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
