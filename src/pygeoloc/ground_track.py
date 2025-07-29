@@ -17,12 +17,13 @@ import gc
 import numpy as np
 import pandas as pd
 import spiceypy as spice
+from scipy.constants import c as clight
 
 from xovutil import astro_trans as astr, pickleIO
 from xovutil.interp_obj import interp_obj
 from xovutil.project_coord import project_stereographic
 from xovutil.iterables import mergsum
-from geolocate_altimetry import geolocate
+from geolocate_altimetry import geolocate, geolocate_DLRv2
 from config import XovOpt
 from tidal_deform import tidepart_h2
 
@@ -234,8 +235,9 @@ class gtrack:
          print("*** ground_track.read_fill: only .TAB (MLA-like) and .pkl formats (also MLA-like) are accepted.")
          exit(1)
 
+      df = df.rename(columns=lambda x: x.strip())
       df.columns = df.columns.str.lower()
-      df.rename(columns={'ephemeristime': 'ET_TX','tof_ns_et': 'TOF'}, inplace=True)
+      df = df.rename(columns={'ephemeristime': 'ET_TX','tof_ns_et': 'TOF'})
       df.TOF *= 1.e-9 # Convert TOF to seconds
 
       if 'rdr_name' in df.columns:  # if LOLA rdr
@@ -274,6 +276,7 @@ class gtrack:
             df = df[df['geoc_lat'] < 0]
 
       # altitude cutoff
+      df['altitude'] = df['TOF']*clight*1e-6/2 # temp
       df = df[df['altitude'] < XovOpt.get("max_range_altitude")]
 
       # only select the required data (column)
@@ -650,6 +653,7 @@ class gtrack:
 
       # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
       geoloc_out, et_bc, dr_tidal, offndr = geolocate(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+      # geoloc_out, et_bc, dr_tidal, offndr = geolocate_DLRv2(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
 
       if self.vecopts['PARTDER'] != '':
          tmp_df['ET_BC_' + self.vecopts['PARTDER'] + '_p'] = et_bc
@@ -666,6 +670,8 @@ class gtrack:
          tmp_pertPar = self.perturb_orbits(diff_step, -1.)
 
          geoloc_min, et_bc, dr_tidal, dum = geolocate(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+         # geoloc_min, et_bc, dr_tidal, dum = geolocate_DLRv2(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+         
          partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
 
          ####################################################################################
