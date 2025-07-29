@@ -43,7 +43,9 @@ class AccOpt:
       "Abmat_outfile": "",
       "Abmat_infile": "",
       
-      "solving_method": "cg" #, "lsqr", "lsmr", "cholesky"
+      "solving_method": "cg", #, "lsqr", "lsmr", "cholesky"
+      
+      "apply_xov_cov_tracks": True
 
    }
    __setters = list(__conf.keys())

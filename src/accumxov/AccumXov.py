@@ -39,22 +39,6 @@ from accumxov.Amat import Amat
 
 ######## SUBROUTINES ##########
 
-def prepro(dataset):
-   # read input args
-   # print('Number of arguments:', len(sys.argv), 'arguments.')
-   # print('Argument List:', str(sys.argv))
-
-   # locate data
-   if XovOpt.get("local") == 0:
-      data_pth = XovOpt.get("outdir")
-      data_pth += dataset
-      # load kernels
-   else:
-      data_pth = XovOpt.get("outdir")
-      data_pth += dataset
-
-   return data_pth, XovOpt.get("vecopts")
-
 # #@profile
 def prepare_Amat(xov, vecopts, par_list=''):
 
@@ -151,6 +135,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
       obs_weights = advanced_weighting(xovi_amat.xov.xovers, previous_iter)
 
    else: # if Erwan's lidar test
+      # WD: Not working anyway?
       print("!!! DANGEROUS MOD TO KEEP SIMU WEIGHTS !!!")
       obs_weights = diags(xovi_amat.xov.xovers['weights'].values, 0)
 
@@ -335,7 +320,7 @@ def advanced_weighting(xovers, previous_iter):
 
             # get quality of tracks and apply huber weights
             # WD: comment below
-            if False:
+            if AccOpt.get("apply_xov_cov_tracks"):
                tmp = xovers.copy()[
                   ['xOvID', 'LON', 'LAT', 'dtA', 'dR', 'orbA', 'orbB', 'huber']]  # .astype('float16')
                
@@ -345,16 +330,15 @@ def advanced_weighting(xovers, previous_iter):
                weights_xov_tracks = get_xov_cov_tracks(df=tmp, plot_stuff=False)
                xovers['huber_trks'] = weights_xov_tracks.diagonal()
 
-               # the histogram of weight distribution
-               if XovOpt.get("debug") and False and XovOpt.get("local"):
-                  plot_weight_distribution( weights_xov_tracks.diagonal())
-
-               # xovers['huber'] *= huber_weights_track
-
-               if XovOpt.get("debug") and False:
-                  tmp['track_weights'] = weights_xov_tracks.diagonal()
-                  tmp = tmp[['orbA', 'orbB', 'dR', 'track_weights']]
-                  print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
+               if XovOpt.get("debug"):
+                  # the histogram of weight distribution
+                  if False and XovOpt.get("local"):
+                     plot_weight_distribution( weights_xov_tracks.diagonal())
+                     
+                  if False:
+                     tmp['track_weights'] = weights_xov_tracks.diagonal()
+                     tmp = tmp[['orbA', 'orbB', 'dR', 'track_weights']]
+                     print(tmp[tmp.dR.abs() < 0.5].sort_values(by='track_weights'))
 
                #######
             # additional for h2 tests
@@ -415,12 +399,12 @@ def advanced_weighting(xovers, previous_iter):
 
       # combine with off-diag terms from tracks
       # ========================================
-      if False:
-            # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights) # to apply only the diagonal
-            obs_weights = weights_xov_tracks.multiply(obs_weights)
-            print("Observations weights re-evaluated, solution has not converged yet")
+      if AccOpt.get("apply_xov_cov_tracks"):
+         # obs_weights = diags(weights_xov_tracks.diagonal()*obs_weights) # to apply only the diagonal
+         obs_weights = weights_xov_tracks.multiply(obs_weights)
+         print("Observations weights re-evaluated, solution has not converged yet")
 
-      if XovOpt.get("debug") and XovOpt.get("local"):
+         if XovOpt.get("debug") and XovOpt.get("local"):
             print("tracks weights", weights_xov_tracks.diagonal().mean(), np.sort(weights_xov_tracks.diagonal()))
             tmp = obs_weights.diagonal()
             tmp = np.where(tmp > 1.e-9, tmp, 0.)
@@ -447,7 +431,7 @@ def compute_penalty_matrices(xovi_amat, tracks_to_remove):
       # par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par}
       
       # Currently, constraints on global parameters are not applied
-      penalty_mat = []      
+      penalty_mat = []
       # par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if not your_key.startswith('2')}
       par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par if your_key.startswith('1')}
       if par_constr:
@@ -733,7 +717,10 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
       # W_L = sparse_cholesky(xovi_amat.weights.todense())
 
    last_iteration = not AccOpt.get("compute_vce")
-   for i in (i for i in range(10)):
+   max_iter = 10
+   for i in (i for i in range(max_iter)):
+      if i == max_iter-1:
+         last_iteration = True
       print(f"\nIteration {i}:")
       print(f"------------")
       
@@ -770,8 +757,8 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
                             key in previous_iter.sol_dict['sol'] else 0. for key in
                             xovi_amat.sol4_pars_iter]
                   
-            Q = spQ.todense()
-            b_penal = np.hstack([b_penal, -1. * np.ravel(np.dot(Q, prev_sol_ord))]) # WD: to check !!
+         Q = spQ.todense()
+         b_penal = np.hstack([b_penal, -1. * np.ravel(np.dot(Q, prev_sol_ord))]) # WD: to check !!
       else:
          if len(xovi_amat.penalty_mat) > 0:
             b_penal = np.hstack([b_penal, -1. * np.zeros(penalty.shape[0])])
@@ -900,7 +887,7 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
          #                  list(xovi_amat.sol_dict['std'].values()))
          xovi_amat.sol = list(xovi_amat.sol_dict['sol'].values())
          xovi_amat.std = list(xovi_amat.sol_dict['std'].values())
-         orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb, mode='full')
+         orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb.xovers, mode='full')
          print("Cumulated solution")
          print_sol(orb_sol, glb_sol, xov, xovi_amat)
       else:
@@ -1255,37 +1242,27 @@ def main(arg):
    # WD: Compared to before, different datasets should be processed in
    # separate AccumXov runs, unless combined
    # for ds in [datasets[0]]:
-   ds = datasets[0]
-   data_pth, vecopts = prepro(ds)  # "test/"  # 'small_test/' #'1301/' #)
-   print(data_pth)
+   ds = datasets[0] 
+   data_pth = XovOpt.get("outdir") + ds
+   vecopts = XovOpt.get("vecopts")
       
    start = time.time()
    
-   # xov_cmb = load_combine(datasets, vecopts)   
    if AccOpt.get("Abmat_infile") == "":
       print("Load xovers from datasets")
-      # xov_cmb = load_combine(data_pth, vecopts)
-      # WD: Can xov_cmb be saved at this point?
       xov_cmb = load_combine(datasets, vecopts)
-   # else: # same xovers actually saved?
-   #    # Load from Abmat_infile
-   #    xovi_amat = Amat(vecopts)
-   #    xovi_amat = xovi_amat.load(data_pth + AccOpt.get("Abmat_infile"))
-   #    xov_cmb = xovi_amat.xov
       end = time.time()
       print("Xovers loaded in ", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
-
 
    # # count occurrences for each orbit ID
    # xov_cmb.nobs_x_track = xov_cmb.xovers[['orbA','orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False)
 
    if XovOpt.get("partials"):
       # load previous iter from disk (orbs, sols, etc) if available
-      previous_iter = None
-      # previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
-      # WD: try before ..., since xov_cmb seems to be modified
-      # par_list = ['orbA', 'orbB', 'xOvID']
-      # xovi_amat = prepare_Amat(xov_cmb, vecopts, par_list)
+      if ext_iter > 0:
+         previous_iter = load_previous_iter_if_any(ds, ext_iter, xov_cmb)
+      else:
+         previous_iter = None
       if AccOpt.get("Abmat_infile") == "":
 
          if ext_iter > 0 and previous_iter.converged and 'dR/dh2' not in XovOpt.get("sol4_glo"):
@@ -1362,7 +1339,6 @@ def main(arg):
          # xovi_amat.vce = [0.0002247404434024504, 5.0025679108113685, 0.0010878786212904351]
 
       start = time.time()
-      # compute_solution(xovi_amat, previous_iter, xov_cmb)
       compute_solution(xovi_amat, previous_iter, xovi_amat.xov)
       end = time.time()
 
@@ -1415,7 +1391,6 @@ def main(arg):
    xovi_amat.spA = None
    xovi_amat.b = None
    xovi_amat.weights = None
-   xovi_amat.xov = None
    xovi_amat.save(Amat_fname)
 
    print("AccumXov ended succesfully!")
