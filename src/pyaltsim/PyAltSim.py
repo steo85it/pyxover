@@ -475,7 +475,7 @@ def sim_track(args):
       #    logging.info('Error when simulating observations to', filename)
       #    print('Error when simulating observations to', filename)
       #    return
-      track.rdr_df['altitude'] *=1e3 # write altitude in km
+      track.rdr_df['altitude'] *=1e-3 # write altitude in km
       track.rdr_df.to_csv(filename, index=False, sep=',', na_rep='NaN')
       logging.info('Simulated observations written to', filename)
       print('Simulated observations written to', filename)
