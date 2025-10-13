@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.sparse import csr_matrix, diags, issparse
-from scipy.sparse.linalg import cg, lsqr, LinearOperator
 from scipy.linalg import solve_triangular
 
 # from accumxov.accum_opt import remove_3sigma_median
@@ -26,7 +25,7 @@ import time
 
 from pyxover.xov_setup import xov
 from pyxover.xov_utils import get_tracks_rms
-from xovutil.iterables import multiply_sparse_get_diag
+from accumxov.diagonal_estimators import  stochastic_trace_estimate_full, stochastic_trace_estimate_chol
 
 # @profile
 def get_xov_cov_tracks(df, plot_stuff=False):
@@ -103,8 +102,8 @@ def get_xov_cov_tracks(df, plot_stuff=False):
    if XovOpt.get("full_covar"):
       cov_xov_tracks = A_tracks * cov_xov_tracks
    else:
-      cov_xov_tracks = diags(multiply_sparse_get_diag(A_tracks, cov_xov_tracks))
-
+      cov_xov_tracks = diags(A_tracks.multiply(cov_xov_tracks.T).sum(axis=1).A.ravel())
+      
    np.reciprocal(cov_xov_tracks.data, out=cov_xov_tracks.data)
 
    return cov_xov_tracks
@@ -178,31 +177,41 @@ def get_vce_factor(Cinv, x, L=None, Ninv=None, b=None, A=None, N=None, s2apr=1.,
 def downsize_xovers(xov_df, max_xovers=1.e5, lat_threshold = 60, max_dR = 1.e3):
    # remove very large dR (>1km)
    xov_df = xov_df.loc[xov_df['dR'].abs() < max_dR]
-   print(xov_df.columns)
 
    hilat_xov = xov_df.loc[xov_df.LAT.abs() >= lat_threshold]
-   print(hilat_xov[['dR', 'weights', 'huber']].abs().max())
-   print(hilat_xov[['dR', 'weights', 'huber']].abs().min())
-   print(hilat_xov[['dR', 'weights', 'huber']].abs().mean())
-   print(hilat_xov[['dR', 'weights', 'huber']].abs().median())
-
+   
+   cols = ['dR', 'weights', 'huber']
+   print(pd.DataFrame({
+      'max': hilat_xov[cols].abs().max(),
+      'min': hilat_xov[cols].abs().min(),
+      'mean': hilat_xov[cols].abs().mean(),
+      'median': hilat_xov[cols].abs().median()
+   }))
+   
    # select approx number of xovers to keep and derive proportion to keep at hi-lats
    to_keep = 1. - max_xovers / len(hilat_xov)
+   # to_keep = 0.2 # WD: test
    to_keep_hilat = hilat_xov.loc[hilat_xov['weights'] > hilat_xov['weights'].quantile(to_keep)].xOvID.values
+   print(f"Keeping {len(to_keep_hilat)}/{len(hilat_xov)} of xovers at |LAT| >= {lat_threshold}°")
+   
    # by default, keep 90% of xovers at low-lats
    lolat_xov = xov_df.loc[xov_df.LAT.abs() < lat_threshold]
-   # to_keep_lolat = lolat_xov.loc[lolat_xov['weights'] > lolat_xov['weights'].quantile(0.3)].xOvID.values
+   to_keep_lolat = lolat_xov.loc[lolat_xov['weights'] > lolat_xov['weights'].quantile(0.2)].xOvID.values
    # to_keep_lolat = lolat_xov.loc[lolat_xov['weights'] > lolat_xov['weights'].quantile(0.1)].xOvID.values
-   to_keep_lolat = lolat_xov
-   print(f"Keeping {len(to_keep_lolat)}/{len(lolat_xov)} of low lattitude xovers")
+   to_keep_lolat = lolat_xov.xOvID.values
+   print(f"Keeping {len(to_keep_lolat)}/{len(lolat_xov)} of xovers at |LAT| < {lat_threshold}°")
 
    # select very good xovers at LAT>lat_threshold OR decent xovers at low latitudes
    selected = xov_df.loc[(xov_df.xOvID.isin(to_keep_hilat)) | (xov_df.xOvID.isin(to_keep_lolat))]
-   print(len(selected))
-   print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().max())
-   print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().min())
-   print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().median())
-   print(selected[['dR', 'weights', 'huber', 'dist_min_mean']].abs().mean())
+
+   cols = ['dR', 'weights', 'huber', 'dist_min_mean']
+   print(pd.DataFrame({
+      'max': selected[cols].abs().max(),
+      'min': selected[cols].abs().min(),
+      'mean': selected[cols].abs().mean(),
+      'median': selected[cols].abs().median()
+   }))
+
    print("Downsized xovers to the 'best'", len(selected), "xovers out of", len(xov_df), ". Done!")
 
    return selected
@@ -317,6 +326,32 @@ def get_stats(amat, spAmat, bmat):
    
    return m0
 
+
+def clean_xov(xov, par_list=[]):
+
+   # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
+   # plus remove outliers with median method
+   tmp = xov.xovers.copy()
+
+   # print(tmp[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
+
+   if xov.xovers.filter(regex='^dist_[A,B].*$').empty == False:
+      xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
+
+      tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
+      tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
+      tmp['dist_min_mean'] = tmp.filter(regex='^dist_min[A,B].*$').mean(axis=1)
+      xov.xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
+
+      analyze_dist_vs_dR(xov)
+
+      if AccOpt.get("remove_max_dist"):
+         print(len(xov.xovers[xov.xovers.dist_max < 0.4]),
+               'xovers removed by dist from obs > 0.4km out of ', len(xov.xovers))
+         xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
+         #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
+
+   return xov
 
 def analyze_dist_vs_dR(xov):
    tmp = xov.xovers.copy()
@@ -589,87 +624,6 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
       previous_iter = None  # Amat(vecopts)
       # previous_iter.sol_dict_iter = previous_iter.sol_dict
    return previous_iter
-
-def stochastic_diag_estimate_A(A, num_samples=20, tol=1e-5):
-    # probably not correct
-    n = A.shape[1]
-    diag_est = np.zeros(n)
-
-    for _ in range(num_samples):
-        z = np.random.choice([-1, 1], size=n)
-        y = lsqr(A,A @ z, atol=tol,btol=tol, iter_lim=500)[0]
-        diag_est += z * y
-
-    return diag_est / num_samples
- 
- 
-def estimate_diag_inv_AtA(A, num_probes=50, distribution="rademacher", tol=1e-6, seed=None):
-   n = A.shape[1]
-   rng = np.random.default_rng(seed)
-   diag_est = np.zeros(n)
-
-   def matvec(x):
-      return A.T @ (A @ x)
-
-   AtA = LinearOperator((n, n), matvec=matvec, dtype=np.float64)
-
-   for _ in range(num_probes):
-      z = rng.integers(0, 2, size=n) * 2 - 1  # ±1
-
-      x, info = cg(AtA, z, tol=tol)
-      if info != 0:
-         print(f"Warning: CG did not converge (info={info})")
-      # diag_est += x * z  # elementwise
-      diag_est += np.clip(x * z, 0, None)  # elementwise
-
-   return diag_est / num_probes
-
-def stochastic_diag_estimate_N(N, num_samples=20, tol=1e-5):
-    n = N.shape[0]
-    diag_est = np.zeros(n)
-
-    for _ in range(num_samples):
-        z = np.random.choice([-1, 1], size=n)
-        y, info = cg(N, z, tol=tol, maxiter=500)
-        if info != 0:
-           print("cg did not converge")
-           continue
-        diag_est += z * y
-
-    return diag_est / num_samples
-
-def stochastic_trace_estimate_full(Ni, N, m=20):
-    dim = Ni.shape[0]
-    total = 0.0
-    D = N.diagonal()
-    M_inv = 1.0 / D
-    M_precond = LinearOperator(N.shape, matvec=lambda x: M_inv * x)
-    trace_estimates = []
-    for _ in range(m):
-        z = np.random.choice([1.0, -1.0], size=dim)     # Rademacher probe
-        # w = cg(N, z)[0]                               # solve N w = z
-        w = cg(N, z, M=M_precond)[0]                    # solve N w = z
-        Nz = Ni.dot(w.T)                                # multiply back by N
-        trace_estimates.append(z @ Nz)
-    return np.mean(trace_estimates)
-  
-def stochastic_trace_estimate_chol(L, Ni, num_samples=20):
-   n = L.shape[0]
-   total = 0.0
-
-   trace_estimates = []
-   for _ in range(num_samples):
-      z = np.random.choice([-1, 1], size=n)
-        
-      # Solve N x = z using Cholesky: L y = z, L.T x = y
-      y = solve_triangular(L, z, lower=True)
-      x = solve_triangular(L.T, y, lower=False)
-      x = (Ni.dot(x))
-
-      trace_estimates.append(z.dot(x.T))  # zᵀ M x
-
-   
-   return  np.mean(trace_estimates)
 
 def sparse_cholesky(A): # The input matrix A must be a sparse symmetric positive-definite.
    # from https://gist.github.com/omitakahiro/c49e5168d04438c5b20c921b928f1f5d

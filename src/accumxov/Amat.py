@@ -60,9 +60,6 @@ class Amat:
    def setup_cloop(self, xov):
       self.pert_cloop_0 = xov.pert_cloop_0
       self.pert_cloop = xov.pert_cloop
-      # print(xov.pert_cloop_0)
-      # print(xov.pert_cloop)
-      # exit()
       self.pert_cloop_glo = self.pert_cloop.filter(['dL', 'dRA', 'dDEC', 'dPM', 'dh2']).iloc[0]
       self.pert_cloop.drop(columns=['dL', 'dRA', 'dDEC', 'dPM', 'dh2'], errors='ignore', inplace=True)
       if len(self.pert_cloop.columns) > 0 or not self.pert_cloop.empty:
@@ -100,8 +97,6 @@ class Amat:
       pklfile.close()
 
       print('Amat loaded from ' + filnam)
-      # print(self.ladata_df)
-      # print(self.MGRx.tck)
 
       return self
 
@@ -112,7 +107,6 @@ class Amat:
       # TODO check if this makes sense, seems redundant or second row taking wrong input from self....
       # parOrb_xy = list(set([part.split('_')[0] for part in sorted(self.xov.parOrb_xy)]))
       parOrb_xy = list(set([part for part in sorted(self.xov.parOrb_xy)]))
-      # print(parOrb_xy)
       parGlo_xy = sorted(self.xov.parGlo_xy)
       xovers_df.fillna(0,inplace=True)
 
@@ -137,7 +131,6 @@ class Amat:
       orbit = ['orbA', 'orbB', '']
       csr = []
       for rex, orb in zip(regex, orbit):
-         print(orb, rex)
          if (orb != ''):
             par_xy_loc = list(filter(rex.search, parOrb_xy))
             partder = xovers_df[par_xy_loc].values
@@ -184,16 +177,14 @@ class Amat:
          except AttributeError:
             return -1
 
-      if XovOpt.get("debug"):
-         print("Memory of csr:",sparse_memory_usage(csr))
+      # if XovOpt.get("debug"):
+      print("Memory of csr:",sparse_memory_usage(csr))
 
       def sparse_memory_usage(mat):
          try:
             return mat.data.nbytes + mat.indptr.nbytes + mat.indices.nbytes
          except AttributeError:
             return -1
-
-      print(sparse_memory_usage(csr))
 
       if XovOpt.get("debug"):
          print(csr)

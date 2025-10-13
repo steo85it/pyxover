@@ -47,6 +47,7 @@ def row_times_cols(args):
     return tmp #(i,tmp)
 
 # Multiplies two matrices to get diagonal elements only
+# Unused?
 # @profile
 def multiply_sparse_get_diag(a,b):
 

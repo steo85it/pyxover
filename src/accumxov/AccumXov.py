@@ -12,11 +12,13 @@ import itertools
 from accumxov.accum_opt import AccOpt
 from config import XovOpt
 
-from accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, get_stats, print_sol, solve4setup, \
-    analyze_sol, subsample_xovers, load_previous_iter_if_any, stochastic_diag_estimate_N, estimate_diag_inv_AtA, blockwise_cholesky
+from accumxov.accum_utils import get_xov_cov_tracks, get_vce_factor, downsize_xovers, \
+    get_stats, print_sol, solve4setup, analyze_sol, subsample_xovers, clean_xov, \
+    load_previous_iter_if_any, blockwise_cholesky
+from accumxov.diagonal_estimators import estimate_diag_inv_AtA, stochastic_diag_estimate_N
 from xovutil.iterables import mergsum
 from xovutil.xovres2weights import get_interpolation_weight
-from pyxover.xov_utils import load_combine, clean_xov, clean_partials
+from pyxover.xov_utils import load_combine, clean_partials
 from accumxov.accum_plots import plot_obs_weights, plot_partials, \
    plot_weight_distribution, plot_huber_penal, plot_res_h2_partials, plot_orbitstd
 
@@ -53,7 +55,11 @@ def prepare_Amat(xov, vecopts, par_list=''):
       df_orig = xov.xovers[par_list]
       df_float = xov.xovers.filter(regex='^dR.*$').apply(pd.to_numeric, errors='ignore')  # , downcast='float')
       xov.xovers = pd.concat([df_orig, df_float], axis=1)
-      xov.xovers.info(memory_usage='deep')
+      rows, cols = xov.xovers.shape
+      # xov.xovers.info(memory_usage='deep')
+      mem_usage = xov.xovers.memory_usage(deep=True).sum()
+      print(f"Memory usage: {mem_usage / 1_048_576:.2f} MB, for {rows} Entries and {cols} Columns")
+
       if XovOpt.get("debug"):
          pd.set_option('display.max_columns', 500)
          print(xov.xovers)
@@ -1101,7 +1107,9 @@ def create_observation_blocks(xovers):
          c1, c2 = unique_chars[:2]
          mask = ((orbA0 == c1) & (orbB0 == c2)) | ((orbA0 == c2) & (orbB0 == c1))
          process_block(mask, f"(orbA,orbB)=({c1},{c2})*")
-  
+
+   blocks = [b for b in blocks if b.any()] # remove block with all false
+
    print(f"Separating observations in {len(blocks)} block(s) of {[sum(b) for b in blocks]} observations")
 
    assert sum([sum(b) for b in blocks]) == len(blocks[0])
@@ -1282,7 +1290,8 @@ def main(arg):
                # actually preparing weights and constraints for the solution (weights are needed for downsampling)
                prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
                # downsize
-               xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers, max_xovers=max_xovers, max_dR = 1.e2)
+               # xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers, max_xovers=max_xovers, max_dR = 1.e2)
+               xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers, max_xovers=max_xovers, max_dR = 1.e4,lat_threshold = 88)
                # xovi_amat.xov.xovers = downsize_xovers(xovi_amat.xov.xovers, max_xovers=max_xovers, lat_threshold = 80)
                # xovi_amat.xov.xovers = xovi_amat.xov.xovers.loc[xovi_amat.xov.xovers['dR'].abs() < 1.e3]
 

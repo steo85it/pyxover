@@ -89,11 +89,6 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
          rlm_model = sm.RLM(y, X, M=sm.robust.norms.HuberT())
          rlm_results = rlm_model.fit()
 
-         if False and XovOpt.get("debug"):
-            # print("rlm_results")
-            # print(rlm_results.summary())
-            print("rlm_results (x1,const):",np.array(rlm_results.params).round(2))
-
          rmspre = rmse(y, np.zeros(len(y)))
          # only if param with bias only
          X = X[..., np.newaxis]
@@ -141,8 +136,6 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
          rmsprelist.append(1.e-6)
          rmslist.append(1.e-6)
          # print(tr,y)
-
-      # exit()
 
    postfit = pd.DataFrame(np.vstack([trlist, rmsprelist, biaslist, driftlist, rmslist]).T,
                           columns=['track', 'pre', 'bias', 'drift', 'minus-Rbias']).astype(float).astype({'track': int})
@@ -237,35 +230,6 @@ def load_combine(xov_pth_,vecopts):
       xov_cmb.pert_cloop_0 = pd.DataFrame()
 
    return xov_cmb
-
-
-def clean_xov(xov, par_list=[]):
-   from accumxov.accum_utils import analyze_dist_vs_dR
-
-   # remove data if xover distance from measurements larger than 5km (interpolation error, if dist cols exist)
-   # plus remove outliers with median method
-   tmp = xov.xovers.copy()
-
-   # print(tmp[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1).sort_values(ascending=False))
-
-   if xov.xovers.filter(regex='^dist_[A,B].*$').empty == False:
-      xov.xovers['dist_max'] = xov.xovers.filter(regex='^dist_[A,B].*$').max(axis=1)
-
-      tmp['dist_minA'] = xov.xovers.filter(regex='^dist_A.*$').min(axis=1)
-      tmp['dist_minB'] = xov.xovers.filter(regex='^dist_B.*$').min(axis=1)
-      tmp['dist_min_mean'] = tmp.filter(regex='^dist_min[A,B].*$').mean(axis=1)
-      xov.xovers['dist_min_mean'] = tmp['dist_min_mean'].copy()
-
-      analyze_dist_vs_dR(xov)
-
-      if AccOpt.get("remove_max_dist"):
-         print(len(xov.xovers[xov.xovers.dist_max < 0.4]),
-               'xovers removed by dist from obs > 0.4km out of ', len(xov.xovers))
-         xov.xovers = xov.xovers[xov.xovers.dist_max < 0.4]
-         #xov.xovers = xov.xovers[xov.xovers.dist_min_mean < 1]
-
-   return xov
-
 
 def clean_partials(b, spA, glbpars, threshold = 1.e6):
 
