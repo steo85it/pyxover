@@ -410,7 +410,7 @@ class sim_gtrack(gtrack):
       scpos_tx_p, _ = get_sc_pla(et_tx, sc_pos, sc_vel, self.SpObj, self.vecopts)
       if XovOpt.get('body') in ["MERCURY", "CALLISTO"]:
          rotpar, upd_rotpar = orient_setup(self.pertPar['dRA'], self.pertPar['dDEC'], self.pertPar['dPM'],
-                                           self.pertPar['dL'])
+                                           self.pertPar['dL'], self.pertPar['dLIB'])
          tsipm = icrf2pbf(et_tx, upd_rotpar)
       else:
          pxform_array = np.frompyfunc(spice.pxform, 3, 1)

@@ -163,7 +163,7 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
    if XovOpt.get('body') in ["MERCURY", "CALLISTO"]:
       # (using custom implementation)
       rotpar, upd_rotpar = orient_setup(tmp_pertPar['dRA'], tmp_pertPar['dDEC'], tmp_pertPar['dPM'],
-                                        tmp_pertPar['dL'])
+                                        tmp_pertPar['dL'], tmp_pertPar['dLIB'])
       tsipm = icrf2pbf(et_bc, upd_rotpar)
    else:
       # (using np.frompyfunc to vectorize pxform)

@@ -36,7 +36,8 @@ class XovOpt:
 
         "parOrb": {'dA': 20., 'dC': 20., 'dR': 5.},  # ,'dRl':0.2, 'dPt':0.2} #
         "parGlo": {'dRA': [0.2, 0.000, 0.000], 'dDEC': [0.36, 0.000, 0.000], 'dPM': [0, 0.013, 0.000],
-              'dL': 1.e-3 * deg2as(1.) * np.linalg.norm([0.00993822, -0.00104581, -0.00010280, -0.00002364, -0.00000532]), 'dh2': 0.1},
+              'dL': 1.e-3 * deg2as(1.) * np.linalg.norm([0.00993822, -0.00104581, -0.00010280, -0.00002364, -0.00000532]),
+              'dLIB5': 1.e-3 * deg2as(1.), 'dh2': 0.1},
 
         # parameter constraints for solution
         "par_constr": {'dR/dRA': 1.e2, 'dR/dDEC': 1.e2, 'dR/dL': 1.e2, 'dR/dPM': 1.e2, 'dR/dh2': 3.e-1, 'dR/dA': 1.e2,
@@ -58,7 +59,7 @@ class XovOpt:
         # select subset of parameters to solve for
         "sol4_orb": [None],  # '1503250029'] #'1107021838','1210192326','1403281002','1503191143']  #
         "sol4_orbpar": [None],  # ['dA','dC','dR'] #,'dRl','dPt'] #,'dA1','dC1','dR1','dA2','dC2','dR2']  #] #
-        "sol4_glo": ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'],  # ,'dR/dh2'] #,  None]
+        "sol4_glo": ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'],  # ,'dR/dh2'] #,  None] # Mostly used in accumxov?
 
         # orbital representation
         "OrbRep": 'cnt' , # 'lin' # 'quad' #

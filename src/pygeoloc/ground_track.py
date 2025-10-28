@@ -52,7 +52,7 @@ class gtrack:
       # Sun
       self.SUNx = None  # position
       self.param = None
-      # Set-up empty offset arrays at init (sim only)
+      # Set-up empty offset arrays at init (sim only) WD: really, sim only?
       self.pertPar = {'dA': 0.,
                       'dC': 0.,
                       'dR': 0.,
@@ -62,6 +62,7 @@ class gtrack:
                       'dDEC': [0., 0., 0.],
                       'dPM': [0., 0., 0.],
                       'dL': 0.,
+                      'dLIB': [0.],
                       'dh2': 0.}
       # imposed perts for closed loop sim
       self.pert_cloop = None
@@ -412,14 +413,12 @@ class gtrack:
          startGeoloc = time.time()
 
       # Prepare
+      param = {'': 1.0}
       if get_partials:
-         param = {'': 1.}
+         # don't compute numerical partials for h2, analytical one is computed below
          param.update(self.XovOpt.get("parOrb"))
          param.update(self.XovOpt.get("parGlo"))
-      # \
-      # 'dh2':0.1}
-      else:
-         param = {'': 1.}
+
 
       self.param = param
       # check if track has to be perturbed (else only apply global pars)
@@ -467,19 +466,16 @@ class gtrack:
                   'MERv': self.MERv,
                   'SUNx': self.SUNx}
       #########################
-      # don't compute numerical partials for h2, analytical one is computed below
-      param_tmp = param
-      # param_tmp = {k:v for k,v in param.items() if k not in ['dh2']} # issue with not having bounce time ET_BC for xov_setup
       if (self.XovOpt.get("parallel") and self.XovOpt.get("SpInterp") > 0 and 1 == 2):
          # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
          # the orbit (single initial call) with an appropriate accuracy.
          # print((mp.cpu_count() - 1))
          pool = mp.Pool(processes=mp.cpu_count() - 1)
-         results = pool.map(self.get_geoloc_part, param_tmp.items())  # parallel
+         results = pool.map(self.get_geoloc_part, param.items())  # parallel
          pool.close()
          pool.join()
       else:
-         results = [self.get_geoloc_part(i) for i in param_tmp.items()]  # seq
+         results = [self.get_geoloc_part(i) for i in param.items()]  # seq
 
       # store ladata_df for update
       ladata_df = self.ladata_df.copy()
@@ -507,7 +503,7 @@ class gtrack:
          print(results[0][0, :], list(param)[0], len(param))
 
       if (len(param) > 1 and list(param)[0] == ''):
-         for i in range(1, len(param_tmp)):
+         for i in range(1, len(param)):
             if (self.vecopts['OUTPUTTYPE'] == 0):
                ladata_df['dX/' + list(param)[i]] = results[i][:, 0]
                ladata_df['dY/' + list(param)[i]] = results[i][:, 1]
@@ -639,35 +635,31 @@ class gtrack:
                   'SUNx': self.SUNx}
 
       # get dictionary values
-      self.vecopts['PARTDER'] = list(par)[0]
+      partialName = list(par)[0]
       diff_step = list(par)[1]
 
       if (self.XovOpt.get("debug")):
          print('geoloc: ' + str(par))
-         print('self.vecopts[PARTDER]', self.vecopts['PARTDER'])
+         print('self.vecopts[PARTDER]', partialName)
          print(diff_step)
 
       # Read self.vecopts[partder] and apply perturbation
       # if needed (for partials AND for closed loop sim)
-      tmp_pertPar = self.perturb_orbits(diff_step)
+      tmp_pertPar = self.perturb_orbits(partialName, diff_step)
 
       # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
+      self.vecopts['PARTDER'] = partialName
       geoloc_out, et_bc, dr_tidal, offndr = geolocate(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
       # geoloc_out, et_bc, dr_tidal, offndr = geolocate_DLRv2(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
 
-      if self.vecopts['PARTDER'] != '':
-         tmp_df['ET_BC_' + self.vecopts['PARTDER'] + '_p'] = et_bc
-      else:
-         tmp_df.loc[:, 'ET_BC'] = et_bc
-         tmp_df.loc[:, 'dR_tid'] = dr_tidal
-         tmp_df.loc[:, 'offnadir'] = offndr
-
       # Compute partial derivatives if required
-      if self.vecopts['PARTDER'] != '':
+      if partialName != '':
+         
+         tmp_df['ET_BC_' + partialName + '_p'] = et_bc
 
          # Read self.vecopts[partder] and apply perturbation
          # if needed (for partials AND for closed loop sim)
-         tmp_pertPar = self.perturb_orbits(diff_step, -1.)
+         tmp_pertPar = self.perturb_orbits(partialName, diff_step, -1.)
 
          geoloc_min, et_bc, dr_tidal, dum = geolocate(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
          # geoloc_min, et_bc, dr_tidal, dum = geolocate_DLRv2(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
@@ -677,35 +669,35 @@ class gtrack:
          ####################################################################################
          if self.XovOpt.get("debug"):
             print("Store perturbed tracks")
-            cols = [x + self.vecopts['PARTDER'] for x in ['LON_p_', 'LAT_p_', 'R_p_']]
+            cols = [x + partialName for x in ['LON_p_', 'LAT_p_', 'R_p_']]
             print(geoloc_out[:, 0:3])
             tmp_df = pd.concat([tmp_df, pd.DataFrame(geoloc_out[:, 0:3], columns=cols)], axis=1)
-            cols = [x + self.vecopts['PARTDER'] for x in ['LON_m_', 'LAT_m_', 'R_m_']]
+            cols = [x + partialName for x in ['LON_m_', 'LAT_m_', 'R_m_']]
             print(geoloc_min[:, 0:3])
             tmp_df = pd.concat([tmp_df, pd.DataFrame(geoloc_min[:, 0:3], columns=cols)], axis=1)
          ####################################################################################
 
-         tmp_df['ET_BC_' + self.vecopts['PARTDER'] + '_m'] = et_bc
-
-         if self.vecopts['PARTDER'] in ('dA', 'dC', 'dR', 'dRl', 'dPt'):
-            partder /= (2. * diff_step)  # [0]
-         elif self.vecopts['PARTDER'] in ('dL'):
-            partder /= (2. * diff_step)  # * 'NUT_PREC_PM0'[0]
-         # elif self.vecopts['PARTDER'] in ('dh2'):
-         #     pass
+         tmp_df['ET_BC_' + partialName + '_m'] = et_bc
+         
+         if partialName in {'dA', 'dC', 'dR', 'dRl', 'dPt', 'dL'}:
+            partder /= 2.0 * diff_step
          else:
-            partder /= 2. * np.linalg.norm(diff_step)  # [1]
+            partder /= 2.0 * np.linalg.norm(diff_step)
 
          self.ladata_df = tmp_df
 
          return partder
 
       else:
+
+         tmp_df.loc[:, 'ET_BC'] = et_bc
+         tmp_df.loc[:, 'dR_tid'] = dr_tidal
+         tmp_df.loc[:, 'offnadir'] = offndr
          self.ladata_df = tmp_df
 
          return geoloc_out
 
-   def perturb_orbits(self, diff_step, sign=1.):
+   def perturb_orbits(self, partialName, diff_step, sign=1.):
       """
       Read self.vecopts[partder] and apply perturbation
       for partials, then ADD current state of parameters (cloop+sol
@@ -717,22 +709,36 @@ class gtrack:
       tmp_pertPar = self.pertPar.copy()
       tmp_pertcloop = self.pert_cloop.copy()
       # set all elements to 0 before reworking
-      tmp_pertPar = tmp_pertPar.fromkeys(tmp_pertPar, 0)
+      tmp_pertPar = {
+         k: np.zeros_like(v) if np.ndim(v) > 0 else 0
+         for k, v in tmp_pertPar.items()
+      }
 
       # setup pert for partial derivatives
-      # WD: What is that?
-      tmp_pertPar[self.vecopts['PARTDER']] = diff_step
+      pertName = partialName
+      nlib = 1
+      if len(partialName) > 4 :
+         if partialName[:4] == 'dLIB':
+            pertName = 'dLIB'
+            nlib = int(partialName[4:])
 
-      if sign != 1:
-         try:
-            tmp_pertPar[self.vecopts['PARTDER']] *= sign
-         except:  # if perturbation is a vector
-            tmp_pertPar[self.vecopts['PARTDER']] = [sign * x for x in tmp_pertPar[self.vecopts['PARTDER']]]
+      tmp_pertPar[pertName] = diff_step
+      
+      if np.ndim(tmp_pertPar[pertName]) == 0:
+         tmp_pertPar[pertName] *= sign
+      else: # if perturbation is a vector
+         tmp_pertPar[pertName] = [sign * x for x in tmp_pertPar[pertName]]
 
       # update corrections to rotational parameters as vectors
-      tmp = dict(zip(['dDEC', 'dRA', 'dPM'], [tmp_pertPar[x] * np.array([1, 0, 0]) for x in ['dDEC', 'dRA']] + [
-         tmp_pertPar['dPM'] * np.array([0, 1, 0])]))
-      tmp_pertPar.update(tmp)
+      arrLib = np.zeros(nlib)
+      arrLib[-1] = 1
+      tmp = {
+         'dDEC': tmp_pertPar['dDEC'] * np.array([1, 0, 0]),
+         'dRA' : tmp_pertPar['dRA']  * np.array([1, 0, 0]),
+         'dPM' : tmp_pertPar['dPM']  * np.array([0, 1, 0]),
+         'dLIB': tmp_pertPar['dLIB'] * arrLib
+         }
+      tmp_pertPar.update(tmp)      
 
       tmp_pertPar = mergsum(tmp_pertcloop, tmp_pertPar)
       self.pertPar = tmp_pertPar.copy()

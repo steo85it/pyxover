@@ -60,8 +60,8 @@ class Amat:
    def setup_cloop(self, xov):
       self.pert_cloop_0 = xov.pert_cloop_0
       self.pert_cloop = xov.pert_cloop
-      self.pert_cloop_glo = self.pert_cloop.filter(['dL', 'dRA', 'dDEC', 'dPM', 'dh2']).iloc[0]
-      self.pert_cloop.drop(columns=['dL', 'dRA', 'dDEC', 'dPM', 'dh2'], errors='ignore', inplace=True)
+      self.pert_cloop_glo = self.pert_cloop.filter(['dLIB','dL', 'dRA', 'dDEC', 'dPM', 'dh2']).iloc[0]
+      self.pert_cloop.drop(columns=['dLIB','dL', 'dRA', 'dDEC', 'dPM', 'dh2'], errors='ignore', inplace=True)
       if len(self.pert_cloop.columns) > 0 or not self.pert_cloop.empty:
          print("Max perturb cloop", self.pert_cloop.abs().max())
          print("Mean perturb cloop", self.pert_cloop.mean())

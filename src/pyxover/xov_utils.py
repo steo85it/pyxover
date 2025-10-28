@@ -258,21 +258,22 @@ def clean_partials(b, spA, glbpars, threshold = 1.e6):
    # exit()
 
    Nexcluded = 0
-   # print(spla.norm(spA[:,-5:],axis=0))
    for i in range(nglbpars):
       # if an error arises, check the hard-coded list of solved for
       # global parameters
-      data = spA.tocsc()[:, -i - 1].data
-      median_residuals = np.abs(data - np.median(data, axis=0))
+      col_data = spA.tocsc()[:, -i - 1].data
+      if col_data.size == 0:
+         print(f"All partials for {glbpars[i]} are zero")
+      median_residuals = np.abs(col_data - np.median(col_data, axis=0))
       sorted = np.sort(median_residuals)
       std_median = sorted[round(0.68 * len(sorted))]
 
-      std_mean = np.std(data, axis=0)
+      std_mean = np.std(col_data, axis=0)
       if std_mean>10:
          print("## Check partials for outliers", i, std_median, std_mean, std_median/std_mean)
 
       exclude = np.argwhere(median_residuals >= 20 * std_mean).T[0]
-      row2index = dict(zip(range(len(data)),list(set(spA.tocsc()[:, -i - 1].nonzero()[0].tolist()))))
+      row2index = dict(zip(range(len(col_data)),list(set(spA.tocsc()[:, -i - 1].nonzero()[0].tolist()))))
       exclude = [row2index[i] for i in exclude]
 
       # remove bad rows, only non-zero columns to keep sparsity
@@ -285,7 +286,7 @@ def clean_partials(b, spA, glbpars, threshold = 1.e6):
       Nexcluded += len(exclude)
 
       # keep = list(set(spA.nonzero()[0].tolist()) ^ set(exclude))
-      # print("bad= ", i, np.median(data, axis=0), 4 * std_median, len(median_residuals), np.max(median_residuals),
+      # print("bad= ", i, np.median(col_data, axis=0), 4 * std_median, len(median_residuals), np.max(median_residuals),
       #       len(exclude) / len(median_residuals) * 100., "% ")
       # print(spA[exclude, -i - 1])
       # print(np.array(keep))
