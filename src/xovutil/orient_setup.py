@@ -18,7 +18,7 @@ from xovutil.units import as2deg
 AG = False # True
 ZAP = False
 
-def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
+def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL, offsetLIB):
    
     nc, POLE_RA0 = spice.bodvrd(XovOpt.get('body'), 'POLE_RA', 3)
     nc, POLE_DEC0 = spice.bodvrd(XovOpt.get('body'), 'POLE_DEC', 3)
@@ -40,7 +40,7 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
 
     # WD: Find a generic way to retrieve these values
     if XovOpt.get('body') == 'MERCURY':
-       n_nutpre = 5
+       n_nutpre = 11 #5
        nbody = '1'
     elif XovOpt.get('body') == 'CALLISTO':
        n_nutpre = 16
@@ -80,11 +80,10 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL):
                   'NUT_PREC_PM'     : rotpar['NUT_PREC_PM0'],
                   'NUT_PREC_ANGLES' : rotpar['NUT_PREC_ANGLES0']
                   }
-    if XovOpt.get('body') == 'MERCURY':
-       upd_rotpar['NUT_PREC_PM'] +=  as2deg(offsetL)
-    elif XovOpt.get('body') == 'CALLISTO':
-       upd_rotpar['NUT_PREC_PM'][-1] +=  as2deg(offsetL)
-       
+
+    upd_rotpar['NUT_PREC_PM'] +=  as2deg(offsetL)
+    upd_rotpar['NUT_PREC_PM'][:len(offsetLIB)] +=  [as2deg(x) for x in offsetLIB]
+
     if AG:
         upd_rotpar['NUT_PREC_PM'] += as2deg(1.5)
     elif ZAP:
