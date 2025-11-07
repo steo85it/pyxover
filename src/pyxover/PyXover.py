@@ -85,7 +85,6 @@ def launch_xov(args):
                print(f"No xover found between {track_idA} and the {n_zeroxov} following tracks:",
                      [s[1] for s in comb_noxov])
 
-
             if XovOpt.get("new_algo"):
                xov_tmp.xovers = pd.DataFrame(xovers_list)
                xov_tmp.xovers.reset_index(drop=True, inplace=True)
@@ -217,15 +216,15 @@ def main(args_in):
          allFilesB = []
          for i in range(0, 7):
             datestr = (date0 + dt.timedelta(days=i)).strftime('%y%m%d')
-            allFilesA.extend(glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + datestr + '*')))
+            allFilesA.extend(glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + datestr + '*.pkl')))
             datestr = (date1 + dt.timedelta(days=i)).strftime('%y%m%d')
-            allFilesB.extend(glob.glob(os.path.join(gtrack_dirs[1], 'gtrack_' + datestr + '*')))
+            allFilesB.extend(glob.glob(os.path.join(gtrack_dirs[1], 'gtrack_' + datestr + '*.pkl')))
       elif XovOpt.get("monthly_sets"):
-         allFilesA = glob.glob(os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*'))
-         allFilesB = glob.glob(os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*'))
+         allFilesA = glob.glob(os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*.pkl'))
+         allFilesB = glob.glob(os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*.pkl'))
       else:
-         allFilesA = glob.glob(os.path.join(gtrack_dirs[0], '*'))
-         allFilesB = glob.glob(os.path.join(gtrack_dirs[1], '*'))
+         allFilesA = glob.glob(os.path.join(gtrack_dirs[0], '*.pkl'))
+         allFilesB = glob.glob(os.path.join(gtrack_dirs[1], '*.pkl'))
 
       if XovOpt.get('debug'):
          if misycmb_par[0] == misycmb_par[1]:

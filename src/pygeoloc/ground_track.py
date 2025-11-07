@@ -130,7 +130,7 @@ class gtrack:
             except:
                print("No SpObj associated with track")
                self.ladata_df = None
-      else:
+      elif len(self.ladata_df) == 0:
          print('No data selected for orbit ' + str(self.name))
 
    def check_coverage(self):
@@ -205,13 +205,13 @@ class gtrack:
             track_fn += '.parquet'
          else:
             track_fn += '.pkl'
-         trackfil = os.path.join(gtrack_dir,track_fn)
+         trackfil = os.path.join(gtrack_dir, track_fn)
          if (os.path.isfile(trackfil)):
             if pattern == 'ladata_':
                self.load_df(trackfil)
                break
             else:
-               self.load(trackfil)
+               self.ladata_df = self.load(trackfil).ladata_df
       return self
 
    # load ladata from file

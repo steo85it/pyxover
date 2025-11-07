@@ -310,7 +310,6 @@ def fine_compute_xov_proc(xovi, df, all_xov, fine_xov_df, n_interp):
    # Update general df (serial only, does not work in parallel since not a shared object)
    # FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
    if not XovOpt.get("parallel"):
-      # all_xov.xovers = all_xov.xovers.append(all_xov.xovtmp, sort=True)
       all_xov.xovers = pd.concat([all_xov.xovers, all_xov.xovtmp], sort=True)
 
    # print used memory

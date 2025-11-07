@@ -100,15 +100,13 @@ def main(args):
 
    # locate data
    data_pth = f'{XovOpt.get("rawdir")}'
-   dataset = indir_in
-   data_pth += dataset
+   data_pth += indir_in
 
-   if XovOpt.get("SpInterp") in [0, 2]:
-      spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
-      # load additional kernels
-      if XovOpt.get("spice_spk"):
-         print("Additional spice kernels loaded:", XovOpt.get("spice_spk"))
-         spice.furnsh(XovOpt.get("spice_spk"))# or, add custom kernels
+   spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
+   # load additional kernels
+   if XovOpt.get("spice_spk"):
+      print("Additional spice kernels loaded:", XovOpt.get("spice_spk"))
+      spice.furnsh(XovOpt.get("spice_spk"))# or, add custom kernels
 
    # set ncores
    ncores = mp.cpu_count() - 1  # 8
@@ -133,16 +131,11 @@ def main(args):
 
    # read all MLA datafiles (*.TAB in data_pth) corresponding to the given years
    # for orbitA and orbitB.
-   # WD: Seems like the TAB extension is not required -> can be .TAB or .pkl
    allFiles = glob.glob(os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
    allFiles = allFiles+glob.glob(os.path.join(data_pth, str.lower(f'{XovOpt.get("instrument")}*rdr*' + epo_in + '*.*')))
 
-   # Check if filenames are lower case
    if len(allFiles) == 0:
-      print(str.lower(f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
-      allFiles = glob.glob(os.path.join(data_pth, str.lower(f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*')))
-      if len(allFiles) == 0:
-         print("# No files found in", os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
+      print("# No files found in", os.path.join(data_pth, f'{XovOpt.get("instrument")}*RDR*' + epo_in + '*.*'))
 
    endInit = time.time()
    # Useful?
@@ -162,12 +155,12 @@ def main(args):
    d_files.sort()
 
    dj2000 = dt.datetime(2000, 1, 1, 12, 00, 00)
-   try:
+   if len(d_tracks) > 0:
       d_track_start = d_tracks[:-1]
       d_track_end = d_tracks[1:]
-   except:
-      d_track_start = d_files[:-1]
-      d_track_end = d_files[1:]
+   else:
+      d_track_start = d_files
+      d_track_end = d_files[1:] + [d_files[-1]]
 
    if XovOpt.get("new_gtrack") > 0:
 
@@ -236,7 +229,6 @@ def main(args):
          track.prepro(infil, t_start=t_start, t_end=t_end)
          # except:
          #    print('Issue in preprocessing for '+track_id)
-         # epo_in.extend(track.ladata_df.ET_TX.values)
 
          if int(iter_in) > 0 and import_prev_sol:
             try:
