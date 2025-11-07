@@ -161,8 +161,8 @@ class xov:
                     self.parOrb_xy = xov.parOrb_xy
                     self.parGlo_xy = xov.parGlo_xy
                     par_found = True
-                 else:
-                    print("### xov element is missing partials!!")
+                 # else:
+                 #    print("### xov element is missing partials!!")
 
 
         # concatenate df and reindex
@@ -269,8 +269,6 @@ class xov:
    # Should check if enough data for interpolation
    # @profile
    def get_elev(self, arg, ind_A, ind_B, n_interp, par='', x=0, y=0):
-
-      ladata_df = self.ladata_df
 
       # ind_X should be computed from to seqid_X
       try:
@@ -404,7 +402,8 @@ class xov:
       t_ld = []
       for k in ind_int:
          i0 = max(0, k - offset - n_interp)
-         i1 = min(k - offset + n_interp, ld_.shape[0]-1)
+         # i1 = min(k - offset + n_interp, ld_.shape[0]-1)
+         i1 = min(k - offset + n_interp, ld_.shape[0])
          # t = ld_[i0:i1,0] - ld_[k - offset, 0]
          delta_t = np.diff(ld_[i0:i1+1,0])
          delta_t_min = min(delta_t)
@@ -435,8 +434,8 @@ class xov:
             print(f"[{i0},{i1}] is to small for cubic interpolation")
             return [], [], [], ld_, xyint, t_ld            
          else:
-            xyint.append(ld_[i0:i1+1].T)
-            t_ld.append(ld_[i0:i1+1,0] - ld_[k - offset, 0])
+            xyint.append(ld_[i0:i1].T)
+            t_ld.append(ld_[i0:i1,0] - ld_[k - offset, 0])
 
       if (apply_elevation_corr):
          if XovOpt.get("debug"):
