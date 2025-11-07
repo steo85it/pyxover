@@ -190,7 +190,7 @@ def downsize_xovers(xov_df, max_xovers=1.e5, lat_threshold = 60, max_dR = 1.e3):
    
    # select approx number of xovers to keep and derive proportion to keep at hi-lats
    to_keep = 1. - max_xovers / len(hilat_xov)
-   # to_keep = 0.2 # WD: test
+   # to_keep = 0.8 # WD: test
    to_keep_hilat = hilat_xov.loc[hilat_xov['weights'] > hilat_xov['weights'].quantile(to_keep)].xOvID.values
    print(f"Keeping {len(to_keep_hilat)}/{len(hilat_xov)} of xovers at |LAT| >= {lat_threshold}°")
    
@@ -245,6 +245,45 @@ def subsample_xovers(xov_df, size_samples=1.e5, rand_seed=0):
 
    return xov_df.iloc[boot]
 
+
+def compute_correlations(N=None, L=None, sigma0=1.0):
+    """
+    Compute the parameter correlation matrix from the normal matrix N
+    or its Cholesky decomposition L.
+
+    Parameters
+    ----------
+    N : ndarray (n x n), optional
+        Normal matrix (Aᵀ P A).
+    L : ndarray (n x n), optional
+        Lower-triangular Cholesky factor such that N = L Lᵀ.
+    sigma0 : float, optional
+        A posteriori variance factor (default = 1).
+
+    Returns
+    -------
+    R : ndarray (n x n)
+        Correlation matrix of the adjusted parameters.
+    Cx : ndarray (n x n)
+        Covariance matrix of the adjusted parameters (σ₀² * N⁻¹).
+    """
+    if N is None and L is None:
+        raise ValueError("You must provide either N or its Cholesky factor L.")
+    
+    # If we have the Cholesky factor, invert it efficiently
+    if L is not None:
+        # Covariance = σ₀² * (L⁻¹)ᵀ (L⁻¹)
+        Linv = np.linalg.inv(L)
+        Cx = sigma0**2 * Linv.T @ Linv
+    else:
+        # Otherwise invert N directly (less stable)
+        Cx = sigma0**2 * np.linalg.inv(N)
+    
+    # Compute correlation matrix
+    stddev = np.sqrt(np.diag(Cx))
+    R = Cx / np.outer(stddev, stddev)
+    
+    return R, Cx
 
 def get_stats(amat, spAmat, bmat):
    # The weights are already applied to spAmat, bmat
