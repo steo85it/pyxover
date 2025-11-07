@@ -71,7 +71,7 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
    et_bc = et_tx + tof / 2.
 
    if (XovOpt.get("SpInterp") > 0):
-      plapos_bc = np.transpose(SpObj['MERx'].eval(et_bc))
+      plapos_bc = np.transpose(SpObj['MERx'].evalCby(et_bc))
       plapos_bc = 1.e3 * np.array(plapos_bc)
    else:
       plapos_bc = spice_spkpos(vecopts['PLANETNAME'], et_bc, vecopts['INERTIALFRAME'],
@@ -401,8 +401,8 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
    # get probe CoM state at TX
    # --------------------------
    if (XovOpt.get("SpInterp") > 0):
-      x_sc = np.transpose(SpObj['MGRx'].eval(et))
-      v_sc = np.transpose(SpObj['MGRv'].eval(et))
+      x_sc = np.transpose(SpObj['MGRx'].evalCby(et))
+      v_sc = np.transpose(SpObj['MGRv'].evalCby(et))
       scpv = np.concatenate((x_sc, v_sc), axis=1)
       scpos = 1.e3 * scpv[:, :3]
       scvel = 1.e3 * scpv[:, 3:]
@@ -456,8 +456,8 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
 
 def get_sc_pla(et, x_sc, v_sc, SpObj, vecopts):
    if (XovOpt.get("SpInterp") > 0):
-      x_pla = np.transpose(SpObj['MERx'].eval(et))
-      v_pla = np.transpose(SpObj['MERv'].eval(et))
+      x_pla = np.transpose(SpObj['MERx'].evalCby(et))
+      v_pla = np.transpose(SpObj['MERv'].evalCby(et))
       scpv_p = np.concatenate((x_sc * 1.e-3 - x_pla, v_sc * 1.e-3 - v_pla), axis=1)
       scpos_p = 1.e3 * np.array(scpv_p)[:, :3]
       scvel_p = 1.e3 * np.array(scpv_p)[:, 3:]

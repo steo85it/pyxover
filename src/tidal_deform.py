@@ -206,8 +206,8 @@ def get_sun_pos(SpObj, ET, tau, central_body, vecopts):
    # get Sun position
    if (XovOpt.get("SpInterp") > 0):
       if XovOpt.get('body') == 'MERCURY':
-         pertpos = np.transpose(SpObj['SUNx'].eval(ET-tau))
-         merpos = np.transpose(SpObj['MERx'].eval(ET-tau))
+         pertpos = np.transpose(SpObj['SUNx'].evalCby(ET-tau))
+         merpos = np.transpose(SpObj['MERx'].evalCby(ET-tau))
          pertpos -= merpos
       else:
          logging.error(f"** tides with spice_interp not implemented for {XovOpt.get('body')}.")
