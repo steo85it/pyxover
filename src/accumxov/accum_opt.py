@@ -45,7 +45,8 @@ class AccOpt:
       
       "solving_method": "cg", #, "lsqr", "lsmr", "cholesky"
       
-      "apply_xov_cov_tracks": True
+      "apply_xov_cov_tracks": True,
+      "minobs_per_track": 10
 
    }
    __setters = list(__conf.keys())
