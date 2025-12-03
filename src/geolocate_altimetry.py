@@ -53,9 +53,6 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
    oneway = tof * clight / 2.
    twoway = tof * clight
 
-   # Set all corrections to 0
-   # dACR = [0, 0, 0]
-
    scpos_tx, scvel_tx = get_sc_ssb(et_tx, SpObj, tmp_pertPar, vecopts, t0=t0)
    # update after offset
    Rtx = np.linalg.norm(scpos_tx, axis=1)

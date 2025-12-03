@@ -193,6 +193,9 @@ def load_combine(xov_pth_,vecopts):
 
    # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
    xov_list = [xov_.load(x) for x in allFiles[:]]
+   if xov_list == []:
+      print("No crossover files found.")
+      return []
 
    # orb_unique = [x.xovers['orbA'].tolist() for x in xov_list if len(x.xovers) > 0]
    # orb_unique.extend([x.xovers['orbB'].tolist() for x in xov_list if len(x.xovers) > 0])

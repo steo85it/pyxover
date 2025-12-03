@@ -40,10 +40,6 @@ def launch_gtrack(args):
 
          track.setup()
          
-         for index, row in track.ladata_df.iterrows():
-            if np.isnan(np.sum(row.values[4:])):
-               print("Found nan in")
-               print(row)
 
          if XovOpt.get("debug"):
             pd.set_option('display.max_columns', 500)

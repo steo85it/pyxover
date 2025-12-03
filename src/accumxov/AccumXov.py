@@ -426,7 +426,7 @@ def compute_penalty_matrices(xovi_amat, tracks_to_remove):
             XovOpt.get("par_constr")['dR/' + par + '0'] = XovOpt.get("par_constr").pop('dR/' + par)
 
    # select constrains for processed parameters (TODO should go in sol4pars)
-   if True: # track constraints are not already in regex
+   if False: # track constraints are not already in regex
       mod_par = [your_key.split('_')[1] if len(your_key.split('_')) > 1 else your_key for your_key in xovi_amat.sol4_pars]
       par_constr = {your_key: XovOpt.get("par_constr")[your_key] for your_key in mod_par}
       # par_constr = {".*" + your_key + "$": XovOpt.get("par_constr")[your_key] for your_key in mod_par}
