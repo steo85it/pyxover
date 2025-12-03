@@ -204,14 +204,8 @@ class xov:
         import gc
         # disabling cyclic garbage collection
         gc.disable()
-        try:
-            pklfile = open(filnam, 'rb')
-            self = pickle.load(pklfile)
-            pklfile.close()
-            # print('Xov loaded from '+filnam)
-        except:
-            pass
-            # print("Loading "+filnam+" failed")
+        with open(filnam, 'rb') as pklfile:
+           self = pickle.load(pklfile)
         gc.enable()
 
         return self # found
@@ -402,8 +396,8 @@ class xov:
       t_ld = []
       for k in ind_int:
          i0 = max(0, k - offset - n_interp)
-         # i1 = min(k - offset + n_interp, ld_.shape[0]-1)
-         i1 = min(k - offset + n_interp, ld_.shape[0])
+         i1 = min(k - offset + n_interp, ld_.shape[0]-1)
+         # i1 = min(k - offset + n_interp, ld_.shape[0])
          # t = ld_[i0:i1,0] - ld_[k - offset, 0]
          delta_t = np.diff(ld_[i0:i1+1,0])
          delta_t_min = min(delta_t)
@@ -434,8 +428,8 @@ class xov:
             print(f"[{i0},{i1}] is to small for cubic interpolation")
             return [], [], [], ld_, xyint, t_ld            
          else:
-            xyint.append(ld_[i0:i1].T)
-            t_ld.append(ld_[i0:i1,0] - ld_[k - offset, 0])
+            xyint.append(ld_[i0:i1+1].T)
+            t_ld.append(ld_[i0:i1+1,0] - ld_[k - offset, 0])
 
       if (apply_elevation_corr):
          if XovOpt.get("debug"):
