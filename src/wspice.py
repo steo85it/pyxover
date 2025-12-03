@@ -8,50 +8,119 @@
 
 import numpy as np
 import spiceypy as spice
+import warnings
 
-def spice_spkezr(targ, et, ref, obs, fname):
-   # stable version os spkezr, setting nan where value is not found
+def get_total_spk_coverage(targ):
+    """
+    Return a SPICE window containing *merged coverage* for target 'targ'
+    across all loaded SPK kernels.
+    """
+    if isinstance(targ, str):
+       idcode = targ
+    else:
+       idcode = spice.bodn2c(targ)
+
+    # empty SPICE window
+    cover_total = spice.cell_double(0)
+
+    # Loop over all loaded SPK files
+    count = spice.ktotal("SPK")
+    for i in range(count):
+        file, filetype, source, handle = spice.kdata(i, "SPK")
+
+        # Each file's coverage window
+        try:
+            cover = spice.spkcov(file, idcode)
+        except Exception:
+            continue   # Ignore files not containing this ID
+
+        # Union with the cumulative window
+        cover_total = spice.wnunid(cover_total, cover)
+
+    return cover_total
+ 
+def et_in_total_spk(targ, et):
+    et = np.atleast_1d(et)
+    cover_total = get_total_spk_coverage(targ)
+
+    inside = np.zeros(len(et), dtype=bool)
+    for i in range(spice.wncard(cover_total)):
+        left, right = spice.wnfetd(cover_total, i)
+        inside |= (et >= left) & (et <= right)
+
+    return inside
+ 
+def spice_spkezr(targ, et, ref, obs, fname=""):
+   """
+   Safe wrapper around spice.spkezr that returns NaN for failed state lookups.
+   Returns:
+       scpos (N,3) position in meters
+       scvel (N,3) velocity in meters/second
+   """
    
-   try:
-      scpv, lt = spice.spkezr(targ, et, ref, 'NONE', obs)
-   except:
-      # Unvectorized
-      print(f"Not all state vectors of {targ} w.r.t. {obs} were retieved in {fname}")
-      scpv = []
-      for et_loc in et:
-         try:
-            scpv_loc, lt = spice.spkezr(targ, et_loc, ref, 'NONE', obs)
-         except:
-            print("State vector not retrieved at ET=",et_loc)
-            scpv_loc = [np.nan for i in range(0,6)]
-         scpv.append(scpv_loc)
-   scpv = np.atleast_2d(np.squeeze(scpv))
+   # Ensure ET is numpy array for consistent handling
+   et = np.atleast_1d(et)
 
-   scpos = 1.e3 * scpv[:, :3]
-   scvel = 1.e3 * scpv[:, 3:]
+   try:
+      scpv, _ = spice.spkezr(targ, et, ref, 'NONE', obs)
+   except:
+      warnings.warn(
+         f"Vectorized spkezr failed for {targ} w.r.t {obs} in {fname}. "
+         "Falling back to scalar mode."
+         )
+      
+      mask = et_in_total_spk(targ, et)
+      
+      # Prepare full array with NaNs for missing times
+      scpv = np.full((len(et), 6), np.nan)
+      
+      # If no valid ET values -> return all NaNs
+      if mask.sum() != 0:
+         # Valid times via vectorized spkezr
+         scpv_valid, _ = spice.spkezr(targ, et[mask], ref, 'NONE', obs)
+         scpv[mask, :] = scpv_valid
+
+   scpv = np.atleast_2d(np.squeeze(scpv))
+   # Convert km, km/s → m, m/s
+   scpos = scpv[:, 0:3] * 1e3
+   scvel = scpv[:, 3:6] * 1e3
 
    return scpos, scvel
 
-
-def spice_spkpos(targ, et, ref, obs, fname):
-   # stable version os spkpos, setting nan where value is not found
+def spice_spkpos(targ, et, ref, obs, fname=""):
+   """
+   Safe wrapper around spice.spkpos that returns NaN for failed state lookups.
+   Returns:
+       scpos (N,3) position in meters
+   """
    
-   try:
-      scpos, lt = spice.spkpos(targ, et, ref, 'NONE', obs)
-   except:
-      # Unvectorized
-      print(f"Not all position vectors of {targ} w.r.t. {obs} were retieved in {fname}")
-      scpos = []
-      for et_loc in et:
-         try:
-            scpos_loc, lt = spice.spkpos(targ, et_loc, ref, 'NONE', obs)
-         except:
-            print("Position vector not retrieved at ET=",et_loc)
-            scpos_loc = [np.nan for i in range(0,3)]
-         scpos.append(scpos_loc)
-   scpos = np.atleast_2d(np.squeeze(scpos))
-   # scpos = np.array(scpos)
+   # Ensure ET is numpy array for consistent handling
+   et = np.atleast_1d(et)
 
-   scpos *= 1.e3
+   try:
+      scpv, _ = spice.spkpos(targ, et, ref, 'NONE', obs)
+   except:
+      warnings.warn(
+         f"Vectorized spkpos failed for {targ} w.r.t {obs} in {fname}. "
+         "Falling back to scalar mode."
+         )
+      
+      mask = et_in_total_spk(targ, et)
+      
+      # Prepare full array with NaNs for missing times
+      scpv = np.full((len(et), 3), np.nan)
+      
+      # If no valid ET values -> return all NaNs
+      if mask.sum() != 0:
+
+         # Valid times via vectorized spkezr
+         scpv_valid, _ = spice.spkpos(targ, et[mask], ref, 'NONE', obs)
+      
+         scpv[mask, :] = scpv_valid
+
+   scpv = np.atleast_2d(np.squeeze(scpv))
+   # Convert km → m
+   scpos = scpv[:, 0:3] * 1e3
 
    return scpos
+
