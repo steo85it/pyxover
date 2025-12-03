@@ -18,15 +18,15 @@ import itertools as itert
 from pyaltsim import PyAltSim
 
 grid = True
-run_pyAltSim  = False # 3-4 hours per month, 30min-1h15 per week (up to 2.8GB)
-run_pyGeoLoc  = True # quite fast per gtrack
-run_pyXover   = True # 10min or 20min
+run_pyAltSim  = True # 3-4 hours per month, 30min-1h15 per week (up to 2.8GB)
+run_pyGeoLoc  = False # quite fast per gtrack
+run_pyXover   = False # 10min or 20min
 run_accuXover = False
 
 camp = "/storage/research/aiub_gravdet/WD_XOV"
 OrbDir = f"{camp}/ORB/"
 SIMIDBSW   = "Am0"  # Simulation ID
-ESTIDBSW   = "Ph3i1"
+ESTIDBSW   = "Pg6i2B"
 # ESTIDBSW   = "Pg9i2A"
 ORBID      = "034"  # Input CR3BP orbit
 MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMIDBSW}_CR3BP.ORB"
@@ -85,7 +85,7 @@ MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMIDBSW}_CR3BP.ORB"
 # CE4 : gtracks and xov North from CE4 with Pe1i1
 # CE5 : simulation from Am0 (sampling 10Hz) small/large scale topo
 # CE5 : gtracks and xov North from CE5 with Pe1i1
-# CE6 : gtracks and xov South from CE1 with Pe1i1
+# CE6 : gtracks and xov South from CE1 with Pe1i1 (Pe0i1?)
 # CE7 : gtracks and xov South from CE3 with Pe1i1
 # CE8 : gtracks and xov South from CE4 with Pe1i1
 # CE9 : gtracks and xov South from CE5 with Pe1i1
@@ -212,22 +212,44 @@ MANFIL = f"{OrbDir}CAL_{ORBID}_{SIMIDBSW}_CR3BP.ORB"
 # CN9 : gtracks and xov North from CL0 with Pg5i1
 # CO0 : gtracks and xov South from CL0 with Pg5i1
 
+# CO1 : gtracks and xov North from CL0 with Pg5i1 (test)
+# CO2 : gtracks from CN9 and xov North from CL0 with Pg5i1 (test)
+
+# "CM5","CL0","CN1"];
+# "Ph1i2B","Pg5i2B","Ph2i2B"];
+# CO3 : gtracks and xov North from CM5 with Pg5i1
+# CO4 : gtracks and xov South from CM5 with Pg5i1
+# CO5 : gtracks and xov North from CM5 with Ph1i2B
+# CO6 : gtracks and xov South from CM5 with Ph1i2B
+# CO7 : gtracks and xov North from CL0 with Pg5i2B
+# CO8 : gtracks and xov South from CL0 with Pg5i2B
+# CO9 : gtracks and xov North from CN1 with Ph2i2B
+# CP0 : gtracks and xov South from CN1 with Ph2i2B
+# CP1: gtracks and xov North from CL4 with Pg7i2B
+# CP2: gtracks and xov South from CL4 with Pg7i2B
+# CP3 : gtracks and xov North from CL2 with Pg6i2B
+# CP4 : gtracks and xov South from CL2 with Pg6i2B
+# CO7 : simulation from Am0 (sampling 10Hz) small/large scale topo no noise
+# CP5 : simulation from Am0 (sampling 10Hz) no topo no noise
+# CP6 : simulation from Am0 (sampling 10Hz) large scale topo no noise
+
+
 
 XovOpt.set("local",True)
         
-simid = 'CL0'
-estid_N = 'CN9'
-estid_S = 'CO0'
+simid = 'CO7'
+estid_N = 'CP3'
+estid_S = 'CP4'
 XovOpt.set("selected_hemisphere",'N')
 # XovOpt.set("import_proj",True)
-# XovOpt.set("compute_input_xov",False) # to use already computed rough xov (in xov/tmp/*pkl.gz)
-# XovOpt.set("new_xov",False) # to replace previous xov (rough or final?)
+XovOpt.set("compute_input_xov",True) # to use already computed rough xov (in xov/tmp/*pkl.gz)
+XovOpt.set("new_xov",True) # to replace previous xov (rough or final?)
 XovOpt.set("debug",False)
 XovOpt.set("spice_meta",f'mymeta')
 if run_pyAltSim:
-   XovOpt.set("spice_spk",[f'{camp}/ORB/CAL{SIMIDBSW}31121.SPK'])
+   XovOpt.set("spice_spk",[f'{OrbDir}CAL{SIMIDBSW}31121.SPK'])
 elif run_pyGeoLoc:
-   XovOpt.set("spice_spk",[f'{camp}/ORB/dA{ESTIDBSW}311210.SPK'])
+   XovOpt.set("spice_spk",[f'{OrbDir}dA{ESTIDBSW}311210.SPK'])
 
 if XovOpt.get("selected_hemisphere") == 'N':
    estid = estid_N
@@ -238,6 +260,11 @@ XovOpt.set("body", 'CALLISTO')
 XovOpt.set("basedir", f'{camp}/pyXover/')
 # XovOpt.set("basedir", "examples/CALA/data/")
 XovOpt.set("instrument", 'CALA')
+
+XovOpt.set("msrm_sampl", 20)
+XovOpt.set("n_interp",4)
+XovOpt.set("range_noise_mean_std",[0.,1])
+XovOpt.set("sampling_rate",10)
 
 # Subset of parameters to solve for
 # For "sol4_orb" and "sol4_orbpar, laisser une liste vide signifie "tous", sinon mettre "None" pour pas estimer
@@ -265,6 +292,8 @@ vecopts = {'SCID': -555,  # '-236',
            'PARTDER': ''}
 XovOpt.set("vecopts", vecopts)
 
+XovOpt.get("vecopts")['ALTIM_BORESIGHT'] = [0.0022105, 0.0029215, 0.9999932892]  # out[2]
+
 # Parameter constrains
 XovOpt.set("par_constr",
            {'dR/dRA': 1.e2, 'dR/dDEC': 1.e2, 'dR/dL': 1.e2, 'dR/dPM': 1.e2, 'dR/dh2': 3.e-1, 'dR/dA': 1.e2,
@@ -274,8 +303,8 @@ XovOpt.set("mean_constr", {'dR/dA': 1.e0, 'dR/dC': 1.e0, 'dR/dR': 1.e0})
 XovOpt.set("expopt", simid)
 XovOpt.set("resopt", 3)
 XovOpt.set("amplopt", 20)
-XovOpt.set("apply_topo",False) # use large scale topography (DEM)
-XovOpt.set("small_scale_topo", False) # apply small scale topography (simulated)
+XovOpt.set("apply_topo",True) # use large scale topography (DEM)
+XovOpt.set("small_scale_topo", True) # apply small scale topography (simulated)
 XovOpt.set("spauxdir", 'CAL_spk/')
 
 
@@ -327,6 +356,7 @@ if run_pyAltSim:
     XovOpt.set("sim_altdata", True)
     XovOpt.set("partials", False)
     XovOpt.set("range_noise", True)
+    XovOpt.set("range_noise", False)
     XovOpt.set("expopt", simid)
     d_sess = build_sessiontable_man(MANFIL,500,500) #darc > 1 Cday
 
@@ -360,7 +390,7 @@ if run_pyAltSim:
         # job = executor.submit(PyAltSim.main, [XovOpt.get("amplopt"), XovOpt.get("resopt"), indir_in, f'{monyea}', XovOpt.to_dict()]) # single job
         # print(job.result())
         # print(pyaltsim_in)
-        # pyaltsim_in = pyaltsim_in[0]
+        pyaltsim_in = pyaltsim_in[:1]
         # print(pyaltsim_in)
         if len(pyaltsim_in) == 1:
               job = executor.submit(PyAltSim.main, pyaltsim_in[0]) # single job
@@ -416,6 +446,7 @@ if run_pyGeoLoc or run_pyXover or run_accuXover:
     # d_weeks = d_weeks[2:]
     # d_weeks = d_weeks[11:13]
     # d_weeks = d_weeks[6:8]# test
+    # d_weeks = d_weeks[:2] # test
     print(d_weeks)
 
 # WD should really organize the folders in weekly folders (should be done already for simulation)
