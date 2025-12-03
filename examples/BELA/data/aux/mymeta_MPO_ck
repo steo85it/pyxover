@@ -1,0 +1,17 @@
+\begindata
+
+PATH_VALUES  = ( 'data/aux/kernels' )
+
+PATH_SYMBOLS = ( 'A' )
+
+KERNELS_TO_LOAD = ( '$A/de432s.bsp',
+                    '$A/pck00011.tpc',
+                    '$A/naif0012.tls',
+		    '$A/bc_mpo_v38.tf',
+		    '$A/bc_mpo_step_20250405.tsc',
+		    '$A/bc_mpo_fict_20181127.tsc',
+		    '$A/bc_mpo_flp_00197_20270309_20300101_v01.bsp',
+		    '$A/bc_mpo_sc_slt_00197_20270306_20300101_f20181127_v01.bc')
+
+\begintext
+PATH_VALUES  = ( '/storage/research/aiub_gravdet/WD_BELA/pyXover/aux/kernels' )
