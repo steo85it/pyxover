@@ -9,7 +9,7 @@ import pandas as pd
 import spiceypy as spice
 
 from config import XovOpt
-from geolocate_altimetry import geoloc
+from geolocate_altimetry import geolocate
 from pygeoloc.PyGeoloc import launch_gtrack
 from pygeoloc.ground_track import gtrack
 from config import XovOpt
@@ -70,7 +70,7 @@ for track in tracks:
         inp_df = track.ladata_df.copy()
         tmp_pertPar = track.pertPar.copy()
         tmp_pertPar = tmp_pertPar.fromkeys(tmp_pertPar, 0)
-        results = geoloc(inp_df, vecopts, tmp_pertPar=tmp_pertPar, SpObj=[], t0=0)
+        results = geolocate(inp_df, vecopts, tmp_pertPar=tmp_pertPar, SpObj=[], t0=0)
         X_geoloc, Y_geoloc = project_stereographic(results[0][:, 0], results[0][:, 1], 0, 90, vecopts['PLANETRADIUS']*1.e3)
         R_geoloc = results[0][:, 2]
 
