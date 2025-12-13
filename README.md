@@ -78,12 +78,13 @@ For more details, refer to `docs/manual.stub` (in progress...) and the Configura
 
 ## Configuration reference
 
-Most processing options are configured through `XovOpt` in `src/config.py`. Key fields include:
+Most processing options are configured through `XovOpt` in `src/config.py`. Apply updates via `XovOpt.set(...)` and run
+`XovOpt.check_consistency()` so derived directories and validation rules are enforced. Key fields include:
 
 | Field | Default | Notes |
 | --- | --- | --- |
-| `body` / `instrument` | `MERCURY` / `MLA` | Central body and instrument identifiers used by SPICE kernels. |
-| `basedir` (and derived `rawdir`, `outdir`, `auxdir`, `tmpdir`) | `pawstel/data/` | Base directory for inputs/outputs; dependent paths are recomputed during consistency checks. |
+| `body` / `instrument` | `MERCURY` / `MLA` | Central body and instrument identifiers used by SPICE kernels. `body` must stay consistent with `vecopts.PLANETNAME`. |
+| `basedir` (and derived `rawdir`, `outdir`, `auxdir`, `tmpdir`) | `pawstel/data/` | Base directory for inputs/outputs; dependent paths are recomputed by `check_consistency()`. |
 | `n_proc` | `mp.cpu_count() - 3` | Number of worker processes. |
 | `expopt` | `BS0` | Experiment label used to name input/output folders. |
 | `parOrb`, `parGlo` | See defaults in `src/config.py` | Initial perturbations for orbital and global parameters. |
