@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Digital elevation map import and interpolation helpers."""
 # ----------------------------------
 # dem_util.py
 #
@@ -23,7 +24,21 @@ import pandas as pd
 
 
 # TODO retrieve outfil = dem_interp_path as it was for LOLA (or just switch LOLA to other routines)
-def import_dem(filein, outdir=''):
+def import_dem(filein: str, outdir: str = '') -> RectBivariateSpline:
+    """Load a gridded DEM and build a spline interpolator on a regular grid.
+
+    Parameters
+    ----------
+    filein : str
+        Path to the NetCDF DEM file to load.
+    outdir : str, optional
+        Directory where the serialized interpolator should be cached.
+
+    Returns
+    -------
+    RectBivariateSpline
+        Bivariate spline interpolator over latitude and longitude.
+    """
     # open netCDF file
     # nc_file = "/home/sberton2/Downloads/sresa1b_ncar_ccsm3-example.nc"
     nc_file = filein
@@ -60,14 +75,21 @@ def import_dem(filein, outdir=''):
     return interp_spline
 
 
-def get_demz_at(dem_xarr, lattmp, lontmp):
+def get_demz_at(dem_xarr: RectBivariateSpline, lattmp: np.ndarray, lontmp: np.ndarray) -> np.ndarray:
+    """Interpolate DEM heights at the provided latitude/longitude coordinates."""
     # lontmp += 180.
     lontmp[lontmp < 0] += 360.
 
     return dem_xarr.ev(np.deg2rad(lattmp) + np.pi / 2., np.deg2rad(lontmp))
 
 
-def get_demz_diff_at(dem_xarr, lattmp, lontmp, axis='lon'):
+def get_demz_diff_at(
+    dem_xarr: xr.Dataset,
+    lattmp: np.ndarray,
+    lontmp: np.ndarray,
+    axis: str = 'lon'
+) -> np.ndarray:
+    """Interpolate DEM slope along a given axis at requested coordinates."""
     lontmp[lontmp < 0] += 360.
     diff_dem_xarr = dem_xarr.differentiate(axis)
 
@@ -77,7 +99,8 @@ def get_demz_diff_at(dem_xarr, lattmp, lontmp, axis='lon'):
     return diff_dem_xarr.interp(lat=lat_ax, lon=lon_ax).z.to_dataframe().loc[:, 'z'].values
 
 
-def get_demz_tiff(filin, lon, lat):
+def get_demz_tiff(filin: str, lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """Interpolate a GeoTIFF DEM at longitude/latitude sample points."""
     import pyproj
 
     # Read the data
@@ -100,7 +123,8 @@ def get_demz_tiff(filin, lon, lat):
 
     return da_interp.band_data.data * 1.e-3  # convert to km for compatibility with grd
 
-def get_demslope_tiff(filin, lon, lat):
+def get_demslope_tiff(filin: str, lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """Compute terrain slope from a GeoTIFF DEM and sample it at given points."""
     import pyproj
     from xrspatial import slope
 
@@ -121,7 +145,8 @@ def get_demslope_tiff(filin, lon, lat):
 
     return slope_interp.data
 
-def get_demz_grd(filin, lon, lat):
+def get_demz_grd(filin: str, lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """Interpolate NetCDF/GRD DEM heights at provided longitude/latitude arrays."""
     da = xr.open_dataset(filin)
     # for LDAM_8, rename coordinates
     # da = da.rename({'x':'lon','y':'lat'})

@@ -1,25 +1,12 @@
 #!/usr/bin/env python3
-# ----------------------------------
-# geolocate_altimetry.py
-#
-# Description: Find latitude and longitude of
-# altimetry beam crossing
-# ----------------------------------
-# Author: Stefano Bertone
-# Created: 16-Oct-2018
-#
-# vecopts contains:
-# SCID (e.g. -236)
-# SCNAME (e.g. MESSENGER)
-# SCFRAME (e.g. -236000)
-# PLANETID (e.g. 199)
-# PLANETNAME ( e.g. MERCURY)
-# PLANETRADIUS (e.g. 2440.0)
-# PLANETFRAME (e.g. IAU_MERCURY)
-# OUTPUTTYPE = 0 for XYZ, 1 for LON/LAT/R
-# ALTIM_BORESIGHT in SBF
-# INERTIALFRAME 'J2000'
-# INERTIALCENTER 'SSB'
+"""Geolocate altimetry beam crossings using SPICE geometry.
+
+The helpers in this module compute bounce points for two-way laser
+altimetry observations by combining spacecraft ephemerides, instrument
+boresight information, and optional perturbations. Results can be
+expressed in Cartesian or lon/lat coordinates and include optional
+relativistic corrections.
+"""
 import re
 
 import numpy as np
@@ -38,9 +25,26 @@ from wspice import spice_spkezr, spice_spkpos
 
 
 def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
-   """
+   """Geolocate altimetry observations with iterative corrections.
 
-   :type inp_df: ladata_df containing TOF(sec) and ET_TX(sec from J2000)
+   Parameters
+   ----------
+   inp_df : pandas.DataFrame
+      Input altimetry data containing ``TOF`` and ``ET_TX`` columns.
+   vecopts : dict
+      Spacecraft and planet configuration values.
+   tmp_pertPar : dict
+      Pointing and timing perturbations to apply to the geometry.
+   SpObj : dict
+      Precomputed interpolation objects used when ``SpInterp`` is enabled.
+   t0 : float, optional
+      Reference epoch for interpolated ephemerides.
+
+   Returns
+   -------
+   pandas.DataFrame
+      Updated dataframe populated with bounce coordinates and geometry
+      diagnostics.
    """
    use_24 = False  # False # use pointing aberration
    use_iter = True  # True
@@ -209,10 +213,7 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
 
 
 def geolocate_DLRv2(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
-   """
-
-   :type inp_df: ladata_df containing TOF(sec) and ET_TX(sec from J2000)
-   """
+   """Geolocate using the DLR v2 formulation without iteration."""
    tof = inp_df['TOF'].values
    et_tx = inp_df['ET_TX'].values
    et_bc = et_tx
@@ -273,10 +274,7 @@ def geolocate_DLRv2(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
       return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr, offndr  # 2 * oneway / clight
 
 def geolocate_DLRv2(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
-   """
-
-   :type inp_df: ladata_df containing TOF(sec) and ET_TX(sec from J2000)
-   """
+   """Geolocate using the DLR v2 formulation without iteration."""
    tof = inp_df['TOF'].values
    et_tx = inp_df['ET_TX'].values
    et_bc = et_tx
@@ -345,6 +343,7 @@ def geolocate_DLRv2(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
       return np.column_stack((np.rad2deg(lontmp), np.rad2deg(lattmp), rtmp)), et_bc, dr, offndr  # 2 * oneway / clight
 
 def get_offnadir(plapos_bc, scpos_tx, vbore):
+   """Compute the off-nadir angle between spacecraft boresight and planet."""
    vbore_normed = vbore / np.linalg.norm(vbore, axis=1)[:, np.newaxis]
    scxyz_tx = (scpos_tx - plapos_bc)
    scxyz_tx_pbf_normed = np.array(scxyz_tx) / np.linalg.norm(scxyz_tx, axis=1)[:, np.newaxis]
@@ -358,6 +357,7 @@ def get_offnadir(plapos_bc, scpos_tx, vbore):
 
 
 def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt, itmax=100, tlcbnc=1.e-3):
+   """Iteratively refine one-way ranges accounting for relativistic delay."""
    """
    int:type itmax: max number of iterations
    real:type tlcbnc: convergence criteria
@@ -395,6 +395,7 @@ def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt, itmax=100
 
 
 def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
+   """Return spacecraft position and velocity in the SSB frame."""
    # get probe CoM state at TX
    # --------------------------
    if (XovOpt.get("SpInterp") > 0):
@@ -452,6 +453,7 @@ def get_sc_ssb(et, SpObj, tmp_pertPar, vecopts, t0=0):
 
 
 def get_sc_pla(et, x_sc, v_sc, SpObj, vecopts):
+   """Compute spacecraft state in the planet-fixed frame."""
    if (XovOpt.get("SpInterp") > 0):
       x_pla = np.transpose(SpObj['MERx'].evalCby(et))
       v_pla = np.transpose(SpObj['MERv'].evalCby(et))

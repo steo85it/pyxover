@@ -12,6 +12,7 @@ import os
 
 import numpy as np
 import pandas as pd
+from typing import Iterable, List, Sequence, Tuple, Union
 
 # from eval_sol import rmse
 from matplotlib import pyplot as plt
@@ -31,7 +32,27 @@ import statsmodels.api as sm
 from pyxover.xov_setup import xov
 
 
-def get_tracks_rms(xovers_df, plot_xov_tseries=False):
+def get_tracks_rms(xovers_df: pd.DataFrame, plot_xov_tseries: bool = False) -> pd.DataFrame:
+   """
+   Compute per-track residual statistics for a crossover dataframe.
+
+   Parameters
+   ----------
+   xovers_df : pandas.DataFrame
+       Dataframe containing crossover points. It must include the columns
+       ``LON``, ``LAT``, ``dtA``, ``dR``, ``orbA`` and ``orbB`` as well as
+       either ``huber`` or ``weights`` depending on the workflow.
+   plot_xov_tseries : bool, optional
+       When ``True`` and running locally, generate per-track plots of the
+       estimated bias over time. Defaults to ``False``.
+
+   Returns
+   -------
+   pandas.DataFrame
+       A dataframe with one row per track containing the pre/post-fit RMS,
+       estimated bias and drift terms. Missing tracks are filled with small
+       sentinel values to maintain alignment with the input track list.
+   """
 
    if XovOpt.get("debug"):
       print("Checking tracks rms @ iter ...")
@@ -143,31 +164,34 @@ def get_tracks_rms(xovers_df, plot_xov_tseries=False):
    return postfit
 
 
-def plot_tracks_histo(postfit_list, filename=XovOpt.get("tmpdir") + '/histo_tracks_eval.png'):
-    # plot histo
-    # print(postfit_list)
+def plot_tracks_histo(postfit_list: Sequence[pd.DataFrame], filename: str = XovOpt.get("tmpdir") + '/histo_tracks_eval.png') -> None:
+    """
+    Plot histograms comparing pre- and post-fit track RMS values.
+
+    Parameters
+    ----------
+    postfit_list : Sequence[pandas.DataFrame]
+        Sequence of dataframes returned by :func:`get_tracks_rms` for each
+        processing iteration. Only the ``pre`` column is used for plotting.
+    filename : str, optional
+        Output path for the generated PNG histogram. Defaults to a temporary
+        location configured in ``XovOpt``.
+    """
 
     xlim = 1.e2
     plt.clf()
     fig = plt.figure(figsize=(7, 3))
     plt.style.use('seaborn-paper')
 
-    # plt.xlim(-1.*xlim, xlim)
-    # the histogram of the data
     num_bins = 40  # 'auto'
     plt_labels = ['pre-fit','post-fit']
     for idx, postfit in enumerate(postfit_list):
-        # print(postfit.pre.astype(float))
-        n, bins, patches = plt.hist(postfit.pre.astype(float), bins=num_bins, alpha=0.7,
-                                    label=plt_labels[idx],range=[0., xlim])  # , density=True) #, facecolor='blue',
-    # alpha=0.7, range=[-1.*xlim, xlim])
+        plt.hist(postfit.pre.astype(float), bins=num_bins, alpha=0.7,
+                 label=plt_labels[idx],range=[0., xlim])
     plt.xlabel('dR (m)')
     plt.ylabel('# tracks')
     plt.legend()
     plt.title('Histogram of track RMS at iters')
-    # plt.semilogx()
-    # # Tweak spacing to prevent clipping of ylabel
-    # plt.subplots_adjust(left=0.15)
     fig.tight_layout()
     plt.savefig(filename)
     print("### Tracks histo saved as", filename)
@@ -175,7 +199,25 @@ def plot_tracks_histo(postfit_list, filename=XovOpt.get("tmpdir") + '/histo_trac
     plt.clf()
 
 
-def load_combine(xov_pth_,vecopts):
+def load_combine(xov_pth_: Sequence[str], vecopts: dict) -> Union[xov, List]:
+   """
+   Load multiple crossover pickles and merge them into a single object.
+
+   Parameters
+   ----------
+   xov_pth_ : Sequence[str]
+       Iterable of subdirectories (relative to ``XovOpt['outdir']``) where
+       crossover pickle files are stored.
+   vecopts : dict
+       Vector options used to instantiate the aggregated :class:`xov` object.
+
+   Returns
+   -------
+   xov
+       Combined crossover container with merged perturbation metadata. If no
+       files are found an empty list is returned to preserve existing
+       call-sites.
+   """
    # -------------------------------
    # Amat setup
    # -------------------------------
@@ -234,7 +276,29 @@ def load_combine(xov_pth_,vecopts):
 
    return xov_cmb
 
-def clean_partials(b, spA, glbpars, threshold = 1.e6):
+def clean_partials(b: np.ndarray, spA: csr_matrix, glbpars: Sequence[str], threshold: float = 1.e6) -> Tuple[np.ndarray, csr_matrix]:
+   """
+   Remove rows with extreme partial derivatives to stabilize the solver.
+
+   Parameters
+   ----------
+   b : numpy.ndarray
+       Observation vector associated with the sparse design matrix ``spA``.
+   spA : scipy.sparse.csr_matrix
+       Sparse design matrix whose last columns correspond to global
+       parameters listed in ``glbpars``.
+   glbpars : Sequence[str]
+       Names of the global parameters solved for in the current inversion.
+   threshold : float, optional
+       Unused threshold kept for backward compatibility. Defaults to
+       ``1.e6``.
+
+   Returns
+   -------
+   Tuple[numpy.ndarray, scipy.sparse.csr_matrix]
+       Updated observation vector and sparse matrix with outlier rows removed
+       (set to near-zero values) for the inspected parameters.
+   """
 
    nglbpars = len(glbpars)
 
@@ -321,8 +385,17 @@ def clean_partials(b, spA, glbpars, threshold = 1.e6):
    return b, spA
 
 
-def get_ds_attrib():
-    # prepare pars keys, lists and dicts
+def get_ds_attrib() -> Tuple[dict, List[str], List[str]]:
+    """
+    Build helper attributes for the dataset describing solved parameters.
+
+    Returns
+    -------
+    tuple
+        ``delta_pars``: merged orbital and global parameter deltas;
+        ``etbcs``: names of boundary condition columns; ``pars``: formatted
+        partial derivative labels for longitude, latitude and radius.
+    """
     pars = ['d' + x + '/' + y for x in ['LON', 'LAT', 'R'] for y in
             list(XovOpt.get("parOrb").keys()) + list(XovOpt.get("parGlo").keys())]
     delta_pars = {**XovOpt.get("parOrb"), **XovOpt.get("parGlo")}

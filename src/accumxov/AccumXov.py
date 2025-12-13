@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
+"""Accumulation routines for crossover solutions."""
 # ----------------------------------
 # AccumXov
-# ----------------------------------
-# Author: Stefano Bertone
 # Created: 04-Mar-2019
 #
 import re
 import warnings
 import itertools
+from typing import Any, Optional
 
 from accumxov.accum_opt import AccOpt
 from config import XovOpt
@@ -42,7 +42,25 @@ from accumxov.Amat import Amat
 ######## SUBROUTINES ##########
 
 # #@profile
-def prepare_Amat(xov, vecopts, par_list=''):
+def prepare_Amat(xov: "xov", vecopts: dict, par_list: str = '') -> Amat:
+   """Create and persist the design matrix for a set of crossovers.
+
+   Parameters
+   ----------
+   xov : pyxover.xov_setup.xov
+      Crossover container holding the observations and metadata to encode.
+   vecopts : dict
+      Vector options controlling partial derivative computation and
+      projection setup for the resulting design matrix.
+   par_list : str, optional
+      Optional regex-style selector of partial derivative columns to keep.
+
+   Returns
+   -------
+   accumxov.Amat.Amat
+      Design-matrix helper with sparse representations attached to the
+      provided ``xov`` instance.
+   """
 
    clean_xov(xov, par_list)
 
@@ -82,7 +100,18 @@ def prepare_Amat(xov, vecopts, par_list=''):
    return xovi_amat
 
 # #@profile
-def prepro_weights_constr(xovi_amat, previous_iter=None):
+def prepro_weights_constr(xovi_amat: Amat, previous_iter: Optional[Any] = None) -> None:
+   """Compute observation weights and constraints for the accumulation stage.
+
+   Parameters
+   ----------
+   xovi_amat : accumxov.Amat.Amat
+      Design-matrix helper whose observation vector and sparse matrix will be
+      screened and weighted.
+   previous_iter : object, optional
+      Prior iteration result carrying convergence flags and solution terms
+      that may influence the current weighting strategy. Defaults to ``None``.
+   """
 
    # Solve
    # if not local:
@@ -250,6 +279,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
            len(tmp[(tmp < 0.05 * avg_weight)]) / len(tmp) * 100., "%")
 
 def advanced_weighting(xovers, previous_iter):
+   """Apply advanced weighting based on residual statistics from prior iterations."""
    
    # after convergence of residuals RMS at 1%, fix weights and bring parameters to convergence
    if previous_iter != None and previous_iter.converged:
@@ -419,6 +449,7 @@ def advanced_weighting(xovers, previous_iter):
    return obs_weights
 
 def compute_penalty_matrices(xovi_amat, tracks_to_remove):
+   """Build penalty matrices representing per-track constraints."""
    
    if XovOpt.get("OrbRep") in ['lin', 'quad', 'per']: #WD: Not sure what this is for
       for par in ['dA', 'dC', 'dR']:
@@ -461,6 +492,7 @@ def compute_penalty_matrices(xovi_amat, tracks_to_remove):
    return penalty_mat
 
 def build_abs_constraint_design_matrix(parNames, par_constr, sol4_pars, tracks_to_remove):
+   """Construct a design matrix for absolute parameter constraints."""
 
    print("Compute penalty matrix with constraints", par_constr)
    
@@ -509,6 +541,7 @@ def build_abs_constraint_design_matrix(parNames, par_constr, sol4_pars, tracks_t
    return vstack(csr)
 
 def get_bad_tracks(xovi_amat):
+   """Identify tracks excluded from the solution due to poor quality."""
 
    # Constrain tightly to 0 those parameters with few observations (or with few GOOD observations)
    if not AccOpt.get("remove_max_dist") and not AccOpt.get("remove_3sigma_median") and not AccOpt.get(
@@ -561,6 +594,7 @@ def build_mean_constraint_design_matrix(sol4_pars, mean_constr, sigma0):
     return A_avg
 
 def svd_parameter_analysis(spA_sol4, obs_weights, parNames):
+   """Perform SVD-based diagnostics of parameter observability."""
    # Compute the covariance matrix
    # print("full sparse",np.linalg.pinv((spA_sol4.transpose()*spA_sol4).todense()))
    # print("screened dense", np.linalg.pinv(spAdense.transpose()*spAdense))
@@ -601,6 +635,7 @@ def svd_parameter_analysis(spA_sol4, obs_weights, parNames):
                "% up to lambda= ",S[i])
                                                                      
 def compute_vce_weights(amat, L=None, N=None, spA_penal=None, Ndiag=False):
+   """Estimate variance component weights for the normal equation system."""
    # VCE for observations NEQs is well approximated by Ndiag=True.
    # VCE for constraint NEQs require more care (because diagonal).
    # Stochastic trace estimators with approximate solver are not very efficient.
@@ -668,6 +703,7 @@ def compute_vce_weights(amat, L=None, N=None, spA_penal=None, Ndiag=False):
    return s2_obs_new, s2_constr_new
 
 def remove_tracks(xovi_amat, tracks_to_remove):
+   """Drop tracks and associated observations from the accumulation object."""
    # remove tracks and related observations
    # works only for one block one penalty matrix
 
@@ -689,6 +725,7 @@ def remove_tracks(xovi_amat, tracks_to_remove):
 
 # @profile
 def compute_solution(xovi_amat, previous_iter, xov_cmb):
+   """Solve the accumulated system and merge updates into the crossover set."""
    # xovi_amat attributes which are changes:
    # spA_penal, b_penal, sol, sol_dict
    # sol_dict_iter, sol_iter, sol4_pars, vce
@@ -878,6 +915,7 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
 
 # @profile
 def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
+   """Solve a penalized least-squares system with configurable backend."""
    
    estimate_var = False # not accurate enough
 
@@ -1013,6 +1051,7 @@ def solve(spA, b_penal, last_iteration, tol=1e-8, solving_method="cholesky"):
    return sol, var, N, L
 
 def create_observation_blocks(xovers):
+   """Group observations by shared tracks to support block processing."""
    
    orbA0 = xovers['orbA'].str[0]
    orbB0 = xovers['orbB'].str[0]
@@ -1098,42 +1137,44 @@ def create_observation_blocks(xovers):
    return blocks
 
 def make_blocks(xovers, unique_chars, threshold=100):
-    blocks = []
-    i = 0
-    abs_lat = np.abs(xovers['LAT'])
+   """Yield manageable observation blocks for large crossover collections."""
+   blocks = []
+   i = 0
+   abs_lat = np.abs(xovers['LAT'])
 
-    def process_block(filter_mask, label):
-        nonlocal i
-        lat_0, lat_1 = 0, 10
-        while lat_0 < 90:
-            lat_mask = (abs_lat >= lat_0) & (abs_lat < lat_1)
-            b = filter_mask & lat_mask
-            count = b.sum()
-            if count > threshold or lat_1 == 90:
-                i += 1
-                print(f"Block #{i}: {label}, {lat_0}°<=|lat|<{lat_1}°")
-                blocks.append(b)
-                lat_0 = lat_1
-            else:
-                print(f"{count} obs for {label}, {lat_0}°<=|lat|<{lat_1}°: accumulating...")
-            lat_1 += 10
+   def process_block(filter_mask, label):
+      nonlocal i
+      lat_0, lat_1 = 0, 10
+      while lat_0 < 90:
+         lat_mask = (abs_lat >= lat_0) & (abs_lat < lat_1)
+         b = filter_mask & lat_mask
+         count = b.sum()
+         if count > threshold or lat_1 == 90:
+            i += 1
+            print(f"Block #{i}: {label}, {lat_0}°<=|lat|<{lat_1}°")
+            blocks.append(b)
+            lat_0 = lat_1
+         else:
+            print(f"{count} obs for {label}, {lat_0}°<=|lat|<{lat_1}°: accumulating...")
+         lat_1 += 10
 
-    # Process same-orbit blocks
-    orbA0 = xovers['orbA'].str[0]
-    orbB0 = xovers['orbB'].str[0]
-    for c in unique_chars:
-        mask = (orbA0 == c) & (orbB0 == c)
-        process_block(mask, f"orbA=orbB={c}*")
+   # Process same-orbit blocks
+   orbA0 = xovers['orbA'].str[0]
+   orbB0 = xovers['orbB'].str[0]
+   for c in unique_chars:
+      mask = (orbA0 == c) & (orbB0 == c)
+      process_block(mask, f"orbA=orbB={c}*")
 
-    # Process mixed-orbit block if more than one unique char
-    if len(unique_chars) > 1:
-        c1, c2 = unique_chars[:2]
-        mask = ((orbA0 == c1) & (orbB0 == c2)) | ((orbA0 == c2) & (orbB0 == c1))
-        process_block(mask, f"(orbA,orbB)=({c1},{c2})*")
+   # Process mixed-orbit block if more than one unique char
+   if len(unique_chars) > 1:
+      c1, c2 = unique_chars[:2]
+      mask = ((orbA0 == c1) & (orbB0 == c2)) | ((orbA0 == c2) & (orbB0 == c1))
+      process_block(mask, f"(orbA,orbB)=({c1},{c2})*")
 
-    return blocks
+   return blocks
 
 def clean_solution(sol_dict):
+   """Convert numpy values in a solution dictionary into serializable types."""
    # remove corrections OF SINGLE ITER if "unreasonable" (larger than 100 meters in any direction, or 50 meters/day, or 20 arcsec)
    sol_dict_iter = sol_dict
    sol_dict_iter_clean = []
@@ -1198,6 +1239,7 @@ def clean_solution(sol_dict):
 ######## MAIN ##########
 # @profile
 def main(arg):
+   """Command-line entry point for running AccumXov processing."""
    ##############################################
    # launch program and clock
    # -----------------------------

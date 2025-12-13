@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
+"""Coordinate projection helpers for stereographic mapping."""
+
 # ----------------------------------
 # project_coord.py
 #
 # Description: Coordinate projection
-# 
+#
 # ----------------------------------
 # Author: Stefano Bertone
 # Created: 22-Oct-2018
@@ -11,23 +12,44 @@
 import numpy as np
 
 
-def sind(x):
+def sind(x: np.ndarray | float) -> np.ndarray:
+    """Return the sine of angles expressed in degrees."""
+
     return np.sin(np.deg2rad(x))
 
 
-def cosd(x):
+def cosd(x: np.ndarray | float) -> np.ndarray:
+    """Return the cosine of angles expressed in degrees."""
+
     return np.cos(np.deg2rad(x))
 
 
-def project_stereographic(lon, lat, lon0, lat0, R=1):
-    """
-    project cylindrical coordinates to stereographic xy from central lon0/lat0
-    :param lon: array of input longitudes (deg)
-    :param lat: array of input latitudes (deg)
-    :param lon0: center longitude for the projection (deg)
-    :param lat0: center latitude for the projection (deg)
-    :param R: planetary radius (km)
-    :return: stereographic projection xy coord from center (km)
+def project_stereographic(
+    lon: np.ndarray,
+    lat: np.ndarray,
+    lon0: float,
+    lat0: float,
+    R: float = 1,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Project geographic coordinates to a stereographic plane.
+
+    Parameters
+    ----------
+    lon : numpy.ndarray
+        Input longitudes in degrees.
+    lat : numpy.ndarray
+        Input latitudes in degrees.
+    lon0 : float
+        Central longitude of the projection in degrees.
+    lat0 : float
+        Central latitude of the projection in degrees.
+    R : float, optional
+        Planetary radius in kilometers, by default ``1``.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray]
+        Projected ``x`` and ``y`` coordinates in kilometers.
     """
 
     cosd_lat = cosd(lat)
