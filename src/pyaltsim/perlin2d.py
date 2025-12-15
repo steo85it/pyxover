@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Generate Perlin noise fields to synthesize terrain surfaces."""
 # ---------------------------------------------------------
 # Generate fractal noise appropriate for terrain simulation
 # ---------------------------------------------------------
@@ -39,6 +40,7 @@ import xarray as xr
 #     return np.sqrt(2) * ((1 - t[:, :, 1]) * n0 + t[:, :, 1] * n1)
 
 def generate_perlin_noise_2d(shape, res):
+    """Generate a 2D grid of Perlin noise with the requested resolution."""
     def f(t):
         return 6 * t ** 5 - 15 * t ** 4 + 10 * t ** 3
 
@@ -69,6 +71,7 @@ def generate_perlin_noise_2d(shape, res):
 
 
 def generate_fractal_noise_2d(shape, res, octaves=1, persistence=0.5):
+    """Compose multiple octaves of Perlin noise into a fractal surface."""
     # print(np.array(res)*octaves,shape,np.mod(np.array(res)*octaves,shape))
     # if np.shape(res*octaves)[0]%np.shape(shape)[0] == 0:
     noise = np.zeros(shape)
@@ -86,6 +89,7 @@ def generate_fractal_noise_2d(shape, res, octaves=1, persistence=0.5):
 
 
 def generate_periodic_fractal_noise_2d(amplitude, shape, res, octaves=1, persistence=0.5):
+    """Generate a tileable fractal noise grid scaled by ``amplitude``."""
     noise = generate_fractal_noise_2d(shape, res, octaves, persistence)
     # print("pre",noise)
     noise *= amplitude

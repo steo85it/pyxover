@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
+"""Design matrix construction utilities for accumulation runs."""
 # ----------------------------------
 # Amat.py
-#
-# Description: define class Amat for first design/partial derivatives matrix (least square) and
-# required attributes and functions
-# ----------------------------------------------------
-# Author: Stefano Bertone
-# Created: 18-Feb-2019
 
 import pickle
 import re
@@ -21,8 +16,10 @@ from config import XovOpt
 
 
 class Amat:
+   """Container for the sparse design matrix and supporting metadata."""
 
    def __init__(self, vecopts):
+      """Initialize with spacecraft configuration and empty matrices."""
 
       self.vecopts = vecopts
       self.parNames = None
@@ -50,6 +47,7 @@ class Amat:
       self.penalty_mat_avg = None
 
    def setup(self, xov):
+      """Populate the design matrix from a :class:`pyxover` solution."""
 
       self.xov = xov
       self.xovpart_reorder()
@@ -58,6 +56,7 @@ class Amat:
          self.setup_cloop(xov)
 
    def setup_cloop(self, xov):
+      """Build the design matrix for a closed-loop simulation."""
       self.pert_cloop_0 = xov.pert_cloop_0
       self.pert_cloop = xov.pert_cloop
       self.pert_cloop_glo = self.pert_cloop.filter(['dLIB','dL', 'dRA', 'dDEC', 'dPM', 'dh2']).iloc[0]
@@ -71,6 +70,7 @@ class Amat:
          print("self.pert_cloop\n", self.pert_cloop.dropna())
 
    def save(self, filnam):
+      """Persist the current matrix and supporting attributes."""
       pklfile = open(filnam, "wb")
       # clean ladata, which is now useless
       if hasattr(self, 'ladata_df'):
@@ -91,6 +91,7 @@ class Amat:
 
    # load Abmat from file
    def load(self, filnam):
+      """Load a previously saved design matrix from disk."""
 
       pklfile = open(filnam, 'rb')
       self = pickle.load(pklfile)
@@ -102,6 +103,7 @@ class Amat:
 
    # reorder and fill to sparse A and prepare for lsqr solution
    def xovpart_reorder(self):
+      """Reorder partial derivatives to match accumulation conventions."""
 
       xovers_df = self.xov.xovers.reset_index(drop=True)
       # TODO check if this makes sense, seems redundant or second row taking wrong input from self....
@@ -201,6 +203,7 @@ class Amat:
 
    # backup
    def xovpart_reorder2(self):
+      """Alternative reorder routine used during experimentation."""
 
       xovers_df = self.xov.xovers
       parOrb_xy = sorted(self.xov.parOrb_xy)
@@ -272,6 +275,7 @@ class Amat:
          print(xovers_df.dR)
 
    def corr_mat(self):
+      """Return a correlation matrix for the accumulated design matrix."""
 
       A = self.spA
       N = len(self.b)

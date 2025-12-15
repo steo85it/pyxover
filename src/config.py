@@ -1,9 +1,23 @@
+"""Configuration helpers for the pyxover toolchain.
+
+This module centralizes default options for all processing steps and
+exposes a thin helper class to access and override configuration values.
+Keeping the configuration surface well documented helps downstream
+refactors understand how values are propagated across modules.
+"""
 # Options configuration for pyxover applications
 import multiprocessing as mp
 import numpy as np
 from xovutil.units import deg2as
 
 class XovOpt:
+    """Mutable container for global pyxover configuration.
+
+    The class stores defaults in a private dictionary and provides
+    convenience accessors to read and update values at runtime. Options are
+    intentionally simple dictionaries so they can be serialized or copied
+    without special handling.
+    """
 
     __conf = {
         # env opt
@@ -140,6 +154,14 @@ class XovOpt:
 
     @staticmethod
     def check_consistency():
+        """Validate dependent configuration values.
+
+        Ensures directory paths remain in sync when the base directory is
+        updated and verifies that configured planetary bodies match the
+        vector options used throughout the project. Raises a ``NameError``
+        when inconsistencies are detected so callers can fail early during
+        setup.
+        """
 
         XovOpt.set("rawdir", f'{XovOpt.get("basedir")}raw/'),
         XovOpt.set("outdir", f'{XovOpt.get("basedir")}out/'),
@@ -161,10 +183,37 @@ class XovOpt:
 
     @staticmethod
     def get(name):
+        """Return the value stored under ``name``.
+
+        Parameters
+        ----------
+        name : str
+            Configuration key to read from the internal mapping.
+
+        Returns
+        -------
+        Any
+            Stored configuration value.
+        """
         return XovOpt.__conf[name]
 
     @staticmethod
     def set(name, value):
+        """Update the value of a configurable option.
+
+        Parameters
+        ----------
+        name : str
+            Configuration key to update. Only names included in the
+            ``__setters`` list can be modified.
+        value : Any
+            New value to associate with the key.
+
+        Raises
+        ------
+        NameError
+            If ``name`` is not an allowed option.
+        """
         if name in XovOpt.__setters:
             XovOpt.__conf[name] = value
             print(f"### XovOpt.{name} updated to {value}.")
@@ -173,15 +222,25 @@ class XovOpt:
 
     @staticmethod
     def display():
+        """Print the current configuration to stdout."""
         for key, value in XovOpt.__conf.items():
            print(f"{key}: {value}")
 
     @staticmethod
     def to_dict():
+        """Return a shallow copy of the configuration mapping."""
         return XovOpt.__conf
 
     @staticmethod
     def clone(opts):
+        """Replace the internal configuration with ``opts``.
+
+        Parameters
+        ----------
+        opts : dict
+            Mapping containing configuration keys. This method is primarily
+            used when copying options between different processing objects.
+        """
         # print("- Updating XovOpt")
         XovOpt.__conf = opts.copy()
 

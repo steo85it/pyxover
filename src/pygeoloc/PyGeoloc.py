@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
+"""PyGeoloc: batch geolocation driver for altimetry ground tracks."""
 # ----------------------------------
 # PyXover
-# ----------------------------------
-# Author: Stefano Bertone
-# Created: 16-Oct-2018
-#
 import re
 import os
 import glob
@@ -27,6 +24,7 @@ from config import XovOpt
 ########################################
 
 def launch_gtrack(args):
+   """Process a single ground track and persist results."""
    track, outdir_in = args
    track_id = 'gtrack_' + track.name
 
@@ -70,6 +68,7 @@ def launch_gtrack(args):
 
 
 def main(args):
+   """Entry point for parallel ground-track geolocation."""
 
    # read input args
    epo_in = args[0]     # WD: (list of?) epoch from input raw alti file

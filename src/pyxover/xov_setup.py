@@ -10,6 +10,7 @@
 import os.path
 import glob
 import warnings
+from typing import Sequence
 
 from pygeoloc.ground_track import gtrack
 
@@ -33,9 +34,18 @@ from xovutil.stat import rms
 from xovutil.units import sec2day
 
 class xov:
+   """
+   Container for crossover computations and related metadata.
 
-   def __init__(self, vecopts):
-      
+   Parameters
+   ----------
+   vecopts : dict
+       Configuration dictionary controlling projection parameters and
+       processing options for crossover generation.
+   """
+
+   def __init__(self, vecopts: dict):
+
       self.vecopts = vecopts
       self.xovers = pd.DataFrame(
          columns=['x0', 'y0', 'mla_idA', 'mla_idB', 'cmb_idA', 'cmb_idB', 'R_A', 'R_B', 'dR'])
@@ -54,7 +64,20 @@ class xov:
       self.t0_tracks = None
 
    # @profile
-   def setup(self, gtracks):
+   def setup(self, gtracks: Sequence[gtrack]) -> int:
+      """
+      Prepare crossover computation for a pair of ground tracks.
+
+      Parameters
+      ----------
+      gtracks : Sequence[pygeoloc.ground_track.gtrack]
+         Sequence containing the two ground-track objects to cross.
+
+      Returns
+      -------
+      int
+         Number of crossovers detected during the computation.
+      """
 
       self.gtracks = gtracks
 
@@ -131,66 +154,64 @@ class xov:
             # self.xovers.append(self.xovtmp)
       return nxov
 
-   def set_xov_offnadir(self):
-        obslist = self.xovtmp[['cmb_idA', 'cmb_idB']].values.astype(int).tolist()
-        obslist = lflatten(obslist)
-        # get offnadir angle for xovering obs
-        offnadir = self.ladata_df.loc[obslist, 'offnadir'].values
-        # reshape for multi-xover tracks combination
-        offnadir = np.reshape(offnadir, (2, -1))
+   def set_xov_offnadir(self) -> None:
+      """Attach off-nadir angles for the observations surrounding a crossover."""
+      obslist = self.xovtmp[['cmb_idA', 'cmb_idB']].values.astype(int).tolist()
+      obslist = lflatten(obslist)
+      offnadir = self.ladata_df.loc[obslist, 'offnadir'].values
+      offnadir = np.reshape(offnadir, (2, -1))
 
-        tmp = pd.DataFrame(np.array(offnadir)).T
-        tmp.columns = ['offnad_A', 'offnad_B']
-        self.xovtmp = pd.concat([self.xovtmp, tmp], axis=1)
+      tmp = pd.DataFrame(np.array(offnadir)).T
+      tmp.columns = ['offnad_A', 'offnad_B']
+      self.xovtmp = pd.concat([self.xovtmp, tmp], axis=1)
 
    # @profile
-   def combine(self, xov_list):
-      # Combine all xovers in xov_list, remove duplicates, reset index
-      # Retrieve all orbits involved in xov_list, and partials
+   def combine(self, xov_list: Sequence["xov"]) -> None:
+      """
+      Merge multiple crossover containers, removing duplicates as needed.
 
-        xover_frames = []
-        par_found = False
+      Parameters
+      ----------
+      xov_list : Sequence[xov]
+         Sequence of crossover objects to merge into the current instance.
+      """
 
-        for xov in xov_list:
-           xovers = xov.xovers
-           # Only select elements with number of xovers > 0
-           if len(xovers) > 0:
-              xover_frames.append(xovers)
-              if XovOpt.get("partials") == 1:
-                 if not par_found and hasattr(xov, 'parOrb_xy'):
-                    self.parOrb_xy = xov.parOrb_xy
-                    self.parGlo_xy = xov.parGlo_xy
-                    par_found = True
-                 # else:
-                 #    print("### xov element is missing partials!!")
+      xover_frames = []
+      par_found = False
+
+      for xov in xov_list:
+         xovers = xov.xovers
+         if len(xovers) > 0:
+            xover_frames.append(xovers)
+            if XovOpt.get("partials") == 1:
+               if not par_found and hasattr(xov, 'parOrb_xy'):
+                  self.parOrb_xy = xov.parOrb_xy
+                  self.parGlo_xy = xov.parGlo_xy
+                  par_found = True
 
 
-        # concatenate df and reindex
-        if xover_frames:
-            self.xovers = pd.concat(xover_frames, sort=True)
-            # check for duplicate rows
-            nxov = len(self.xovers)
-            if XovOpt.get("instrument") == "BELA":  # doesn't really make sense... useful to have working tests
-                self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'], errors='ignore').round(6).drop_duplicates()
-            else:
-                self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'], errors='ignore').drop_duplicates()
-            if (nxov == len(self.xovers)):
-               print(f"No dupplicate found in the {nxov} xovers.")
-            else:
-               print(f"{nxov-len(self.xovers)} dupplicates found in the {nxov} xovers.")
+      if xover_frames:
+         self.xovers = pd.concat(xover_frames, sort=True)
+         nxov = len(self.xovers)
+         if XovOpt.get("instrument") == "BELA":
+             self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'], errors='ignore').round(6).drop_duplicates()
+         else:
+             self.xovers = self.xovers.drop(columns=['xOvID', 'xovid'], errors='ignore').drop_duplicates()
+         if (nxov == len(self.xovers)):
+            print(f"No dupplicate found in the {nxov} xovers.")
+         else:
+            print(f"{nxov-len(self.xovers)} dupplicates found in the {nxov} xovers.")
 
-            # reset index to have a sequential one
-            self.xovers = self.xovers.reset_index(drop=True)
-            self.xovers['xOvID'] = self.xovers.index
+         self.xovers = self.xovers.reset_index(drop=True)
+         self.xovers['xOvID'] = self.xovers.index
 
-            # Retrieve all orbits involved in xovers
-            orb_unique = self.xovers['orbA'].tolist()
-            orb_unique.extend(self.xovers['orbB'].tolist())
-            self.tracks = list(set(orb_unique))
+         orb_unique = self.xovers['orbA'].tolist()
+         orb_unique.extend(self.xovers['orbB'].tolist())
+         self.tracks = list(set(orb_unique))
 
-   def save(self, filnam):
+   def save(self, filnam: str) -> None:
+        """Serialize the crossover container to disk."""
         pklfile = open(filnam, "wb")
-        # clean ladata, which is now useless
         if hasattr(self, 'ladata_df'):
             del (self.ladata_df)
         if hasattr(self, 'gtracks'):

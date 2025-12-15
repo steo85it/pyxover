@@ -1,9 +1,16 @@
 # /usr/bin/env python3
+"""Ground track handling for altimetry observations.
+
+The :class:`gtrack` class encapsulates loading, preprocessing, and
+projection of laser altimeter data onto planet-fixed frames. Methods
+orchestrate SPICE interpolation, partial derivative computation, and
+serialization of intermediate products for later crossover analysis.
+"""
 # ----------------------------------
 # ground_track.py
 #
-# Description: 
-# 
+# Description:
+#
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 08-Feb-2019
@@ -29,10 +36,19 @@ from tidal_deform import tidepart_h2
 
 
 class gtrack:
+   """Container for a single laser altimeter ground track."""
    interp_obj.interp = interp_obj.interpCby  # Cby  # Spl #
    interp_obj.eval = interp_obj.evalCby  # Cby  # Spl #
 
-   def __init__(self, opts):
+   def __init__(self, opts: dict):
+      """Initialize track state and clone configuration options.
+
+      Parameters
+      ----------
+      opts : dict
+         Configuration dictionary containing ``vecopts`` and other control
+         flags propagated through the processing pipeline.
+      """
 
       XovOpt.clone(opts)
       self.XovOpt = XovOpt
@@ -79,7 +95,15 @@ class gtrack:
 
     # create groundtrack object from data and save to file
     # contain interpolated s/c and planets orbits for covered timespan
-   def setup(self, filnam=""):
+   def setup(self, filnam: str = ""):
+      """Build a ground track and serialize interpolated ephemerides.
+
+      Parameters
+      ----------
+      filnam : str, optional
+         Path to the serialized track to reuse when available. Defaults to an
+         empty string which triggers a fresh build.
+      """
 
       if len(self.ladata_df) == 0:
          print("No data for track ", self.name)
@@ -107,7 +131,23 @@ class gtrack:
       self.ladata_df['dt'] = self.ladata_df.ET_TX - self.t0_orb
 
    # create groundtrack from data and save to file
-   def prepro(self, filnam, read_all=False, t_start=0, t_end=0):
+   def prepro(self, filnam: str, read_all: bool = False, t_start: float = 0, t_end: float = 0):
+      """Read a raw altimetry file and prepare interpolation helpers.
+
+      Parameters
+      ----------
+      filnam : str
+         Path to the raw altimetry file to ingest.
+      read_all : bool, optional
+         When ``True`` read the full file instead of the default subset. This
+         is useful for diagnostics. Defaults to ``False``.
+      t_start : float, optional
+         Start epoch (ET) for the selection window. Defaults to ``0`` to
+         include the beginning of the file.
+      t_end : float, optional
+         End epoch (ET) for the selection window. Defaults to ``0`` to include
+         the entire tail of the file.
+      """
 
       # read data and fill ladata_df
       self.read_fill(filnam, read_all=read_all, t_start=t_start, t_end=t_end)
@@ -134,6 +174,7 @@ class gtrack:
          print('No data selected for orbit ' + str(self.name))
 
    def check_coverage(self):
+      """Filter observations to intervals covered by available SPK kernels."""
       cover = spice.utils.support_types.SPICEDOUBLE_CELL(2000)
       if self.XovOpt.get("local") == 0:
          spice.spkcov(self.XovOpt.get("auxdir") + 'spk/MSGR_HGM008_INTGCB.bsp', -236, cover)
@@ -149,7 +190,14 @@ class gtrack:
       self.ladata_df = self.ladata_df.loc[self.ladata_df['in_spk']]
 
    # create groundtrack from list of epochs
-   def simulate(self, filnam):
+   def simulate(self, filnam: str):
+      """Create a simulated ground track from synthetic epochs.
+
+      Parameters
+      ----------
+      filnam : str
+         File containing the synthetic epochs used to seed the simulation.
+      """
 
       # read data and fill ladata_df
       self.read_fill(filnam)
@@ -168,7 +216,14 @@ class gtrack:
       else:
          print('No data selected for orbit ' + str(self.name))
 
-   def save(self, filnam):
+   def save(self, filnam: str):
+      """Persist the ground track object to disk using pickle.
+
+      Parameters
+      ----------
+      filnam : str
+         Destination path for the serialized :class:`gtrack` instance.
+      """
       # To use after self.ladata_df is saved via save_df
       # Ladata_df is saved separately
       self.ladata_df = None
@@ -177,6 +232,7 @@ class gtrack:
       pklfile.close()
 
    def save_df(self, filnam):
+      """Save the track dataframe to a Parquet file."""
       # clean up useless columns
       self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dR_tid$').columns, axis='columns')
       self.ladata_df.to_parquet(filnam, engine='pyarrow')
@@ -184,6 +240,7 @@ class gtrack:
    # load groundtrack from file
    # @profile
    def load(self, filnam):
+      """Load a ground track object previously saved with :meth:`save`."""
       # disabling cyclic garbage collection
       gc.disable()
       if os.path.isfile(filnam):
@@ -198,6 +255,7 @@ class gtrack:
       return self
 
    def load_df_from_id(self, gtrack_dir, track_id):
+      """Load a track dataframe from a directory given an orbit identifier."""
       self.ladata_df = None
       for pattern in ['ladata_', '']:
          track_fn = 'gtrack_' + pattern + track_id
@@ -216,6 +274,7 @@ class gtrack:
 
    # load ladata from file
    def load_df(self, filnam):
+      """Load the ground track dataframe from ``filnam``."""
       if os.path.isfile(filnam):
          self.ladata_df = pd.read_parquet(filnam, engine='pyarrow')
       else:
@@ -225,6 +284,7 @@ class gtrack:
       return self
 
    def read_fill(self, infil, read_all=False, t_start=0, t_end=0):
+      """Read raw altimeter observations and populate ``ladata_df``."""
       import datetime as dt
 
       if infil.split(".")[-1] in ["TAB", "tab"]:
@@ -306,6 +366,7 @@ class gtrack:
       self.ladata_df = df
 
    def interpolate(self):
+      """Create Chebyshev interpolation objects for spacecraft states."""
 
       # Read required trajectories from spice and interpolate
       startSpInterp = time.time()
@@ -407,6 +468,7 @@ class gtrack:
 
    # TODO check if False doesn't create issues...
    def geoloc(self, get_partials=False):
+      """Geolocate track measurements and optionally compute partials."""
       # Compute geolocalisation and dxyz/dP, where P = (A,C,R,Rl,Pt)
 
       if (self.XovOpt.get("debug")):
@@ -567,6 +629,7 @@ class gtrack:
                str((endGeoloc - startGeoloc) / 60.) + ' min -----')
 
    def par_solupd(self):
+      """Update parameter solution arrays used for perturbation analysis."""
       """
       Updates perturbations to a priori parameters based on solution from previous iteration (stored at AccumXov step
       in pkl file).
@@ -621,6 +684,7 @@ class gtrack:
 
    # @profile
    def get_geoloc_part(self, par):
+      """Evaluate geolocation partial derivatives for a given parameter."""
 
       tmp_df = self.ladata_df.copy()
       # vecopts = self.vecopts
@@ -698,6 +762,7 @@ class gtrack:
          return geoloc_out
 
    def perturb_orbits(self, partialName, diff_step, sign=1.):
+      """Apply small perturbations to orbital elements for sensitivity tests."""
       """
       Read self.vecopts[partder] and apply perturbation
       for partials, then ADD current state of parameters (cloop+sol
@@ -752,6 +817,7 @@ class gtrack:
    # Compute stereographic projection of measurements location
    # and feed it to ladata_df
    def project(self, lon0=0, lat0=90, inplace=True):
+      """Project the ground track into a polar stereographic plane."""
 
       ladata_df = self.ladata_df.copy()
       param = self.param
@@ -797,6 +863,7 @@ class gtrack:
    #################
    # Correct for perturbations by using partials (if needed) and launch projection
    def launch_stereoproj(self, par_d, lon0=0, lat0=90):
+      """Run stereographic projection for a partitioned dataframe."""
 
       ladata_df = self.ladata_df
       vecopts = self.vecopts
