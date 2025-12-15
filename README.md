@@ -63,8 +63,8 @@ python setup.py test
 ## Running the examples ##
 
 The examples directory contains the setup to process altimetry ranges by the Mercury
- Laser Altimeter (MLA) onboard the MESSENGER mission, illustrating how 
- to use this package. To run the example, you'll need to import the required spice 
+ Laser Altimeter (MLA) onboard the MESSENGER mission, illustrating how
+ to use this package. To run the example, you'll need to import the required spice
  kernels listed in `examples/MLA/data/aux/mymeta` to `examples/MLA/data/aux/kernels/` and eventually adapt `mymeta`.
 
  Then, try:
@@ -74,7 +74,35 @@ python mla_iter.py
 ```
 Else, check out the `tests` directory for a "simpler" approach.
 
-For more details, refer to `docs/manual.stub` (in progress...)
+For more details, refer to `docs/manual.stub` (in progress...) and the Configuration reference below for the most common runtime options.
+
+## Configuration reference
+
+Most processing options are configured through `XovOpt` in `src/config.py`. Apply updates via `XovOpt.set(...)` and run
+`XovOpt.check_consistency()` so derived directories and validation rules are enforced. Key fields include:
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `body` / `instrument` | `MERCURY` / `MLA` | Central body and instrument identifiers used by SPICE kernels. `body` must stay consistent with `vecopts.PLANETNAME`. |
+| `basedir` (and derived `rawdir`, `outdir`, `auxdir`, `tmpdir`) | `pawstel/data/` | Base directory for inputs/outputs; dependent paths are recomputed by `check_consistency()`. |
+| `n_proc` | `mp.cpu_count() - 3` | Number of worker processes. |
+| `expopt` | `BS0` | Experiment label used to name input/output folders. |
+| `parOrb`, `parGlo` | See defaults in `src/config.py` | Initial perturbations for orbital and global parameters. |
+| `par_constr`, `mean_constr` | See defaults | Constraints applied during least-squares solutions. |
+| `cloop_sim`, `pert_cloop_orb`, `pert_cloop_glo`, `pert_tracks` | `False` / `{}` / `{}` / `[]` | Enable and tune closed-loop simulations or per-track perturbations. |
+| `sol4_orb`, `sol4_orbpar`, `sol4_glo` | `[None]`, `[None]`, `['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL']` | Select which orbital/global parameters are solved. |
+| `OrbRep` | `cnt` | Orbital representation (`cnt`, `lin`, or `quad`). |
+| `SpInterp`, `spice_meta`, `spice_spk` | `0`, `mymeta`, `[]` | SPICE interpolation settings and additional kernels. |
+| `new_gtrack`, `new_xov` | `2`, `2` | Whether to regenerate geolocated tracks or crossovers (`0` skip, `1` create if missing, `2` recreate). |
+| `import_proj`, `import_abmat` | `False`, `""` | Import precomputed projections or A/B matrices instead of recomputing. |
+| `weekly_sets`, `monthly_sets`, `multi_xov`, `new_algo`, `compute_input_xov` | `False`, `False`, `False`, `True`, `True` | Various runtime toggles for crossover processing. |
+| `msrm_sampl` | `2` | Measurement downsampling factor; **must be an even integer**, otherwise configuration validation fails. |
+| `n_interp` | `6` | Number of laser altimetry points on either side of a crossover used for interpolation. |
+| `full_covar`, `roughn_map` | `False`, `False` | Control covariance computation and roughness map usage. |
+| `new_illumNG`, `apply_topo`, `small_scale_topo` | `True`, `True`, `False` | PyAltSim options for illumination and topography handling. |
+| `range_noise`, `range_noise_mean_std` | `True`, `[0., 0.]` | Toggle and characterize simulated range noise. |
+| `local_dem`, `max_range_altitude`, `sampling_rate` | `True`, `1050`, `10` | DEM usage, maximum range altitude (km), and sampling rate (Hz). |
+| `vecopts` | See defaults | SPICE identifiers and frame names for the spacecraft and planet. |
 
 ---
 
