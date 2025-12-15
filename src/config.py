@@ -139,6 +139,9 @@ class XovOptions:
             if getattr(self, name) is None and name in _DEFAULT_OPTIONS:
                 setattr(self, name, copy.deepcopy(_DEFAULT_OPTIONS[name]))
 
+        self._normalize_n_proc()
+
+    def _normalize_n_proc(self) -> None:
         if self.n_proc is None or self.n_proc == 'auto':
             self.n_proc = max(1, mp.cpu_count() - 3)
 
@@ -174,6 +177,7 @@ class XovOptions:
                 setattr(options, key, value)
             else:
                 raise NameError(f"Name {key} not accepted in XovOptions.from_dict()")
+        options._normalize_n_proc()
         options.sync_paths()
         options.validate()
         return options
