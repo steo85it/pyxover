@@ -15,6 +15,7 @@ setuptools.setup(
     include_package_data=True,
     install_requires=(
         'numpy',
+        'pyyaml',
     ),
     setup_requires=(
         'pytest-runner',
