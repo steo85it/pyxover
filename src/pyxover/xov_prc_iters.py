@@ -14,7 +14,7 @@ from pyxover.xov_utils import get_ds_attrib
 
 from accumxov.Amat import Amat
 from config import XovOpt
-from memory_profiler import profile
+# from memory_profiler import profile
 
 ## MAIN ##
 def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
