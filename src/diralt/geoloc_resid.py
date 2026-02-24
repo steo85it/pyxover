@@ -109,24 +109,13 @@ def rosen(x):
 
 
 def get_demres(dorb, track, df, coeff_set=['dA', 'dC', 'dR','dRl','dPt']): #]):  # ,'dA1', 'dC1', 'dR1']): #
-    #
+
     dorb = np.array(dorb)
     dorb[:3] *= 1000.
 
-    # print("in demres", df['altdiff_dem'].max())
     dr, dummy = get_demres_full(dorb, track, df, coeff_set)
 
-    # print("in demres post", df['altdiff_dem'].max(), np.sqrt(np.mean(df['altdiff_dem'] ** 2)), np.max(dr))
-
-    #    print_demfit(dr, df['ET_TX'], dorb, track.name)
-
-    # print(np.mean(dr), np.std(dr))
-    # print(np.abs(dr).max())
     elev_rms = np.sqrt(np.mean(dr ** 2))
-    # print("elev_rms: ", elev_rms)
-    # exit()
-
-    # print(dorb, elev_rms)
 
     return elev_rms  # , dr, track.ladata_df.ET_TX.values - track.t0_orb
 
@@ -153,7 +142,6 @@ def get_demres_full(dorb, track, df, dem_file,
     #    track.pert_cloop = dict(zip(track.pert_cloop.keys(),list(pert_cloop_orb.values()) * rand_pert_orb))
     #    track.pertPar = mergsum(track.pert_cloop.copy(), track.pertPar.copy())
 
-    # print("dorb", dorb)
     df_ = df.copy()
     for idx, key in enumerate(coeff_set):
         if key in track.pertPar:
@@ -619,14 +607,12 @@ def fit_track_to_dem(df_in,dem_file):
             # Preliminary data cleaning
             dorb = np.array([0., 0., 0.]) #, 0., 0.])  # ,0,0,0]  # range(-10,10,1) #np.array([10.3, 0.7, 10.8, 11.9, 1.2])
             dr, dummy = get_demres_full(dorb, track, df_, dem_file)
-            # print("dr", dr)
             print(track.name, "pre-clean (len, max, rms): ", len(dr), np.max(dr), np.round(np.sqrt(np.mean(dr ** 2)),2))
 
             df_.loc[:, 'dr_dem'] = dr
             df_ = df_[df_['dr_dem'] < 1.e3]
             df_ = mad_clean(df_, 'dr_dem')
             # df_=df_.iloc[:-1000,:]
-            # exit()
             dr_pre = df_.loc[:, 'dr_dem'].values
             dt_pre = df_['ET_TX'].values
 
@@ -639,7 +625,6 @@ def fit_track_to_dem(df_in,dem_file):
                            bounds=[(-0.5,0.5),(-0.5,0.5),(-0.1,0.1)], #,(-0.5,0.5),(-0.5,0.5)], #,(-1e-2,1e-2),(-1e-2,1e-2),(-1e-2,1e-2)],
                           jac='2-point',
                           options={'disp': False, 'eps': 0.0005, 'ftol': 1.e-6})
-            # print(sol)
 
             # Fake sol
             # sol = pd.Series()
@@ -660,13 +645,10 @@ def fit_track_to_dem(df_in,dem_file):
 
             # compute partials dr/dACR
             # df_ = get_lstsq_partials(dem_xarr, df_, dorb, track)
-            # print(df_)
 
         #            print_demfit(dr_post, dt_post, dorb, track.name, dr_pre, dt_pre)
         df_ = df_.rename(columns={'altdiff_dem_data':'dr_post','dr_dem':'dr_pre'})
-        # print(pd.DataFrame([dr_pre,dr_post]).T)
         print(df_)
-        # exit()
 
         return dr_post, dr_pre, dorb, df_
 

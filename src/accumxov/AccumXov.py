@@ -34,7 +34,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import scipy.linalg as la
 
-from memory_profiler import profile
+# from memory_profiler import profile
 
 from pyxover.xov_setup import xov
 from accumxov.Amat import Amat
@@ -120,6 +120,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
          print([xovi_amat.parNames[p] for p in sol4_pars])
       # select columns of design matrix corresponding to chosen parameters to solve for
       spA_sol4 = xovi_amat.spA[:, [xovi_amat.parNames[p] for p in sol4_pars]]
+      # Get the intersection of sol4_pars and xovi_amat.parNames keys
       # set b=0 for rows not involving chosen set of parameters
       nnz_per_row = spA_sol4.getnnz(axis=1)
       xovi_amat.b[np.where(nnz_per_row == 0)[0]] = 0
@@ -641,12 +642,12 @@ def compute_vce_weights(amat, L=None, N=None, spA_penal=None, Ndiag=False):
    # amat.weights.diagonal()[mask_obs] works because it is truyl diagonal
    if Ndiag:
       s2_obs_new = [get_vce_factor(x=xsol, Cinv=diags(amat.weights.diagonal()[mask_obs]), L=None, Ninv=Ninv,
-                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs, :],
+                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs.values, :],
                                    s2apr=s2_obs, kind='obs', nelem=sum(mask_obs))
                     for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
    else:
       s2_obs_new = [get_vce_factor(x=xsol, Cinv=diags(amat.weights.diagonal()[mask_obs]), L=L, N=N, Ninv=Ninv,
-                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs, :],
+                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs.values, :],
                                    s2apr=s2_obs, kind='obs', nelem=sum(mask_obs),stoch=True)
                     for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
 
@@ -680,7 +681,7 @@ def remove_tracks(xovi_amat, tracks_to_remove):
    xovi_amat.b = xovi_amat.b[obs_to_keep]
    xovi_amat.weights = diags(weight_d[obs_to_keep])
    xovi_amat.spA_sol4 = xovi_amat.spA_sol4[:, par_to_keep]
-   xovi_amat.spA_sol4 = xovi_amat.spA_sol4[obs_to_keep,:]
+   xovi_amat.spA_sol4 = xovi_amat.spA_sol4[obs_to_keep.values,:]
    xovi_amat.obs_blocks = [obs[obs_to_keep] for obs in xovi_amat.obs_blocks]
    xovi_amat.penalty_mat = [pen[:, par_to_keep] for pen in xovi_amat.penalty_mat]
 
@@ -1240,6 +1241,10 @@ def main(arg):
    if AccOpt.get("Abmat_infile") == "":
       print("Load xovers from datasets")
       xov_cmb = load_combine(datasets, vecopts)
+      if xov_cmb == []:
+         print("*** Accumxov.main: No crossovers to process.")
+         exit(2)
+
       end = time.time()
       print("Xovers loaded in ", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 

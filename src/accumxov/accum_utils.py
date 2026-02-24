@@ -462,6 +462,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
    elif sol4_glo == [None]:
       sol4_glo = []
 
+   sol4_orb = [p for p in sol4_orb if p in track_names]
    sol4_pars = sorted(sol4_orb) + sorted(sol4_glo)
 
    if len(sol4_pars) > 0:
