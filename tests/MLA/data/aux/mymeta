@@ -1,6 +1,6 @@
 \begindata
 
-PATH_VALUES  = ( '../examples/MLA/data/aux/kernels' )
+PATH_VALUES  = ( '/home/wdesprat/nobackup/pyxover/examples/MLA/data/aux/kernels' )
 
 PATH_SYMBOLS = ( 'A' )
 

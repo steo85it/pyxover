@@ -4,8 +4,12 @@ import unittest
 import numpy as np
 import json
 import pandas as pd
+from pandas.testing import assert_frame_equal
 import scipy.sparse as sp
 import sys
+import datetime as dt
+import glob
+import shutil
 
 # Ensure Python can find the `src` package
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -19,6 +23,7 @@ from config import XovOpt
 from accumxov import AccumXov
 from accumxov.Amat import Amat
 from pygeoloc import PyGeoloc
+from pyaltsim import PyAltSim
 from pyxover import PyXover
 from xovutil.units import deg2as
 
@@ -28,7 +33,7 @@ class MlaXoverTest(unittest.TestCase):
     def setUp(self) -> None:
 
         # update paths and check options
-        XovOpt.set("basedir", 'MLA/data/')
+        XovOpt.set("basedir", '/home/wdesprat/nobackup/pyxover/tests/MLA/data/')
         XovOpt.set("instrument", 'MLA')
         XovOpt.set("spice_meta", 'mymeta')
         XovOpt.set("local", False)
@@ -127,17 +132,64 @@ class MlaXoverTest(unittest.TestCase):
              
        with open(path + "xovers_metadata.json", "w") as f:
          json.dump(metadata, f)
+
+    def test_sim_pipeline(self):
+        # os.chdir('tests/')
+
+        # mirror the example workflow: run_pyAltSim=True, grid=False
+        XovOpt.set("partials", False)
+        XovOpt.set("parallel", False)
+        XovOpt.set("new_illumNG", True)
+        XovOpt.set("apply_topo", False)
+        XovOpt.set("small_scale_topo", False)
+        XovOpt.set("range_noise", False)
+        XovOpt.set("sampling_rate", 1)
+        XovOpt.set("resopt", 3)
+        XovOpt.set("amplopt", 20)
+        XovOpt.check_consistency()
+
+        # small window to keep the test light
+        d_first = dt.datetime(2012, 1, 1, 10, 15, 0)
+        d_last = dt.datetime(2012, 1, 1, 11, 15, 0)
+        out_folder = 'SIM_12/BS1/'
+        outdir = XovOpt.get("rawdir") + out_folder
+
+        # clean previous outputs
+        if os.path.exists(outdir):
+            shutil.rmtree(outdir)
+
+        PyAltSim.main([XovOpt.get("amplopt"), XovOpt.get("resopt"), out_folder, d_first, d_last, XovOpt.to_dict()])
+
+        out_file = os.path.join(outdir, "MLASIMRDR1201011020.TAB")
+        self.assertTrue(os.path.exists(out_file), f"Expected output not found: {out_file}")
+
+        ref_file = os.path.join(
+            "/home/wdesprat/nobackup/pyxover/tests/MLA/ref/raw/MLASIMRDR1201011020.TAB"
+        )
+        self.assertTrue(os.path.exists(ref_file), f"Reference file not found: {ref_file}")
+
+        df_out = pd.read_csv(out_file, skipinitialspace=True)
+        df_ref = pd.read_csv(ref_file, skipinitialspace=True)
+
+        self.assertGreater(len(df_out), 0, "Simulated file has no rows")
+        self.assertGreater(len(df_ref), 0, "Reference file has no rows")
+        self.assertEqual(df_out.columns.tolist(), df_ref.columns.tolist())
+
+        # allow minor numerical noise
+        df_out = df_out.round(6)
+        df_ref = df_ref.round(6)
+        assert_frame_equal(df_out, df_ref, check_dtype=False)
        
     def test_proc_pipeline(self):
        
-        os.chdir('tests/')
+        # os.chdir('tests/')
         
         id = 'BS0'
         iter = 0
         in_folder = f'{id}/'
         out_folder = f'{id}_{iter}/'
         gtrack_dirs = out_folder + 'gtrack_'
-        ref_folder = f'{XovOpt.get("instrument")}/ref/'
+        ref_folder = f'/home/wdesprat/nobackup/pyxover/tests/{XovOpt.get("instrument")}/ref/'
         
         # run full pipeline on a few MLA test data
         PyGeoloc.main(['1201', 'SIM_12/' + in_folder, gtrack_dirs + '12', '', iter, XovOpt.to_dict()])
