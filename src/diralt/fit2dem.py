@@ -16,26 +16,27 @@ import sys
 
 import numpy as np
 import pandas as pd
-from scipy.constants import c as clight
 from scipy.sparse.linalg import lsqr
 import matplotlib.pyplot as plt
 
-from pyaltsim.PyAltSim import sim_gtrack
 from xovutil.dem_util import get_demz_tiff, get_demz_grd
-# from geoloc_resid import lomb, fit_track_to_dem, import_dem, get_demz_at, read_dem
-from pygeoloc.ground_track import gtrack
+# from geoloc_resid import read_dem
 from config import XovOpt
 
-from xovutil import astro_trans as astr, pickleIO
 import spiceypy as spice
 from scipy.interpolate import RectBivariateSpline
 from scipy.sparse import csr_matrix
 
 from pyaltsim import perlin2d
-from diralt.geoloc_resid import lomb, fit_track_to_dem, import_dem, get_demz_at, lstsq_demfit, get_demres_full
+from diralt.geoloc_resid import lomb, fit_track_to_dem, import_dem, get_demz_at
 from pygeoloc.ground_track import gtrack
 from config import XovOpt
 
+# DEFAULT_DEM = "/home/sberton2/tmp/run-DEM-final.tif"
+# DEFAULT_DEM = "HDEM_64.GRD"
+DEFAULT_DEM = "/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD"
+DEFAULT_SPICE_REMOTE = "/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def"
+TRACK_GLOB_TEMPLATE = "sim/{exp}/{rghn}/gtrack_{ym2}/gtrack_{ym}*.pkl"
 
 #
 # def import_dem(filein):
@@ -144,15 +145,10 @@ def extract_dRvsLAT(fil,file_dem):
         np.set_printoptions(suppress=True,
                             formatter={'float_kind': '{:0.3f}'.format})
         track.interpolate()
-        # exit()
 
     df_data = track.ladata_df.copy()
     pd.set_option('display.float_format', lambda x: '%.3f' % x)
-    # print(df_.ET_TX.round(3))
-    # print(df_data.ET_TX.round(3))
 
-    # print(df_data.columns)
-    # print(df_data)
     mask = (df_data['LAT'] >= 82) & (df_data['LAT'] <= 84) & (df_data['chn'] == 0) & (df_data['LON'] >= 120) & (df_data['LON'] <= 137)
     df_data = df_data.loc[mask]
 
@@ -161,22 +157,17 @@ def extract_dRvsLAT(fil,file_dem):
         return None
 
     # gmt_in = 'gmt_' + track.name + '.in'
-    # print(len(r_dem),len(df_data.LAT.values),len(texture_noise),len(gmt_in))
     # df_data = df_data.loc[df_data['ET_TX'].round(3).isin(df_['ET_TX'].round(3).values)]
     # r_dem = read_dem(gmt_in, df_data.LAT.values, df_data.LON.values)
     lattmp = df_data.LAT.values
     lontmp = df_data.LON.values
     lontmp[lontmp < 0] += 360
 
-    # print(dem_xarr)
     if file_dem.split('.')[-1] == 'GRD': # to read grd/netcdf files
         r_dem = get_demz_grd(file_dem, lontmp, lattmp) * 1.e3 #
     elif file_dem.split('.')[-1] == 'tif': #'TIF': # to read geotiffs usgs
         r_dem = np.squeeze(get_demz_tiff(file_dem, lontmp, lattmp)) * 1.e3
-    # print(r_dem)
-    # exit()
     # r_dem = get_demz_at(dem_xarr, lattmp, lontmp) * 1.e3
-    # print(r_dem)
 
     df_data.loc[:, 'altdiff_dem_data'] = df_data.R.values - (r_dem)
     dr_apriori = df_data.loc[:, 'altdiff_dem_data']
@@ -184,7 +175,6 @@ def extract_dRvsLAT(fil,file_dem):
 
     # Fit track to DEM
     dr, dr_pre, ACRcorr, df_data = fit_track_to_dem(df_data,dem_file=file_dem)
-    # print(np.max(np.abs(dr)))
     # df_data.loc[:, 'altdiff_dem'] = dr
     # exit()
     # df_data.loc[:, 'dr_apriori'] = dr_pre
@@ -199,11 +189,6 @@ def extract_dRvsLAT(fil,file_dem):
     print("Saving to ",fil)
     track.save(fil)
 
-    # print(df_data)
-    # # print(dr_apriori)
-    # exit()
-    # print(df_data.columns)
-
     return df_data[['ET_TX', 'orbID', 'LAT', 'LON', 'dR_tid', 'dr_post','dr_pre']], ACRcorr #, 'dr/dA', 'dr/dC', 'dr/dR', 'dr/dh2']]
 
 
@@ -212,7 +197,6 @@ def create_amat_csr(tid_df):
 
     # parOrb_xy = list(set([part.split('_')[0] for part in sorted(self.xov.parOrb_xy)]))
     # parOrb_xy = list(set([part for part in sorted(self.xov.parOrb_xy)]))
-    # print(parOrb_xy)
     # parGlo_xy = sorted(self.xov.parGlo_xy)
     # xovers_df.fillna(0, inplace=True)
     parOrb_xy = ['dr/dA', 'dr/dC', 'dr/dR']
@@ -224,7 +208,6 @@ def create_amat_csr(tid_df):
     # select cols
     OrbParFull = [x + '_' + y.split('_')[0] for x in orb_unique for y in parOrb_xy]
     Amat_col = list(set(OrbParFull)) + parGlo_xy
-    # print(Amat_col)
 
     dict_ = dict(zip(Amat_col, range(len(Amat_col))))
     print(dict_)
@@ -238,36 +221,24 @@ def create_amat_csr(tid_df):
 
     partder = tid_df.loc[:, parOrb_xy].values
     orb_loc = tid_df.loc[:, 'orbID'].values
-    #
-    # print([str(x) + '_' + str(y).split('_')[0] for x in orb_loc for y in parOrb_xy][:3])
+
     col = np.array(
         list(map(dict_.get, [str(x) + '_' + str(y).split('_')[0] for x in orb_loc for y in parOrb_xy])))
-    # print("cols",col)
 
     # row = np.repeat(xovers_df.xOvID.values, len(par_xy_loc))
     row = np.repeat(tid_df.index.values, len(parOrb_xy))
-    # print("rows",row)
     val = partder.flatten()
-    # print("vals", val)
-    # print(tid_df)
-    # exit()
 
-    # print(len(orb_loc), len(Amat_col))
     csr.append(csr_matrix((val, (row, col)), dtype=np.float32, shape=(len(orb_loc), len(Amat_col))))
     csr.append(csr_matrix((tid_df['dr/dh2'].values, (tid_df.index.values, np.repeat(dict_['dr/dh2'], len(tid_df)))),
                           dtype=np.float32, shape=(len(orb_loc), len(Amat_col))))
-    # print(csr)
 
     csr = sum(csr)
     print(csr)
-    # print("shape csr",np.shape(csr.todense()))
-    # print(list([np.array(map({v: k for k, v in dict_.items()}.get, csr.indices)), csr.data]))
-    # print(sys.getsizeof(csr))
 
     # Save A and b matrix/array for least square (Ax = b)
     spA = csr
     b = tid_df.altdiff_dem_data.values
-    # print(b)
 
     sol = lsqr(spA, b, damp=10, show=False, iter_lim=5000, atol=1.e-9, btol=1.e-9, calc_var=True)
     print(sol)
@@ -286,6 +257,77 @@ def create_amat_csr(tid_df):
     print("h2 solution is 0.8 (a priori)+", sol[0][-1], "with error ", sol[-1][-1])
 
     return sol
+
+
+def get_demres_full(dem_file, lon, lat, r):
+
+    r = r - XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
+    if dem_file.split('.')[-1] == 'GRD': # to read grd/netcdf files
+        radius = get_demz_grd(dem_file, lon, lat) * 1.e3 #
+    elif dem_file.split('.')[-1] == 'tif': #'TIF': # to read geotiffs usgs
+        radius = np.squeeze(get_demz_tiff(dem_file, lon, lat)) * 1.e3
+
+    # compute residual between "real" elevation and geoloc (based on a priori TOF)
+    dr = (r - radius)
+
+    return dr
+
+def fit_track_to_dem(df_in,dem_file):
+
+
+
+    df_ = df_in.copy()
+
+    if len(df_) > 0:
+
+        track = sim_gtrack(XovOpt.get("vecopts"), orbID=df_.orbID.values[0])
+        orb_unique = np.sort(list(set(df_.orbID.values)), axis=0)
+
+        
+        from scipy.optimize import fmin_powell, minimize
+
+        print("Numerical sol:")
+        print(track.name)
+
+        # Preliminary data cleaning
+        dorb = np.array([0., 0., 0.]) #, 0., 0.])  # ,0,0,0]  # range(-10,10,1) #np.array([10.3, 0.7, 10.8, 11.9, 1.2])
+        lon, lat, t
+        dr = get_demres_full(dem_file, lon, lat, r)
+        print("pre-clean (len, max, rms): ", len(dr), np.max(dr), np.round(np.sqrt(np.mean(dr ** 2)),2))
+
+        df_.loc[:, 'dr_dem'] = dr
+        df_ = df_[df_['dr_dem'] < 1.e3]
+        df_ = mad_clean(df_, 'dr_dem')
+
+        # dr_pre, dummy = get_demres_full(dorb, track, df_, dem_file)
+        dr_pre = get_demres_full(dem_file, lon, lat, r)
+        print("pre-fit (len, max, rms): ", len(dr_pre), np.round(np.max(dr_pre),2), np.round(np.sqrt(np.mean(dr_pre ** 2)),2))
+
+        # Fit orbit corrections to DEM
+        sol = minimize(get_demres, dorb, args=(track,df_,dem_file), method='SLSQP', #'L-BFGS-B', #'Nelder-Mead', #
+                           bounds=[(-0.5,0.5),(-0.5,0.5),(-0.1,0.1)], #,(-0.5,0.5),(-0.5,0.5)], #,(-1e-2,1e-2),(-1e-2,1e-2),(-1e-2,1e-2)],
+                          jac='2-point',
+                          options={'disp': False, 'eps': 0.0005, 'ftol': 1.e-6})
+
+        # Convert solution to meters
+        dorb = sol.x
+        dorb[:3] *= 1000.
+        dr_post, dr_tidal = get_demres_full(dorb, track, df_, dem_file)
+        df_.loc[:, 'altdiff_dem_data'] = dr_post
+        df_.loc[:, 'dR_tid'] = dr_tidal
+        df_ = mad_clean(df_, 'altdiff_dem_data')
+        dr_post = df_['altdiff_dem_data'].values
+        print("post-fit (len, max, rms): ", len(dr_post), np.round(np.max(dr_post),2), np.round(np.sqrt(np.mean(dr_post ** 2)),2))
+        print("rms for",track.name,"is", sol.fun, "meters for dACR =", np.round(dorb,2), " meters.")
+
+
+        df_ = df_.rename(columns={'altdiff_dem_data':'dr_post','dr_dem':'dr_pre'})
+
+        return dr_post, dr_pre, dorb, df_
+
+    else:
+        print("No data in ", fil)
+
 
 
 if __name__ == '__main__':
@@ -355,22 +397,15 @@ if __name__ == '__main__':
         tid_df = pd.DataFrame()
         if XovOpt.get("local"):
             for f in glob.glob(XovOpt.get("tmpdir") + "tid_" + str(exp) + "_????.pkl"):
-                # print(f)
-                # print(pd.read_pickle(f))
                 tid_df = tid_df.append(pd.read_pickle(f), ignore_index=True)
         else:
             for f in glob.glob(XovOpt.get("tmpdir") + "tid_" + str(exp) + "_12??.pkl"):
                 print("Processing", f)
                 tid_df = tid_df.append(pd.read_pickle(f), ignore_index=True)
 
-        # print(tid_df)
         # tid_df = pd.concat(tid_df)
         # tid_df.columns = tid_df.columns.map(''.join)
         tid_df = tid_df.fillna(0).sort_values(by=['ET_TX']).reset_index(drop=True)
-        #
-        # print(tid_df)
-        # exit()
-
         print(tid_df.columns)
 
         amat = tid_df[['altdiff_dem_data', 'dr/dA',
@@ -380,28 +415,14 @@ if __name__ == '__main__':
 
     else:
 
-        if XovOpt.get("local"):
-            # dem = "/home/sberton2/Downloads/Mercury_Messenger_USGS_DEM_NPole_665m_v2.tif" #
-            if dem_opt == 'sfs':
-                dem = "/home/sberton2/tmp/run-DEM-final.tif" #
-            elif dem_opt == 'hdem':
-                dem = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-        else:
-            dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/HDEM_64.GRD'  # MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+        dem = DEFAULT_DEM
         # dem_xarr = import_dem(dem)
 
-        if XovOpt.get("local"):
-            spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
-        else:
-            spice.furnsh(['/explore/nobackup/people/emazaric/MESSENGER/data/furnsh/furnsh.MESSENGER.def'])
-            # ,
-            # '/explore/nobackup/people/sberton2/MLA/aux/spk/Genovaetal_DE432_Mercury_05min.bsp',
-            # '/explore/nobackup/people/sberton2/MLA/aux/spk/MSGR_HGM008_INTGCB.bsp'])
+        spice.furnsh(f'{XovOpt.get("auxdir")}{XovOpt.get("spice_meta")}')
 
-        if XovOpt.get("local"):
-            path = XovOpt.get("outdir") + 'sim/' + exp + '/' + rghn + '/gtrack_' + str(ym)[:2] + '/gtrack_' + str(ym) + '*.pkl'
-        else:
-            path = XovOpt.get("outdir") + 'sim/' + exp + '/' + rghn + '/gtrack_' + str(ym)[:2] + '/gtrack_' + str(ym) + '*.pkl'
+        track_glob = TRACK_GLOB_TEMPLATE.format(exp=exp, rghn=rghn,
+                                                ym2=str(ym)[:2], ym=str(ym))
+        path = os.path.join(XovOpt.get("outdir"), track_glob)
         # path = '/home/sberton2/Works/NASA/Mercury_tides/out/sim/'+ spk + '/3res_20amp/gtrack_*' + '/' + '*.pkl'
 
         allFiles = glob.glob(os.path.join(path))
@@ -450,7 +471,6 @@ if __name__ == '__main__':
             ACRcorr = pd.read_pickle(XovOpt.get("tmpdir") + 'mla_corr_' + dem_opt + '.pkl')
             df = pd.read_pickle(XovOpt.get("tmpdir") + 'mla_res_' + dem_opt + '.pkl')
 
-        # print(df.columns)
         df = df.loc[:,['LON','LAT','altdiff_dem_data','dr_pre','dr_post']].reset_index()
 
         fig, axs = plt.subplots(4)
@@ -497,4 +517,3 @@ if __name__ == '__main__':
 
     end = time.time()
     print('----- Runtime TidTest tot = ' + str(end - start) + ' sec -----' + str((end - start) / 60.) + ' min -----')
-
