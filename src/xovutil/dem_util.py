@@ -10,6 +10,7 @@
 import os
 import time
 import logging
+import subprocess
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -137,6 +138,158 @@ def get_demz_grd(filin, lon, lat):
     da_interp = da.interp(lon=lon, lat=lat)
 
     return da_interp.z.values
+
+
+def _get_geotiff_masks(df):
+    geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
+               'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
+               'SP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif'}
+
+    masks = {'NP': (df['LAT'] >= 70),# NP (MLA DEM)
+             'global': (df['LAT'] < 70) & (df['LAT'] > -70), # EQUAT (USGS)
+             'SP': (df['LAT'] <= -70)} # SP (USGS)
+    return geotiff, masks
+
+
+def get_topoelev(track, lattmp, lontmp):
+
+    if XovOpt.get("apply_topo"):
+        # st = time.time()
+        
+        # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
+        gmt = False
+
+        if XovOpt.get("instrument") in ['BELA', 'CALA', 'MLA']:
+            df = pd.DataFrame(zip(lattmp, lontmp), columns=['LAT', 'LON'])  # .reset_index()
+            # nice but not broadcasted... slow
+            # df['r_dem'] = df.apply(lambda x: get_demz_tiff(geotiff[0],lat=x.LAT,lon=x.LON) if x.LAT > 30
+            #                         else get_demz_grd(filin=dem,lon=x.LON,lat=x.LAT), axis=1)
+
+            geotiff, masks = _get_geotiff_masks(df)
+
+            df['r_dem'] = 0
+            for name, mask in masks.items():
+                if len(df.loc[mask, :]) > 0:
+                    df.loc[mask, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[name],
+                                                                     lon=df.loc[mask, 'LON'].values,
+                                                                     lat=df.loc[mask, 'LAT'].values).T)
+
+            r_dem = df.r_dem.values
+            if np.isnan(r_dem).any():
+                print("r_dem is nan")
+
+        elif (not gmt) and (XovOpt.get("instrument") == 'LOLA'):
+
+            if track.dem is None:
+                if not XovOpt.get("local"):
+                    dem_path = track.slewdir + "/SLDEM2015_512PPD.GRD"
+                else:
+                    dem_path = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+
+                track.dem = import_dem(filein=dem_path, outdir=f"{track.slewdir}/")
+            else:
+                logging.info("DEM already read")
+                pass
+        else:
+            print("Using grdtrack")
+
+        # GMT case not really used
+        if gmt and XovOpt.get("instrument") == 'LOLA':
+            gmt_in = 'gmt_' + track.name + '.in'
+            if os.path.exists('tmp/' + gmt_in):
+                os.remove('tmp/' + gmt_in)
+
+            np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp, track.ladata_df.seqid.values)))
+
+            if XovOpt.get("local") == 0:
+                if XovOpt.get("instrument") == 'LOLA':
+                    if XovOpt.get("local_dem"):
+                        dem = track.slewdir + "/SLDEM2015_512PPD.GRD"
+                    else:
+                        dem = "/explore/nobackup/projects/pgda/LOLA/data/LOLA_GDR/CYLINDRICAL/raw/LDEM_4.GRD"
+                else:
+                    dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
+            #             r_dem = subprocess.check_output(
+            #                 ['grdtrack', gmt_in,
+            #                  '-G' + dem],
+            #                 universal_newlines=True, cwd='tmp')
+            #             r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+            # # np.savetxt('gmt_'+track.name+'.out', r_dem)
+
+            else:
+                dem = XovOpt.get("instrument") + 'SLDEM2015_512PPD.GRD'
+                # r_dem = np.loadtxt('tmp/gmt_' + track.name + '.out')
+
+            # print(['grdtrack', gmt_in, '-G' + dem,'-R0.0/360.0/-50.0/50.0'])
+            if XovOpt.get("local_dem"):
+                r_dem = subprocess.check_output(['grdtrack', gmt_in, '-G' + dem],
+                                                universal_newlines=True, cwd='tmp')
+            else:  # replace -RLON0/LONMAX/LAT0/LATMAX with appropriate bbox
+                r_dem = subprocess.check_output(['grdtrack', gmt_in, '-G' + dem, '-R0.0/360.0/-50.0/50.0'],
+                                                universal_newlines=True, cwd='tmp')
+            if len(r_dem) == 0:
+                print("Weird empty grdtrack output, please check")
+                exit()
+
+            # r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+            r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 4)[:, 2:]
+
+            df_ = pd.DataFrame(r_dem, columns=['seqid', 'elevation']).set_index('seqid')
+            new_index = track.ladata_df.seqid.values
+            r_dem = np.transpose(df_.reindex(new_index).fillna(0).values).flatten()
+
+        elif gmt and XovOpt.get("instrument") != 'BELA':
+            gmt_in = 'gmt_' + track.name + '.in'
+            if os.path.exists('tmp/' + gmt_in):
+                os.remove('tmp/' + gmt_in)
+            np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp)))
+
+            r_dem = subprocess.check_output(['grdtrack', gmt_in, '-G' + dem],
+                                            universal_newlines=True, cwd='tmp')
+            r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
+
+        elif not (XovOpt.get("instrument") in ['BELA', 'CALA', 'MLA']):
+            # print("## Using weird combination (not BELA).")
+            lontmp[lontmp < 0] += 360.
+
+            r_dem = get_demz_at(track.dem, lattmp, lontmp)
+
+            # Works but slower (interpolates each time, could be improved by https://github.com/JiaweiZhuang/xESMF/issues/24)
+            # radius_xarr = dem_xarr.interp(lon=xr.DataArray(lontmp, dims='z'), lat= xr.DataArray(lattmp, dims='z')).z.values * 1.e3 #
+
+        # Convert to meters (if DEM given in km)
+        r_dem *= 1.e3
+    else:
+        r_dem = 0.
+
+    # TODO replace with "small_scale_topo/texture_noise" option
+    if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
+        texture_noise = track.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
+    else:
+        texture_noise = 0.
+
+    # update Rmerc with r_dem/text (meters)
+    radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
+
+    return radius
+
+
+def get_toposlope(track):
+    
+    df = pd.DataFrame(zip(track.ladata_df['LAT'], track.ladata_df['LON']), columns=['LAT', 'LON'])
+    df['slope'] = 0
+
+    if XovOpt.get("instrument") in ['BELA', 'CALA', 'MLA']:
+        
+        geotiff, masks = _get_geotiff_masks(df)
+          
+        for name, mask in masks.items():
+            if len(df.loc[mask, :]) > 0:
+                df.loc[mask,'slope'] = get_demslope_tiff(geotiff[name],
+                                                         df.loc[mask, 'LON'].values,
+                                                         df.loc[mask, 'LAT'].values)      
+
+    return df.slope.values
 
 
 if __name__ == '__main__':

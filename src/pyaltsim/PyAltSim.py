@@ -9,8 +9,8 @@ from fileinput import filename
 import warnings
 import logging
 
-from pyaltsim.prepro import prepro_ilmNG, prepro_BELA_sim
-from xovutil.dem_util import get_demz_at, import_dem, get_demz_tiff, get_demslope_tiff
+from pyaltsim.prepro import load_illumng_predictions, build_bela_sim_inputs
+from xovutil.dem_util import get_topoelev, get_toposlope
 from xovutil.icrf2pbf import icrf2pbf
 from xovutil.orient_setup import orient_setup
 
@@ -44,10 +44,45 @@ start = time.time()
 
 
 ##############################################
+def build_rdr_df(ladata_df):
+   """
+   Convert geolocated altimetry data into the RDR-like dataframe.
+   """
+   df_ = ladata_df.copy()
+
+   # only select nadir data
+   # df_ = df_[df_.loc[:,'offnadir']<5]
+
+   # mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime', 'MET', 'frm',
+   #                'chn', 'Pulswd', 'thrsh', 'gain', '1way_range', 'Emiss', 'TXmJ',
+   #                'UTC', 'TOF_ns_ET', 'Sat_long', 'Sat_lat', 'Sat_alt', 'Offnad', 'Phase',
+   #                'Sol_inc', 'SCRNGE', 'seqid']
+   mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime',
+                  'chn', 'UTC', 'TOF_ns_ET', 'seqid']
+
+   # assign "bad chn" to non converged observations
+   df_['chn'] = 0
+   df_.loc[~df_['converged'], 'chn'] = 10
+
+   # update other columns for compatibility with real data format
+   df_['TOF_ns_ET'] = np.round(df_['TOF'].values * 1.e9, 10)
+   df_['UTC'] = pd.to_datetime(df_['ET_TX'], unit='s',
+                               origin=pd.Timestamp('2000-01-01T12:00:00'))
+
+   df_ = df_.rename(columns={'ET_TX': 'EphemerisTime',
+                             'LON': 'geoc_long', 'LAT': 'geoc_lat', 'R': 'altitude'})
+   df_ = df_.reset_index(drop=True)
+   # match legacy "RDR" column order to real data tables
+   rdr_df = df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
+                'UTC', 'TOF_ns_ET', 'chn', 'seqid']].reindex(columns=mlardr_cols)
+   # legacy path (kept for reference): concat/append to a pre-made empty df
+
+   return rdr_df
+
+
 class sim_gtrack(gtrack):
    def __init__(self, opts, orbID):
       gtrack.__init__(self, opts)
-      self.orbID = orbID
       self.name = str(orbID)
       self.outdir = None
       self.slewdir = None
@@ -81,7 +116,7 @@ class sim_gtrack(gtrack):
       # actual processing
       self.lt_topo_corr(df=df_)
       print("lt_topo_corr(df=df_) done")
-      if self.ladata_df.size == 0:
+      if self.ladata_df.empty:
          print("### PyAltsim.setup: ladata_df is empty")
          return
 
@@ -93,7 +128,7 @@ class sim_gtrack(gtrack):
             self.add_range_noise(df_, XovOpt.get("range_noise_mean_std")[0],
                                  XovOpt.get("range_noise_mean_std")[1])
 
-      self.setup_rdr()
+      self.rdr_df = build_rdr_df(self.ladata_df)
 
    # @staticmethod
    def add_range_noise(self, df_, mean=0., std=0.2):
@@ -126,7 +161,7 @@ class sim_gtrack(gtrack):
       mod_rerr = np.linspace(-10,10,100)  # [m]
       mod_slp  = np.linspace(0,49,50)     # [degree]
       
-      slopes = self.get_toposlope()
+      slopes = get_toposlope(self)
    
       index_a = [(np.abs(mod_alt*1e3 - alt)).argmin() for alt in df_['altitude']]
       index_s = [(np.abs(mod_slp - slp)).argmin() for slp in slopes]
@@ -136,6 +171,15 @@ class sim_gtrack(gtrack):
       tof_noise = np.array(range_noise) / clight
       df_.loc[:, 'TOF'] += tof_noise
       self.ladata_df.loc[:, 'TOF'] += tof_noise
+   
+   def _compute_offnadir(self, rngvec, scxyz_tx_pbf):
+      # compute correction for off-nadir observation (with check to avoid numerical issues on arccos)
+      rngvec_normed = rngvec / np.linalg.norm(rngvec, axis=1)[:, np.newaxis]
+      scxyz_tx_pbf_normed = np.array(scxyz_tx_pbf) / np.linalg.norm(scxyz_tx_pbf, axis=1)[:, np.newaxis]
+      cosang = np.einsum('ij,ij->i', rngvec_normed, -scxyz_tx_pbf_normed)
+      if np.max(np.abs(cosang)) <= 1:
+         return np.arccos(cosang)
+      return 0.
 
    def lt_topo_corr(self, df, itmax=50, tol=5.e-2):
       """
@@ -162,19 +206,19 @@ class sim_gtrack(gtrack):
          
          # Remove nan
          self.ladata_df = self.ladata_df.dropna(subset=['LON'])
-         if self.ladata_df.size == 0:
+         if self.ladata_df.empty:
             print("### lt_topo_corr: ladata_df is empty")
             return
          lontmp, lattmp, rtmp = np.transpose(self.ladata_df[['LON', 'LAT', 'R']].values)
          r_bc = rtmp + XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3
 
-         if np.isnan(np.sum(lattmp)):
+         if np.isnan(lattmp).any():
             print("lattmp is nan")
-         if np.isnan(np.sum(lontmp)):
+         if np.isnan(lontmp).any():
             print("lontmp is nan")
          # use lon and lat to get "real" elevation from map
-         radius = self.get_topoelev(lattmp, lontmp)
-         if np.isnan(np.sum(radius)):
+         radius = get_topoelev(self, lattmp, lontmp)
+         if np.isnan(radius).any():
             print("radius is nan")
 
          # use "real" elevation to get bounce point coordinates
@@ -185,15 +229,7 @@ class sim_gtrack(gtrack):
          scxyz_tx_pbf = self.get_sc_pos_bf(self.ladata_df)
          # compute range btw probe@TX and bounce point@BC (no BC epoch needed, all coord planet fixed)
          rngvec = (bcxyz_pbf - scxyz_tx_pbf)
-         # compute correction for off-nadir observation
-         rngvec_normed = rngvec / np.linalg.norm(rngvec, axis=1)[:, np.newaxis]
-         scxyz_tx_pbf_normed = np.array(scxyz_tx_pbf) / np.linalg.norm(scxyz_tx_pbf, axis=1)[:, np.newaxis]
-         # print(np.max(np.abs(np.einsum('ij,ij->i', rngvec_normed, -scxyz_tx_pbf_normed))))
-         # compute correction for off-nadir observation (with check to avoid numerical issues on arccos)
-         if np.max(np.abs(np.einsum('ij,ij->i', rngvec_normed, -scxyz_tx_pbf_normed))) <= 1:
-            offndr = np.arccos(np.einsum('ij,ij->i', rngvec_normed, -scxyz_tx_pbf_normed))
-         else:
-            offndr = 0.
+         offndr = self._compute_offnadir(rngvec, scxyz_tx_pbf)
          # offndr = np.arccos(np.einsum('ij,ij->i', rngvec, -scxyz_tx_pbf) /
          #                    np.linalg.norm(rngvec, axis=1) /
          #                    np.linalg.norm(scxyz_tx_pbf, axis=1))
@@ -249,160 +285,8 @@ class sim_gtrack(gtrack):
             # update global df used in geoloc at next iteration (TOF)
             # df = df[df.loc[:, 'offnadir'] < 5]
             # only operate on non-converged epochs for next iteration
-            self.ladata_df = df[df.loc[:, 'converged'] == False].copy()
+            self.ladata_df = df.loc[~df['converged']].copy()
          # self.ladata_df = df.copy()
-
-   def get_topoelev(self, lattmp, lontmp):
-
-      if XovOpt.get("apply_topo"):
-         # st = time.time()
-         
-         # if gmt==False don't use grdtrack, but interpolate once using xarray and store interp
-         gmt = False
-
-         if XovOpt.get("instrument") in ['BELA', 'CALA', 'MLA']:
-            geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                       'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
-                       'SP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif'}
-
-            df = pd.DataFrame(zip(lattmp, lontmp), columns=['LAT', 'LON'])  # .reset_index()
-            # nice but not broadcasted... slow
-            # df['r_dem'] = df.apply(lambda x: get_demz_tiff(geotiff[0],lat=x.LAT,lon=x.LON) if x.LAT > 30
-            #                         else get_demz_grd(filin=dem,lon=x.LON,lat=x.LAT), axis=1)
-
-            masks = {'NP': (df['LAT'] >= 70),# NP (MLA DEM)
-                     'global': (df['LAT'] < 70) & (df['LAT'] > -70), # EQUAT (USGS)
-                     'SP': (df['LAT'] <= -70)} # SP (USGS)
-
-            df['r_dem'] = 0
-            for name, mask in masks.items():
-               if len(df.loc[mask, :]) > 0:
-                  df.loc[mask, 'r_dem'] = np.squeeze(get_demz_tiff(filin=geotiff[name],
-                                                                   lon=df.loc[mask, 'LON'].values,
-                                                                   lat=df.loc[mask, 'LAT'].values).T)
-
-            r_dem = df.r_dem.values
-            if np.isnan(np.sum(r_dem)):
-               print("r_dem is nan")
-
-         elif (not gmt) and (XovOpt.get("instrument") == 'LOLA'):
-
-            if self.dem == None:
-               if not XovOpt.get("local"):
-                  dem_path = self.slewdir + "/SLDEM2015_512PPD.GRD"
-               else:
-                  dem_path = XovOpt.get("auxdir") + 'HDEM_64.GRD'  # ''MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-
-               self.dem = import_dem(filein=dem_path, outdir=f"{self.slewdir}/")
-            else:
-               logging.info("DEM already read")
-               pass
-         else:
-            print("Using grdtrack")
-
-         # GMT case not really used
-         if gmt and XovOpt.get("instrument") == 'LOLA':
-            gmt_in = 'gmt_' + self.name + '.in'
-            if os.path.exists('tmp/' + gmt_in):
-               os.remove('tmp/' + gmt_in)
-
-            np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp, self.ladata_df.seqid.values)))
-
-            if XovOpt.get("local") == 0:
-               if XovOpt.get("instrument") == 'LOLA':
-                  if XovOpt.get("local_dem"):
-                     dem = self.slewdir + "/SLDEM2015_512PPD.GRD"
-                  else:
-                     dem = "/explore/nobackup/projects/pgda/LOLA/data/LOLA_GDR/CYLINDRICAL/raw/LDEM_4.GRD"
-               else:
-                  dem = '/explore/nobackup/people/emazaric/MESSENGER/data/GDR/MSGR_DEM_USG_SC_I_V02_rescaledKM_ref2440km_32ppd_HgM008frame.GRD'
-            #             r_dem = subprocess.check_output(
-            #                 ['grdtrack', gmt_in,
-            #                  '-G' + dem],
-            #                 universal_newlines=True, cwd='tmp')
-            #             r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-            # # np.savetxt('gmt_'+self.name+'.out', r_dem)
-
-            else:
-               dem = XovOpt.get("instrument") + 'SLDEM2015_512PPD.GRD'
-               # r_dem = np.loadtxt('tmp/gmt_' + self.name + '.out')
-
-            # print(['grdtrack', gmt_in, '-G' + dem,'-R0.0/360.0/-50.0/50.0'])
-            if XovOpt.get("local_dem"):
-               r_dem = subprocess.check_output(['grdtrack', gmt_in, '-G' + dem],
-                                               universal_newlines=True, cwd='tmp')
-            else:  # replace -RLON0/LONMAX/LAT0/LATMAX with appropriate bbox
-               r_dem = subprocess.check_output(['grdtrack', gmt_in, '-G' + dem, '-R0.0/360.0/-50.0/50.0'],
-                                               universal_newlines=True, cwd='tmp')
-            if len(r_dem) == 0:
-               print("Weird empty grdtrack output, please check")
-               exit()
-
-            # r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-            r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 4)[:, 2:]
-
-            df_ = pd.DataFrame(r_dem, columns=['seqid', 'elevation']).set_index('seqid')
-            new_index = self.ladata_df.seqid.values
-            r_dem = np.transpose(df_.reindex(new_index).fillna(0).values).flatten()
-
-         elif gmt and XovOpt.get("instrument") != 'BELA':
-            gmt_in = 'gmt_' + self.name + '.in'
-            if os.path.exists('tmp/' + gmt_in):
-               os.remove('tmp/' + gmt_in)
-            np.savetxt('tmp/' + gmt_in, list(zip(lontmp, lattmp)))
-
-            r_dem = subprocess.check_output(['grdtrack', gmt_in, '-G' + dem],
-                                            universal_newlines=True, cwd='tmp')
-            r_dem = np.fromstring(r_dem, sep=' ').reshape(-1, 3)[:, 2]
-
-         elif not (XovOpt.get("instrument") in ['BELA', 'CALA', 'MLA']):
-            # print("## Using weird combination (not BELA).")
-            lontmp[lontmp < 0] += 360.
-
-            r_dem = get_demz_at(self.dem, lattmp, lontmp)
-
-            # Works but slower (interpolates each time, could be improved by https://github.com/JiaweiZhuang/xESMF/issues/24)
-            # radius_xarr = dem_xarr.interp(lon=xr.DataArray(lontmp, dims='z'), lat= xr.DataArray(lattmp, dims='z')).z.values * 1.e3 #
-
-         # Convert to meters (if DEM given in km)
-         r_dem *= 1.e3
-      else:
-         r_dem = 0.
-
-      # TODO replace with "small_scale_topo/texture_noise" option
-      if XovOpt.get("small_scale_topo") and XovOpt.get("instrument") != "LOLA":
-         texture_noise = self.apply_texture(np.mod(lattmp, 0.25), np.mod(lontmp, 0.25), grid=False)
-      else:
-         texture_noise = 0.
-
-      # update Rmerc with r_dem/text (meters)
-      radius = XovOpt.get("vecopts")['PLANETRADIUS'] * 1.e3 + r_dem + texture_noise
-
-      return radius
-   
-   def get_toposlope(self):
-      
-      df = pd.DataFrame(zip(self.ladata_df['LAT'], self.ladata_df['LON']), columns=['LAT', 'LON'])
-      df['slope'] = 0
-
-      if XovOpt.get("instrument") in ['BELA', 'CALA', 'MLA']:
-         
-         geotiff = {'global': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_Global_665m_v2.tif',
-                       'NP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_NPole_665m_v2_32bit.tif',
-                       'SP': f'{XovOpt.get("auxdir")}dem/Mercury_Messenger_USGS_DEM_SPole_665m_v2_32bit.tif'}
-
-                  
-         masks = {'NP': (df['LAT'] >= 70),# NP (MLA DEM)
-                  'global': (df['LAT'] < 70) & (df['LAT'] > -70), # EQUAT (USGS)
-                  'SP': (df['LAT'] <= -70)} # SP (USGS)
-           
-         for name, mask in masks.items():
-            if len(df.loc[mask, :]) > 0:
-               df.loc[mask,'slope'] = get_demslope_tiff(geotiff[name],
-                                                        df.loc[mask, 'LON'].values,
-                                                        df.loc[mask, 'LAT'].values)      
-
-      return df.slope.values
 
    def get_sc_pos_bf(self, df):
       et_tx = df.loc[:, 'ET_TX'].values
@@ -419,39 +303,6 @@ class sim_gtrack(gtrack):
       scxyz_tx_pbf = np.vstack([np.dot(tsipm[i], scpos_tx_p[i]) for i in range(0, np.size(scpos_tx_p, 0))])
 
       return scxyz_tx_pbf
-
-   def setup_rdr(self):
-      df_ = self.ladata_df.copy()
-
-      # only select nadir data
-      # df_ = df_[df_.loc[:,'offnadir']<5]
-
-      # mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime', 'MET', 'frm',
-      #                'chn', 'Pulswd', 'thrsh', 'gain', '1way_range', 'Emiss', 'TXmJ',
-      #                'UTC', 'TOF_ns_ET', 'Sat_long', 'Sat_lat', 'Sat_alt', 'Offnad', 'Phase',
-      #                'Sol_inc', 'SCRNGE', 'seqid']
-      mlardr_cols = ['geoc_long', 'geoc_lat', 'altitude', 'EphemerisTime',
-                     'chn', 'UTC', 'TOF_ns_ET', 'seqid']
-      self.rdr_df = pd.DataFrame(columns=mlardr_cols)
-
-      # assign "bad chn" to non converged observations
-      df_['chn'] = 0
-      df_.loc[df_['converged'] == False, 'chn'] = 10
-
-      # update other columns for compatibility with real data format
-      df_['TOF_ns_ET'] = np.round(df_['TOF'].values * 1.e9, 10)
-      df_['UTC'] = pd.to_datetime(df_['ET_TX'], unit='s',
-                                  origin=pd.Timestamp('2000-01-01T12:00:00'))
-
-      df_ = df_.rename(columns={'ET_TX': 'EphemerisTime',
-                                'LON': 'geoc_long', 'LAT': 'geoc_lat', 'R': 'altitude'})
-      df_ = df_.reset_index(drop=True)
-      # if XovOpt.get("local"):
-      self.rdr_df = pd.concat([self.rdr_df, df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
-                                                   'UTC', 'TOF_ns_ET', 'chn', 'seqid']]])[mlardr_cols]
-      # else:
-      #     self.rdr_df = self.rdr_df.append(df_[['EphemerisTime', 'geoc_long', 'geoc_lat', 'altitude',
-      #                                           'UTC', 'TOF_ns_ET', 'chn', 'seqid']], sort=True)[mlardr_cols]
 
 
 def sim_track(args):
@@ -486,6 +337,9 @@ def sim_track(args):
 
 def main(args):
    import datetime as dt
+   if len(args) == 0:
+      print("Usage: PyAltSim.py <ampl_in> <res_in> <dirnam_in> <epos_or_start> <opts> [<d_last> <opts>]")
+      return
 
    ampl_in   = args[0]
    res_in    = args[1]
@@ -554,6 +408,10 @@ def main(args):
          glob.glob(path_illumng + '_boresights_LOLA_ch*_*_laser2_fov_bs' + str(ampl_in) + '.inc')[0])
    ###########################
 
+   # Preprocessing contract:
+   #  - returns a dataframe of simulated/observed shot inputs
+   #  - required columns: epo_tx (seconds since J2000), altitude, orbID
+   #  - additional geometry columns (lat/lon or x/y/z) are preserved if present
    # Generate list of epochs
    #########################
    if XovOpt.get("new_illumNG") and not XovOpt.get("instrument") in ["BELA", "CALA", "MLA"]:
@@ -625,7 +483,7 @@ def main(args):
 
       # else:
       # launch illumNG directly
-      df = prepro_ilmNG(illumNGf)
+      df = load_illumng_predictions(illumNGf)
 
    else:  # if BELA/CALA
       # WD: name to be changed ...
@@ -633,7 +491,7 @@ def main(args):
 
       if XovOpt.get("new_illumNG"):
          start_BELA_prepro = time.time()
-         df = prepro_BELA_sim(epo_in=epo_tx)
+         df = build_bela_sim_inputs(epo_in=epo_tx)
          end_BELA_prepro = time.time()
          print("BELA prepro (simil illumNG) completed after ", end_BELA_prepro - start_BELA_prepro, "sec")
          df.to_pickle(illumpklf)
@@ -706,13 +564,10 @@ if __name__ == '__main__':
     print("Running PyAltsim")
 
     if len(sys.argv) == 1:
-
-        args = sys.argv[0]
-
-        main(args)
+        print("PyAltSim running with no args...")
     else:
         print("PyAltSim running with standard args...")
-        main()
+    main(sys.argv[1:])
 
     # stop clock and print runtime
     # -----------------------------

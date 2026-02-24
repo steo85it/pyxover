@@ -37,7 +37,6 @@ class gtrack:
       XovOpt.clone(opts)
       self.XovOpt = XovOpt
       self.vecopts = opts.get("vecopts")
-      self.dr_simit = None
       # Laser Altimeter Data (dataframe) ?
       self.ladata_df = None
       # self.df_input = None
