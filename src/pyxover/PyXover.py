@@ -36,7 +36,7 @@ def launch_xov(args):
    mladata     = args[3]
    xov_dir     = args[4] + 'xov/'
 
-   xov_pklname = 'xov_' + track_idA + '_' + misycmb_par[1] + '.pkl'
+   xov_pklname = 'xov_' + track_idA + '_' + misycmb_par[1]
    if XovOpt.get("new_xov"):
 
       if not os.path.isfile(xov_dir + xov_pklname) or XovOpt.get("new_xov") == 2:
@@ -216,15 +216,15 @@ def main(args_in):
          allFilesB = []
          for i in range(0, 7):
             datestr = (date0 + dt.timedelta(days=i)).strftime('%y%m%d')
-            allFilesA.extend(glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + datestr + '*.pkl')))
+            allFilesA.extend(glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + datestr + '*.json')))
             datestr = (date1 + dt.timedelta(days=i)).strftime('%y%m%d')
-            allFilesB.extend(glob.glob(os.path.join(gtrack_dirs[1], 'gtrack_' + datestr + '*.pkl')))
+            allFilesB.extend(glob.glob(os.path.join(gtrack_dirs[1], 'gtrack_' + datestr + '*.json')))
       elif XovOpt.get("monthly_sets"):
-         allFilesA = glob.glob(os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*.pkl'))
-         allFilesB = glob.glob(os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*.pkl'))
+         allFilesA = glob.glob(os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*.json'))
+         allFilesB = glob.glob(os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*.json'))
       else:
-         allFilesA = glob.glob(os.path.join(gtrack_dirs[0], '*.pkl'))
-         allFilesB = glob.glob(os.path.join(gtrack_dirs[1], '*.pkl'))
+         allFilesA = glob.glob(os.path.join(gtrack_dirs[0], '*.json'))
+         allFilesB = glob.glob(os.path.join(gtrack_dirs[1], '*.json'))
 
       if XovOpt.get('debug'):
          if misycmb_par[0] == misycmb_par[1]:
@@ -383,7 +383,7 @@ def select_useful_comb(comb, iter, outdir_in):
    outdir_old = outdir_in.replace('_' + str(iter) + '/', '_' + str(iter - 1) + '/')
    print(outdir_old, outdir_in)
    tmp = Amat(XovOpt.get("vecopts"))
-   tmp = tmp.load(glob.glob(XovOpt.get("outdir") + outdir_old + 'Abmat*.pkl')[0])
+   tmp = tmp.load(glob.glob(XovOpt.get("outdir") + outdir_old + 'Abmat*.json')[0])
 
    old_xov_orb = (tmp.xov.xovers['orbA'].map(str) + tmp.xov.xovers['orbB']).values
 

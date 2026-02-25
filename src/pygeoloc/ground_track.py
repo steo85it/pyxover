@@ -13,6 +13,7 @@ import pickle
 import re
 import time
 import gc
+import json
 
 import numpy as np
 import pandas as pd
@@ -168,49 +169,57 @@ class gtrack:
          print('No data selected for orbit ' + str(self.name))
 
    def save(self, filnam):
-      # To use after self.ladata_df is saved via save_df
-      # Ladata_df is saved separately
-      self.ladata_df = None
-      pklfile = open(filnam, "wb")
-      pickle.dump(self, pklfile, protocol=-1)
-      pklfile.close()
-
-   def save_df(self, filnam):
       # clean up useless columns
       self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dR_tid$').columns, axis='columns')
-      self.ladata_df.to_parquet(filnam, engine='pyarrow')
+      self.ladata_df.to_parquet(filnam + ".parquet", engine='pyarrow')
+      self.ladata_df = None
+      metadata = {}
+      for key, value in self.__dict__.items():
+         if key == "ladata_df":
+            continue
+         try:
+            json.dumps(value)
+            metadata[key] = value
+         except TypeError:
+            metadata[key] = repr(value)
+      with open(filnam+".json", "w", encoding="utf-8") as f:
+         json.dump(metadata, f, indent=2, ensure_ascii=False)
+
 
    # load groundtrack from file
    # @profile
    def load(self, filnam):
-      # disabling cyclic garbage collection
-      gc.disable()
-      if os.path.isfile(filnam):
-         pklfile = open(filnam, 'rb')
-         self = pickle.load(pklfile)
-         pklfile.close()
+      if filnam.endswith(".json"):
+         with open(filnam, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+         for key, value in metadata.items():
+            setattr(self, key, value)
       else:
-         if self.XovOpt.get("debug"):
-            print("No " + filnam + " found")
-         self = None
-      gc.enable()
+         # disabling cyclic garbage collection
+         gc.disable()
+         if os.path.isfile(filnam):
+            pklfile = open(filnam, 'rb')
+            self = pickle.load(pklfile)
+            pklfile.close()
+         else:
+            self = None
+         gc.enable()
       return self
 
    def load_df_from_id(self, gtrack_dir, track_id):
       self.ladata_df = None
-      for pattern in ['ladata_', '']:
-         track_fn = 'gtrack_' + pattern + track_id
-         if pattern == 'ladata_':
-            track_fn += '.parquet'
-         else:
-            track_fn += '.pkl'
+      track_fns = ["gtrack_" + track_id + ".parquet",
+                     "gtrack_ladata_" + track_id + ".parquet", 
+                     "gtrack_" + track_id + ".json"]
+      for track_fn in track_fns:
          trackfil = os.path.join(gtrack_dir, track_fn)
          if (os.path.isfile(trackfil)):
-            if pattern == 'ladata_':
+            if track_fn.endswith(".parquet"):
                self.load_df(trackfil)
                break
             else:
                self.ladata_df = self.load(trackfil).ladata_df
+               break
       return self
 
    # load ladata from file

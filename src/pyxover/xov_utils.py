@@ -189,7 +189,7 @@ def load_combine(xov_pth_,vecopts):
    # allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.pkl'))
    allFiles = []
    for xov_pth in xov_pth_:
-      allFiles = allFiles + glob.glob(os.path.join(XovOpt.get("outdir"), xov_pth, 'xov/xov_*.pkl'))
+      allFiles = allFiles + glob.glob(os.path.join(XovOpt.get("outdir"), xov_pth, 'xov/xov_*.json'))
 
    # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
    xov_list = [xov_.load(x) for x in allFiles[:]]

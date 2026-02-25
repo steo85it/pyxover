@@ -37,7 +37,7 @@ def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
    xov_tmp.store_pertubation(gtrack_dirs, cmb)
 
    # Save to file
-   xov_pklname = 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
+   xov_pklname = 'xov_' + str(cmb[0]) + '_' + str(cmb[1])  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
    xov_tmp.save(xov_dir + xov_pklname)
 
    end = time.time()
@@ -289,7 +289,7 @@ def load_mla_df(gtrack_dirs, tracks_in_xovs, columns):
    track = gtrack(XovOpt.to_dict())
    mladata = {}
 
-   # WD: Whole gtrack is not needed.ladata_df could be passed as an
+   # WD: Whole gtrack is not needed. ladata_df could be passed as an
    # argument, provided that necessary columns havent been dumped.
    for track_id in tracks_in_xovs[:]:
       track.load_df_from_id(gtrack_dirs[0], track_id)
@@ -310,7 +310,7 @@ def retrieve_xov(outdir_in, xov_iter, cmb, useful_columns):
       # read old abmat file
       if xov_iter > 0:
          outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
-         abmat = XovOpt.get("outdir") + outdir_old + 'Abmat*.pkl'
+         abmat = XovOpt.get("outdir") + outdir_old + 'Abmat*.json'
       else: # read a user defined abmat file
          abmat = XovOpt.get("import_abmat")
 

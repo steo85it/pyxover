@@ -1298,12 +1298,10 @@ def main(arg):
 
          # actually preparing weights and constraints for the solution
          prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
-         
-         Amat_fname = (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1) + '_nosol.pkl'
-         xovi_amat.save(Amat_fname)
       else:
          xovi_amat = Amat(vecopts)
-         xovi_amat = xovi_amat.load(data_pth + AccOpt.get("Abmat_infile"))
+         xovi_amat = xovi_amat.load(data_pth + AccOpt.get("Abmat_infile"),
+                                    read_matrices=False, read_matrices_nosol=True)
 
       if not AccOpt.get("get_cov_only"):
          xovi_amat.spA = None
@@ -1378,14 +1376,10 @@ def main(arg):
    elif len(ds.split('/')) > 2:
       Amat_fname = ('_').join((data_pth + 'Abmat_' + ds.split('/')[0] + '_' +
                                ds.split('/')[1]).split('_')[:-1]) + '_' + \
-                                  str(ext_iter + 1) + '_' + ds.split('/')[2] + '.pkl'
+                                  str(ext_iter + 1) + '_' + ds.split('/')[2]
    else:
-      Amat_fname = (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1) + '.pkl'
+      Amat_fname = (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1)
    print(Amat_fname)
-   # What about spA_penal, b_penal, penalty_mat_avg
-   xovi_amat.spA = None
-   xovi_amat.b = None
-   xovi_amat.weights = None
    xovi_amat.save(Amat_fname)
 
    print("AccumXov ended succesfully!")

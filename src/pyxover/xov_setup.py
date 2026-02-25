@@ -7,6 +7,7 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 18-Feb-2019
+import json
 import os.path
 import glob
 import warnings
@@ -188,19 +189,8 @@ class xov:
             orb_unique.extend(self.xovers['orbB'].tolist())
             self.tracks = list(set(orb_unique))
 
-   def save(self, filnam):
-        pklfile = open(filnam, "wb")
-        # clean ladata, which is now useless
-        if hasattr(self, 'ladata_df'):
-            del (self.ladata_df)
-        if hasattr(self, 'gtracks'):
-            del (self.gtracks)
-        pickle.dump(self, pklfile, protocol=-1)
-        pklfile.close()
-
-   # @profile
    # load xover from file
-   def load(self, filnam):
+   def load_old_pkl(self, filnam):
         import gc
         # disabling cyclic garbage collection
         gc.disable()
@@ -209,6 +199,82 @@ class xov:
         gc.enable()
 
         return self # found
+
+   @staticmethod
+   def migrate_old_pkl(pkl_path, out_path=None):
+        """
+        Load legacy pickle and save using the JSON+Parquet format.
+        If out_path is None, uses pkl_path as the base name.
+        """
+        if out_path is None:
+            out_path = pkl_path
+
+        obj = xov(vecopts={})
+        obj = obj.load_old_pkl(pkl_path)
+        obj.save(out_path)
+        return out_path
+
+   def save(self, filnam):
+        def _is_jsonable(obj): # this may not be needed anymore
+            try:
+                json.dumps(obj)
+                return True
+            except TypeError:
+                return False
+
+        base = filnam
+        meta_path = base + ".json"
+        xovers_path = base + ".parquet"
+
+        meta = {"format": "xov_split_v1", "version": 1, "xov": {}, "files": {}}
+
+        # clean ladata, which is now useless
+        if hasattr(self, 'ladata_df'):
+            del (self.ladata_df)
+        if hasattr(self, 'gtracks'):
+            del (self.gtracks)
+        if hasattr(self, 'xovtmp'):
+            del (self.xovtmp)
+
+        for key, val in self.__dict__.items():
+            if key == "xovers":
+                continue
+            if _is_jsonable(val):
+                meta["xov"][key] = {"kind": "json", "value": val}
+            else:
+                meta["xov"][key] = {"kind": "repr", "value": repr(val)}
+
+        if getattr(self, "xovers", None) is not None:
+            self.xovers.to_parquet(xovers_path, engine="pyarrow")
+            meta["files"]["xovers"] = os.path.basename(xovers_path)
+
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2, ensure_ascii=False)
+
+   def load(self, filnam):
+        meta_path = filnam
+
+        if not os.path.exists(meta_path):
+            raise FileNotFoundError(f"Missing metadata file: {meta_path}")
+
+        with open(meta_path, "r") as f:
+            meta = json.load(f)
+
+        for key, entry in meta.get("xov", {}).items():
+            kind = entry.get("kind")
+            if kind in ["json", "repr"]:
+                setattr(self, key, entry.get("value"))
+
+        xovers_path = None
+        if isinstance(meta.get("files"), dict):
+            xovers_path = meta["files"].get("xovers")
+        if xovers_path:
+            if not os.path.isabs(xovers_path):
+                xovers_path = os.path.join(os.path.dirname(meta_path), xovers_path)
+            if os.path.exists(xovers_path):
+                self.xovers = pd.read_parquet(xovers_path)
+
+        return self
 
    # remove outliers using the median method
    def remove_outliers(self, data_col, remove_bad=True):
@@ -1324,11 +1390,11 @@ class xov:
    def store_pertubation(self, gtrack_dirs, cmb):
        # store the imposed perturbation (if closed loop simulation) - get from any track uploaded in prepro step
        track = gtrack(XovOpt.to_dict())
-       trackfiles = glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + str(cmb[0]) + '*.pkl'))
+       trackfiles = glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + str(cmb[0]) + '*.json'))
        if len(trackfiles) > 0:
           track = track.load(trackfiles[0])
        else:
-          print(f"No file found for {gtrack_dirs[0]}gtrack_{str(cmb[0])}*.pkl")
+          print(f"No file found for {gtrack_dirs[0]}/gtrack_{str(cmb[0])}*.json")
           exit()
           
        self.pert_cloop = {'0': track.pert_cloop}

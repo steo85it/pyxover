@@ -31,8 +31,7 @@ def launch_gtrack(args):
    track_id = 'gtrack_' + track.name
 
    if XovOpt.get("new_gtrack") > 0:
-      gtrack_out = XovOpt.get("outdir") + outdir_in + '/' + track_id + '.pkl'
-      gtrack_df_out = XovOpt.get("outdir") + outdir_in + '/' + 'gtrack_ladata_' + track.name + '.parquet'
+      gtrack_out = XovOpt.get("outdir") + outdir_in + '/' + track_id
       if not (os.path.isfile(gtrack_out) or os.path.isfile(gtrack_out)) or XovOpt.get("new_gtrack") == 2:
 
          if not os.path.exists(XovOpt.get("outdir") + outdir_in):
@@ -55,7 +54,6 @@ def launch_gtrack(args):
          # pd.set_option('display.max_columns', None)
 
          if len(track.ladata_df) > 0:
-            track.save_df(gtrack_df_out)
             track.save(gtrack_out)
             if not XovOpt.get("local") or XovOpt.get("debug"):
                print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
