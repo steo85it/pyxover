@@ -186,12 +186,12 @@ def load_combine(xov_pth_,vecopts):
 
    # modify this selection to use sub-sample of xov only!!
    #------------------------------------------------------
-   # allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.pkl'))
+   # allFiles = glob.glob(os.path.join(xov_pth, 'xov/xov_*.json'))
    allFiles = []
    for xov_pth in xov_pth_:
       allFiles = allFiles + glob.glob(os.path.join(XovOpt.get("outdir"), xov_pth, 'xov/xov_*.json'))
 
-   # print([xov_pth + 'xov_' + x + '.pkl' for x in misycmb])
+   # print([xov_pth + 'xov_' + x + '.json' for x in misycmb])
    xov_list = [xov_.load(x) for x in allFiles[:]]
    if xov_list == []:
       print(f"No crossover files found in {xov_pth_}.")

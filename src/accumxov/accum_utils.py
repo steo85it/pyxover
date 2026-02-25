@@ -630,16 +630,16 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
       previous_dir = XovOpt.get("outdir") + id + '_' + str(ext_iter - 1) + '/'
       Abmatfile = XovOpt.get("import_abmat")
       if Abmatfile == "":
-         Abmatfile =  'Abmat_' + id + '_' + str(ext_iter - 1)  + '_' + str(ext_iter) + '.pkl'
+         Abmatfile =  'Abmat_' + id + '_' + str(ext_iter - 1)  + '_' + str(ext_iter)
          print(('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
                '_' + str(ext_iter - 1) + '/' +
-               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]))
       
          # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
          # previous_iter = previous_iter.load(
          #    ('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
          #    '_' + str(ext_iter - 1) + '/' +
-         #    ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+         #    ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]))
       
       previous_iter = previous_iter.load(previous_dir + Abmatfile)
       print("initial sol dict=", len(previous_iter.sol_dict['sol']))

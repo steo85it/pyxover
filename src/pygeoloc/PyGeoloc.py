@@ -62,7 +62,7 @@ def launch_gtrack(args):
             # except:
             #    print('failed to process ' + track_id)
       else:
-         # track = track.load('out/'+track_id+'.pkl')
+         # track = track.load('out/'+track_id)
          if not XovOpt.get("local") or XovOpt.get("debug"):
             print('Gtrack file ' + gtrack_out + ' already existed!')
 
@@ -163,11 +163,11 @@ def main(args):
          tmp = Amat(XovOpt.get("vecopts"))
          # previous_dir = ('_').join(((XovOpt.get("outdir") + ('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1]) \
          #   + '_' + str(iter_in - 1) + '/' + outdir_in.split('/')[-2] + '/'
-         # tmp = tmp.load(previous_dir + 'Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
+         # tmp = tmp.load(previous_dir + 'Abmat_' + ('_').join(outdir_in.split('/')[:-1]))
          id = outdir_in.split('/')[0].split('_')[0]
          previous_dir = XovOpt.get("outdir") + id + '_' + str(iter_in - 1) + '/'
          if XovOpt.get("import_abmat") == "":
-            Abmat_infile = 'Abmat_' + id +  '_' + str(iter_in - 1)  + '_' + str(iter_in) + '.pkl'
+            Abmat_infile = 'Abmat_' + id +  '_' + str(iter_in - 1)  + '_' + str(iter_in)
          else:
             Abmat_infile = XovOpt.get("import_abmat")
             print(previous_dir)

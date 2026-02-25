@@ -20,7 +20,7 @@ from config import XovOpt
 def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
    start = time.time()
    xov_dir = XovOpt.get("outdir") + outdir_in + 'xov/'
-   outpath = xov_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'
+   outpath = xov_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.json'
    # Exit process if file already exists and no option to recreate
    if (XovOpt.get("new_xov") != 2) and (os.path.isfile(outpath)):
       print("Fine xov", outpath," already exists. Stop!")
