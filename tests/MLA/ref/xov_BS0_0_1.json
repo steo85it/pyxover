@@ -1,0 +1,108 @@
+{
+  "format": "xov_split_v1",
+  "version": 1,
+  "xov": {
+    "vecopts": {
+      "kind": "json",
+      "value": {
+        "SCID": "-236",
+        "SCNAME": "MESSENGER",
+        "SCFRAME": "MSGR_SPACECRAFT",
+        "INSTID": [
+          -236500,
+          -236501
+        ],
+        "INSTNAME": [
+          "MSGR_MLA",
+          "MSGR_MLA_RECEIVER"
+        ],
+        "PLANETID": "199",
+        "PLANETNAME": "MERCURY",
+        "PLANETRADIUS": 2440.0,
+        "PLANETFRAME": "IAU_MERCURY",
+        "OUTPUTTYPE": 1,
+        "ALTIM_BORESIGHT": [
+          0.0022105,
+          0.0029215,
+          0.9999932892
+        ],
+        "INERTIALFRAME": "J2000",
+        "INERTIALCENTER": "SSB",
+        "PM_ORIGIN": "J2013.0",
+        "PARTDER": ""
+      }
+    },
+    "param": {
+      "kind": "json",
+      "value": {
+        "": 1.0
+      }
+    },
+    "proj_center": {
+      "kind": "json",
+      "value": null
+    },
+    "pert_cloop": {
+      "kind": "repr",
+      "value": "Empty DataFrame\nColumns: []\nIndex: [0]"
+    },
+    "pert_cloop_0": {
+      "kind": "repr",
+      "value": "Empty DataFrame\nColumns: []\nIndex: []"
+    },
+    "sol_prev_iter": {
+      "kind": "json",
+      "value": null
+    },
+    "msrm_sampl": {
+      "kind": "json",
+      "value": null
+    },
+    "apply_texture": {
+      "kind": "json",
+      "value": null
+    },
+    "parOrb_xy": {
+      "kind": "json",
+      "value": [
+        "dR/dA_A",
+        "dR/dA_B",
+        "dR/dC_A",
+        "dR/dC_B",
+        "dR/dR_A",
+        "dR/dR_B"
+      ]
+    },
+    "parGlo_xy": {
+      "kind": "json",
+      "value": [
+        "dR/dRA",
+        "dR/dDEC",
+        "dR/dPM",
+        "dR/dL",
+        "dR/dh2"
+      ]
+    },
+    "par_xy": {
+      "kind": "json",
+      "value": null
+    },
+    "t0_tracks": {
+      "kind": "json",
+      "value": null
+    },
+    "tracks": {
+      "kind": "json",
+      "value": [
+        "1201012205",
+        "1301011543",
+        "1301012343",
+        "1201011016",
+        "1301010743"
+      ]
+    }
+  },
+  "files": {
+    "xovers": "xov_BS0_0_1.parquet"
+  }
+}

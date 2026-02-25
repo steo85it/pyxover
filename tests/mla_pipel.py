@@ -75,66 +75,7 @@ class MlaXoverTest(unittest.TestCase):
         self.assertTrue(np.allclose(A.data, B.data, atol=tol),
                         f"Matrix values differ (max diff = {np.max(np.abs(A.data - B.data))})")
 
-    def save_sparse_container(self, path, **matrices):
-       """Save multiple sparse matrices (CSR) in one .npz."""
-       container = {}
-       for name, M in matrices.items():
-          container[f"{name}_data"] = M.data
-          container[f"{name}_indices"] = M.indices
-          container[f"{name}_indptr"] = M.indptr
-          container[f"{name}_shape"] = np.array(M.shape)
-       np.savez(path, **container)
-
-    def load_sparse_container(self, path):
-        npz = np.load(path)
-        mats = {}
-    
-        # group by base name
-        base_names = set(k.split("_")[0] for k in npz.files)
-    
-        for base in base_names:
-            data    = npz[f"{base}_data"]
-            indices = npz[f"{base}_indices"]
-            indptr  = npz[f"{base}_indptr"]
-            shape   = tuple(npz[f"{base}_shape"])
-            mats[base] = sp.csr_matrix((data, indices, indptr), shape=shape)
-    
-        return mats
-
-    def save_output(self, out, out_nosol, path):
-       b_sparse = sp.csr_matrix(out_nosol.b.reshape(-1, 1))
-       self.save_sparse_container(
-          path+"matrices.npz",
-          b=b_sparse,
-          spA=out_nosol.spA,
-          weights=out_nosol.weights
-         )
-       
-       metadata = {}
-       for key, value in out.__dict__.items():
-          try:
-             json.dumps(value)     # check serializability
-             metadata[key] = value
-          except TypeError:
-             metadata[key] = repr(value)  # safe fallback
-             
-       with open(path + "Abmat_metadata.json", "w") as f:
-         json.dump(metadata, f)
-
-       out_nosol.xov.xovers.to_parquet(path+"xovers.parquet", engine='pyarrow')
-       metadata = {}
-       for key, value in out_nosol.xov.__dict__.items():
-          try:
-             json.dumps(value)     # check serializability
-             metadata[key] = value
-          except TypeError:
-             metadata[key] = repr(value)  # safe fallback
-             
-       with open(path + "xovers_metadata.json", "w") as f:
-         json.dump(metadata, f)
-
     def test_sim_pipeline(self):
-        # os.chdir('tests/')
 
         # mirror the example workflow: run_pyAltSim=True, grid=False
         XovOpt.set("partials", False)
@@ -181,9 +122,7 @@ class MlaXoverTest(unittest.TestCase):
         assert_frame_equal(df_out, df_ref, check_dtype=False)
        
     def test_proc_pipeline(self):
-       
-        # os.chdir('tests/')
-        
+
         id = 'BS0'
         iter = 0
         in_folder = f'{id}/'
@@ -198,20 +137,12 @@ class MlaXoverTest(unittest.TestCase):
         AccumXov.main([[out_folder], '', 0, XovOpt.to_dict(), AccOpt.to_dict()])
 
         out = Amat(vecopts=XovOpt.get("vecopts"))
-        out_nosol = out.load(XovOpt.get("outdir") + out_folder + "Abmat_BS0_0_1_nosol.pkl")
-        out = out.load(XovOpt.get("outdir") + out_folder + "Abmat_BS0_0_1.pkl")
+        out = out.load(XovOpt.get("outdir") + out_folder + "Abmat_BS0_0_1")
 
-        # generate new template (when needed)
-        # self.save_output(out, out_nosol, ref_folder)
-        
         # load template test results
-        with open(f'{ref_folder}Abmat_metadata.json') as f:
-            metadata = json.load(f)
-
-        mats = self.load_sparse_container(f'{ref_folder}matrices.npz')
+        ref = Amat(vecopts=XovOpt.get("vecopts"))
+        ref = ref.load(f'{ref_folder}Abmat_BS0_0_1')
         
-        xovers = pd.read_parquet(f'{ref_folder}/xovers.parquet', engine='pyarrow')
-
         # perform test
         # round up to avoid issues with package updates
         errors = []
@@ -233,7 +164,7 @@ class MlaXoverTest(unittest.TestCase):
         #                    'mla_idA', 'mla_idB', 'xOvID']:
         for field in columns_to_test:
             out_vals = [round(x, 4) if isinstance(x, (int, float, np.floating)) else x for x in getattr(out.xov.xovers, field)]
-            val_vals = [round(x, 4) if isinstance(x, (int, float, np.floating)) else x for x in getattr(xovers, field)]
+            val_vals = [round(x, 4) if isinstance(x, (int, float, np.floating)) else x for x in getattr(ref.xov.xovers, field)]
 
             try:
                self.assertEqual(out_vals, val_vals, msg=f"Mismatch in {field}")
@@ -242,24 +173,25 @@ class MlaXoverTest(unittest.TestCase):
            
         # check xovers residuals
         # round up to avoid issues with package updates
-        b_sparse = sp.csr_matrix(out_nosol.b.reshape(-1, 1))
-        res_out = [round(x, 4) for x in b_sparse]
-        res_val = [round(x, 4) for x in mats["b"]]
-        
+        res_out = [round(x, 4) for x in np.asarray(out.b, dtype=object).ravel() if x is not None]
+        mat_b = ref.b
+        if sp.issparse(mat_b):
+           mat_b = mat_b.toarray()
+        res_val = [round(x, 4) for x in np.asarray(mat_b, dtype=object).ravel() if x is not None]
         try:
            self.assertEqual(res_out, res_val, msg=f"Mismatch in b")
         except AssertionError as e:
            errors.append(str(e))
           
         try:
-           self.assertSparseMatrixEqual(out_nosol.spA_sol4, mats["spA"][:,-5:-1], tol=1e-8)
+           self.assertSparseMatrixEqual(out.spA_sol4, ref.spA_sol4, tol=1e-8)
         except AssertionError as e:
            errors.append(str(e))
 
         # check parameter solutions
         # round up to avoid issues with package updates
         res_out = {key : round(out.sol_dict['sol'][key], 4) for key in out.sol_dict['sol']}
-        res_val = {key : round(metadata['sol_dict']['sol'][key], 4) for key in metadata['sol_dict']['sol']}
+        res_val = {key : round(ref.sol_dict['sol'][key], 4) for key in ref.sol_dict['sol']}
 
         # perform test
         try:
@@ -272,7 +204,6 @@ class MlaXoverTest(unittest.TestCase):
            self.fail("\n".join(errors))
 
     def TearDown(self):
-        # os.chdir("../")
         logging.info("TestMlaXover done!")
 
 if __name__ == '__main__':
