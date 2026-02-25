@@ -27,8 +27,8 @@ run_pyGeoLoc  = True
 run_pyXover   = True
 run_accuXover = True
 
-camp = "/storage/research/aiub_gravdet/WD_BELA/"
-log_folder = f"{camp}pyXover/log/"
+basedir = "/home/wdesprat/nobackup/pyxover/examples/MLA/data/"
+log_folder = f"{basedir}log/"
 
 # os.chdir('examples/BELA')
 
@@ -115,21 +115,20 @@ log_folder = f"{camp}pyXover/log/"
 # CD5: gtracks and xov North from CB5: {'dA':20., 'dC':20., 'dR':5.,'dRl':3, 'dPt':3} wrong dh2, scale factor only until 5
 
 # CD6: gtracks and xov North from MLA
-# CD7: gtracks and xov North from MLA kinetx
+# CD7: gtracks and xov North from MLA kinetx AG
+# CD8: gtracks and xov North from MLA spaux
+# CD9: gtracks and xov North from MLA kinetx IAU
+
+# CE0: gtracks and xov North from CB5: {'dA':20., 'dC':20., 'dR':5.,'dRl':20, 'dPt':20} wrong dh2, scale factor only until 5
 
 simid = 'CB5'
-estid = 'CD7'
+estid = 'CE0'
 iter = 0
-partition = "icpu-aiub"
-# partition = "epyc2"
 XovOpt.set("selected_hemisphere",'N')
 
 max_job = 1500
-max_parallel = 500
-if partition == "icpu-aiub":
-   max_job = 400
-   max_parallel = 120
-   
+max_parallel = 200   
+max_parallel = 12*10
 
 # SPK timespans (ET)
 de_start = [dt.datetime(2011, 3,18, 6,56, 6,185),
@@ -167,7 +166,7 @@ d_start = []
 d_end  = []
 # folder = "/storage/homefs/desprats/pyxover/examples/BELA/data/raw/2015"
 # files = [y for x in os.walk(folder) for y in glob.glob(os.path.join(x[0], '*.lbl'))]
-folder = "/storage/homefs/desprats/pyxover/examples/BELA/data/raw/"
+folder = f"{basedir}data/raw/"
 # files = [z for y in os.walk(folder) for x in os.walk(y[0]) for z in glob.glob(os.path.join(x[0], '*.lbl'))]
 files = [z for y in os.walk(folder) for z in glob.glob(os.path.join(y[0], '*.lbl'))]
 # files = ["/storage/homefs/desprats/pyxover/examples/BELA/data/raw/2011/apr/mlascirdr1104060314.lbl"]
@@ -187,12 +186,14 @@ for file_path in files:
 
 # General options
 XovOpt.set("body", 'MERCURY')
-# XovOpt.set("spice_meta", 'mymeta_MLA')
-XovOpt.set("spice_meta", 'mymeta_MLA_KX')
-XovOpt.set("basedir", f'{camp}pyXover/')
+XovOpt.set("spice_meta", 'mymeta_MLA')
+# XovOpt.set("spice_meta", 'mymeta_MLA_KX_AG')
+XovOpt.set("basedir", basedir)
 XovOpt.set("instrument", 'MLA')
 XovOpt.set("parallel", False)
 XovOpt.set("max_range_altitude", 1050)
+# XovOpt.set("SpInterp", 2)
+
 
 vecopts = {'SCID': '-236',
            'SCNAME': 'MESSENGER',
@@ -253,16 +254,13 @@ if run_pyAltSim:
                              d_start[y], d_end[y], XovOpt.to_dict()])
    print(len(pyaltsim_in))
    if grid:
-      executor = submitit.AutoExecutor(folder=f'{camp}pyXover/log/{simid}/pyaltsim')
-      executor.update_parameters(slurm_partition=partition,
-                                 slurm_cpus_per_task=1,
+      executor = submitit.AutoExecutor(folder=f'{log_folder}{simid}/pyaltsim')
+      executor.update_parameters(slurm_cpus_per_task=1,
                                  slurm_nodes=1,
                                  slurm_name="pyaltsim",
-                                 slurm_array_parallelism=200,
+                                 slurm_array_parallelism=max_parallel,
                                  slurm_time=60*3, # minutes
                                  slurm_mem='3G') # 4GB for 10Hz
-      if partition == "icpu-aiub":
-         executor.update_parameters(slurm_qos="job_icpu-aiub")
       if len(pyaltsim_in) == 1:
          job = executor.submit(PyAltSim.main, pyaltsim_in[0]) # single job
       else:
@@ -290,13 +288,13 @@ XovOpt.set("partials", True)
 XovOpt.set("expopt", estid)
 
 # pyGeoloc options
-# if run_pyGeoLoc:
+if run_pyGeoLoc:
    # Add a check wether the perturbation is consistent with previous iteration !
    # XovOpt.set("pert_cloop_orb", {'dA':50., 'dC':50., 'dR':20., 'dRl':0.5, 'dPt':0.5, 'dA1':40., 'dC1':40., 'dR1':10.})
    # XovOpt.set("pert_cloop_orb", {'dA':50., 'dC':50., 'dR':20., 'dRl':0.5, 'dPt':0.5})
    # XovOpt.set("pert_cloop_orb", {'dA':20., 'dC':20., 'dR':5.})
    # XovOpt.set("pert_cloop_orb", {'dRl':20, 'dPt':20})
-   # XovOpt.set("pert_cloop_orb", {'dA':20., 'dC':20., 'dR':5.,'dRl':20, 'dPt':20})
+   XovOpt.set("pert_cloop_orb", {'dA':20., 'dC':20., 'dR':5.,'dRl':20, 'dPt':20})
    # XovOpt.set("pert_cloop_orb", {'dA':20., 'dC':20., 'dR':5.,'dRl':3, 'dPt':3})
    # Perturbations have been set to an RMSE of 50 m (+40 m/day) in AC
    # and 20 m (+10 m/day) in R, 0.5 arcsec for the pointing (Bertone+2021)
@@ -370,8 +368,10 @@ if run_accuXover:
    # AccOpt.set("convergence_criteria",0)
 
 XovOpt.check_consistency()
+# d_start0 = d_start[0]
+d_start0 = dt.datetime(2011,3,1)
 
-for iter in range(2,10):
+for iter in range(0,1):
 
    if iter > 0:
       XovOpt.set("import_abmat", f"Abmat_{estid}_{iter-1}_{iter}_A.pkl")
@@ -384,24 +384,21 @@ for iter in range(2,10):
    if run_pyGeoLoc:
       if grid:
          executor = submitit.AutoExecutor(folder=f'{log_folder}{estid}/pygeoloc')
-         executor.update_parameters(slurm_partition=partition,
-                                    slurm_nodes=1,
-                                    slurm_array_parallelism=300,
+         executor.update_parameters(slurm_nodes=1,
+                                    slurm_array_parallelism=max_parallel,
                                     slurm_name="pygeoloc",
                                     slurm_mem='3G',
                                     slurm_cpus_per_task=1,
                                     slurm_time=40) # minutes
-         if partition == "icpu-aiub":
-            executor.update_parameters(slurm_qos="job_icpu-aiub")
          if iter>0:
             # executor.update_parameters(slurm_mem='20G')
             executor.update_parameters(slurm_mem='5G')
       pygeoloc_in = []
       for y in range(0,nYears):
-      # for y in range(3,nYears):
-      # for y in [0]:
+      # for y in range(4,nYears):
+      # for y in [4]:
          import glob
-         monyea = (d_start[0] + dt.timedelta(days=y*365)).strftime('%y')
+         monyea = (d_start0 + dt.timedelta(days=y*365)).strftime('%y')
          print(f"Geolocation year {monyea}")
          indir_in = f'SIM_{monyea}/{simid}/'
          indir_in = f'MLA_{monyea}/'
@@ -469,19 +466,14 @@ for iter in range(2,10):
 
       if grid:
          executor = submitit.AutoExecutor(folder=f'{log_folder}{estid}/pyxover')
-         executor.update_parameters(slurm_partition=partition,
-                                    slurm_name="pyxover",
+         executor.update_parameters(slurm_name="pyxover",
                                     slurm_nodes=1,
                                     slurm_mem='5G', # 11G
-                                    slurm_cpus_per_task=2,
+                                    slurm_cpus_per_task=1,
                                     slurm_time=60*5, # minutes
-                                    slurm_array_parallelism=150)
+                                    slurm_array_parallelism=max_parallel)
          if iter>0:
             executor.update_parameters(slurm_mem='11G')
-         if partition == "icpu-aiub":
-            executor.update_parameters(slurm_qos="job_icpu-aiub")
-         else:
-            executor.update_parameters(slurm_array_parallelism=400)
 
       pyxover_in = []
       for par in range(0,len(misycmb)):
@@ -529,15 +521,11 @@ for iter in range(2,10):
       datasets = [f'{estid}_{iter}/']
       if grid:
          executor = submitit.AutoExecutor(folder=f'{log_folder}{estid}/accumxov')
-         executor.update_parameters(slurm_partition=partition,
-                                    slurm_nodes=1,
+         executor.update_parameters(slurm_nodes=1,
                                     slurm_name="accumXov",
                                     slurm_mem='20G',
                                     slurm_cpus_per_task=2,
-                                    slurm_time=60*5, # minutes
-                                    slurm_array_parallelism=100)
-         if partition == "icpu-aiub":
-            executor.update_parameters(slurm_qos="job_icpu-aiub")
+                                    slurm_time=60*5) # minutes
          job = executor.submit(AccumXov.main, [datasets, '', iter, XovOpt.to_dict(), AccOpt.to_dict()]) # single job
          print(job.result())
       else:

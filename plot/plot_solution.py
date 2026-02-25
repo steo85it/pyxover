@@ -1,13 +1,9 @@
 import pickle
 import time
-import gc
-import pandas as pd
 import numpy as np
-import itertools as itert
 import matplotlib.pyplot as plt
 
 
-import sys
 import os.path
 import glob
 import csv
@@ -19,24 +15,43 @@ fig_name = f"{id}_all"
 plot_orbcorr  = False # plot correction (solution)
 plot_error    = False # plot orbit error
 plot_globcorr = True
-std_sol = True # formal error or solution
+std_sol = False # formal error or solution
 export_cvs = False
+plot_bertone2021 = False
 
+plot_MLA_track_error = True
+plot_BELA_nom_track_error = False
+plot_BELA_ext_track_error = False
+plot_geodetic = False
+plot_geodetic_redundant_obs = False
+plot_geodetic_wLIB = False
+plot_short_LIB = False
+plot_long_LIB = False
 
-data_path = "/storage/research/aiub_gravdet/WD_BELA/"
-in_folder = f"{data_path}pyXover/out/{id}_0/"
+if plot_MLA_track_error or plot_BELA_nom_track_error or plot_BELA_ext_track_error:
+   plot_orbcorr  = True
+   plot_error    = True
+   plot_globcorr = False
+
+if plot_geodetic:
+   plot_bertone2021 = True
+
+data_path = "/home/wdesprat/nobackup/pyxover/examples/BELA/data/"
+out_path = f"{data_path}out/"
+out_path = "/home/wdesprat/nobackup/pyxover/examples/MLA/data/out/"
+# out_path = "/home/wdesprat/nobackup/AIUB_backup/pyxover/out/"
 
 sol = []
 std = []
 glob_nam = ['RA', 'DEC','PM','L', 'h2']
-glob_nam = ['RA', 'DEC','PM','L']
+if plot_geodetic_wLIB:
+   glob_nam = ['RA', 'DEC','PM','h2']
 glob_plt = glob_nam
-# glob_nam = ['RA', 'DEC','PM', 'h2']
-# glob_nam += [f'LIB{i}' for i in range(1, 12)]
-# glob_plt = ['RA', 'DEC','PM', 'h2']
-# glob_plt = [f'LIB{i}' for i in range(1, 6)]
-# glob_plt = [f'LIB{i}' for i in range(6, 12)]
-plot_bertone2021 = False
+if plot_short_LIB:
+   glob_plt = [f'LIB{i}' for i in range(1, 6)]
+if plot_long_LIB:
+   glob_plt = [f'LIB{i}' for i in range(6, 12)]
+
 
 glob_lbl = {'RA' : r"$\alpha_0$ [as]",
             'DEC': r"$\delta_0$ [as]",
@@ -46,433 +61,13 @@ glob_lbl = {'RA' : r"$\alpha_0$ [as]",
 for i in range(1, 12):
     glob_lbl[f'LIB{i}'] = fr"$\lambda_{{{i}}}$ [as]"
 
-
-# Only Northern hemisphere
-# fid_ = ["CA0", "AB0", "AB0_CA0", "BA1", "AB0_BA1", "AB0_BA1_CA0"]
-# leg = ["MLA", "BELA_N", "BELA_N+MLA", "BELA_N/MLA", "BELA_N+\nBELA_N/MLA", "BELA_N+MLA+\nBELA_N/MLA"]
-#fid_ = ["CA0", "AB0", "AB0_CA0", "BA1", "AB0_BA1", "AB0_BA1_CA0"]
-#leg = ["MLA", "BELA_N", "BELA_N+\nMLA", "BELA_N/MLA", "BELA_N+\nBELA_N/MLA","BELA_N+MLA+\nBELA_N/MLA"]
-
-#fid_ = ["CA0", "AB0", "AB0_AB1", "BA1"]
-#leg = ["MLA", "BELA_N", "BELA", "BELA_N/MLA"]
-
-#fid_ = ["CA0", "AB0_CA0", "AB0_AB1_CA0", "AB0_AB1_BA1_CA0"]
-#leg = ["MLA", "BELA_N+\nMLA", "BELA+MLA", "BELA+MLA+\nBELA_N/MLA", ]
-
-# all with BELA
-# fid_ = ["AB0_AB1", "AB0_AB1_CA0", "AB0_AB1_BA1", "AB0_AB1_BA1_CA0"]
-# leg = ["BELA", "BELA+MLA", "BELA+\nBELA/MLA", "BELA+MLA+\nBELA/MLA"]
-
-
-time1 = time.perf_counter()
-file_names = []
-
-id = "CA1"
-iter = 0
-file_names = [f"{data_path}pyXover/out/{id}_0/Abmat_{id}_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/{id}_0/Abmat_{id}_q3_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/{id}_0/Abmat_{id}_nodownsize_{iter}_{iter+1}.pkl"]
-file_names = [f"{data_path}pyXover/out/{id}_0/Abmat_{id}_l70_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/{id}_0/Abmat_{id}_nodownsize_{iter}_{iter+1}.pkl"]
-leg = ["q=0.1", "q=0.3", "no downsize"]
-id = "BA3"
-subid_ = ["l70","l80","l80v2", "nodownsize"]
-subid_ = ["l80","l80v2"]
-subid_ = ["l80v3"]
-# id = "AB2"
-# subid_ = ["l80", "seml80"]
-# subid_ = ["Nl80", "seml80"]
-# id = "CA1"
-# subid_ = ["l70"]
-leg = subid_
-
-
-
-file_names = []
-for subid in subid_:
-   # file_names.append(f"{data_path}pyXover/out/{id}_0/Abmat_{id}_all_{subid}_{iter}_{iter+1}.pkl")
-   file_names.append(f"{data_path}pyXover/out/{id}_0/Abmat_{id}_{subid}_{iter}_{iter+1}.pkl")
-   
-file_names = [f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nl80_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/BA3_0/Abmat_BA3_all_l80v3_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/BA3_0/Abmat_BA3_allN_l80_{iter}_{iter+1}.pkl"]
-file_names = [f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/BA3_0/Abmat_BA3_allN_nodownsize_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/BA3_0/Abmat_BA3_nodownsizev2_{iter}_{iter+1}.pkl"]
-file_names = [f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nl80_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/AB2_0/Abmat_AB2_l80_{iter}_{iter+1}.pkl"]
-leg = ["BELA_N","COMB BELA_N","COMB BELA_N_2"]
-leg = ["semi, nodownsize", "semi, l=80°", "full, l=80°"]
-# file_names = [f"{data_path}pyXover/out/AB2_0/Abmat_AB2_l80_{iter}_{iter+1}.pkl",
-#               f"{data_path}pyXover/out/AB2_0/Abmat_AB2_nodownsize_{iter}_{iter+1}.pkl"]
-# leg = ["l=80°", "no downsize"]
-# p_title = "All full tracks, BELA only"
-
-# file_names = [f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nl80_{iter}_{iter+1}.pkl",
-#               f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl"]
-# file_names = [f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nl80alllowlat_{iter}_{iter+1}.pkl",
-#               f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl"]
-# leg = ["l=80°", "no downsize"]
-# p_title = "Northern hemisphere, semi tracks, BELA only"
-file_names = [f"{data_path}pyXover/out/AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/AB2_0/Abmat_AB2_seml80_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/AB2_0/Abmat_AB2_semnodownsize_{iter}_{iter+1}.pkl"]
-file_names = [f"{data_path}pyXover/out/CA1_0/Abmat_CA1_nodownsize_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/AB2_0/Abmat_AB2_semnodownsize_{iter}_{iter+1}.pkl",
-              f"{data_path}pyXover/out/BA3_0/Abmat_BA3_all_nodownsizev2_{iter}_{iter+1}.pkl"]
-leg = ["MLA only", "BELA only", "combined"]
-p_title = "All semi tracks from BELA"
-p_title = "All semi tracks from MLA"
-file_names = [f"{data_path}pyXover/out/CA5_0/Abmat_CA5_0_1.pkl",
-              f"{data_path}pyXover/out/BA4_0/Abmat_BA4_0_1.pkl"]
-#file_names = [f"{data_path}pyXover/out/CA4_0/Abmat_CA4_0_1.pkl",
-#              f"{data_path}pyXover/out/CA4_3/Abmat_CA4_3_4.pkl"]
-# leg = ["perturbed tracks"]
-# p_title = "MLA only"
-leg = ["MLA only","combined"]
-# file_names = [f"{data_path}pyXover/out/AC0_0/Abmat_AC0_{iter}_{iter+1}.pkl"]
-# leg = range(0,2)
-orb = '1'
-# p_title = "BELA only"
-# file_names = [f"{data_path}pyXover/out/AC0_0/Abmat_AC0_{iter}_{iter+1}.pkl",
-#               f"{data_path}pyXover/out/AC0_1/Abmat_AC0_{iter+1}_{iter+2}.pkl",
-#               f"{data_path}pyXover/out/AC0_2/Abmat_AC0_{iter+2}_{iter+3}.pkl"]
-file_names = [f"{data_path}pyXover/out/AC4_0/Abmat_AC4_0_1.pkl",
-              f"{data_path}pyXover/out/BA4_0/Abmat_BA4_0_1.pkl"]
-leg = ["BELA only", "combined"]
-# leg = range(0,3)
-orb = '1'
-file_names = [f"{data_path}pyXover/out/CA5_0/Abmat_CA5_0_1.pkl",
-              f"{data_path}pyXover/out/AC4_0/Abmat_AC4_0_1.pkl",
-              f"{data_path}pyXover/out/BA4_0/Abmat_BA4_0_1.pkl"]
-file_names = [f"{data_path}pyXover/out/AC1_0/Abmat_AC1_0_1.pkl",
-              f"{data_path}pyXover/out/AC4_0/Abmat_AC4_0_1.pkl",
-              f"{data_path}pyXover/out/BA4_0/Abmat_BA4_0_1.pkl"]
-leg = ["MLA only", "BELA only", "combined"]
-leg = ["BELA_S only", "combined_S"]
-
-file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1.pkl"]
-leg = ["MLA_CB0", "MLA_BA7"]
-# file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1.pkl",
-#                f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1.pkl",
-#                f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1.pkl"]
-# leg = ["MLA_CB0", "MLA_CB1","BELA_AD2"]
-file_names = [f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_extended.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_extended.pkl"]
-file_names = [f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1.pkl"]
-file_names = [f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_I.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_B.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_J.pkl"]
-file_names = [f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_I.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_J.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_nominal.pkl"]
-# file_names = [f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_extended.pkl"]
-leg = ["BELA_AD2", "BELA_BA7", "BELA_BA7", "BELA_BA7"]
-leg = [0,1,2,3]
-p_title = "BELA only, all tracks"
-# file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1.pkl",
-#               f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1.pkl"]
-# file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1.pkl",
-#               f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_extended.pkl"]
-# p_title = "MLA only"
-# file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1.pkl",
-#               f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1.pkl",
-#               f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_I.pkl",
-#               f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1.pkl",
-#               f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_extended.pkl"]
-file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_K.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_nominal.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_A.pkl"]
-file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_A.pkl",
-              f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_B.pkl",
-              f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_C.pkl"]
-leg = ["A","B","C"]
-
-orb = '2'
-file_names = [f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_nominal.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_I.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_J.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_K.pkl"]
-leg = ["nom","I","J","K"]
-file_names = [f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_nominal.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_A.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_B.pkl"]
-leg = ["nom","A","B"]
-file_names = [f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_K.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_A.pkl"]
-leg = ["BELA_only","BELA_combined"]
-# file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_B.pkl",
-#               f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_K.pkl",
-#               f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_A.pkl"]
-# leg = ["MLA","BELA","BELA/MLA"]
-orb = '1'
-# file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_B.pkl",
-#               f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_A.pkl"]
-# leg = ["MLA_only","MLA_combined"]
-file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_B.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_K.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_L.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_A.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_C.pkl"]
-leg = ["MLA","BELA","BELA_ext","BELA/MLA", "BELA/MLA_ext"]
-file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_B.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_A.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_C.pkl"]
-leg = ["MLA","BELA/MLA", "BELA/MLA_ext"]
-file_names = [f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_K.pkl",
-              f"{data_path}pyXover/out/AD2_0/Abmat_AD2_0_1_L.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_A.pkl",
-              f"{data_path}pyXover/out/BA7_0/Abmat_BA7_0_1_C.pkl"]
-leg = ["BELA","BELA_ext","BELA/MLA", "BELA/MLA_ext"]
-file_names = [f"{data_path}pyXover/out/CB0_0/Abmat_CB0_0_1.pkl",
-              f"{data_path}pyXover/out/BA8_0/Abmat_BA8_0_1_B.pkl"]
-leg = ["MLA_only","MLA_combined"]
-file_names = [f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_A.pkl",
-              f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_C.pkl",
-              f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_D.pkl"]
-file_names = [f"{data_path}pyXover/out/CB0_0/Abmat_CB0_0_1.pkl",
-              f"{data_path}pyXover/out/CB2_0/Abmat_CB2_0_1_A.pkl",
-              f"{data_path}pyXover/out/CB3_0/Abmat_CB3_0_1_A.pkl"]
-leg = ["A","B","C"]
-file_names = [f"{data_path}pyXover/out/CB3_0/Abmat_CB3_0_1_A.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_B.pkl",
-              f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_B.pkl"]
-file_names = [f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_A.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_B.pkl",
-              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_B.pkl"]
-file_names = [f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_A.pkl",
-              # f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_C.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_B.pkl",
-              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_B.pkl"]
-file_names = [f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_C.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_C.pkl",
-              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_F.pkl"]
-file_names = [f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_C.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_D.pkl",
-              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_G.pkl"]
-# pointing error extended
-file_names = [f"{data_path}pyXover/out/CB3_0/Abmat_CB3_0_1_B.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_D.pkl",
-              f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_C.pkl"]
-# pointing error nominal
-file_names = [f"{data_path}pyXover/out/CB3_0/Abmat_CB3_0_1_B.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_C.pkl",
-              f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_D.pkl"]
-p_title = "BELA only, all tracks"
-leg = ["MLA","BELA","BELA/MLA"]
-# nominal: (no) pointing error
-file_names = [f"{data_path}pyXover/out/CB3_0/Abmat_CB3_0_1_B.pkl",
-              f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_C.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_C.pkl",
-              f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_D.pkl",
-              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_F.pkl"]
-p_title = "BELA only, all tracks"
-leg = ["MLA$_p$","MLA","BELA","BELA/MLA$_p$","BELA/MLA"]
-
-# MLA tracks nominal: pointing error
-orb = '1'
-file_names = [f"{data_path}pyXover/out/CB3_0/Abmat_CB3_0_1_B.pkl",
-              f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_D.pkl",]
-p_title = "MLA only, with pointing errors"
-# MLA tracks nominal: pointing error
-file_names = [f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_C.pkl",
-              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_F.pkl",]
-p_title = "MLA only, without pointing errors"
-
-# BELA tracks nominal: pointing error
-# orb = '2'
-# file_names = [f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_C.pkl",
-#               f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_D.pkl",]
-# p_title = "BELA only, all tracks"
-
-# no pointing nominal/extended mission
-file_names = [f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_C.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_C.pkl",
-              f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_D.pkl",
-              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_F.pkl",
-              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_G.pkl"]
-orb = '1'
-#file_names = [f"{data_path}pyXover/out/CB4_0/Abmat_CB4_0_1_C.pkl",
-#              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_F.pkl"]
-# leg = ["MLA only", "MLA/BELA"]
-# file_names = [f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_C.pkl",
-              # f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_D.pkl",
-#               f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_F.pkl",
-#              f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_G.pkl"]
-#orb = '2'
-leg = ["BELA","BELA_ext","MLA/BELA", "MLA/BELA_ext"]
-# leg = ["BELA","MLA/BELA","BELA$_{ext}$"]
-# pointing error nominal/extended mission
-# file_names = [f"{data_path}pyXover/out/CB3_0/Abmat_CB3_0_1_B.pkl",
-#               f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_C.pkl",
-#               f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_D.pkl",
-#               f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_D.pkl",
-#               f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_C.pkl"]
-leg = ["MLA","BELA","BELA$_{ext}$","MLA/BELA","MLA/BELA$_{ext}$"]
-# orb = '2'
-# file_names = [f"{data_path}pyXover/out/AD4_0/Abmat_AD4_0_1_B.pkl",
-#               f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_B.pkl",
-#               f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_A.pkl",
-#               f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_C.pkl",
-#               f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_D.pkl",
-#               f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_E.pkl"]
-# leg = ["BELA","BELA/MLA w=1","BELA/MLA w=0.7","BELA/MLA w=0.5","BELA/MLA w=0.25","BELA/MLA w=0.01"]
-
-              
-# leg = ["MLA","BELA"]
-# file_names = [f"{data_path}pyXover/out/BB0_0/Abmat_BB0_0_1_B.pkl",
-#               f"{data_path}pyXover/out/BA9_0/Abmat_BA9_0_1_B.pkl"]
-
-file_names = [f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_B.pkl",
-              f"{data_path}pyXover/out/AD6_0/Abmat_AD6_0_1_B.pkl",
-              f"{data_path}pyXover/out/BB1_0/Abmat_BB1_0_1_B.pkl"]
-leg = ["MLA","BELA$_{ext}$","MLA/BELA$_{ext}$"]
-file_names = [f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_B.pkl",
-              f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_C.pkl",
-              f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_D.pkl",
-              f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_E.pkl"]
-leg = ["[1,1,0]","[0.003,70.7,0]","[0.0004, 128, 0.41]","[0.003, 77.4, 1e8]"]
-file_names = [f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_B.pkl",
-              f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_C.pkl",
-              f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_D.pkl"]
-leg = ["[1,1,0]","[0.003,70.7,0]","[0.0004, 128, 0.41]"]
-
-orb = '2'
-file_names = [f"{data_path}pyXover/out/AD6_0/Abmat_AD6_0_1_B.pkl",
-              f"{data_path}pyXover/out/AD6_0/Abmat_AD6_0_1_C.pkl"]
-leg = ["[1,1,0]","[0.002,0.349,0]"]
-
-orb = '1'
-file_names = [f"{data_path}pyXover/out/CB5_0/Abmat_CB5_0_1_G.pkl",
-              f"{data_path}pyXover/out/AD6_0/Abmat_AD6_0_1_E.pkl",
-              f"{data_path}pyXover/out/BB1_0/Abmat_BB1_0_1_F.pkl"]
-file_names = [f"{data_path}pyXover/out/CB6_0/Abmat_CB6_0_1_E.pkl",
-              f"{data_path}pyXover/out/AE0_0/Abmat_AE0_0_1_B.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_B.pkl"]
-leg = ["MLA","BELA$_{ext}$","MLA/BELA$_{ext}$"]
-file_names = [f"{data_path}pyXover/out/CB6_0/Abmat_CB6_0_1_E.pkl",
-              f"{data_path}pyXover/out/AE0_0/Abmat_AE0_0_1_F.pkl",
-              f"{data_path}pyXover/out/AE0_0/Abmat_AE0_0_1_H.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_F.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_G.pkl"]
-leg = ["MLA","BELA$_{nom}$","BELA$_{nom}$ tr","MLA/BELA$_{nom}$","MLA/BELA$_{nom}$ tr"]
-
-orb = '1'
-file_names = [f"{data_path}pyXover/out/CB6_0/Abmat_CB6_0_1_E.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_F.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_G.pkl"]
-leg = ["MLA","MLA/BELA$_{nom}$","MLA/BELA$_{nom}$ tr"]
-file_names = [f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_F.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_G.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_I.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_H.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_J.pkl"]
-leg = ["no threshold","$|\phi_{all}|<85$","$|\phi|<80$,$|\phi_{BB}|<88$",
-       "$|\phi|<85$,$|\phi_{M/B}|<75$","$|\phi|<75$,$|\phi_{BB}|<85$"]
-
-file_names = [f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_F.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_H.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_J0.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_I.pkl",
-              f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_N.pkl"]
-leg = ["no threshold","$|\phi|<85$,$|\phi_{M/B}|<75$","$|\phi|<75$,$|\phi_{BB}|<85$",
-       "bands, nmin = 300","bands, nmin = 1000"]
-
-# orb = '2'
-# file_names = [f"{data_path}pyXover/out/AE0_0/Abmat_AE0_0_1_F.pkl",
-#               f"{data_path}pyXover/out/AE0_0/Abmat_AE0_0_1_H.pkl",
-#               f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_F.pkl",
-#               f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_G.pkl"]
-# leg = ["BELA$_{nom}$","BELA$_{nom}$ tr","MLA/BELA$_{nom}$","MLA/BELA$_{nom}$ tr"]
-
-
-# file_names = [f"{data_path}pyXover/out/CB6_0/Abmat_CB6_0_1_E.pkl",
-#               f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_B.pkl"]
-# leg = ["MLA","MLA/BELA$_{ext}$"]
-# orb = '2'
-# file_names = [f"{data_path}pyXover/out/AE0_0/Abmat_AE0_0_1_B.pkl",
-#               f"{data_path}pyXover/out/BB2_0/Abmat_BB2_0_1_B.pkl"]
-# leg = ["BELA$_{ext}$","MLA/BELA$_{ext}$"]
-# leg = ["MLA","MLA/BELA$_{ext}$"]
-
-orb = '2'
-file_names = [f"{data_path}pyXover/out/AE0_0/Abmat_AE0_0_1_A.pkl"]
-leg = ["BELA$_{ext}$"]
-
-file_names = [f"{data_path}pyXover/out/CB9_0/Abmat_CB9_0_1_A.pkl",
-              f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_A.pkl",
-              f"{data_path}pyXover/out/BB3_0/Abmat_BB3_0_1_E.pkl"]
-leg = ["MLA", "BELA", "MLA/BELA"]
-file_names = [f"{data_path}pyXover/out/CB9_0/Abmat_CB9_0_1_A.pkl",
-              f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_C.pkl",
-              f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_A.pkl",
-              f"{data_path}pyXover/out/BB3_0/Abmat_BB3_0_1_B.pkl",
-              f"{data_path}pyXover/out/BB3_0/Abmat_BB3_0_1_E.pkl"]
-leg = ["MLA", "BELA", "BELA$_{ext}$", "MLA+BELA","MLA+BELA$_{ext}$"]
-color = ['#000000','#4477AA', '#228833',
-            '#66CCEE', '#EE6677', '#CCBB44']
-# file_names = [f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_C.pkl",
-#               f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_I.pkl",
-#               f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_J.pkl",
-#               f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_K.pkl",
-#               f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_F.pkl",]
-# leg = ["all obs.", "80% hilat", "50% hilat", "10% hilat", "2 blocks"]
-# color = ['#4477AA', '#228833', '#66CCEE', '#EE6677', '#CCBB44']
-
-# file_names = [f"{data_path}pyXover/out/CB9_0/Abmat_CB9_0_1_A.pkl",
-#               f"{data_path}pyXover/out/CC4_0/Abmat_CC4_0_1_A.pkl",
-#               f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_A.pkl",
-#               f"{data_path}pyXover/out/AE4_0/Abmat_AE4_0_1_A.pkl"]
-# file_names = [f"{data_path}pyXover/out/CC4_0/Abmat_CC4_0_1_A.pkl",
-#               f"{data_path}pyXover/out/AE4_0/Abmat_AE4_0_1_B.pkl",
-#               f"{data_path}pyXover/out/CC4_0/Abmat_BB4_0_1_A.pkl",
-#               f"{data_path}pyXover/out/BB4_0/Abmat_BB4_0_1_A.pkl"]
-# leg = ["MLA", "BELA", "MLA&BELA", "MLA+BELA"]
-# color = ['#4477AA', '#228833', '#66CCEE', '#EE6677', '#CCBB44']
-# file_names = [f"{data_path}pyXover/out/CB9_0/Abmat_CB9_0_1_A.pkl",
-#               f"{data_path}pyXover/out/CC4_0/Abmat_CC4_0_1_A.pkl",
-#               f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_A.pkl",
-#               f"{data_path}pyXover/out/AE4_0/Abmat_AE4_0_1_B.pkl",
-#               f"{data_path}pyXover/out/BB3_0/Abmat_BB3_0_1_E.pkl",
-#               f"{data_path}pyXover/out/BB4_0/Abmat_BB4_0_1_A.pkl"]
-# leg = ["MLA L", "MLA LIB", "BELA L", "BELA LIB","MLA+BELA L", "MLA+BELA LIB"]
-# orb = '1'
-# file_names = [f"{data_path}pyXover/out/CB9_old_0/Abmat_CB9_0_1_A.pkl",
-#               f"{data_path}pyXover/out/BB3_0/Abmat_BB3_0_1_B.pkl",
-#               f"{data_path}pyXover/out/BB3_0/Abmat_BB3_0_1_E.pkl"]
-# leg = ["MLA", "MLA+BELA", "MLA+BELA$_{ext}$"]
-# color = ['#4477AA', '#EE6677', '#CCBB44']
-# orb = '2'
-# color = ['#228833','#EE6677']
-# file_names = [f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_C.pkl",
-#               f"{data_path}pyXover/out/BB3_0/Abmat_BB3_0_1_B.pkl"]
-# leg = ["BELA", "MLA+BELA"]
-# file_names = [f"{data_path}pyXover/out/AE2_0/Abmat_AE2_0_1_A.pkl",
-#               f"{data_path}pyXover/out/BB3_0/Abmat_BB3_0_1_E.pkl"]
-# leg = ["BELA$_{ext}$", "MLA+BELA$_{ext}$"]
-# color = ['#66CCEE','#CCBB44']
-
-# file_names = [f"{data_path}pyXover/out/CC5_0/Abmat_CC5_0_1_A.pkl",
-#               f"{data_path}pyXover/out/CC5_0/Abmat_CC5_0_1_B.pkl",
-#               f"{data_path}pyXover/out/CC5_0/Abmat_CC5_0_1_C.pkl",
-#               f"{data_path}pyXover/out/CC5_0/Abmat_CC5_0_1_D.pkl",
-#               f"{data_path}pyXover/out/CC5_0/Abmat_CC5_0_1_E.pkl",
-#               f"{data_path}pyXover/out/CC5_0/Abmat_CC5_0_1_F.pkl",
-#               f"{data_path}pyXover/out/CC5_0/Abmat_CC5_0_1_G.pkl",
-#               f"{data_path}pyXover/out/CC5_0/Abmat_CC5_0_1_H.pkl",]
-
-
-
 fig_name = f"{id}_all"
 fig_name = f"{id}"
 
 xlims = [20,60,3]
+xlims = [60,60,15]
+xlims = [60,60,0.5]
+ylims=[1e-4, 2e-1]
 
 
 if std_sol:
@@ -484,6 +79,481 @@ if plot_orbcorr:
    fig_name = f"orb{fig_name}"
 else:
    fig_name = f"glob{fig_name}"
+
+time1 = time.perf_counter()
+if False:
+   # Only Northern hemisphere
+   # fid_ = ["CA0", "AB0", "AB0_CA0", "BA1", "AB0_BA1", "AB0_BA1_CA0"]
+   # leg = ["MLA", "BELA_N", "BELA_N+MLA", "BELA_N/MLA", "BELA_N+\nBELA_N/MLA", "BELA_N+MLA+\nBELA_N/MLA"]
+   #fid_ = ["CA0", "AB0", "AB0_CA0", "BA1", "AB0_BA1", "AB0_BA1_CA0"]
+   #leg = ["MLA", "BELA_N", "BELA_N+\nMLA", "BELA_N/MLA", "BELA_N+\nBELA_N/MLA","BELA_N+MLA+\nBELA_N/MLA"]
+
+   #fid_ = ["CA0", "AB0", "AB0_AB1", "BA1"]
+   #leg = ["MLA", "BELA_N", "BELA", "BELA_N/MLA"]
+
+   #fid_ = ["CA0", "AB0_CA0", "AB0_AB1_CA0", "AB0_AB1_BA1_CA0"]
+   #leg = ["MLA", "BELA_N+\nMLA", "BELA+MLA", "BELA+MLA+\nBELA_N/MLA", ]
+
+   # all with BELA
+   # fid_ = ["AB0_AB1", "AB0_AB1_CA0", "AB0_AB1_BA1", "AB0_AB1_BA1_CA0"]
+   # leg = ["BELA", "BELA+MLA", "BELA+\nBELA/MLA", "BELA+MLA+\nBELA/MLA"]
+
+
+   file_names = []
+
+   id = "CA1"
+   iter = 0
+   file_names = [f"{out_path}{id}_0/Abmat_{id}_{iter}_{iter+1}.pkl",
+                 f"{out_path}{id}_0/Abmat_{id}_q3_{iter}_{iter+1}.pkl",
+                 f"{out_path}{id}_0/Abmat_{id}_nodownsize_{iter}_{iter+1}.pkl"]
+   file_names = [f"{out_path}{id}_0/Abmat_{id}_l70_{iter}_{iter+1}.pkl",
+                 f"{out_path}{id}_0/Abmat_{id}_nodownsize_{iter}_{iter+1}.pkl"]
+   leg = ["q=0.1", "q=0.3", "no downsize"]
+   id = "BA3"
+   subid_ = ["l70","l80","l80v2", "nodownsize"]
+   subid_ = ["l80","l80v2"]
+   subid_ = ["l80v3"]
+   # id = "AB2"
+   # subid_ = ["l80", "seml80"]
+   # subid_ = ["Nl80", "seml80"]
+   # id = "CA1"
+   # subid_ = ["l70"]
+   leg = subid_
+
+
+
+   file_names = []
+   for subid in subid_:
+      # file_names.append(f"{out_path}{id}_0/Abmat_{id}_all_{subid}_{iter}_{iter+1}.pkl")
+      file_names.append(f"{out_path}{id}_0/Abmat_{id}_{subid}_{iter}_{iter+1}.pkl")
+
+   file_names = [f"{out_path}AB2_0/Abmat_AB2_Nl80_{iter}_{iter+1}.pkl",
+                 f"{out_path}BA3_0/Abmat_BA3_all_l80v3_{iter}_{iter+1}.pkl",
+                 f"{out_path}BA3_0/Abmat_BA3_allN_l80_{iter}_{iter+1}.pkl"]
+   file_names = [f"{out_path}AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl",
+                 f"{out_path}BA3_0/Abmat_BA3_allN_nodownsize_{iter}_{iter+1}.pkl",
+                 f"{out_path}BA3_0/Abmat_BA3_nodownsizev2_{iter}_{iter+1}.pkl"]
+   file_names = [f"{out_path}AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl",
+                 f"{out_path}AB2_0/Abmat_AB2_Nl80_{iter}_{iter+1}.pkl",
+                 f"{out_path}AB2_0/Abmat_AB2_l80_{iter}_{iter+1}.pkl"]
+   leg = ["BELA_N","COMB BELA_N","COMB BELA_N_2"]
+   leg = ["semi, nodownsize", "semi, l=80°", "full, l=80°"]
+   # file_names = [f"{out_path}AB2_0/Abmat_AB2_l80_{iter}_{iter+1}.pkl",
+   #               f"{out_path}AB2_0/Abmat_AB2_nodownsize_{iter}_{iter+1}.pkl"]
+   # leg = ["l=80°", "no downsize"]
+   # p_title = "All full tracks, BELA only"
+
+   # file_names = [f"{out_path}AB2_0/Abmat_AB2_Nl80_{iter}_{iter+1}.pkl",
+   #               f"{out_path}AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl"]
+   # file_names = [f"{out_path}AB2_0/Abmat_AB2_Nl80alllowlat_{iter}_{iter+1}.pkl",
+   #               f"{out_path}AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl"]
+   # leg = ["l=80°", "no downsize"]
+   # p_title = "Northern hemisphere, semi tracks, BELA only"
+   file_names = [f"{out_path}AB2_0/Abmat_AB2_Nnodownsize_{iter}_{iter+1}.pkl",
+                 f"{out_path}AB2_0/Abmat_AB2_seml80_{iter}_{iter+1}.pkl",
+                 f"{out_path}AB2_0/Abmat_AB2_semnodownsize_{iter}_{iter+1}.pkl"]
+   file_names = [f"{out_path}CA1_0/Abmat_CA1_nodownsize_{iter}_{iter+1}.pkl",
+                 f"{out_path}AB2_0/Abmat_AB2_semnodownsize_{iter}_{iter+1}.pkl",
+                 f"{out_path}BA3_0/Abmat_BA3_all_nodownsizev2_{iter}_{iter+1}.pkl"]
+   leg = ["MLA only", "BELA only", "combined"]
+   p_title = "All semi tracks from BELA"
+   p_title = "All semi tracks from MLA"
+   file_names = [f"{out_path}CA5_0/Abmat_CA5_0_1.pkl",
+                 f"{out_path}BA4_0/Abmat_BA4_0_1.pkl"]
+   #file_names = [f"{out_path}CA4_0/Abmat_CA4_0_1.pkl",
+   #              f"{out_path}CA4_3/Abmat_CA4_3_4.pkl"]
+   # leg = ["perturbed tracks"]
+   # p_title = "MLA only"
+   leg = ["MLA only","combined"]
+   # file_names = [f"{out_path}AC0_0/Abmat_AC0_{iter}_{iter+1}.pkl"]
+   # leg = range(0,2)
+   orb = '1'
+   # p_title = "BELA only"
+   # file_names = [f"{out_path}AC0_0/Abmat_AC0_{iter}_{iter+1}.pkl",
+   #               f"{out_path}AC0_1/Abmat_AC0_{iter+1}_{iter+2}.pkl",
+   #               f"{out_path}AC0_2/Abmat_AC0_{iter+2}_{iter+3}.pkl"]
+   file_names = [f"{out_path}AC4_0/Abmat_AC4_0_1.pkl",
+                 f"{out_path}BA4_0/Abmat_BA4_0_1.pkl"]
+   leg = ["BELA only", "combined"]
+   # leg = range(0,3)
+   orb = '1'
+   file_names = [f"{out_path}CA5_0/Abmat_CA5_0_1.pkl",
+                 f"{out_path}AC4_0/Abmat_AC4_0_1.pkl",
+                 f"{out_path}BA4_0/Abmat_BA4_0_1.pkl"]
+   file_names = [f"{out_path}AC1_0/Abmat_AC1_0_1.pkl",
+                 f"{out_path}AC4_0/Abmat_AC4_0_1.pkl",
+                 f"{out_path}BA4_0/Abmat_BA4_0_1.pkl"]
+   leg = ["MLA only", "BELA only", "combined"]
+   leg = ["BELA_S only", "combined_S"]
+
+   file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1.pkl"]
+   leg = ["MLA_CB0", "MLA_BA7"]
+   # file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1.pkl",
+   #                f"{out_path}AD2_0/Abmat_AD2_0_1.pkl",
+   #                f"{out_path}BA7_0/Abmat_BA7_0_1.pkl"]
+   # leg = ["MLA_CB0", "MLA_CB1","BELA_AD2"]
+   file_names = [f"{out_path}AD2_0/Abmat_AD2_0_1_extended.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_extended.pkl"]
+   file_names = [f"{out_path}AD2_0/Abmat_AD2_0_1.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1.pkl"]
+   file_names = [f"{out_path}AD2_0/Abmat_AD2_0_1.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_I.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_B.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_J.pkl"]
+   file_names = [f"{out_path}AD2_0/Abmat_AD2_0_1.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_I.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_J.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_nominal.pkl"]
+   # file_names = [f"{out_path}AD2_0/Abmat_AD2_0_1_extended.pkl"]
+   leg = ["BELA_AD2", "BELA_BA7", "BELA_BA7", "BELA_BA7"]
+   leg = [0,1,2,3]
+   p_title = "BELA only, all tracks"
+   # file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1.pkl",
+   #               f"{out_path}BA7_0/Abmat_BA7_0_1.pkl"]
+   # file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1.pkl",
+   #               f"{out_path}BA7_0/Abmat_BA7_0_1_extended.pkl"]
+   # p_title = "MLA only"
+   # file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1.pkl",
+   #               f"{out_path}AD2_0/Abmat_AD2_0_1.pkl",
+   #               f"{out_path}AD2_0/Abmat_AD2_0_1_I.pkl",
+   #               f"{out_path}BA7_0/Abmat_BA7_0_1.pkl",
+   #               f"{out_path}BA7_0/Abmat_BA7_0_1_extended.pkl"]
+   file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_K.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_nominal.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_A.pkl"]
+   file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1_A.pkl",
+                 f"{out_path}CB2_0/Abmat_CB2_0_1_B.pkl",
+                 f"{out_path}CB2_0/Abmat_CB2_0_1_C.pkl"]
+   leg = ["A","B","C"]
+
+   orb = '2'
+   file_names = [f"{out_path}AD2_0/Abmat_AD2_0_1_nominal.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_I.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_J.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_K.pkl"]
+   leg = ["nom","I","J","K"]
+   file_names = [f"{out_path}BA7_0/Abmat_BA7_0_1_nominal.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_A.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_B.pkl"]
+   leg = ["nom","A","B"]
+   file_names = [f"{out_path}AD2_0/Abmat_AD2_0_1_K.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_A.pkl"]
+   leg = ["BELA_only","BELA_combined"]
+   # file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1_B.pkl",
+   #               f"{out_path}AD2_0/Abmat_AD2_0_1_K.pkl",
+   #               f"{out_path}BA7_0/Abmat_BA7_0_1_A.pkl"]
+   # leg = ["MLA","BELA","BELA/MLA"]
+   orb = '1'
+   # file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1_B.pkl",
+   #               f"{out_path}BA7_0/Abmat_BA7_0_1_A.pkl"]
+   # leg = ["MLA_only","MLA_combined"]
+   file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1_B.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_K.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_L.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_A.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_C.pkl"]
+   leg = ["MLA","BELA","BELA_ext","BELA/MLA", "BELA/MLA_ext"]
+   file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1_B.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_A.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_C.pkl"]
+   leg = ["MLA","BELA/MLA", "BELA/MLA_ext"]
+   file_names = [f"{out_path}AD2_0/Abmat_AD2_0_1_K.pkl",
+                 f"{out_path}AD2_0/Abmat_AD2_0_1_L.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_A.pkl",
+                 f"{out_path}BA7_0/Abmat_BA7_0_1_C.pkl"]
+   leg = ["BELA","BELA_ext","BELA/MLA", "BELA/MLA_ext"]
+   file_names = [f"{out_path}CB0_0/Abmat_CB0_0_1.pkl",
+                 f"{out_path}BA8_0/Abmat_BA8_0_1_B.pkl"]
+   leg = ["MLA_only","MLA_combined"]
+   file_names = [f"{out_path}CB2_0/Abmat_CB2_0_1_A.pkl",
+                 f"{out_path}CB2_0/Abmat_CB2_0_1_C.pkl",
+                 f"{out_path}CB2_0/Abmat_CB2_0_1_D.pkl"]
+   file_names = [f"{out_path}CB0_0/Abmat_CB0_0_1.pkl",
+                 f"{out_path}CB2_0/Abmat_CB2_0_1_A.pkl",
+                 f"{out_path}CB3_0/Abmat_CB3_0_1_A.pkl"]
+   leg = ["A","B","C"]
+   file_names = [f"{out_path}CB3_0/Abmat_CB3_0_1_A.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_B.pkl",
+                 f"{out_path}BA9_0/Abmat_BA9_0_1_B.pkl"]
+   file_names = [f"{out_path}CB4_0/Abmat_CB4_0_1_A.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_B.pkl",
+                 f"{out_path}BB0_0/Abmat_BB0_0_1_B.pkl"]
+   file_names = [f"{out_path}CB4_0/Abmat_CB4_0_1_A.pkl",
+                 # f"{out_path}CB4_0/Abmat_CB4_0_1_C.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_B.pkl",
+                 f"{out_path}BB0_0/Abmat_BB0_0_1_B.pkl"]
+   file_names = [f"{out_path}CB4_0/Abmat_CB4_0_1_C.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_C.pkl",
+                 f"{out_path}BB0_0/Abmat_BB0_0_1_F.pkl"]
+   file_names = [f"{out_path}CB4_0/Abmat_CB4_0_1_C.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_D.pkl",
+                 f"{out_path}BB0_0/Abmat_BB0_0_1_G.pkl"]
+   # pointing error extended
+   file_names = [f"{out_path}CB3_0/Abmat_CB3_0_1_B.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_D.pkl",
+                 f"{out_path}BA9_0/Abmat_BA9_0_1_C.pkl"]
+   # pointing error nominal
+   file_names = [f"{out_path}CB3_0/Abmat_CB3_0_1_B.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_C.pkl",
+                 f"{out_path}BA9_0/Abmat_BA9_0_1_D.pkl"]
+   p_title = "BELA only, all tracks"
+   leg = ["MLA","BELA","BELA/MLA"]
+   # nominal: (no) pointing error
+   file_names = [f"{out_path}CB3_0/Abmat_CB3_0_1_B.pkl",
+                 f"{out_path}CB4_0/Abmat_CB4_0_1_C.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_C.pkl",
+                 f"{out_path}BA9_0/Abmat_BA9_0_1_D.pkl",
+                 f"{out_path}BB0_0/Abmat_BB0_0_1_F.pkl"]
+   p_title = "BELA only, all tracks"
+   leg = ["MLA$_p$","MLA","BELA","BELA/MLA$_p$","BELA/MLA"]
+
+   # MLA tracks nominal: pointing error
+   orb = '1'
+   file_names = [f"{out_path}CB3_0/Abmat_CB3_0_1_B.pkl",
+                 f"{out_path}BA9_0/Abmat_BA9_0_1_D.pkl",]
+   p_title = "MLA only, with pointing errors"
+   # MLA tracks nominal: pointing error
+   file_names = [f"{out_path}CB4_0/Abmat_CB4_0_1_C.pkl",
+                 f"{out_path}BB0_0/Abmat_BB0_0_1_F.pkl",]
+   p_title = "MLA only, without pointing errors"
+
+   # BELA tracks nominal: pointing error
+   # orb = '2'
+   # file_names = [f"{out_path}AD4_0/Abmat_AD4_0_1_C.pkl",
+   #               f"{out_path}BA9_0/Abmat_BA9_0_1_D.pkl",]
+   # p_title = "BELA only, all tracks"
+
+   # no pointing nominal/extended mission
+   file_names = [f"{out_path}CB4_0/Abmat_CB4_0_1_C.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_C.pkl",
+                 f"{out_path}AD4_0/Abmat_AD4_0_1_D.pkl",
+                 f"{out_path}BB0_0/Abmat_BB0_0_1_F.pkl",
+                 f"{out_path}BB0_0/Abmat_BB0_0_1_G.pkl"]
+   orb = '1'
+   #file_names = [f"{out_path}CB4_0/Abmat_CB4_0_1_C.pkl",
+   #              f"{out_path}BB0_0/Abmat_BB0_0_1_F.pkl"]
+   # leg = ["MLA only", "MLA/BELA"]
+   # file_names = [f"{out_path}AD4_0/Abmat_AD4_0_1_C.pkl",
+                 # f"{out_path}AD4_0/Abmat_AD4_0_1_D.pkl",
+   #               f"{out_path}BB0_0/Abmat_BB0_0_1_F.pkl",
+   #              f"{out_path}BB0_0/Abmat_BB0_0_1_G.pkl"]
+   #orb = '2'
+   leg = ["BELA","BELA_ext","MLA/BELA", "MLA/BELA_ext"]
+   # leg = ["BELA","MLA/BELA","BELA$_{ext}$"]
+   # pointing error nominal/extended mission
+   # file_names = [f"{out_path}CB3_0/Abmat_CB3_0_1_B.pkl",
+   #               f"{out_path}AD4_0/Abmat_AD4_0_1_C.pkl",
+   #               f"{out_path}AD4_0/Abmat_AD4_0_1_D.pkl",
+   #               f"{out_path}BA9_0/Abmat_BA9_0_1_D.pkl",
+   #               f"{out_path}BA9_0/Abmat_BA9_0_1_C.pkl"]
+   leg = ["MLA","BELA","BELA$_{ext}$","MLA/BELA","MLA/BELA$_{ext}$"]
+   # orb = '2'
+   # file_names = [f"{out_path}AD4_0/Abmat_AD4_0_1_B.pkl",
+   #               f"{out_path}BB0_0/Abmat_BB0_0_1_B.pkl",
+   #               f"{out_path}BB0_0/Abmat_BB0_0_1_A.pkl",
+   #               f"{out_path}BB0_0/Abmat_BB0_0_1_C.pkl",
+   #               f"{out_path}BB0_0/Abmat_BB0_0_1_D.pkl",
+   #               f"{out_path}BB0_0/Abmat_BB0_0_1_E.pkl"]
+   # leg = ["BELA","BELA/MLA w=1","BELA/MLA w=0.7","BELA/MLA w=0.5","BELA/MLA w=0.25","BELA/MLA w=0.01"]
+
+
+   # leg = ["MLA","BELA"]
+   # file_names = [f"{out_path}BB0_0/Abmat_BB0_0_1_B.pkl",
+   #               f"{out_path}BA9_0/Abmat_BA9_0_1_B.pkl"]
+
+   file_names = [f"{out_path}CB5_0/Abmat_CB5_0_1_B.pkl",
+                 f"{out_path}AD6_0/Abmat_AD6_0_1_B.pkl",
+                 f"{out_path}BB1_0/Abmat_BB1_0_1_B.pkl"]
+   leg = ["MLA","BELA$_{ext}$","MLA/BELA$_{ext}$"]
+   file_names = [f"{out_path}CB5_0/Abmat_CB5_0_1_B.pkl",
+                 f"{out_path}CB5_0/Abmat_CB5_0_1_C.pkl",
+                 f"{out_path}CB5_0/Abmat_CB5_0_1_D.pkl",
+              f"{out_path}CB5_0/Abmat_CB5_0_1_E.pkl"]
+   leg = ["[1,1,0]","[0.003,70.7,0]","[0.0004, 128, 0.41]","[0.003, 77.4, 1e8]"]
+   file_names = [f"{out_path}CB5_0/Abmat_CB5_0_1_B.pkl",
+                 f"{out_path}CB5_0/Abmat_CB5_0_1_C.pkl",
+                 f"{out_path}CB5_0/Abmat_CB5_0_1_D.pkl"]
+   leg = ["[1,1,0]","[0.003,70.7,0]","[0.0004, 128, 0.41]"]
+
+   orb = '2'
+   file_names = [f"{out_path}AD6_0/Abmat_AD6_0_1_B.pkl",
+                 f"{out_path}AD6_0/Abmat_AD6_0_1_C.pkl"]
+   leg = ["[1,1,0]","[0.002,0.349,0]"]
+
+   orb = '1'
+   file_names = [f"{out_path}CB5_0/Abmat_CB5_0_1_G.pkl",
+                 f"{out_path}AD6_0/Abmat_AD6_0_1_E.pkl",
+                 f"{out_path}BB1_0/Abmat_BB1_0_1_F.pkl"]
+   file_names = [f"{out_path}CB6_0/Abmat_CB6_0_1_E.pkl",
+                 f"{out_path}AE0_0/Abmat_AE0_0_1_B.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_B.pkl"]
+   leg = ["MLA","BELA$_{ext}$","MLA/BELA$_{ext}$"]
+   file_names = [f"{out_path}CB6_0/Abmat_CB6_0_1_E.pkl",
+                 f"{out_path}AE0_0/Abmat_AE0_0_1_F.pkl",
+                 f"{out_path}AE0_0/Abmat_AE0_0_1_H.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_F.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_G.pkl"]
+   leg = ["MLA","BELA$_{nom}$","BELA$_{nom}$ tr","MLA/BELA$_{nom}$","MLA/BELA$_{nom}$ tr"]
+
+   orb = '1'
+   file_names = [f"{out_path}CB6_0/Abmat_CB6_0_1_E.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_F.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_G.pkl"]
+   leg = ["MLA","MLA/BELA$_{nom}$","MLA/BELA$_{nom}$ tr"]
+   file_names = [f"{out_path}BB2_0/Abmat_BB2_0_1_F.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_G.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_I.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_H.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_J.pkl"]
+   leg = ["no threshold","$|\phi_{all}|<85$","$|\phi|<80$,$|\phi_{BB}|<88$",
+          "$|\phi|<85$,$|\phi_{M/B}|<75$","$|\phi|<75$,$|\phi_{BB}|<85$"]
+
+   file_names = [f"{out_path}BB2_0/Abmat_BB2_0_1_F.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_H.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_J0.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_I.pkl",
+                 f"{out_path}BB2_0/Abmat_BB2_0_1_N.pkl"]
+   leg = ["no threshold","$|\phi|<85$,$|\phi_{M/B}|<75$","$|\phi|<75$,$|\phi_{BB}|<85$",
+          "bands, nmin = 300","bands, nmin = 1000"]
+
+   # orb = '2'
+   # file_names = [f"{out_path}AE0_0/Abmat_AE0_0_1_F.pkl",
+   #               f"{out_path}AE0_0/Abmat_AE0_0_1_H.pkl",
+   #               f"{out_path}BB2_0/Abmat_BB2_0_1_F.pkl",
+   #               f"{out_path}BB2_0/Abmat_BB2_0_1_G.pkl"]
+   # leg = ["BELA$_{nom}$","BELA$_{nom}$ tr","MLA/BELA$_{nom}$","MLA/BELA$_{nom}$ tr"]
+
+
+   # file_names = [f"{out_path}CB6_0/Abmat_CB6_0_1_E.pkl",
+   #               f"{out_path}BB2_0/Abmat_BB2_0_1_B.pkl"]
+   # leg = ["MLA","MLA/BELA$_{ext}$"]
+   # orb = '2'
+   # file_names = [f"{out_path}AE0_0/Abmat_AE0_0_1_B.pkl",
+   #               f"{out_path}BB2_0/Abmat_BB2_0_1_B.pkl"]
+   # leg = ["BELA$_{ext}$","MLA/BELA$_{ext}$"]
+   # leg = ["MLA","MLA/BELA$_{ext}$"]
+
+   orb = '2'
+   file_names = [f"{out_path}AE0_0/Abmat_AE0_0_1_A.pkl"]
+   leg = ["BELA$_{ext}$"]
+
+   file_names = [f"{out_path}CB9_0/Abmat_CB9_0_1_A.pkl",
+                 f"{out_path}AE2_0/Abmat_AE2_0_1_A.pkl",
+                 f"{out_path}BB3_0/Abmat_BB3_0_1_E.pkl"]
+   leg = ["MLA", "BELA", "MLA/BELA"]
+
+if plot_geodetic:
+   file_names = [f"{out_path}CB9_0/Abmat_CB9_0_1_A.pkl",
+                 f"{out_path}AE2_0/Abmat_AE2_0_1_C.pkl",
+                 f"{out_path}AE2_0/Abmat_AE2_0_1_A.pkl",
+                 f"{out_path}BB3_0/Abmat_BB3_0_1_B.pkl",
+                 f"{out_path}BB3_0/Abmat_BB3_0_1_E.pkl"]
+   file_names = [f"{out_path}CD5_0/Abmat_CD5_0_1_A.pkl",
+                 f"{out_path}AF0_0/Abmat_AF0_0_1_B.pkl",
+                 f"{out_path}AF0_0/Abmat_AF0_0_1_A.pkl",
+                 f"{out_path}BB7_0/Abmat_BB7_0_1_B.pkl",
+                 f"{out_path}BB7_0/Abmat_BB7_0_1_A.pkl"]
+   leg = ["MLA", "BELA", "BELA$_{ext}$", "MLA+BELA","MLA+BELA$_{ext}$"]
+   color = ['#000000','#4477AA', '#228833',
+               '#66CCEE', '#EE6677', '#CCBB44']
+   fig_name = "globals_formalerrors"
+
+if plot_geodetic_redundant_obs:
+   fig_name = "global_formals_hilat"
+   file_names = [f"{out_path}AE2_0/Abmat_AE2_0_1_C.pkl",
+                 f"{out_path}AE2_0/Abmat_AE2_0_1_I.pkl",
+                 f"{out_path}AE2_0/Abmat_AE2_0_1_J.pkl",
+                 f"{out_path}AE2_0/Abmat_AE2_0_1_K.pkl",
+                 f"{out_path}AE2_0/Abmat_AE2_0_1_F.pkl",]
+   leg = ["100% high-lat", "80% high-lat", "50% high-lat", "10% high-lat", "2 VCE blocks"]
+   color = ['#4477AA', '#228833', '#66CCEE', '#EE6677', '#CCBB44']
+
+#    file_names = [f"{out_path}CB9_0/Abmat_CB9_0_1_A.pkl",
+#                  f"{out_path}CC4_0/Abmat_CC4_0_1_A.pkl",
+#                  f"{out_path}AE2_0/Abmat_AE2_0_1_A.pkl",
+#                  f"{out_path}AE4_0/Abmat_AE4_0_1_A.pkl"]
+
+if plot_short_LIB or plot_long_LIB:
+   ylims=[1e-3, 1]
+   color = ['#4477AA','#66CCEE', "#B866EE", '#CCBB44']
+   if plot_short_LIB:
+      fig_name = "global_formals_short_lib"
+   if plot_long_LIB:
+      fig_name = "global_formals_long_lib"
+   leg = ["MLA", "BELA$_{ext}$", "MLA&BELA$_{ext}$", "MLA+BELA$_{ext}$"]
+   file_names = [f"{out_path}CC4_0/Abmat_CC4_0_1_A.pkl",
+                 f"{out_path}AE4_0/Abmat_AE4_0_1_B.pkl",
+                 f"{out_path}CC4_0/Abmat_BB4_0_1_A.pkl",
+                 f"{out_path}BB4_0/Abmat_BB4_0_1_A.pkl"]
+
+if plot_geodetic_wLIB:
+   fig_name = "global_formals_lib_impact"
+   color = ["#000000",'#4477AA', '#228833', '#66CCEE', '#EE6677', '#CCBB44']
+   file_names = [f"{out_path}CB9_0/Abmat_CB9_0_1_A.pkl",
+                 f"{out_path}CC4_0/Abmat_CC4_0_1_A.pkl",
+                 f"{out_path}AE2_0/Abmat_AE2_0_1_A.pkl",
+                 f"{out_path}AE4_0/Abmat_AE4_0_1_B.pkl",
+                 f"{out_path}BB3_0/Abmat_BB3_0_1_E.pkl",
+                 f"{out_path}BB4_0/Abmat_BB4_0_1_A.pkl"]
+   leg = ["MLA $L$", "MLA $\lambda_i$", "BELA$_{ext}$ $L$", "BELA$_{ext}$ $\lambda_i$","MLA+BELA$_{ext}$ $L$", "MLA+BELA$_{ext}$ $\lambda_i$"]
+
+if plot_MLA_track_error:
+   orb = '1'
+   color = ['#4477AA', '#EE6677', '#CCBB44']
+   file_names = [f"{out_path}CB9_old_0/Abmat_CB9_0_1_A.pkl",
+                 f"{out_path}BB3_0/Abmat_BB3_0_1_B.pkl",
+                 f"{out_path}BB3_0/Abmat_BB3_0_1_E.pkl"]
+   id_ref = "CB9"
+   file_names = [f"{out_path}CD5_0/Abmat_CD5_0_1_A.pkl",
+                 f"{out_path}BB7_0/Abmat_BB7_0_1_B.pkl",
+                 f"{out_path}BB7_0/Abmat_BB7_0_1_A.pkl"]
+   fig_name = "orbcorr_MLA"
+   leg = ["MLA", "MLA+BELA", "MLA+BELA$_{ext}$"]
+   id_ref = "CD5"
+   file_names = [f"{out_path}CE0_0/Abmat_CE0_0_1_A.pkl"]
+   fig_name = "orbcorr_MLA_20as"
+   leg = ["MLA"]
+   id_ref = "CE0"
+   
+
+if plot_BELA_nom_track_error:
+   orb = '2'
+   color = ['#228833','#EE6677']
+   file_names = [f"{out_path}AE2_0/Abmat_AE2_0_1_C.pkl",
+                 f"{out_path}BB3_0/Abmat_BB3_0_1_B.pkl"]
+   file_names = [f"{out_path}AF0_0/Abmat_AF0_0_1_B.pkl",
+                 f"{out_path}BB7_0/Abmat_BB7_0_1_B.pkl"]
+   leg = ["BELA", "MLA+BELA"]
+   fig_name = "orbcorr_BELA"
+   id_ref = ["AE2","AE3"]
+   id_ref = ["AF0","AF1"]
+
+if plot_BELA_ext_track_error:
+   orb = '2'
+   file_names = [f"{out_path}AE2_0/Abmat_AE2_0_1_A.pkl",
+                 f"{out_path}BB3_0/Abmat_BB3_0_1_E.pkl"]
+   file_names = [f"{out_path}AF0_0/Abmat_AF0_0_1_A.pkl",
+                 f"{out_path}BB7_0/Abmat_BB7_0_1_A.pkl"]
+   leg = ["BELA$_{ext}$", "MLA+BELA$_{ext}$"]
+   color = ['#66CCEE','#CCBB44']
+   fig_name = "orbcorr_BELA_ext"
+   id_ref = ["AE2","AE3"]
+   id_ref = ["AF0","AF1"]
+
+
+# real data
+# file_names = [f"{out_path}CC5_0/Abmat_CC5_0_1_A.pkl",
+#               f"{out_path}CC5_0/Abmat_CC5_0_1_B.pkl",
+#               f"{out_path}CC5_0/Abmat_CC5_0_1_C.pkl",
+#               f"{out_path}CC5_0/Abmat_CC5_0_1_D.pkl",
+#               f"{out_path}CC5_0/Abmat_CC5_0_1_E.pkl",
+#               f"{out_path}CC5_0/Abmat_CC5_0_1_F.pkl",
+#               f"{out_path}CC5_0/Abmat_CC5_0_1_G.pkl",
+#               f"{out_path}CC5_0/Abmat_CC5_0_1_H.pkl",]
+
+
 
 for file_name in file_names:
    if os.path.isfile(file_name):
@@ -500,14 +570,15 @@ for file_name in file_names:
 
 if plot_orbcorr and plot_error:
    if orb == '1':
-      id_ref = "CB9"
+      # id_ref = "CB9"
       #id_ref = "AD2"
-      allFiles = glob.glob(f"{data_path}pyXover/out/{id_ref}_0/gtrack_*/gtrack_*.pkl")
+      allFiles = glob.glob(f"{out_path}{id_ref}_0/gtrack_*/gtrack_*.pkl")
    else:
-      id_ref = ["AE2","AE3"]
-      allFiles = glob.glob(f"{data_path}pyXover/out/{id_ref[0]}_0/gtrack_*/gtrack_*.pkl") + \
-         glob.glob(f"{data_path}pyXover/out/{id_ref[1]}_0/gtrack_*/gtrack_*.pkl")
-   
+      # id_ref = ["AE2","AE3"]
+      allFiles = glob.glob(f"{out_path}{id_ref[0]}_0/gtrack_*/gtrack_*.pkl") + \
+         glob.glob(f"{out_path}{id_ref[1]}_0/gtrack_*/gtrack_*.pkl")
+   if allFiles == []:
+      print("No track files found for error computation")
    dA = dict()
    dC = dict()
    dR = dict()
@@ -518,13 +589,10 @@ if plot_orbcorr and plot_error:
          dA[track_name] = track.pert_cloop_0['dA']
          dC[track_name] = track.pert_cloop_0['dC']
          dR[track_name] = track.pert_cloop_0['dR']
-# print(sol)
 sol_ref = sol[0]
-# sol = sol[1:]
 if std_sol:
    sol = std
 if plot_orbcorr:
-   xmax = 0.5
    fig, axs = plt.subplots(3,figsize=(6.1,4.8))
    l = []
    for arg,labl,col in zip(sol,leg,color):
@@ -539,6 +607,8 @@ if plot_orbcorr:
             track_name = par.split('_')[0]
             if plot_error and not track_name in dA.keys():
                continue
+            # if int(track_name) < 2804010000: # extended mission
+            #    continue
             if par.endswith('A') or par.endswith('C') or par.endswith('R'):
                if arg[par] == 0:
                   print("Large correction removed")
@@ -555,18 +625,13 @@ if plot_orbcorr:
          stdA = { track : stdA[track]+dA[track] for track in stdA.keys() }
          stdC = { track : stdC[track]+dC[track] for track in stdC.keys() }
          stdR = { track : stdR[track]+dR[track] for track in stdR.keys() }
-      # print(len(stdA))
-      # print([s for s in stdA if s==0])
-      sub_tracks = [int(track) for track in stdR.keys() if np.abs(stdR[track])<1e-2]
-      sub_tracks.sort()
-      print(sub_tracks[:10])
       stdA = list(stdA.values())
       stdC = list(stdC.values())
       stdR = list(stdR.values())
       
-      stdA = [s for s in stdA if s<xlims[0]]
-      stdC = [s for s in stdC if s<xlims[1]]
-      stdR = [s for s in stdR if s<xlims[2]]
+      # stdA = [s for s in stdA if s<xlims[0]]
+      # stdC = [s for s in stdC if s<xlims[1]]
+      # stdR = [s for s in stdR if s<xlims[2]]
       
       legi = [labl, None, None]
       std_ACR = [np.std(stdA), np.std(stdC), np.std(stdR)]
@@ -595,35 +660,26 @@ if plot_orbcorr:
          writer.writerow(stdR)
          file.close()
    
-   # axs[0].hist(Amat.xov.pert_cloop.dA,nbins, alpha = 0.5)
-   # axs[1].hist(Amat.xov.pert_cloop.dC,nbins, alpha = 0.5)
-   # axs[2].hist(Amat.xov.pert_cloop.dR,nbins, alpha = 0.5)
    axs[0].set_ylabel('Along-track')
    axs[1].set_ylabel('Cross-track')
    axs[2].set_ylabel('Radial')
-   axs[0].set_xlim([-xlims[0], xlims[0]])
-   axs[1].set_xlim([-xlims[1], xlims[1]])
-   axs[2].set_xlim([-xlims[2], xlims[2]])
+   # axs[0].set_xlim([-xlims[0], xlims[0]])
+   # axs[1].set_xlim([-xlims[1], xlims[1]])
+   # axs[2].set_xlim([-xlims[2], xlims[2]])
    if orb == '1':
       axs[2].set_xlabel('MLA track error [m]')
    else:
       axs[2].set_xlabel('BELA track error [m]')
-   # for ax in axs:
-      # ax.set_ylabel('count')
-      # ax.set_xlim([0, xmax])
    plt.legend()
    handles, labels = plt.gca().get_legend_handles_labels()
    fig.legend(handles, leg, loc='upper center', ncols = 3)
    # fig.suptitle(p_title)
 
    plt.savefig(f"{fig_name}.png")
-   plt.savefig(f"{fig_name}.svg")
+   #plt.savefig(f"{fig_name}.svg")
    plt.savefig(f"{fig_name}.pdf")
 
 if plot_globcorr:
-   # color = ['k','b','g','r','c','m']
-   # color = ['#000000','#4477AA', '#EE6677', '#228833', '#CCBB44',
-   #          '#66CCEE','#AA3377', '#BBBBBB']
    if export_cvs:
       i=-1
       for name in glob_nam:
@@ -649,6 +705,8 @@ if plot_globcorr:
    if plot_bertone2021:
       sol_dict['Bertone+2021'] = [1e-5,1e-5,1e-5,1e-5,1e-5]
       std_dict['Bertone+2021'] = [5.4e-5*3600/3, 2.8e-5*3600/3, 1.5e-7*3600*365.25/3, 0.2/3, 0.3/3]
+      if std_sol:
+         sol_dict['Bertone+2021'] = std_dict['Bertone+2021']
    # sol_dict = std_dict # WD: just show the formal errors
    for name, arg in zip(leg,sol):
       sol_dict[name] = [abs(arg[f"dR/d{par_name}"]) for par_name in glob_plt]
@@ -674,14 +732,19 @@ if plot_globcorr:
    multiplier = 0
    for attribute, measurement in std_dict.items():
       offset = width * (multiplier-1.5)
-      rects = ax.bar(x + offset, measurement, width, label=attribute, fill=False, edgecolor=color[multiplier], linewidth = 2)
+      rects = ax.bar(x + offset, 3*measurement, width, label=attribute, fill=False, edgecolor=color[multiplier], linewidth = 2)
       # ax.bar_label(rects, padding=3)
       multiplier += 1
 
-   # Add some text for labels, title and custom x-axis tick labels, etc.
+   if plot_short_LIB:
+      val = [0.0106, 0.0035, np.nan, 0.0025]
+      for i in range(0,4):
+         if np.isnan(val[i]):
+            continue
+         ax.axhline(val[i], linestyle='--', color=color[i])
    name2 = [glob_lbl[n] for n in glob_plt]
    ax.set_xticks(x + width, name2)
-   ax.set_ylim(1e-4, 2e-1)
+   ax.set_ylim(ylims)
    # ax.set_ylim(1e-3, 1)
    # ax.set_ylim(2e-3, 3e-2)
    
@@ -690,9 +753,7 @@ if plot_globcorr:
 
    # ax.set_ylabel('Formal and true errors')
    ax.set_ylabel('Formal errors')
-   dir = "/storage/homefs/desprats/pyxover/plot/examples/BELA/"
    plt.savefig(f"{fig_name}.png")
-   plt.savefig(f"{fig_name}.svg")
    plt.savefig(f"{fig_name}.pdf")
 
 

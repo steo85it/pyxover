@@ -5,7 +5,6 @@ PATH_VALUES  = ( 'data/aux/kernels', 'data/aux/kernels/ck')
 PATH_SYMBOLS = ( 'A' , 'B')
 
 KERNELS_TO_LOAD = ( '$A/msgr_de405_de423s.bsp',
-		    '$A/de432s.bsp',
                     '$A/pck00011.tpc',
                     '$A/naif0012.tls',
                     '$A/msgr_v231.tf',
