@@ -60,6 +60,14 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
    # get probe CoM state at RX
    # --------------------------
    scpos_rx, scvel_rx = get_sc_ssb(et_tx + tof, SpObj, tmp_pertPar, vecopts, t0=t0)
+   # scpos_rx is all NaN; returning NaN outputs
+   if np.isnan(scpos_rx).all():
+      n = len(et_tx)
+      geoloc_out = np.full((n, 3), np.nan)
+      et_bc = np.full(n, np.nan)
+      dr = np.full(n, np.nan)
+      offndr = np.full(n, np.nan)
+      return geoloc_out, et_bc, dr, offndr
    # update after offset
    Rrx = np.linalg.norm(scpos_rx, axis=1)
 
@@ -103,8 +111,9 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
 
    if [tmp_pertPar[k] for k in ['dRl', 'dPt']] != [0, 0]:
       # Apply roll and pitch offsets to zpt (converted to radians)
-      ang_Rl = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 0]
-      ang_Pt = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 1]
+      ang_Rl = np.ones(len(et_tx), dtype=float) * as2rad(tmp_pertPar["dRl"])
+      ang_Pt = np.ones(len(et_tx), dtype=float) * as2rad(tmp_pertPar["dPt"])
+
 
       zpt = astr.rp_2_xyz(zpt, ang_Rl, ang_Pt)
 

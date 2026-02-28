@@ -82,8 +82,10 @@ def launch_xov(args):
             if n_multixov > 0:
                print(f"More than one xover found in {n_multixov} track combinations.")
             if n_zeroxov > 0:
-               print(f"No xover found between {track_idA} and the {n_zeroxov} following tracks:",
-                     [s[1] for s in comb_noxov])
+               noxov_ids = ", ".join(str(s[1]) for s in comb_noxov)
+               print(
+                     f"No xover found between {track_idA} and the {n_zeroxov} following tracks: {noxov_ids}"
+               )
 
             if XovOpt.get("new_algo"):
                xov_tmp.xovers = pd.DataFrame(xovers_list)
@@ -257,6 +259,8 @@ def main(args_in):
 
       print("Track combinations:")
       print(comb)
+      if len(comb) == 0:
+         raise RuntimeError("No track combinations found (comb is empty). Check inputs/filters.")
 
       # Load all tracks
       # ---------------

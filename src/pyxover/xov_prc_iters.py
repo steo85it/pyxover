@@ -20,9 +20,9 @@ from config import XovOpt
 def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
    start = time.time()
    xov_dir = XovOpt.get("outdir") + outdir_in + 'xov/'
-   outpath = xov_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.json'
+   outpath = xov_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1])
    # Exit process if file already exists and no option to recreate
-   if (XovOpt.get("new_xov") != 2) and (os.path.isfile(outpath)):
+   if (XovOpt.get("new_xov") != 2) and (os.path.isfile(f"{outpath}.json")):
       print("Fine xov", outpath," already exists. Stop!")
       return
 
@@ -37,13 +37,12 @@ def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
    xov_tmp.store_pertubation(gtrack_dirs, cmb)
 
    # Save to file
-   xov_pklname = 'xov_' + str(cmb[0]) + '_' + str(cmb[1])  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
-   xov_tmp.save(xov_dir + xov_pklname)
+   xov_tmp.save(outpath)
 
    end = time.time()
 
    print('Xov for ' + str(cmb) + ' processed @' + time.strftime("%H:%M:%S", time.gmtime()) +
-         'and written to:\n' + xov_dir + xov_pklname)
+         'and written to:\n' + outpath)
 
    print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!\n")
    # print(xov_tmp.xovers.columns)

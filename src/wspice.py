@@ -65,7 +65,8 @@ def spice_spkezr(targ, et, ref, obs, fname=""):
       scpv, _ = spice.spkezr(targ, et, ref, 'NONE', obs)
    except:
       warnings.warn(
-         f"Vectorized spkezr failed for {targ} w.r.t {obs} in {fname}. "
+         f"Vectorized spkezr failed for {targ} w.r.t {obs} in {fname}, "
+         f"between et {et[0]} and {et[-1]}."
          "Falling back to scalar mode."
          )
       
