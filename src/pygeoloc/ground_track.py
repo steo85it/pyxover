@@ -265,7 +265,14 @@ class gtrack:
             #    date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=min(df['ET_TX']))
             #    df['orbID'] = date.strftime('%y%m%d%H%M')
 
-      self.name = df['orbID'].unique().squeeze()
+      unique_orb_ids = df['orbID'].dropna().unique()
+      if len(unique_orb_ids) == 0:
+         self.name = None
+      else:
+         # Ensure a single string even if multiple IDs are present.
+         self.name = str(unique_orb_ids[0])
+         if len(unique_orb_ids) > 1:
+            print(f"*** ground_track.read_fill: multiple orbID values found ({len(unique_orb_ids)}); using {self.name}")
 
       # strip and lower case all column names
       df.columns = df.columns.str.strip()
@@ -433,12 +440,17 @@ class gtrack:
          param.update(self.XovOpt.get("parGlo"))
 
       self.param = param
-      # check if track has to be perturbed (else only apply global pars)
-      if self.name in self.XovOpt.get("pert_tracks") or self.XovOpt.get("pert_tracks") == []:
-         _ = {}
+      # Determine closed-loop perturbations (orbital + global).
+      self.vecopts['ALTIM_BORESIGHT'] = self.boresight
+
+      pert_tracks = self.XovOpt.get("pert_tracks")
+      perturb_this_track = (self.name in pert_tracks or pert_tracks == [])
+      if perturb_this_track:
          # get cloop sim perturbations from prOpt
-         [_.update(v) for k, v in self.XovOpt.get("pert_cloop").items()]
-         self.pert_cloop = _.copy()
+         pert_cloop = {}
+         for _, v in self.XovOpt.get("pert_cloop").items():
+            pert_cloop.update(v)
+         self.pert_cloop = pert_cloop
       else:
          self.pert_cloop = {}
          

@@ -48,6 +48,9 @@ class XovOpt:
         # define if it's a closed loop simulation run (WD: not sure what this is doing...)
         "cloop_sim": False,
 
+        # optional per-track boresights (dict: track_name -> [x, y, z])
+        "boresight_by_track": {},
+
         # perturbations for closed loop sims (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
         "pert_cloop_orb": {},  # 'dA':50., 'dC':50., 'dR':20.,'dRl':0.5, 'dPt':0.5} #} #, 'dA1':20., 'dC1':20., 'dR1':5.
         # in deg and deg/day as reminder pert_cloop_glo": {'dRA':[0.0015deg, 0.000, 0.000], 'dDEC':[0.0015deg, 0.000, 0.000],'dPM':[0, 2.e-6deg/day, 0.000],'dL':~3*1.5as, 'dh2':-1.} # compatible with current uncertitudes

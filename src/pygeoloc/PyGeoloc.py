@@ -38,6 +38,9 @@ def launch_gtrack(args):
             os.makedirs(XovOpt.get("outdir") + outdir_in, exist_ok=True)
 
          track.setup()
+         # Drop any rows containing NaNs before saving
+         if hasattr(track, "ladata_df") and track.ladata_df is not None:
+            track.ladata_df = track.ladata_df.dropna().reset_index(drop=True)
          
 
          if XovOpt.get("debug"):
@@ -58,7 +61,7 @@ def launch_gtrack(args):
             if not XovOpt.get("local") or XovOpt.get("debug"):
                print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
          else:
-            print(f"Orbit {track.name} contains no valid data. No gtrack created.")
+            print(f"Orbit {track.name} contains no valid data (only nans). No gtrack created.")
             # except:
             #    print('failed to process ' + track_id)
       else:
@@ -261,6 +264,13 @@ def main(args):
             except:
                True
 
+         # Inject per-track boresights from options (track_name -> dict).
+         boresight_by_track = XovOpt.get("boresight_by_track")
+         if boresight_by_track and track.name in boresight_by_track:
+            track.boresight = boresight_by_track[track.name]
+         else:
+            track.boresight = XovOpt.get("vecopts")['ALTIM_BORESIGHT']
+               
          tracks.append(track)
 
       if XovOpt.get("SpInterp") == 3:
