@@ -64,9 +64,12 @@ def spice_spkezr(targ, et, ref, obs, fname=""):
    try:
       scpv, _ = spice.spkezr(targ, et, ref, 'NONE', obs)
    except:
+      import datetime as dt
+      start = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=et[0])
+      end = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=et[-1])
       warnings.warn(
          f"Vectorized spkezr failed for {targ} w.r.t {obs} in {fname}, "
-         f"between et {et[0]} and {et[-1]}."
+         f"between et {start} and {end}."
          "Falling back to scalar mode."
          )
       
