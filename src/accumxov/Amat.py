@@ -95,45 +95,103 @@ class Amat:
       array_mats = {}
       sparse_mats_nosol = {}
       array_mats_nosol = {}
+      sparse_list_mats = {}
+      array_list_mats = {}
+      sparse_list_mats_nosol = {}
+      array_list_mats_nosol = {}
+
+      def _store_sparse(container, name, mat):
+         mat = mat.tocsr()
+         prefix = f"{name}__sparse"
+         container[f"{prefix}_data"] = mat.data
+         container[f"{prefix}_indices"] = mat.indices
+         container[f"{prefix}_indptr"] = mat.indptr
+         container[f"{prefix}_shape"] = np.array(mat.shape)
+
+      def _store_sparse_list(container, name, mats):
+         container[f"{name}__sparse_list_count"] = np.array(len(mats), dtype=np.int64)
+         for i, mat in enumerate(mats):
+            mat = mat.tocsr()
+            prefix = f"{name}__sparse_list_{i}"
+            container[f"{prefix}_data"] = mat.data
+            container[f"{prefix}_indices"] = mat.indices
+            container[f"{prefix}_indptr"] = mat.indptr
+            container[f"{prefix}_shape"] = np.array(mat.shape)
+
+      def _store_array_list(container, name, arrs):
+         container[f"{name}__array_list_count"] = np.array(len(arrs), dtype=np.int64)
+         for i, arr in enumerate(arrs):
+            container[f"{name}__array_list_{i}"] = np.asarray(arr)
+
+      def _as_ndarray_list(val):
+         if not isinstance(val, (list, tuple)) or len(val) == 0:
+            return None
+
+         arrs = []
+         for v in val:
+            if issparse(v) or isinstance(v, (str, bytes, dict, set)):
+               return None
+            try:
+               arr = np.asarray(v)
+            except Exception:
+               return None
+            if arr.dtype == object and not isinstance(v, np.ndarray):
+               return None
+            arrs.append(arr)
+
+         return arrs
 
       for key, val in self.__dict__.items():
          if key == "xov":
             continue
+
+         is_nosol = key in ["spA", "b", "weights"]
+
          if issparse(val):
-            if key in ["spA", "b", "weights"]:
+            if is_nosol:
                sparse_mats_nosol[key] = val
             else:
                sparse_mats[key] = val
          elif isinstance(val, np.ndarray):
-            if key in ["spA", "b", "weights"]:
+            if is_nosol:
                array_mats_nosol[key] = val
             else:
                array_mats[key] = val
+         elif isinstance(val, (list, tuple)) and len(val) > 0 and all(issparse(v) for v in val):
+            if is_nosol:
+               sparse_list_mats_nosol[key] = list(val)
+            else:
+               sparse_list_mats[key] = list(val)
+         else:
+            arr_list = _as_ndarray_list(val)
+            if arr_list is not None:
+               if is_nosol:
+                  array_list_mats_nosol[key] = arr_list
+               else:
+                  array_list_mats[key] = arr_list
 
-      if sparse_mats_nosol or array_mats_nosol:
+      if sparse_mats_nosol or array_mats_nosol or sparse_list_mats_nosol or array_list_mats_nosol:
          container = {}
          for name, mat in sparse_mats_nosol.items():
-            mat = mat.tocsr()
-            prefix = f"{name}__sparse"
-            container[f"{prefix}_data"] = mat.data
-            container[f"{prefix}_indices"] = mat.indices
-            container[f"{prefix}_indptr"] = mat.indptr
-            container[f"{prefix}_shape"] = np.array(mat.shape)
+            _store_sparse(container, name, mat)
          for name, arr in array_mats_nosol.items():
             container[f"{name}__array"] = arr
+         for name, mats in sparse_list_mats_nosol.items():
+            _store_sparse_list(container, name, mats)
+         for name, arrs in array_list_mats_nosol.items():
+            _store_array_list(container, name, arrs)
          np.savez(matrices_nosol_path, **container)
 
-      if sparse_mats or array_mats:
+      if sparse_mats or array_mats or sparse_list_mats or array_list_mats:
          container = {}
          for name, mat in sparse_mats.items():
-            mat = mat.tocsr()
-            prefix = f"{name}__sparse"
-            container[f"{prefix}_data"] = mat.data
-            container[f"{prefix}_indices"] = mat.indices
-            container[f"{prefix}_indptr"] = mat.indptr
-            container[f"{prefix}_shape"] = np.array(mat.shape)
+            _store_sparse(container, name, mat)
          for name, arr in array_mats.items():
             container[f"{name}__array"] = arr
+         for name, mats in sparse_list_mats.items():
+            _store_sparse_list(container, name, mats)
+         for name, arrs in array_list_mats.items():
+            _store_array_list(container, name, arrs)
          np.savez(matrices_path, **container)
 
    def save_metadata(self, filnam, xov_base):
@@ -143,6 +201,24 @@ class Amat:
             return True
          except TypeError:
             return False
+
+      def _as_ndarray_list(val):
+         if not isinstance(val, (list, tuple)) or len(val) == 0:
+            return None
+
+         arrs = []
+         for v in val:
+            if issparse(v) or isinstance(v, (str, bytes, dict, set)):
+               return None
+            try:
+               arr = np.asarray(v)
+            except Exception:
+               return None
+            if arr.dtype == object and not isinstance(v, np.ndarray):
+               return None
+            arrs.append(arr)
+
+         return arrs
 
       base = filnam
       meta_path = base + ".json"
@@ -158,11 +234,17 @@ class Amat:
             meta["amat"][key] = {"kind": "sparse_csr", "stored": "matrices"}
          elif isinstance(val, np.ndarray):
             meta["amat"][key] = {"kind": "ndarray", "stored": "matrices"}
+         elif isinstance(val, (list, tuple)) and len(val) > 0 and all(issparse(v) for v in val):
+            meta["amat"][key] = {"kind": "sparse_csr_list", "stored": "matrices"}
          else:
-            if _is_jsonable(val):
+            arr_list = _as_ndarray_list(val)
+            if arr_list is not None:
+               meta["amat"][key] = {"kind": "ndarray_list", "stored": "matrices"}
+            elif _is_jsonable(val):
                meta["amat"][key] = {"kind": "json", "value": val}
             else:
                meta["amat"][key] = {"kind": "repr", "value": repr(val)}
+            continue
 
       if os.path.exists(matrices_path):
          meta["files"]["matrices"] = os.path.basename(matrices_path)
@@ -204,9 +286,17 @@ class Amat:
                setattr(self, key, mats[key])
             elif kind == "ndarray" and key in arrays:
                setattr(self, key, arrays[key])
+            elif kind == "sparse_csr_list" and key in mats:
+               setattr(self, key, mats[key])
+            elif kind == "ndarray_list" and key in arrays:
+               setattr(self, key, arrays[key])
             elif kind == "sparse_csr" and key in mats_nosol:
                setattr(self, key, mats_nosol[key])
             elif kind == "ndarray" and key in arrays_nosol:
+               setattr(self, key, arrays_nosol[key])
+            elif kind == "sparse_csr_list" and key in mats_nosol:
+               setattr(self, key, mats_nosol[key])
+            elif kind == "ndarray_list" and key in arrays_nosol:
                setattr(self, key, arrays_nosol[key])
             elif kind == "json":
                setattr(self, key, entry.get("value"))
@@ -214,7 +304,6 @@ class Amat:
                setattr(self, key, entry.get("value"))
             else:
                setattr(self, key, entry.get("value", None))
-
          # load xov via its own json+parquet format (path from metadata)
          xov_meta = files.get("xov_metadata")
          if xov_meta:
@@ -227,40 +316,44 @@ class Amat:
 
       raise FileNotFoundError(f"Missing metadata file: {meta_path}")
 
-   @staticmethod
-   def migrate_old_pickle(pkl_path, out_path=None):
-      """
-      Load legacy pickle and save using the current split format.
-      If out_path is None, uses pkl_path as the base name.
-      """
-      if out_path is None:
-         out_path = pkl_path
-
-      with open(pkl_path, "rb") as pklfile:
-         obj = pickle.load(pklfile)
-
-      if not isinstance(obj, Amat):
-         raise TypeError(f"Expected Amat in {pkl_path}, got {type(obj)}")
-
-      obj.save(out_path)
-      return out_path
-
    def load_matrices(self, matrices_path):
       npz = np.load(matrices_path)
       mats = {}
+
       for key in npz.files:
-         if key.endswith("__sparse_data"):
+         if key.endswith("__sparse_list_count"):
+            base = key[:-len("__sparse_list_count")]
+            count = int(npz[key])
+            mats[base] = []
+            for i in range(count):
+               prefix = f"{base}__sparse_list_{i}"
+               data = npz[f"{prefix}_data"]
+               indices = npz[f"{prefix}_indices"]
+               indptr = npz[f"{prefix}_indptr"]
+               shape = tuple(npz[f"{prefix}_shape"])
+               mats[base].append(csr_matrix((data, indices, indptr), shape=shape))
+
+      for key in npz.files:
+         if key.endswith("__sparse_data") and "__sparse_list_" not in key:
             base = key[:-len("__sparse_data")]
             data = npz[f"{base}__sparse_data"]
             indices = npz[f"{base}__sparse_indices"]
             indptr = npz[f"{base}__sparse_indptr"]
             shape = tuple(npz[f"{base}__sparse_shape"])
             mats[base] = csr_matrix((data, indices, indptr), shape=shape)
+
       arrays = {}
       for key in npz.files:
-         if key.endswith("__array"):
+         if key.endswith("__array_list_count"):
+            base = key[:-len("__array_list_count")]
+            count = int(npz[key])
+            arrays[base] = [npz[f"{base}__array_list_{i}"] for i in range(count)]
+
+      for key in npz.files:
+         if key.endswith("__array") and "__array_list_" not in key:
             base = key[:-len("__array")]
             arrays[base] = npz[key]
+
       return mats, arrays
 
    @staticmethod
