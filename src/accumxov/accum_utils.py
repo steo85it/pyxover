@@ -626,22 +626,17 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
    # retrieve old solution
    if int(ext_iter) > 0:
       previous_iter = Amat(XovOpt.get("vecopts"))
-      id = ds.split('/')[0].split('_')[0]
-      previous_dir = XovOpt.get("outdir") + id + '_' + str(ext_iter - 1) + '/'
       Abmatfile = XovOpt.get("import_abmat")
       if Abmatfile == "":
-         Abmatfile =  'Abmat_' + id + '_' + str(ext_iter - 1)  + '_' + str(ext_iter)
+         id = ds.split('/')[0].split('_')[0]
+         previous_dir = XovOpt.get("outdir") + id + '_' + str(ext_iter - 1) + '/'
+         Abmatfile =  previous_dir + 'Abmat_' + id + '_' + str(ext_iter - 1)  + '_' + str(ext_iter)
          print(('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
                '_' + str(ext_iter - 1) + '/' +
                ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]))
       
-         # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-         # previous_iter = previous_iter.load(
-         #    ('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-         #    '_' + str(ext_iter - 1) + '/' +
-         #    ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]))
       
-      previous_iter = previous_iter.load(previous_dir + Abmatfile)
+      previous_iter = previous_iter.load(Abmatfile)
       print("initial sol dict=", len(previous_iter.sol_dict['sol']))
 
    # if pre-processing took place (else, if perturbing simulation, also pert_cloop_orb should contain something)
