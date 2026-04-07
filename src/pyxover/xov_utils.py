@@ -177,12 +177,9 @@ def plot_tracks_histo(postfit_list, filename=XovOpt.get("tmpdir") + '/histo_trac
 
 def load_combine(xov_pth_,vecopts):
    # -------------------------------
-   # Amat setup
+   # Combine all xovers and setup Amat
    # -------------------------------
    pd.set_option('display.max_columns', 500)
-
-   # Combine all xovers and setup Amat
-   xov_ = xov(vecopts)
 
    # modify this selection to use sub-sample of xov only!!
    #------------------------------------------------------
@@ -192,7 +189,7 @@ def load_combine(xov_pth_,vecopts):
       allFiles = allFiles + glob.glob(os.path.join(XovOpt.get("outdir"), xov_pth, 'xov/xov_*.json'))
 
    # print([xov_pth + 'xov_' + x + '.json' for x in misycmb])
-   xov_list = [xov_.load(x) for x in allFiles[:]]
+   xov_list = [xov(vecopts).load(x) for x in allFiles]
    if xov_list == []:
       print(f"No crossover files found in {xov_pth_}.")
       return []
