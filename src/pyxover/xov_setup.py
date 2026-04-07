@@ -7,6 +7,7 @@
 # ----------------------------------------------------
 # Author: Stefano Bertone
 # Created: 18-Feb-2019
+import ast
 import json
 import os.path
 import glob
@@ -260,10 +261,39 @@ class xov:
         with open(meta_path, "r") as f:
             meta = json.load(f)
 
+        def _safe_literal(value):
+            if not isinstance(value, str):
+                return value
+            try:
+                return ast.literal_eval(value)
+            except Exception:
+                return value
+
+        def _normalize_pert_dict(value):
+            """Ensure perturbation payload is dict-of-dict for downstream logic."""
+            value = _safe_literal(value)
+            if value is None:
+                return {}
+            if isinstance(value, dict):
+                if len(value) == 0:
+                    return {}
+                # Expected shape: {track_id: {param: value, ...}, ...}
+                if all((isinstance(v, dict) or v is None) for v in value.values()):
+                    return {str(k): ({} if v is None else v) for k, v in value.items()}
+                # Scalar dict -> treat as a single-track perturbation map
+                return {"0": dict(value)}
+            if isinstance(value, list) and all(isinstance(v, dict) for v in value):
+                return {str(i): v for i, v in enumerate(value)}
+            return value
+
         for key, entry in meta.get("xov", {}).items():
             kind = entry.get("kind")
-            if kind in ["json", "repr"]:
-                setattr(self, key, entry.get("value"))
+            val = entry.get("value")
+            if kind == "repr":
+                val = _safe_literal(val)
+            if key in ["pert_cloop", "pert_cloop_0"]:
+                val = _normalize_pert_dict(val)
+            setattr(self, key, val)
 
         xovers_path = None
         if isinstance(meta.get("files"), dict):
