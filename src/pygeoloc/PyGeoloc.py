@@ -171,7 +171,8 @@ def main(args):
             Abmat_infile = os.path.join(previous_dir + 'Abmat_' + id +  '_' + str(iter_in - 1)  + '_' + str(iter_in))
          else:
             Abmat_infile = XovOpt.get("import_abmat")
-         tmp = tmp.load(Abmat_infile)
+         # Keep solution arrays (sol/std/sol4_pars) but skip heavy no-solution matrices (spA, b, weights).
+         tmp = tmp.load(Abmat_infile, read_matrices=False, read_matrices_nosol=False)
          import_prev_sol = hasattr(tmp, 'sol4_pars')
          if import_prev_sol:
             orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov.xovers)
