@@ -236,13 +236,15 @@ def main(args_in):
          print(allFiles)
 
       if len(allFilesA) == 0 or len(allFilesB) == 0:
+         # No tracks for this month-pair is a valid "nothing to do" case.
+         # Returning cleanly avoids a failed submitit job that can block the driver loop.
          if len(allFilesA) == 0:
-            logging.error("** No gtrack files selected for", misycmb_par[0],
-                          "Check path in PyXover:", gtrack_dirs[0])
+            logging.warning("No gtrack files selected for %s. Check path in PyXover: %s",
+                            misycmb_par[0], gtrack_dirs[0])
          if len(allFilesB) == 0:
-            logging.error("** No gtrack files selected for", misycmb_par[1],
-                          "Check path in PyXover:", gtrack_dirs[1])
-         exit(1)
+            logging.warning("No gtrack files selected for %s. Check path in PyXover: %s",
+                            misycmb_par[1], gtrack_dirs[1])
+         return
 
       # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
       # comb=np.array(list(itert.combinations([fil.split('.')[0][-10:] for fil in allFiles], 2))) # this computes comb btw ALL files
