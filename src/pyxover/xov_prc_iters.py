@@ -134,8 +134,8 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
 
       # Save intermediate result
       # WD: col = ['R_A', 'R_B', 'dR'] are 0 -> drop them?
-      mla_proj_df.to_pickle(proj_pkl_path)
-      print("Projected df saved to:", proj_pkl_path)
+      # mla_proj_df.to_pickle(proj_pkl_path)
+      # print("Projected df saved to:", proj_pkl_path)
 
    elif os.path.exists(proj_pkl_path): # or just retrieve them from file
       mla_proj_df = pd.read_pickle(proj_pkl_path)
