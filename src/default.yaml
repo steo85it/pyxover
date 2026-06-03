@@ -1,0 +1,108 @@
+debug: false
+local: false
+parallel: false
+partials: true
+unittest: false
+
+body: MERCURY
+instrument: MLA
+selected_hemisphere: N
+
+basedir: pawstel/data/
+rawdir: raw/
+outdir: out/
+auxdir: aux/
+tmpdir: tmp/
+spauxdir: KX_spk/
+
+n_proc: auto
+
+expopt: BS0
+resopt: [0]
+amplopt: [1]
+
+parOrb:
+  dA: 20.0
+  dC: 20.0
+  dR: 5.0
+
+parGlo:
+  dRA: [0.2, 0.0, 0.0]
+  dDEC: [0.36, 0.0, 0.0]
+  dPM: [0.0, 0.013, 0.0]
+  dL: 0.03597714900463682
+  dLIB5: 3.6
+  dh2: 0.1
+
+par_constr:
+  dR/dRA: 100.0
+  dR/dDEC: 100.0
+  dR/dL: 100.0
+  dR/dPM: 100.0
+  dR/dh2: 0.3
+  dR/dA: 100.0
+  dR/dC: 100.0
+  dR/dR: 20.0
+
+mean_constr:
+  dR/dA: 1.0
+  dR/dC: 1.0
+  dR/dR: 1.0
+
+cloop_sim: false
+pert_cloop_orb: {}
+pert_cloop_glo: {}
+pert_cloop: {}
+pert_tracks: []
+
+sol4_orb: [null]
+sol4_orbpar: [null]
+sol4_glo: [dR/dRA, dR/dDEC, dR/dPM, dR/dL]
+
+OrbRep: cnt
+
+SpInterp: 0
+spice_meta: mymeta
+spice_spk: []
+
+new_gtrack: 2
+
+import_proj: false
+import_abmat: ""
+new_xov: 2
+weekly_sets: false
+monthly_sets: false
+multi_xov: false
+new_algo: true
+compute_input_xov: true
+msrm_sampl: 2
+n_interp: 6
+
+full_covar: false
+roughn_map: false
+
+new_illumNG: true
+apply_topo: true
+small_scale_topo: false
+range_noise: true
+range_noise_mean_std: [0.0, 0.0]
+local_dem: true
+max_range_altitude: 1050
+sampling_rate: 10
+
+vecopts:
+  SCID: "-236"
+  SCNAME: MESSENGER
+  SCFRAME: -236000
+  INSTID: [-236500, -236501]
+  INSTNAME: [MSGR_MLA, MSGR_MLA_RECEIVER]
+  PLANETID: "199"
+  PLANETNAME: MERCURY
+  PLANETRADIUS: 2440.0
+  PLANETFRAME: IAU_MERCURY
+  OUTPUTTYPE: 1
+  ALTIM_BORESIGHT: ""
+  INERTIALFRAME: J2000
+  INERTIALCENTER: SSB
+  PM_ORIGIN: J2013.0
+  PARTDER: ""

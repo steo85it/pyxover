@@ -1,208 +1,243 @@
 # Options configuration for pyxover applications
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field, fields
+from pathlib import Path
+from typing import Any, Dict, List
+
 import multiprocessing as mp
+import copy
+import yaml
 import numpy as np
-from xovutil.units import deg2as
+
+_DEFAULTS_PATH = Path(__file__).with_name('default.yaml')
+
+
+def _load_default_options() -> Dict[str, Any]:
+    if not _DEFAULTS_PATH.exists():
+        raise FileNotFoundError(f"Default configuration file not found at {_DEFAULTS_PATH}")
+    loaded: Dict[str, Any] = yaml.safe_load(_DEFAULTS_PATH.read_text()) or {}
+    return loaded
+
+
+_DEFAULT_OPTIONS = _load_default_options()
+
+
+def _default_vecopts() -> Dict[str, Any]:
+    if 'vecopts' not in _DEFAULT_OPTIONS:
+        raise KeyError("'vecopts' missing from default configuration")
+
+    vecopts = copy.deepcopy(_DEFAULT_OPTIONS['vecopts'])
+
+    for key in ('INSTID', 'INSTNAME'):
+        if isinstance(vecopts.get(key), list):
+            vecopts[key] = tuple(vecopts[key])
+
+    return vecopts
+
+
+def _normalize_types(value: Any) -> Any:
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, dict):
+        return {k: _normalize_types(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_normalize_types(v) for v in value]
+    return value
+
+
+@dataclass
+class XovOptions:
+    # env opt
+    debug: bool | None = None
+    local: bool | None = None
+    parallel: bool | None = None
+    partials: bool | None = None
+    unittest: bool | None = None
+
+    body: str | None = None
+    instrument: str | None = None
+    selected_hemisphere: str | None = None
+
+    # directories
+    basedir: str | None = None
+    rawdir: str | None = None
+    outdir: str | None = None
+    auxdir: str | None = None
+    tmpdir: str | None = None
+    spauxdir: str | None = None
+
+    # pyxover options
+    n_proc: int | str | None = None
+
+    expopt: str | None = None
+    resopt: List[int] | None = None
+    amplopt: List[int] | None = None
+
+    parOrb: Dict[str, float] | None = None
+    parGlo: Dict[str, List[float]] | None = None
+
+    par_constr: Dict[str, float] | None = None
+    mean_constr: Dict[str, float] | None = None
+
+    cloop_sim: bool | None = None
+    boresight_by_track: Dict[str, Any] | None = None
+    pert_cloop_orb: Dict[str, Any] | None = None
+    pert_cloop_glo: Dict[str, Any] | None = None
+    pert_cloop: Dict[str, Any] | None = None
+    pert_tracks: List[Any] | None = None
+
+    sol4_orb: List[Any] | None = None
+    sol4_orbpar: List[Any] | None = None
+    sol4_glo: List[str] | None = None
+
+    OrbRep: str | None = None
+
+    SpInterp: int | None = None
+    spice_meta: str | None = None
+    spice_spk: List[Any] | None = None
+
+    new_gtrack: int | None = None
+
+    import_proj: bool | None = None
+    import_abmat: str | None = None
+    new_xov: int | None = None
+    weekly_sets: bool | None = None
+    monthly_sets: bool | None = None
+    multi_xov: bool | None = None
+    new_algo: bool | None = None
+    compute_input_xov: bool | None = None
+    msrm_sampl: int | None = None
+    n_interp: int | None = None
+
+    full_covar: bool | None = None
+    roughn_map: bool | None = None
+
+    new_illumNG: bool | None = None
+    apply_topo: bool | None = None
+    small_scale_topo: bool | None = None
+    range_noise: bool | None = None
+    range_noise_mean_std: List[float] | None = None
+    local_dem: bool | None = None
+    max_range_altitude: int | None = None
+    sampling_rate: int | None = None
+
+    vecopts: Dict[str, Any] | None = field(default_factory=_default_vecopts)
+
+    @staticmethod
+    def base_vecopts() -> Dict[str, Any]:
+        return _default_vecopts().copy()
+
+    def __post_init__(self) -> None:
+        self.apply_defaults()
+        self.sync_paths()
+        self.validate()
+
+    def apply_defaults(self) -> None:
+        for field_info in fields(self):
+            name = field_info.name
+            if getattr(self, name) is None and name in _DEFAULT_OPTIONS:
+                setattr(self, name, copy.deepcopy(_DEFAULT_OPTIONS[name]))
+
+        self._normalize_n_proc()
+
+    def _normalize_n_proc(self) -> None:
+        if self.n_proc is None or self.n_proc == 'auto':
+            self.n_proc = max(1, mp.cpu_count() - 3)
+
+    def sync_paths(self) -> None:
+        base = self.basedir if self.basedir.endswith('/') else f"{self.basedir}/"
+        self.rawdir = f'{base}raw/'
+        self.outdir = f'{base}out/'
+        self.auxdir = f'{base}aux/'
+        self.tmpdir = f'{base}tmp/'
+        self.pert_cloop = {'orb': self.pert_cloop_orb, 'glo': self.pert_cloop_glo}
+
+    def validate(self) -> None:
+        planet_name = str(self.vecopts.get('PLANETNAME', '')).upper()
+        if self.body.upper() != planet_name:
+            raise ValueError(
+                f"Body name {self.body} is inconsistent with vecopts PLANETNAME {self.vecopts.get('PLANETNAME')}"
+            )
+
+        if not isinstance(self.msrm_sampl, int) or self.msrm_sampl % 2 != 0:
+            raise ValueError('msrm_sampl config not accepted! Should be an even int')
+
+    def to_dict(self) -> Dict[str, Any]:
+        return _normalize_types(asdict(self))
+
+    def to_yaml(self, path: str | Path) -> None:
+        Path(path).write_text(yaml.safe_dump(self.to_dict(), sort_keys=False))
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'XovOptions':
+        options = cls()
+        for key, value in data.items():
+            if hasattr(options, key):
+                setattr(options, key, value)
+            else:
+                raise NameError(f"Name {key} not accepted in XovOptions.from_dict()")
+        options._normalize_n_proc()
+        options.sync_paths()
+        options.validate()
+        return options
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> 'XovOptions':
+        loaded: Dict[str, Any] = yaml.safe_load(Path(path).read_text()) or {}
+        return cls.from_dict(loaded)
+
 
 class XovOpt:
-
-    __conf = {
-        # env opt
-        "debug": False,
-        "local": False, #
-        "parallel": False,
-        "partials": True,
-        "unittest": False,
-
-        "body" : 'MERCURY', #
-        "instrument" : "MLA", #"pawstel", #"BELA", #
-        "selected_hemisphere" : 'N',
-
-        # directories
-        "basedir": 'pawstel/data/',
-        "rawdir": f'raw/',
-        "outdir": f'out/',
-        "auxdir": f'aux/',
-        "tmpdir": f'tmp/',
-        "spauxdir": 'KX_spk/',  # 'AG_AC_spk/' #'KX_spk/' #'OD380_spk/' #'AG_spk/'
-
-        # pyxover options
-        # set number of processors to use
-        "n_proc": mp.cpu_count() - 3,
-
-        # processing opt
-        "expopt" : 'BS0',
-        "resopt" : [0],
-        "amplopt" : [1],
-
-        "parOrb": {'dA': 20., 'dC': 20., 'dR': 5.},  # ,'dRl':0.2, 'dPt':0.2} #
-        "parGlo": {'dRA': [0.2, 0.000, 0.000], 'dDEC': [0.36, 0.000, 0.000], 'dPM': [0, 0.013, 0.000],
-              'dL': 1.e-3 * deg2as(1.) * np.linalg.norm([0.00993822, -0.00104581, -0.00010280, -0.00002364, -0.00000532]),
-              'dLIB5': 1.e-3 * deg2as(1.), 'dh2': 0.1},
-
-        # parameter constraints for solution
-        "par_constr": {'dR/dRA': 1.e2, 'dR/dDEC': 1.e2, 'dR/dL': 1.e2, 'dR/dPM': 1.e2, 'dR/dh2': 3.e-1, 'dR/dA': 1.e2,
-                  'dR/dC': 1.e2, 'dR/dR': 2.e1},  # , 'dR/dRl':5.e1, 'dR/dPt':5.e1} #
-        # 'dR/dA1':1.e-1, 'dR/dC1':1.e-1,'dR/dR1':1.e-1, 'dR/dA2':1.e-2, 'dR/dC2':1.e-2,'dR/dR2':1.e-2} #, 'dR/dA2':1.e-4, 'dR/dC2':1.e-4,'dR/dR2':1.e-2} # 'dR/dA':100., 'dR/dC':100.,'dR/dR':100.} #, 'dR/dh2': 1} #
-        "mean_constr": {'dR/dA': 1.e0, 'dR/dC': 1.e0, 'dR/dR': 1.e0},  # , 'dR/dRl':1.e-1, 'dR/dPt':1.e-1}
-        
-        # define if it's a closed loop simulation run (WD: not sure what this is doing...)
-        "cloop_sim": False,
-
-        # optional per-track boresights (dict: track_name -> [x, y, z])
-        "boresight_by_track": {},
-
-        # perturbations for closed loop sims (dRl, dPt, dRA, dDEC, dL in arcsec; dPM in arcsec/Julian year)
-        "pert_cloop_orb": {},  # 'dA':50., 'dC':50., 'dR':20.,'dRl':0.5, 'dPt':0.5} #} #, 'dA1':20., 'dC1':20., 'dR1':5.
-        # in deg and deg/day as reminder pert_cloop_glo": {'dRA':[0.0015deg, 0.000, 0.000], 'dDEC':[0.0015deg, 0.000, 0.000],'dPM':[0, 2.e-6deg/day, 0.000],'dL':~3*1.5as, 'dh2':-1.} # compatible with current uncertitudes
-        "pert_cloop_glo": {},  # 'dRA':[3.*5., 0.000, 0.000], 'dDEC':[3.*5., 0.000, 0.000],'dPM':[0, 3.*3., 0.000],'dL':3.*deg2as(1.5*0.03)*np.linalg.norm([0.00993822,-0.00104581,-0.00010280,-0.00002364,-0.00000532]), 'dh2':-1.} #
-        "pert_cloop": {}, # initialized by check_consistency below
-        # perturb individual tracks
-        "pert_tracks": [],  # '1107021838','1210192326','1403281002','1503191143'] #
-
-        # select subset of parameters to solve for
-        "sol4_orb": [None],  # '1503250029'] #'1107021838','1210192326','1403281002','1503191143']  #
-        "sol4_orbpar": [None],  # ['dA','dC','dR'] #,'dRl','dPt'] #,'dA1','dC1','dR1','dA2','dC2','dR2']  #] #
-        "sol4_glo": ['dR/dRA', 'dR/dDEC', 'dR/dPM', 'dR/dL'],  # ,'dR/dh2'] #,  None] # Mostly used in accumxov?
-
-        # orbital representation
-        "OrbRep": 'cnt' , # 'lin' # 'quad' #
-
-        # Spice options (for pyAltSim and PyGeoloc)
-        # interpolation/spice direct call (0: use spice, 1: yes, use interpolation, 2: yes, create interpolation)
-        "SpInterp": 0,
-        "spice_meta": 'mymeta',
-        "spice_spk": [], # list of additional kernels to load
-
-        # PyGeoloc options
-        # create new gtrack (0:no, 1:yes, if not already present, 2: yes, create and replace)
-        "new_gtrack": 2,
-        
-        # PyXover options
-        "import_proj": False,
-        "import_abmat": "",
-        # create new xov (0:no, 1:yes, if not already present, 2: yes, create and replace)
-        "new_xov": 2,
-        # Other options
-        "weekly_sets": False,
-        # monthly or yearly sets for PyXover
-        "monthly_sets": False,
-        # analyze multi-xov pairs
-        "multi_xov": False,
-        # new algo
-        "new_algo": True,  # False #
-        # load input xov
-        "compute_input_xov": True,
-        # Measurement sampling
-        "msrm_sampl" : 2, # 4, 6, 8, 10 ...
-        # number of la points around xovers (on both sides) for interpolation
-        "n_interp" : 6,
-        
-        # AccumXov options
-        # compute full covariance (could give memory issues)
-        "full_covar": False,  # True #
-        # roughness map
-        "roughn_map": False,
-
-        # PyAltSim options
-        # recompute a priori
-        "new_illumNG": True,
-        # use large scale topography
-        "apply_topo": True,
-        # apply small scale topography (simulated)
-        "small_scale_topo": False,
-        # range noise
-        "range_noise": True,
-        # range noise mean and std [m]
-        "range_noise_mean_std" : [0.,0.],
-        # local/global DEM (LOLA)
-        "local_dem": True,
-        # Maximum range altitude [km]
-        "max_range_altitude": 1050,
-        # Laser altimeter sampling rate [Hz]
-        "sampling_rate": 10,
-
-        # vecopts
-        # Setup some useful options
-        "vecopts": {'SCID': '-236',
-                   'SCNAME': 'MESSENGER',
-                   'SCFRAME': -236000,
-                   'INSTID': (-236500, -236501),
-                   'INSTNAME': ('MSGR_MLA', 'MSGR_MLA_RECEIVER'),
-                   'PLANETID': '199',
-                   'PLANETNAME': 'MERCURY',
-                   'PLANETRADIUS': 2440.,
-                   'PLANETFRAME': 'IAU_MERCURY',
-                   'OUTPUTTYPE': 1,
-                   'ALTIM_BORESIGHT': '',
-                   'INERTIALFRAME': 'J2000',
-                   'INERTIALCENTER': 'SSB',
-                   'PM_ORIGIN': 'J2013.0',
-                   'PARTDER': ''}
-    }
-    __setters = list(__conf.keys())
+    _options = XovOptions()
 
     @staticmethod
     def check_consistency():
-
-        XovOpt.set("rawdir", f'{XovOpt.get("basedir")}raw/'),
-        XovOpt.set("outdir", f'{XovOpt.get("basedir")}out/'),
-        XovOpt.set("auxdir", f'{XovOpt.get("basedir")}aux/'),
-        XovOpt.set("tmpdir", f'{XovOpt.get("basedir")}tmp/'),
-
-        XovOpt.set("pert_cloop", {'orb': XovOpt.get("pert_cloop_orb"),
-                                  'glo': XovOpt.get("pert_cloop_glo")}),
-
-        # if get doesn't work, use this
-        if XovOpt.__conf['body'] != XovOpt.get("vecopts")['PLANETNAME']:
-            raise NameError(f"Body name {XovOpt.__conf['body']}"
-                            f" is inconsistent with vecopts attr "
-                            f"{XovOpt.get('vecopts')['PLANETNAME']}."
-                            f" Please update vecopts via XovOpt.set.")
-        
-        if XovOpt.get("msrm_sampl") % 2 != 0:
-            raise NameError(f'msrm_sampl config not accepted! Should be an even int')
+        XovOpt._options.sync_paths()
+        XovOpt._options.validate()
 
     @staticmethod
     def get(name):
-        return XovOpt.__conf[name]
+        if hasattr(XovOpt._options, name):
+            return getattr(XovOpt._options, name)
+        raise NameError(f"Name {name} not accepted in XovOpt.get() method")
 
     @staticmethod
     def set(name, value):
-        if name in XovOpt.__setters:
-            XovOpt.__conf[name] = value
+        if hasattr(XovOpt._options, name):
+            setattr(XovOpt._options, name, value)
+            XovOpt._options.sync_paths()
+            XovOpt._options.validate()
             print(f"### XovOpt.{name} updated to {value}.")
         else:
             raise NameError("Name not accepted in XovOpt.set() method")
 
     @staticmethod
     def display():
-        for key, value in XovOpt.__conf.items():
-           print(f"{key}: {value}")
+        for key, value in XovOpt._options.to_dict().items():
+            print(f"{key}: {value}")
 
     @staticmethod
     def to_dict():
-        return XovOpt.__conf
+        return XovOpt._options.to_dict()
+
+    @staticmethod
+    def to_yaml(path: str | Path):
+        XovOpt._options.to_yaml(path)
 
     @staticmethod
     def clone(opts):
-        # print("- Updating XovOpt")
-        XovOpt.__conf = opts.copy()
+        XovOpt._options = XovOptions.from_dict(opts)
 
-# example, suppose importing
-# from config import Options
+    @staticmethod
+    def from_yaml(path: str | Path):
+        XovOpt._options = XovOptions.from_yaml(path)
+
+
 if __name__ == '__main__':
-
     print(XovOpt.get("vecopts"))
-
     opt = XovOpt()
     print(opt.get("vecopts"))
-
     print(opt.get("body"))
-    opt.set("body","MOON") # this causes an issue
+    opt.set("body", "MOON")
     print(opt.get("body"))
-
-    print(opt.get("tmpdir"))
-    opt.set("basedir",'/explore/nobackup/people/sberton2/MLA/')
-
-    opt.check_consistency()
-    print(opt.get("tmpdir"))

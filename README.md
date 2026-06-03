@@ -84,7 +84,7 @@ For more details, refer to `docs/manual.stub` (in progress...)
 
 <a id="2"></a>2. **Grisolia, M.** (2024). *Validation of radioscience derived orbits by crossovers analyses of the Mercury Laser Altimeter*. B.Sc. Thesis, Polytechnic University of Turin (Italy).
 
-<a id="3"></a>3. **Desprats, W.** (2024). *Callisto geodesy: A simulation study to support further space missions to the Jovian system*. Ph.D. Thesis, Astronomical Institute, University of Bern (Switzerland) 
+<a id="3"></a>3. **Desprats, W.** (2024). *Simulation Study for Geodetic Parameter Recovery at Europa and Callisto*. Ph.D. Thesis, Astronomical Institute, University of Bern (Switzerland) 
 
 [//]: # (Available at: [link]&#40;https://example.com&#41;  )
 <a id="4"></a>4. **Bertone S., E. Mazarico, M. K. Barker, et al.** (2021). *Deriving Mercury geodetic parameters with altimetric crossovers from the Mercury Laser Altimeter (MLA)*. Journal of Geophysical Research - Planets, **126**(4): e2020JE006683. [10.1029/2020JE006683](http://dx.doi.org/10.1029/2020JE006683)
