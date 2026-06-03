@@ -32,11 +32,10 @@ def orient_setup(offsetRA, offsetDEC, offsetPM, offsetL, offsetLIB):
        elif ZAP:
           # from zero
           PM0 = np.array([318.2245, 0., 0.])
-       elif XovOpt.get('body') == 'MERCURY':
-          PM0 = np.array([318.3201, 6.1385108, 0.])
        else:
-          print(f"*** orient_setup: {XovOpt.get('body')} not recognized.")
-          exit()
+          J2013 = 4748.5
+          # WD: check for PM0[2] term
+          PM0[0] = np.mod(PM0[0]+J2013*PM0[1] + PM0[2] * np.square(J2013) / 2, 360)          
 
     # WD: Find a generic way to retrieve these values
     if XovOpt.get('body') == 'MERCURY':
