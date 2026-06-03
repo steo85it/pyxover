@@ -2,7 +2,7 @@ import multiprocessing as mp
 import time
 import numpy as np
 import pandas as pd
-from memory_profiler import profile
+# from memory_profiler import profile
 
 from config import XovOpt
 from pyxover.get_xov_latlon import get_xov_latlon

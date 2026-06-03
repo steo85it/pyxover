@@ -4,6 +4,7 @@ examples/*/data/aux/*
 examples/*/data/out/*
 examples/*/data/tmp/*
 examples/*/data/raw/*
+examples/*/data/log/*
 examples/*/out/*
 examples/*/log_slurm/*
 pip-wheel-metadata/
@@ -145,6 +146,7 @@ venv.bak/
 .mypy_cache/
 /tests/MLA/data/tmp/
 /tests/MLA/data/out/*
+/tests/MLA/data/raw/*/BS1/*
 /tests/BELA/data/out/
 /tests/BELA/data/tmp/
 /tests/lidar_moon/out/

@@ -1,0 +1,197 @@
+{
+  "format": "amat_split_v3",
+  "version": 3,
+  "amat": {
+    "vecopts": {
+      "kind": "json",
+      "value": {
+        "SCID": "-236",
+        "SCNAME": "MESSENGER",
+        "SCFRAME": "MSGR_SPACECRAFT",
+        "INSTID": [
+          -236500,
+          -236501
+        ],
+        "INSTNAME": [
+          "MSGR_MLA",
+          "MSGR_MLA_RECEIVER"
+        ],
+        "PLANETID": "199",
+        "PLANETNAME": "MERCURY",
+        "PLANETRADIUS": 2440.0,
+        "PLANETFRAME": "IAU_MERCURY",
+        "OUTPUTTYPE": 1,
+        "ALTIM_BORESIGHT": [
+          0.0022105,
+          0.0029215,
+          0.9999932892
+        ],
+        "INERTIALFRAME": "J2000",
+        "INERTIALCENTER": "SSB",
+        "PM_ORIGIN": "J2013.0",
+        "PARTDER": ""
+      }
+    },
+    "parNames": {
+      "kind": "json",
+      "value": {
+        "1201012205_dR/dA": 0,
+        "1201011016_dR/dA": 1,
+        "1201011016_dR/dC": 2,
+        "1301012343_dR/dR": 3,
+        "1201012205_dR/dC": 4,
+        "1301011543_dR/dC": 5,
+        "1201011016_dR/dR": 6,
+        "1301011543_dR/dR": 7,
+        "1301012343_dR/dC": 8,
+        "1201012205_dR/dR": 9,
+        "1301010743_dR/dR": 10,
+        "1301012343_dR/dA": 11,
+        "1301011543_dR/dA": 12,
+        "1301010743_dR/dC": 13,
+        "1301010743_dR/dA": 14,
+        "dR/dDEC": 15,
+        "dR/dL": 16,
+        "dR/dPM": 17,
+        "dR/dRA": 18,
+        "dR/dh2": 19
+      }
+    },
+    "pert_cloop": {
+      "kind": "json",
+      "value": null
+    },
+    "pert_cloop_glo": {
+      "kind": "json",
+      "value": null
+    },
+    "pert_cloop_0": {
+      "kind": "json",
+      "value": null
+    },
+    "sol": {
+      "kind": "ndarray",
+      "stored": "matrices"
+    },
+    "sol_dict": {
+      "kind": "json",
+      "value": {
+        "sol": {
+          "dR/dDEC": 317.83995622433736,
+          "dR/dL": 3637.57381609777,
+          "dR/dPM": 4199.432746653808,
+          "dR/dRA": 468.66819108314826
+        },
+        "std": {
+          "dR/dDEC": 475.90908161507724,
+          "dR/dL": 7872.087583866558,
+          "dR/dPM": 6106.421637123039,
+          "dR/dRA": 643.6688190223294
+        }
+      }
+    },
+    "sol_iter": {
+      "kind": "json",
+      "value": [
+        317.83995622433736,
+        3637.57381609777,
+        4199.432746653808,
+        468.66819108314826
+      ]
+    },
+    "sol_dict_iter": {
+      "kind": "json",
+      "value": {
+        "sol": {
+          "dR/dDEC": 317.83995622433736,
+          "dR/dL": 3637.57381609777,
+          "dR/dPM": 4199.432746653808,
+          "dR/dRA": 468.66819108314826
+        },
+        "std": {
+          "dR/dDEC": 475.90908161507724,
+          "dR/dL": 7872.087583866558,
+          "dR/dPM": 6106.421637123039,
+          "dR/dRA": 643.6688190223294
+        }
+      }
+    },
+    "weights": {
+      "kind": "sparse_csr",
+      "stored": "matrices"
+    },
+    "vce_obs": {
+      "kind": "json",
+      "value": [
+        0.001
+      ]
+    },
+    "vce_pen": {
+      "kind": "ndarray",
+      "stored": "matrices"
+    },
+    "penalty_mat": {
+      "kind": "json",
+      "value": []
+    },
+    "spA": {
+      "kind": "json",
+      "value": null
+    },
+    "spA_sol4": {
+      "kind": "sparse_csr",
+      "stored": "matrices"
+    },
+    "b": {
+      "kind": "ndarray",
+      "stored": "matrices"
+    },
+    "converged": {
+      "kind": "json",
+      "value": false
+    },
+    "resid_wrmse": {
+      "kind": "json",
+      "value": 0.6298641553119536
+    },
+    "to_constrain": {
+      "kind": "json",
+      "value": null
+    },
+    "sol4_pars": {
+      "kind": "json",
+      "value": [
+        "dR/dDEC",
+        "dR/dL",
+        "dR/dPM",
+        "dR/dRA"
+      ]
+    },
+    "sol4_pars_iter": {
+      "kind": "json",
+      "value": [
+        "dR/dDEC",
+        "dR/dL",
+        "dR/dPM",
+        "dR/dRA"
+      ]
+    },
+    "penalty_mat_avg": {
+      "kind": "json",
+      "value": null
+    },
+    "obs_blocks": {
+      "kind": "repr",
+      "value": "[0    True\n1    True\n2    True\n3    True\n4    True\n5    True\ndtype: bool]"
+    },
+    "std": {
+      "kind": "ndarray",
+      "stored": "matrices"
+    }
+  },
+  "files": {
+    "matrices": "Abmat_BS0_0_1_mat.npz",
+    "matrices_nosol": "Abmat_BS0_0_1_mat_nosol.npz",
+    "xov_metadata": "xov_BS0_0_1.json"
+  }
+}

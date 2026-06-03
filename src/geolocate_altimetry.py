@@ -45,39 +45,38 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
    use_24 = False  # False # use pointing aberration
    use_iter = True  # True
 
-   #  ABCORR = 'NONE'
    # TODO check tof unit (sec or ns???)
    tof = inp_df['TOF'].values
    et_tx = inp_df['ET_TX'].values
 
-   oneway = tof * clight / 2.
    twoway = tof * clight
+   oneway = twoway / 2.
 
-   scpos_tx, scvel_tx = get_sc_ssb(et_tx, SpObj, tmp_pertPar, vecopts, t0=t0)
-   # update after offset
-   Rtx = np.linalg.norm(scpos_tx, axis=1)
+   # get probe CoM state at TX and RX
+   # --------------------------------
+   scpos_tx, _ = get_sc_ssb(et_tx, SpObj, tmp_pertPar, vecopts, t0=t0)
+   scpos_rx, _ = get_sc_ssb(et_tx + tof, SpObj, tmp_pertPar, vecopts, t0=t0)
+   # scpos_rx is all NaN; returning NaN outputs
+   if np.isnan(scpos_rx).all():
+      n = len(et_tx)
+      geoloc_out = np.full((n, 3), np.nan)
+      et_bc = np.full(n, np.nan)
+      dr = np.full(n, np.nan)
+      offndr = np.full(n, np.nan)
+      return geoloc_out, et_bc, dr, offndr
 
-   # get probe CoM state at RX
-   # --------------------------
-   scpos_rx, scvel_rx = get_sc_ssb(et_tx + tof, SpObj, tmp_pertPar, vecopts, t0=t0)
-   # update after offset
-   Rrx = np.linalg.norm(scpos_rx, axis=1)
-
-   # get planet barycenter state (SSB J2000) at bounce
-   # --------------------------------------------------
-   et_bc = et_tx + tof / 2.
-
-   if (XovOpt.get("SpInterp") > 0):
-      plapos_bc = np.transpose(SpObj['MERx'].evalCby(et_bc))
-      plapos_bc = 1.e3 * np.array(plapos_bc)
-   else:
-      plapos_bc = spice_spkpos(vecopts['PLANETNAME'], et_bc, vecopts['INERTIALFRAME'],
-                                   vecopts['INERTIALCENTER'], "geolocate plapos_bc")
+   v12 = (scpos_rx - scpos_tx) / tof[:, np.newaxis]
+   beta = v12 / clight
+   betanorm = np.linalg.norm(beta, axis=1)
 
    # compute SSB to bounce point vector
    pxform_array = np.frompyfunc(spice.pxform, 3, 1)
    if XovOpt.get("instrument") in ['BELA', 'CALA']:
       # project tof along radial dir between s/c and planet (=nadir pointing)
+      # WD: not efficient
+      et_bc = et_tx + (tof / 2.)
+      plapos_bc = spice_spkpos(vecopts['PLANETNAME'], et_bc, vecopts['INERTIALFRAME'],
+                               vecopts['INERTIALCENTER'], "geolocate plapos_bc")
       zpt = (-scpos_tx + plapos_bc) / (np.linalg.norm(scpos_tx - plapos_bc, axis=1)[:, np.newaxis])
    else:
       # get altimeter boresight in S/C frame
@@ -100,26 +99,42 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
 
       # rotate boresight dir to inertial frame
       zpt = [np.dot(cmat[i], zpt[i]) for i in range(0, np.size(zpt, 0))]
+   
+   # to apply pointing aberration (eq.24)
+   if use_24:
+      e1 = (zpt+beta)/(np.sqrt(np.einsum('ij,ij->i',beta,beta)+2*np.einsum('ij,ij->i',beta,zpt)+1))[:,np.newaxis]
+   else:
+      e1 = np.vstack(zpt)
+   costheta = np.einsum('ij,ij->i', v12, e1) / np.linalg.norm(v12, axis=1)
+
+   # get planet barycenter state (SSB J2000) at bounce
+   # --------------------------------------------------
+   et_bc = et_tx + (tof / 2.) * (1 + betanorm * costheta)
+   # et_bc = et_tx + tof / 2.
+
+   if (XovOpt.get("SpInterp") > 0):
+      plapos_bc = np.transpose(SpObj['MERx'].evalCby(et_bc))
+      plapos_bc = 1.e3 * np.array(plapos_bc)
+   else:
+      plapos_bc = spice_spkpos(vecopts['PLANETNAME'], et_bc, vecopts['INERTIALFRAME'],
+                                   vecopts['INERTIALCENTER'], "geolocate plapos_bc")
 
    if [tmp_pertPar[k] for k in ['dRl', 'dPt']] != [0, 0]:
       # Apply roll and pitch offsets to zpt (converted to radians)
-      ang_Rl = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 0]
-      ang_Pt = np.reshape(np.tile([as2rad(tmp_pertPar[k]) for k in ['dRl', 'dPt']], len(et_tx)), (-1, 2))[:, 1]
-
+      ang_Rl = np.ones(len(et_tx), dtype=float) * as2rad(tmp_pertPar["dRl"])
+      ang_Pt = np.ones(len(et_tx), dtype=float) * as2rad(tmp_pertPar["dPt"])
       zpt = astr.rp_2_xyz(zpt, ang_Rl, ang_Pt)
 
    if use_iter:
-      if use_24:
-         print("*** geoloc: use_24 can only be used if use_iter=False")
-         exit()
       # compute corrections to oneway tof - average of Shapiro delay on
       # each branch (!!! Ri, Rj, etc are w.r.t. SSB and not w.r.t. perturbing
       # body, which is wrong but probably acceptable)
-      oneway = range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt)
+      Rtx = np.linalg.norm(scpos_tx, axis=1)
+      Rrx = np.linalg.norm(scpos_rx, axis=1)
+      oneway = range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, e1)
 
       # update bouncing point after relativistic correction
-      vprj = scpos_tx + zpt * oneway.reshape(-1, 1)
-      # et_bc = et_tx + oneway/clight
+      vprj = scpos_tx + e1 * oneway.reshape(-1, 1)
 
       # get planet@bc to bounce point vector
       vbore = vprj - plapos_bc
@@ -127,33 +142,9 @@ def geolocate(inp_df, vecopts, tmp_pertPar, SpObj, t0=0):
       # compute off-nadir value and pass/save to df
       offndr = get_offnadir(plapos_bc, scpos_tx, vbore)
    else:
-      #######################################
-      # add aberration correction
-      v12 = (scpos_rx - scpos_tx) / tof[:, np.newaxis]
-      beta = v12 / clight
-      betanorm = np.linalg.norm(beta, axis=1)
 
-      # to apply pointing aberration (eq.24)
-      # if use_24:
-      #     e1 = (zpt+beta)/(np.sqrt(np.einsum('ij,ij->i',beta,beta))+2*np.einsum('ij,ij->i',beta,zpt)+1)[:,np.newaxis]
-      # else:
-      e1 = np.vstack(zpt)
-
-      costheta = np.einsum('ij,ij->i', v12, e1) / np.linalg.norm(v12, axis=1)
-
-      # get planet barycenter state (SSB J2000) at bounce
-      # --------------------------------------------------
-      et_bc = et_tx + (tof / 2.) * (1 + betanorm * costheta)
-
-      plapos_bc = spice_spkpos(vecopts['PLANETNAME'], et_bc, vecopts['INERTIALFRAME'],
-                               vecopts['INERTIALCENTER'], "geolocate w/ aberration")
-
-      if use_24:
-         tmp = clight * tof / 2. * (1 - betanorm * betanorm * (1 - costheta * costheta))
-         vbore = tmp[:, np.newaxis] * (e1 + beta) + scpos_tx - plapos_bc
-      else:
-         tmp = clight * tof / 2. * (1 + betanorm * costheta)
-         vbore = tmp[:, np.newaxis] * e1 + scpos_tx - plapos_bc
+      tmp = clight * tof / 2. * (1 + betanorm * costheta) # (eq. 17)
+      vbore = tmp[:, np.newaxis] * e1 + scpos_tx - plapos_bc
       offndr = 0.  # compatibility, not used
 
    # compute inertial to body-fixed frame rotation
@@ -364,7 +355,6 @@ def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt, itmax=100
    """
 
    shap_fact = (2 * const.G * const.M_sun / clight ** 2).value
-   # avgerr_old = 0
    for it in range(itmax):
       vprj = scpos_tx + zpt * oneway.reshape(-1, 1)
       Rbc = np.linalg.norm(vprj, axis=1)
@@ -383,14 +373,12 @@ def range_corr_iter(Rrx, Rtx, oneway, scpos_rx, scpos_tx, twoway, zpt, itmax=100
       oneway = oneway + 0.5 * avgerr
 
       if (max(abs(avgerr)) < tlcbnc):
-         # if (max(abs(avgerr-avgerr_old))<tlcbnc):
          break
       if (it == itmax - 1):
          print('### geoloc: Max number of iterations reached!')
          print("max resid:", max(abs(avgerr)), "# > tol:", np.count_nonzero(abs(avgerr) > tlcbnc),"/",len(avgerr))
          # oneway[abs(avgerr) > tlcbnc] = np.nan
 
-      # avgerr_old = avgerr
    return oneway
 
 

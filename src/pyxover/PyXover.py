@@ -36,7 +36,7 @@ def launch_xov(args):
    mladata     = args[3]
    xov_dir     = args[4] + 'xov/'
 
-   xov_pklname = 'xov_' + track_idA + '_' + misycmb_par[1] + '.pkl'
+   xov_pklname = 'xov_' + track_idA + '_' + misycmb_par[1]
    if XovOpt.get("new_xov"):
 
       if not os.path.isfile(xov_dir + xov_pklname) or XovOpt.get("new_xov") == 2:
@@ -82,8 +82,10 @@ def launch_xov(args):
             if n_multixov > 0:
                print(f"More than one xover found in {n_multixov} track combinations.")
             if n_zeroxov > 0:
-               print(f"No xover found between {track_idA} and the {n_zeroxov} following tracks:",
-                     [s[1] for s in comb_noxov])
+               noxov_ids = ", ".join(str(s[1]) for s in comb_noxov)
+               print(
+                     f"No xover found between {track_idA} and the {n_zeroxov} following tracks: {noxov_ids}"
+               )
 
             if XovOpt.get("new_algo"):
                xov_tmp.xovers = pd.DataFrame(xovers_list)
@@ -216,15 +218,15 @@ def main(args_in):
          allFilesB = []
          for i in range(0, 7):
             datestr = (date0 + dt.timedelta(days=i)).strftime('%y%m%d')
-            allFilesA.extend(glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + datestr + '*.pkl')))
+            allFilesA.extend(glob.glob(os.path.join(gtrack_dirs[0], 'gtrack_' + datestr + '*.json')))
             datestr = (date1 + dt.timedelta(days=i)).strftime('%y%m%d')
-            allFilesB.extend(glob.glob(os.path.join(gtrack_dirs[1], 'gtrack_' + datestr + '*.pkl')))
+            allFilesB.extend(glob.glob(os.path.join(gtrack_dirs[1], 'gtrack_' + datestr + '*.json')))
       elif XovOpt.get("monthly_sets"):
-         allFilesA = glob.glob(os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*.pkl'))
-         allFilesB = glob.glob(os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*.pkl'))
+         allFilesA = glob.glob(os.path.join(gtrack_dirs[0],'gtrack_' + misycmb_par[0] + '*.json'))
+         allFilesB = glob.glob(os.path.join(gtrack_dirs[1],'gtrack_' + misycmb_par[1] + '*.json'))
       else:
-         allFilesA = glob.glob(os.path.join(gtrack_dirs[0], '*.pkl'))
-         allFilesB = glob.glob(os.path.join(gtrack_dirs[1], '*.pkl'))
+         allFilesA = glob.glob(os.path.join(gtrack_dirs[0], '*.json'))
+         allFilesB = glob.glob(os.path.join(gtrack_dirs[1], '*.json'))
 
       if XovOpt.get('debug'):
          if misycmb_par[0] == misycmb_par[1]:
@@ -234,13 +236,15 @@ def main(args_in):
          print(allFiles)
 
       if len(allFilesA) == 0 or len(allFilesB) == 0:
+         # No tracks for this month-pair is a valid "nothing to do" case.
+         # Returning cleanly avoids a failed submitit job that can block the driver loop.
          if len(allFilesA) == 0:
-            logging.error("** No gtrack files selected for", misycmb_par[0],
-                          "Check path in PyXover:", gtrack_dirs[0])
+            logging.warning("No gtrack files selected for %s. Check path in PyXover: %s",
+                            misycmb_par[0], gtrack_dirs[0])
          if len(allFilesB) == 0:
-            logging.error("** No gtrack files selected for", misycmb_par[1],
-                          "Check path in PyXover:", gtrack_dirs[1])
-         exit(1)
+            logging.warning("No gtrack files selected for %s. Check path in PyXover: %s",
+                            misycmb_par[1], gtrack_dirs[1])
+         return
 
       # Compute all combinations among available orbits, where first orbit is in allFilesA and second orbit in allFilesB (exclude same tracks cmb)
       # comb=np.array(list(itert.combinations([fil.split('.')[0][-10:] for fil in allFiles], 2))) # this computes comb btw ALL files
@@ -257,6 +261,8 @@ def main(args_in):
 
       print("Track combinations:")
       print(comb)
+      if len(comb) == 0:
+         raise RuntimeError("No track combinations found (comb is empty). Check inputs/filters.")
 
       # Load all tracks
       # ---------------
@@ -383,7 +389,7 @@ def select_useful_comb(comb, iter, outdir_in):
    outdir_old = outdir_in.replace('_' + str(iter) + '/', '_' + str(iter - 1) + '/')
    print(outdir_old, outdir_in)
    tmp = Amat(XovOpt.get("vecopts"))
-   tmp = tmp.load(glob.glob(XovOpt.get("outdir") + outdir_old + 'Abmat*.pkl')[0])
+   tmp = tmp.load(glob.glob(XovOpt.get("outdir") + outdir_old + 'Abmat*.json')[0])
 
    old_xov_orb = (tmp.xov.xovers['orbA'].map(str) + tmp.xov.xovers['orbB']).values
 

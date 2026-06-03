@@ -7,10 +7,14 @@ import spiceypy as spice
 from xovutil import astro_trans as astr
 from config import XovOpt
 
-def prepro_ilmNG(illumNGf):
+def load_illumng_predictions(illumNGf):
+   """
+   Load illumNG prediction files and return a dataframe ready for PyAltSim.
+   Required output columns: epo_tx (seconds since J2000), altitude (km),
+   and orbID (track identifier). Additional columns may be present.
+   """
    li = []
    for f in illumNGf:
-      # print("Processing", f)
       df = pd.read_csv(f, index_col=None, header=0, names=[f.split('.')[-1]])
       li.append(df)
 
@@ -33,12 +37,13 @@ def prepro_ilmNG(illumNGf):
 
    return df_
 
-def prepro_BELA_sim(epo_in):
+def build_bela_sim_inputs(epo_in):
    """
-    First a priori to generate altimetry data. It is generated based on a
-    spherical planet, and based on emission time = reception time
-    It is later used for iterations on the light time to generate
-    realistic altimetry data
+    Build first-guess BELA/CALA/MLA simulation inputs for PyAltSim.
+    Generates a spherical-planet a priori with emission time = reception time,
+    later refined by light-time iterations in PyAltSim.
+    Required output columns: epo_tx (seconds since J2000), altitude (m),
+    lat (deg), x/y/z (planet-fixed), and orbID (track identifier).
     @param epo_in:
     @return: df,
    """

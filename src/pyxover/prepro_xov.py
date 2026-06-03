@@ -30,7 +30,7 @@ def prepro_mla_xov(old_xovs, msrm_smpl, gtrack_dirs, cmb):
     # check if tracks to process in this combination
     if len(tracks_in_xovs)==0:
         print("No tracks to be processed. Stop!")
-        exit()
+        return None, None
 
     delta_pars, etbcs, pars = get_ds_attrib()
     columns = ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt'] + pars + etbcs

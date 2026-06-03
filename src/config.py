@@ -10,7 +10,6 @@ import copy
 import yaml
 import numpy as np
 
-
 _DEFAULTS_PATH = Path(__file__).with_name('default.yaml')
 
 
@@ -82,6 +81,7 @@ class XovOptions:
     mean_constr: Dict[str, float] | None = None
 
     cloop_sim: bool | None = None
+    boresight_by_track: Dict[str, Any] | None = None
     pert_cloop_orb: Dict[str, Any] | None = None
     pert_cloop_glo: Dict[str, Any] | None = None
     pert_cloop: Dict[str, Any] | None = None

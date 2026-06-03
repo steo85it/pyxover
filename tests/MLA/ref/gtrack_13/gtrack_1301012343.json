@@ -1,0 +1,67 @@
+{
+  "XovOpt": "<class 'config.XovOpt'>",
+  "vecopts": {
+    "SCID": "-236",
+    "SCNAME": "MESSENGER",
+    "SCFRAME": "MSGR_SPACECRAFT",
+    "INSTID": [
+      -236500,
+      -236501
+    ],
+    "INSTNAME": [
+      "MSGR_MLA",
+      "MSGR_MLA_RECEIVER"
+    ],
+    "PLANETID": "199",
+    "PLANETNAME": "MERCURY",
+    "PLANETRADIUS": 2440.0,
+    "PLANETFRAME": "IAU_MERCURY",
+    "OUTPUTTYPE": 1,
+    "ALTIM_BORESIGHT": [
+      0.0022105,
+      0.0029215,
+      0.9999932892
+    ],
+    "INERTIALFRAME": "J2000",
+    "INERTIALCENTER": "SSB",
+    "PM_ORIGIN": "J2013.0",
+    "PARTDER": ""
+  },
+  "name": "array('1301012343', dtype=object)",
+  "MERv": null,
+  "MERx": null,
+  "MGRa": null,
+  "MGRv": null,
+  "MGRx": null,
+  "SUNx": null,
+  "param": {
+    "": 1.0,
+    "dA": 20.0,
+    "dC": 20.0,
+    "dR": 5.0,
+    "dRA": [
+      0.2,
+      0.0,
+      0.0
+    ],
+    "dDEC": [
+      0.36,
+      0.0,
+      0.0
+    ],
+    "dPM": [
+      0,
+      0.013,
+      0.0
+    ],
+    "dL": 0.03597714900463682,
+    "dh2": 0.1
+  },
+  "pertPar": "{'dA': 0, 'dC': 0, 'dR': 0, 'dRl': 0, 'dPt': 0, 'dRA': array([0., 0., 0.]), 'dDEC': array([0., 0., 0.]), 'dPM': array([0., 0., 0.]), 'dL': 0, 'dLIB': array([0.]), 'dh2': 0.0, '': 0}",
+  "pert_cloop": {},
+  "pert_cloop_0": {},
+  "sol_prev_iter": null,
+  "t0_orb": 410355820.996041,
+  "dem": null,
+  "SpObj": null
+}

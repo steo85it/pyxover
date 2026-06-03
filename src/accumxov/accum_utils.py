@@ -462,6 +462,7 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
    elif sol4_glo == [None]:
       sol4_glo = []
 
+   sol4_orb = [p for p in sol4_orb if p in track_names]
    sol4_pars = sorted(sol4_orb) + sorted(sol4_glo)
 
    if len(sol4_pars) > 0:
@@ -477,38 +478,73 @@ def solve4setup(sol4_glo, sol4_orb, sol4_orbpar, track_names):
 
 def analyze_sol(xovi_amat, xovers, mode='full'):
 
-   # check wheter list contains full list of pars or just those from this iter
+   # For iterative updates, prioritize freshly solved arrays; for full mode prefer stored dicts.
+   use_array_first = (mode != 'full' and xovi_amat.sol is not None)
+
    if mode == 'full':
+      sol_dict = xovi_amat.sol_dict
       sol4_pars = xovi_amat.sol4_pars
    else:
-      sol4_pars = xovi_amat.sol4_pars_iter
-      
-   # Ordering is important here, don't use set or other "order changing" functions
-   if xovi_amat.std is None:
-      _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
-                  np.reshape(xovi_amat.sol, (-1, 1))))
-      sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float)))}
+      sol_dict = xovi_amat.sol_dict_iter if xovi_amat.sol_dict_iter is not None else xovi_amat.sol_dict
+      sol4_pars = xovi_amat.sol4_pars_iter if xovi_amat.sol4_pars_iter is not None else xovi_amat.sol4_pars
+
+   if use_array_first:
+      if sol4_pars is None:
+         raise ValueError("Missing sol4_pars_iter while parsing iterative solution arrays")
+      if xovi_amat.std is None:
+         _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
+                        np.reshape(xovi_amat.sol, (-1, 1))))
+         sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float)))}
+         has_std = False
+      else:
+         _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
+                        np.reshape(xovi_amat.sol, (-1, 1)),
+                        np.reshape(xovi_amat.std, (-1, 1))))
+         sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float))),
+                     'std': dict(zip(_[:, 0], np.sqrt(_[:, 2].astype(float))))}
+         has_std = True
+   elif sol_dict is not None and 'sol' in sol_dict:
+      sol_vals = dict(sol_dict['sol'])
+      has_std = 'std' in sol_dict and sol_dict['std'] is not None
+      if has_std:
+         std_vals = dict(sol_dict['std'])
+         sol_dict = {'sol': sol_vals, 'std': std_vals}
+      else:
+         sol_dict = {'sol': sol_vals}
+      sol_items = list(sol_vals.items())
+      if has_std:
+         _ = np.array([[k, v, std_vals.get(k, np.nan)] for k, v in sol_items], dtype=object)
+      else:
+         _ = np.array([[k, v] for k, v in sol_items], dtype=object)
    else:
-      _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
-                     np.reshape(xovi_amat.sol, (-1, 1)),
-                     np.reshape(xovi_amat.std, (-1, 1))
-                     ))
-      sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float))),
-                  'std': dict(zip(_[:, 0], np.sqrt(_[:, 2].astype(float))))}
+      # Backward-compatible path: build sol_dict from array-based fields when called before sol_dict creation.
+      if sol4_pars is None or xovi_amat.sol is None:
+         raise ValueError("Missing solution values: neither sol_dict nor sol4_pars/sol arrays are available")
+      if xovi_amat.std is None:
+         _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
+                        np.reshape(xovi_amat.sol, (-1, 1))))
+         sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float)))}
+         has_std = False
+      else:
+         _ = np.hstack((np.reshape(sol4_pars, (-1, 1)),
+                        np.reshape(xovi_amat.sol, (-1, 1)),
+                        np.reshape(xovi_amat.std, (-1, 1))))
+         sol_dict = {'sol': dict(zip(_[:, 0], _[:, 1].astype(float))),
+                     'std': dict(zip(_[:, 0], np.sqrt(_[:, 2].astype(float))))}
+         has_std = True
 
    if XovOpt.get("debug"):
       print("sol_dict_analyze_sol")
       print(sol_dict)
 
    # Extract solution for global parameters
-   if xovi_amat.std is None:
+   if not has_std:
       glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(XovOpt.get("parGlo").keys()) for x in _[:, 0]]],
-                          columns=['par', 'sol'])
+                             columns=['par', 'sol'])
    else:
       glb_sol = pd.DataFrame(_[[x.split('/')[1] in list(XovOpt.get("parGlo").keys()) for x in _[:, 0]]],
-                          columns=['par', 'sol', 'std'])
+                             columns=['par', 'sol', 'std'])
    partemplate = set([x.split('/')[1] for x in sol_dict['sol'].keys()])
-   # regex = re.compile(".*"+str(list(partemplate))+"$")
 
    # Extract solution for orbit parameters
    parOrbKeys = list(XovOpt.get("parOrb").keys())
@@ -516,23 +552,21 @@ def analyze_sol(xovi_amat, xovers, mode='full'):
 
    if XovOpt.get("OrbRep") in ['lin', 'quad', 'per']:
       parOrbKeys = [x + str(y) for x in parOrbKeys for y in [0, 1, 2, 'C', 'S']]
-   # solved4orb = list(filter(regex.match, list(parOrb.keys())))
    solved4orb = list(set(parOrbKeys) & set(solved4))
 
    if len(solved4orb) > 0:
-      if xovi_amat.std is None:
+      if not has_std:
          df_ = pd.DataFrame(_, columns=['key', 'sol'])
       else:
          df_ = pd.DataFrame(_, columns=['key', 'sol', 'std'])
       df_[['orb', 'par']] = df_['key'].str.split('_', expand=True)
-      if xovi_amat.std is None:
+      if not has_std:
          df_ = df_.astype({'sol': 'float64'})
       else:
          df_ = df_.astype({'sol': 'float64', 'std': 'float64'})
       df_.drop('key', axis=1, inplace=True)
-      # df_[['orb','par']] = df_[['par','orb']].where(df_['par'] == None, df_[['orb','par']].values)
       df_ = df_.replace(to_replace='None', value=np.nan).dropna()
-      if xovi_amat.std is None:
+      if not has_std:
          table = pd.pivot_table(df_, values=['sol'], index=['orb'], columns=['par'], aggfunc='sum')
       else:
          table = pd.pivot_table(df_, values=['sol', 'std'], index=['orb'], columns=['par'], aggfunc='sum')
@@ -547,10 +581,9 @@ def analyze_sol(xovi_amat, xovers, mode='full'):
 
          if AccOpt.get("remove_max_dist"):
             xovers = xovers[xovers.dist_max < 0.4]
-            # xovers = xovers[xovers.dist_min_mean < 1]
 
-         _ = xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1)
-         table['num_obs'] = _
+         _counts = xovers[['orbA', 'orbB']].apply(pd.Series.value_counts).sum(axis=1)
+         table['num_obs'] = _counts
 
          df1 = xovers.groupby(['orbA'], sort=False)['dist_max'].max().reset_index()
          df2 = xovers.groupby(['orbB'], sort=False)['dist_max'].max().reset_index()
@@ -571,7 +604,6 @@ def analyze_sol(xovi_amat, xovers, mode='full'):
       orb_sol = table
       if XovOpt.get("debug"):
          print(orb_sol)
-
    else:
       orb_sol = pd.DataFrame()
 
@@ -585,34 +617,14 @@ def analyze_sol(xovi_amat, xovers, mode='full'):
          orb_sol_filtered[col].max(axis=0),
          orb_sol_filtered[col].mean(axis=0),
          orb_sol_filtered[col].median(axis=0)
-         ]
+      ]
       result.append(stats)
 
-   # Print statistics as a DataFrame for pretty display
    print(pd.DataFrame(result, columns=['Label', 'Min', 'Max', 'Mean', 'Median']))
 
-   # print([isinstance(i,tuple) for i in table.columns])
-   # print(['_'.join(i) for i in table.columns if isinstance(i,tuple)])
-
-   # table[['sol_dR/dA','std_dR/dA','num_obs']] = table[['sol_dR/dA','std_dR/dA','num_obs_']].apply(pd.to_numeric, errors='coerce')
-   # table['sol_dR/dA'] = table['sol_dR/dA'] #+ 100
-   # fig, ax = plt.subplots()
-   # table.plot(x='dist_max', y='sol_dR/dA', yerr='std_dR/dA', style='x')
-   #
-   # # fig, ax = plt.subplots()
-   # # print(df_.dtypes)
-   # # df_[['orb','sol']] = df_[['orb','sol']].apply(pd.to_numeric, errors='coerce')
-   # # print(df_.dtypes)
-   # # df_.groupby('par').plot(x='orb', y='sol', legend=False)
-   #
-   # plt.savefig('tmp/plotsol.png')
-
    # rescale with sigma0
-   
-   if not (xovi_amat.std is None):
-      # sol_dict['std'] *= sigma_0
+   if has_std:
       glb_sol['std'] = np.sqrt(glb_sol['std'].astype('float').values)
-   
       glb_sol['std'] = glb_sol['std'].astype('float').values / AccOpt.get("sigma_0")
       for col in orb_sol.filter(regex='std_*').columns:
          orb_sol[col] = orb_sol[col].astype('float').values / AccOpt.get("sigma_0")
@@ -625,22 +637,17 @@ def load_previous_iter_if_any(ds, ext_iter, xov_cmb):
    # retrieve old solution
    if int(ext_iter) > 0:
       previous_iter = Amat(XovOpt.get("vecopts"))
-      id = ds.split('/')[0].split('_')[0]
-      previous_dir = XovOpt.get("outdir") + id + '_' + str(ext_iter - 1) + '/'
       Abmatfile = XovOpt.get("import_abmat")
       if Abmatfile == "":
-         Abmatfile =  'Abmat_' + id + '_' + str(ext_iter - 1)  + '_' + str(ext_iter) + '.pkl'
+         id = ds.split('/')[0].split('_')[0]
+         previous_dir = XovOpt.get("outdir") + id + '_' + str(ext_iter - 1) + '/'
+         Abmatfile =  previous_dir + 'Abmat_' + id + '_' + str(ext_iter - 1)  + '_' + str(ext_iter)
          print(('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
                '_' + str(ext_iter - 1) + '/' +
-               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
+               ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]))
       
-         # tmp = tmp.load((data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1][:-1] + str(ext_iter) + '_' + ds.split('/')[2]) + '.pkl')
-         # previous_iter = previous_iter.load(
-         #    ('_').join((XovOpt.get("outdir") + ('/').join(ds.split('/')[:-2])).split('_')[:-1]) +
-         #    '_' + str(ext_iter - 1) + '/' +
-         #    ds.split('/')[-2] + '/Abmat_' + ('_').join(ds.split('/')[:-1]) + '.pkl')
       
-      previous_iter = previous_iter.load(previous_dir + Abmatfile)
+      previous_iter = previous_iter.load(Abmatfile)
       print("initial sol dict=", len(previous_iter.sol_dict['sol']))
 
    # if pre-processing took place (else, if perturbing simulation, also pert_cloop_orb should contain something)

@@ -34,7 +34,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import scipy.linalg as la
 
-from memory_profiler import profile
+# from memory_profiler import profile
 
 from pyxover.xov_setup import xov
 from accumxov.Amat import Amat
@@ -120,6 +120,7 @@ def prepro_weights_constr(xovi_amat, previous_iter=None):
          print([xovi_amat.parNames[p] for p in sol4_pars])
       # select columns of design matrix corresponding to chosen parameters to solve for
       spA_sol4 = xovi_amat.spA[:, [xovi_amat.parNames[p] for p in sol4_pars]]
+      # Get the intersection of sol4_pars and xovi_amat.parNames keys
       # set b=0 for rows not involving chosen set of parameters
       nnz_per_row = spA_sol4.getnnz(axis=1)
       xovi_amat.b[np.where(nnz_per_row == 0)[0]] = 0
@@ -641,12 +642,12 @@ def compute_vce_weights(amat, L=None, N=None, spA_penal=None, Ndiag=False):
    # amat.weights.diagonal()[mask_obs] works because it is truyl diagonal
    if Ndiag:
       s2_obs_new = [get_vce_factor(x=xsol, Cinv=diags(amat.weights.diagonal()[mask_obs]), L=None, Ninv=Ninv,
-                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs, :],
+                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs.values, :],
                                    s2apr=s2_obs, kind='obs', nelem=sum(mask_obs))
                     for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
    else:
       s2_obs_new = [get_vce_factor(x=xsol, Cinv=diags(amat.weights.diagonal()[mask_obs]), L=L, N=N, Ninv=Ninv,
-                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs, :],
+                                   b=amat.b[mask_obs], A=amat.spA_sol4[mask_obs.values, :],
                                    s2apr=s2_obs, kind='obs', nelem=sum(mask_obs),stoch=True)
                     for s2_obs, mask_obs in zip(s2_obs_apr,amat.obs_blocks)]
 
@@ -680,7 +681,7 @@ def remove_tracks(xovi_amat, tracks_to_remove):
    xovi_amat.b = xovi_amat.b[obs_to_keep]
    xovi_amat.weights = diags(weight_d[obs_to_keep])
    xovi_amat.spA_sol4 = xovi_amat.spA_sol4[:, par_to_keep]
-   xovi_amat.spA_sol4 = xovi_amat.spA_sol4[obs_to_keep,:]
+   xovi_amat.spA_sol4 = xovi_amat.spA_sol4[obs_to_keep.values,:]
    xovi_amat.obs_blocks = [obs[obs_to_keep] for obs in xovi_amat.obs_blocks]
    xovi_amat.penalty_mat = [pen[:, par_to_keep] for pen in xovi_amat.penalty_mat]
 
@@ -728,7 +729,12 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
       else:
          spQ = []
 
-      b_penal =  sum([ w * mask_obs.astype(float) * xovi_amat.b  for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
+      # mask_obs can be a pandas Series with non-zero-based index; convert to a plain ndarray
+      # before passing it into sparse constructors or broadcasting operations.
+      b_penal = sum([
+         w * np.asarray(mask_obs, dtype=float) * xovi_amat.b
+         for (w, mask_obs) in zip(sqrt_weight_obs, xovi_amat.obs_blocks)
+      ])
       b_penal = W_L.T * b_penal
       # add penalisation to residuals
       if previous_iter != None and previous_iter.sol_dict != None:
@@ -746,7 +752,10 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
          if len(xovi_amat.penalty_mat) > 0:
             b_penal = np.hstack([b_penal, -1. * np.zeros(spQ.shape[0])])
 
-      spA_sol4_penal = sum([ w * diags(mask_obs.astype(float)) @ xovi_amat.spA_sol4 for (w,mask_obs) in zip(sqrt_weight_obs,xovi_amat.obs_blocks)])
+      spA_sol4_penal = sum([
+         w * diags(np.asarray(mask_obs, dtype=float)) @ xovi_amat.spA_sol4
+         for (w, mask_obs) in zip(sqrt_weight_obs, xovi_amat.obs_blocks)
+      ])
 
       # apply weights
       # TODO clean-up: applying weights at this point makes it impossible to get covariance matrix
@@ -833,9 +842,30 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
 
          keep_iterating_vce = any(w > 0.01 for w in w_obs_impovement) or any(w > 0.1 for w in w_constr_impovement)
 
-         print("vce iter,weight (obs,constr):", i, xovi_amat.vce_obs, xovi_amat.vce_pen, keep_iterating_vce)
-         print("w_obs updated by", [w * 100. for w in w_obs_impovement],
-               '% and w_constr by',[w * 100. for w in w_constr_impovement], '%')
+         def _fmt_vals(values, pct=False):
+            if values is None:
+               return "[]"
+            out = []
+            for v in values:
+               try:
+                  fval = float(v)
+               except (TypeError, ValueError):
+                  try:
+                     fval = float(np.asarray(v).squeeze())
+                  except Exception:
+                     out.append(str(v))
+                     continue
+               out.append(f"{100.0 * fval:.3f}%" if pct else f"{fval:.6g}")
+            return "[" + ", ".join(out) + "]"
+
+         print(
+            f"VCE iter {i}: w_obs={_fmt_vals(xovi_amat.vce_obs)}, "
+            f"w_constr={_fmt_vals(xovi_amat.vce_pen)}, keep_iterating={keep_iterating_vce}"
+         )
+         print(
+            f"Weight update: obs={_fmt_vals(w_obs_impovement, pct=True)}, "
+            f"constr={_fmt_vals(w_constr_impovement, pct=True)}"
+         )
          if keep_iterating_vce:
             # update weights
             weight_obs    = [1. / sig for sig in sigma2_obs]
@@ -855,8 +885,9 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
          # print("test xTx update -prevsol- pre=",np.sqrt(dict2np(previous_iter.sol_dict['sol']).T@dict2np(previous_iter.sol_dict['sol'])))
          # sum the values with same keys
          updated_sol = mergsum(xovi_amat.sol_dict_iter['sol'], previous_iter.sol_dict['sol'])
-         updated_std = mergsum(xovi_amat.sol_dict_iter['std'],
-                               previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.))
+         iter_std = xovi_amat.sol_dict_iter.get('std', {})
+         prev_std = previous_iter.sol_dict.get('std', {})
+         updated_std = mergsum(iter_std, prev_std.fromkeys(prev_std, 0.))
          # WD: is previous_iter.sol_dict['std'].fromkeys(previous_iter.sol_dict['std'], 0.) to enforce 0 values?
          # print("test xTx update -soldictiter- post=",np.sqrt(dict2np(xovi_amat.sol_dict_iter['sol']).T@dict2np(xovi_amat.sol_dict_iter['sol'])))
          # print("test xTx update -prevsol- post=",np.sqrt(dict2np(previous_iter.sol_dict['sol']).T@dict2np(previous_iter.sol_dict['sol'])))
@@ -864,12 +895,18 @@ def compute_solution(xovi_amat, previous_iter, xov_cmb):
 
          # save total list of parameters (previous iters + current)
          xovi_amat.sol4_pars = list(updated_sol.keys())
-         xovi_amat.sol_dict = {'sol': updated_sol, 'std': updated_std}
+         if len(iter_std) > 0 or len(prev_std) > 0:
+            xovi_amat.sol_dict = {'sol': updated_sol, 'std': updated_std}
+         else:
+            xovi_amat.sol_dict = {'sol': updated_sol}
          # use dict to update amat.sol, keep std
          # xovi_amat.sol = (list(xovi_amat.sol_dict['sol'].values()), *xovi_amat.sol[1:-1],
          #                  list(xovi_amat.sol_dict['std'].values()))
          xovi_amat.sol = list(xovi_amat.sol_dict['sol'].values())
-         xovi_amat.std = list(xovi_amat.sol_dict['std'].values())
+         if 'std' in xovi_amat.sol_dict.keys():
+            xovi_amat.std = list(xovi_amat.sol_dict['std'].values())
+         else:
+            xovi_amat.std = None
          orb_sol, glb_sol, sol_dict = analyze_sol(xovi_amat, xov_cmb.xovers, mode='full')
          print("Cumulated solution")
          print_sol(orb_sol, glb_sol, xov, xovi_amat)
@@ -1240,6 +1277,10 @@ def main(arg):
    if AccOpt.get("Abmat_infile") == "":
       print("Load xovers from datasets")
       xov_cmb = load_combine(datasets, vecopts)
+      if xov_cmb == []:
+         print("*** Accumxov.main: No crossovers to process.")
+         exit(2)
+
       end = time.time()
       print("Xovers loaded in ", int(end - start), "sec or ", round((end - start) / 60., 2), " min!")
 
@@ -1254,9 +1295,9 @@ def main(arg):
          previous_iter = None
       if AccOpt.get("Abmat_infile") == "":
 
-         if ext_iter > 0 and previous_iter.converged and 'dR/dh2' not in XovOpt.get("sol4_glo"):
-            print("Adding h2 to sol4_glo as solution converged...")
-            XovOpt.get("sol4_glo").extend(['dR/dh2'])
+         # if ext_iter > 0 and previous_iter.converged and 'dR/dh2' not in XovOpt.get("sol4_glo"):
+         #    print("Adding h2 to sol4_glo as solution converged...")
+         #    XovOpt.get("sol4_glo").extend(['dR/dh2'])
 
          # solve dataset
          par_list = ['orbA', 'orbB', 'xOvID']
@@ -1293,12 +1334,10 @@ def main(arg):
 
          # actually preparing weights and constraints for the solution
          prepro_weights_constr(xovi_amat, previous_iter=previous_iter)
-         
-         Amat_fname = (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1) + '_nosol.pkl'
-         xovi_amat.save(Amat_fname)
       else:
          xovi_amat = Amat(vecopts)
-         xovi_amat = xovi_amat.load(data_pth + AccOpt.get("Abmat_infile"))
+         xovi_amat = xovi_amat.load(data_pth + AccOpt.get("Abmat_infile"),
+                                    read_matrices=False, read_matrices_nosol=True)
 
       if not AccOpt.get("get_cov_only"):
          xovi_amat.spA = None
@@ -1373,14 +1412,10 @@ def main(arg):
    elif len(ds.split('/')) > 2:
       Amat_fname = ('_').join((data_pth + 'Abmat_' + ds.split('/')[0] + '_' +
                                ds.split('/')[1]).split('_')[:-1]) + '_' + \
-                                  str(ext_iter + 1) + '_' + ds.split('/')[2] + '.pkl'
+                                  str(ext_iter + 1) + '_' + ds.split('/')[2]
    else:
-      Amat_fname = (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1) + '.pkl'
+      Amat_fname = (data_pth + 'Abmat_' + ds.split('/')[0] + '_' + ds.split('/')[1] + '_')[:-1] + str(ext_iter + 1)
    print(Amat_fname)
-   # What about spA_penal, b_penal, penalty_mat_avg
-   xovi_amat.spA = None
-   xovi_amat.b = None
-   xovi_amat.weights = None
    xovi_amat.save(Amat_fname)
 
    print("AccumXov ended succesfully!")

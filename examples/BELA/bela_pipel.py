@@ -22,9 +22,8 @@ run_pyGeoLoc  = False
 run_pyXover   = False
 run_accuXover = True
 
-camp = "/storage/research/aiub_gravdet/WD_BELA/"
-OrbDir = f"{camp}ORB/"
-log_folder = f"{camp}pyXover/log/"
+basedir = "/home/wdesprat/nobackup/pyxover/examples/BELA/data/"
+log_folder = f"{basedir}log/"
 
 # removed below
 # AA0: Simulation 2m noise, DEM, small scale, 10 Hz
@@ -136,13 +135,11 @@ simid = 'AD6'
 estid_N = 'AF0'
 estid_S = 'AF1'
 iter = 0
-partition = "icpu-aiub"
-# partition = "epyc2"
 XovOpt.set("selected_hemisphere",'N')
 
 max_job = 1500
-if partition == "icpu-aiub":
-   max_job = 200
+max_parallel = 200   
+max_parallel = 12*10  
 
 if XovOpt.get("selected_hemisphere") == 'N':
    estid = estid_N
@@ -155,13 +152,11 @@ d_start = dt.datetime(2027,4,1,0,0,0)
 d_end   = dt.datetime(2029,4,1,0,0,0) # extended mission
 nWeeks = math.floor((d_end - d_start).days/7)
 nMonths = math.ceil((d_end - d_start).days/30)
-# nWeeks = 1
-# nMonths = 1
    
 # General options
 XovOpt.set("body", 'MERCURY')
 XovOpt.set("spice_meta", 'mymeta_MPO')
-XovOpt.set("basedir", f'{camp}pyXover/')
+XovOpt.set("basedir", basedir)
 XovOpt.set("instrument", 'BELA')
 XovOpt.set("max_range_altitude", 1050)
 XovOpt.set("SpInterp", 0)
@@ -212,16 +207,13 @@ if run_pyAltSim:
                           XovOpt.to_dict()])
    # pyaltsim_in = [pyaltsim_in[0]]
    if grid:
-      executor = submitit.AutoExecutor(folder=f'{camp}pyXover/log/{simid}/pyaltsim')
-      executor.update_parameters(slurm_partition=partition,
-                                 slurm_cpus_per_task=1,
+      executor = submitit.AutoExecutor(folder=f'{log_folder}{simid}/pyaltsim')
+      executor.update_parameters(slurm_cpus_per_task=1,
                                  slurm_nodes=1,
                                  slurm_name="pyaltsim",
-                                 slurm_array_parallelism=150,
+                                 slurm_array_parallelism=max_parallel,
                                  slurm_time=60*3, # minutes
                                  slurm_mem='10G') # 4GB for 10Hz
-      if partition == "icpu-aiub":
-         executor.update_parameters(slurm_qos="job_icpu-aiub")
       if len(pyaltsim_in) == 1:
          job = executor.submit(PyAltSim.main, pyaltsim_in[0]) # single job
          (job.result())
@@ -295,7 +287,7 @@ if run_accuXover:
 
    AccOpt.set("downsize", False) 
 
-   AccOpt.set("Abmat_outfile", f"Abmat_{estid_N}_{iter}_{iter+1}_A.pkl")
+   AccOpt.set("Abmat_outfile", f"Abmat_{estid_N}_{iter}_{iter+1}_B.pkl")
    # AccOpt.set("compute_vce",False)
    AccOpt.set("compute_vce",True)
    # AccOpt.set("Abmat_infile", f"Abmat_{estid_N}_{iter}_{iter+1}_nosol.pkl")
@@ -312,17 +304,12 @@ XovOpt.check_consistency()
 if run_pyGeoLoc:
    if grid:
       executor = submitit.AutoExecutor(folder=f'{log_folder}{estid}/pygeoloc')
-      executor.update_parameters(slurm_partition=partition,
-                                 slurm_nodes=1,
-                                 slurm_array_parallelism=200,
+      executor.update_parameters(slurm_nodes=1,
+                                 slurm_array_parallelism=max_parallel,
                                  slurm_name="pygeoloc",
                                  slurm_mem='1G',
                                  slurm_cpus_per_task=1,
                                  slurm_time=20) # minutes
-      if partition == "icpu-aiub":
-         executor.update_parameters(slurm_qos="job_icpu-aiub")
-      else:
-         executor.update_parameters(slurm_array_parallelism=500)
       if iter>0:
          executor.update_parameters(slurm_mem='20G')
    pygeoloc_in = []
@@ -376,17 +363,12 @@ if run_pyXover:
     
    if grid:
       executor = submitit.AutoExecutor(folder=f'{log_folder}{estid}/pyxover')
-      executor.update_parameters(slurm_partition=partition,
-                                 slurm_name="pyxover",
+      executor.update_parameters(slurm_name="pyxover",
                                  slurm_nodes=1,
                                  slurm_mem='25G', # 11G
                                  slurm_cpus_per_task=2,
                                  slurm_time=60*5, # minutes
-                                 slurm_array_parallelism=120)
-      if partition == "icpu-aiub":
-         executor.update_parameters(slurm_qos="job_icpu-aiub")
-      else:
-         executor.update_parameters(slurm_array_parallelism=500)
+                                 slurm_array_parallelism=max_parallel)
        
    pyxover_in = []
    for par in range(0,len(misycmb)):
@@ -437,15 +419,12 @@ if run_accuXover:
    # XovOpt.set("sol4_orbpar", [None])
    if grid:
       executor = submitit.AutoExecutor(folder=f'{log_folder}{estid}/accumxov')
-      executor.update_parameters(slurm_partition=partition,
-                                 slurm_nodes=1,
+      executor.update_parameters(slurm_nodes=1,
                                  slurm_name="accumXov",
-                                 slurm_mem='150G',
-                                 slurm_cpus_per_task=2,
+                                 slurm_mem='100G',
+                                 slurm_cpus_per_task=1,
                                  slurm_time=60*12, # minutes
-                                 slurm_array_parallelism=100)
-      if partition == "icpu-aiub":
-         executor.update_parameters(slurm_qos="job_icpu-aiub")
+                                 slurm_array_parallelism=max_parallel)
       job = executor.submit(AccumXov.main, [datasets, '', iter, XovOpt.to_dict(), AccOpt.to_dict()]) # single job
       print(job.result())
    else:

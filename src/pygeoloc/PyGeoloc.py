@@ -31,14 +31,16 @@ def launch_gtrack(args):
    track_id = 'gtrack_' + track.name
 
    if XovOpt.get("new_gtrack") > 0:
-      gtrack_out = XovOpt.get("outdir") + outdir_in + '/' + track_id + '.pkl'
-      gtrack_df_out = XovOpt.get("outdir") + outdir_in + '/' + 'gtrack_ladata_' + track.name + '.parquet'
+      gtrack_out = XovOpt.get("outdir") + outdir_in + '/' + track_id
       if not (os.path.isfile(gtrack_out) or os.path.isfile(gtrack_out)) or XovOpt.get("new_gtrack") == 2:
 
          if not os.path.exists(XovOpt.get("outdir") + outdir_in):
             os.makedirs(XovOpt.get("outdir") + outdir_in, exist_ok=True)
 
          track.setup()
+         # Drop any rows containing NaNs before saving
+         if hasattr(track, "ladata_df") and track.ladata_df is not None:
+            track.ladata_df = track.ladata_df.dropna().reset_index(drop=True)
          
 
          if XovOpt.get("debug"):
@@ -55,16 +57,15 @@ def launch_gtrack(args):
          # pd.set_option('display.max_columns', None)
 
          if len(track.ladata_df) > 0:
-            track.save_df(gtrack_df_out)
             track.save(gtrack_out)
             if not XovOpt.get("local") or XovOpt.get("debug"):
                print('Orbit ' + track_id.split('_')[1] + ' processed and written to ' + gtrack_out + '!')
          else:
-            print(f"Orbit {track.name} contains no valid data. No gtrack created.")
+            print(f"Orbit {track.name} contains no valid data (only nans). No gtrack created.")
             # except:
             #    print('failed to process ' + track_id)
       else:
-         # track = track.load('out/'+track_id+'.pkl')
+         # track = track.load('out/'+track_id)
          if not XovOpt.get("local") or XovOpt.get("debug"):
             print('Gtrack file ' + gtrack_out + ' already existed!')
 
@@ -163,18 +164,15 @@ def main(args):
       # Import solution at previous iteration
       if int(iter_in) > 0:
          tmp = Amat(XovOpt.get("vecopts"))
-         # previous_dir = ('_').join(((XovOpt.get("outdir") + ('/').join(outdir_in.split('/')[:-2]))).split('_')[:-1]) \
-         #   + '_' + str(iter_in - 1) + '/' + outdir_in.split('/')[-2] + '/'
-         # tmp = tmp.load(previous_dir + 'Abmat_' + ('_').join(outdir_in.split('/')[:-1]) + '.pkl')
-         id = outdir_in.split('/')[0].split('_')[0]
-         previous_dir = XovOpt.get("outdir") + id + '_' + str(iter_in - 1) + '/'
+         
          if XovOpt.get("import_abmat") == "":
-            Abmat_infile = 'Abmat_' + id +  '_' + str(iter_in - 1)  + '_' + str(iter_in) + '.pkl'
+            id = outdir_in.split('/')[0].split('_')[0]
+            previous_dir = XovOpt.get("outdir") + id + '_' + str(iter_in - 1) + '/'
+            Abmat_infile = os.path.join(previous_dir + 'Abmat_' + id +  '_' + str(iter_in - 1)  + '_' + str(iter_in))
          else:
             Abmat_infile = XovOpt.get("import_abmat")
-            print(previous_dir)
-            print(Abmat_infile)
-         tmp = tmp.load(os.path.join(previous_dir + Abmat_infile))
+         # Keep solution arrays (sol/std/sol4_pars) but skip heavy no-solution matrices (spA, b, weights).
+         tmp = tmp.load(Abmat_infile, read_matrices=False, read_matrices_nosol=False)
          import_prev_sol = hasattr(tmp, 'sol4_pars')
          if import_prev_sol:
             orb_sol, glo_sol, sol_dict = accum_utils.analyze_sol(tmp, tmp.xov.xovers)
@@ -263,6 +261,13 @@ def main(args):
             except:
                True
 
+         # Inject per-track boresights from options (track_name -> dict).
+         boresight_by_track = XovOpt.get("boresight_by_track")
+         if boresight_by_track and track.name in boresight_by_track:
+            track.boresight = boresight_by_track[track.name]
+         else:
+            track.boresight = XovOpt.get("vecopts")['ALTIM_BORESIGHT']
+               
          tracks.append(track)
 
       if XovOpt.get("SpInterp") == 3:

@@ -14,21 +14,24 @@ from pyxover.xov_utils import get_ds_attrib
 
 from accumxov.Amat import Amat
 from config import XovOpt
-from memory_profiler import profile
+# from memory_profiler import profile
 
 ## MAIN ##
 def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
    start = time.time()
    xov_dir = XovOpt.get("outdir") + outdir_in + 'xov/'
-   outpath = xov_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'
+   outpath = xov_dir + 'xov_' + str(cmb[0]) + '_' + str(cmb[1])
    # Exit process if file already exists and no option to recreate
-   if (XovOpt.get("new_xov") != 2) and (os.path.isfile(outpath)):
+   if (XovOpt.get("new_xov") != 2) and (os.path.isfile(f"{outpath}.json")):
       print("Fine xov", outpath," already exists. Stop!")
       return
 
    # Compute fine intersection from old xovers and
    # project the la data around the fine intersection
    mla_proj_df, fine_xov_df = proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs)
+   if mla_proj_df is None or fine_xov_df is None:
+      print(f"No fine-xover work needed for combination {cmb}.")
+      return None
 
     # compute new xovs
    xov_tmp = compute_fine_xov(mla_proj_df, fine_xov_df, XovOpt.get("n_interp"))
@@ -37,13 +40,12 @@ def xov_prc_iters_run(outdir_in, cmb, old_xovs, gtrack_dirs):
    xov_tmp.store_pertubation(gtrack_dirs, cmb)
 
    # Save to file
-   xov_pklname = 'xov_' + str(cmb[0]) + '_' + str(cmb[1]) + '.pkl'  # one can split the df by trackA and save multiple pkl, one for each trackA if preferred
-   xov_tmp.save(xov_dir + xov_pklname)
+   xov_tmp.save(outpath)
 
    end = time.time()
 
    print('Xov for ' + str(cmb) + ' processed @' + time.strftime("%H:%M:%S", time.gmtime()) +
-         'and written to:\n' + xov_dir + xov_pklname)
+         'and written to:\n' + outpath)
 
    print("Fine xov determination finished after", int(end - start), "sec or ", round((end - start) / 60., 2), " min!\n")
    # print(xov_tmp.xovers.columns)
@@ -74,7 +76,7 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
    # check if tracks to process in this combination
    if len(tracks_in_xovs)==0:
       print("No tracks to be processed. Stop!")
-      exit()
+      return None, None
 
    delta_pars, etbcs, pars = get_ds_attrib()
    columns = ['seqid', 'LON', 'LAT', 'orbID', 'ET_BC', 'ET_TX', 'R', 'offnadir','dt'] + pars + etbcs
@@ -111,8 +113,7 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
       old_xovs=old_xovs.reset_index()
 
    elif n_interp > msrm_smpl:
-      print(f"n_interp ({n_interp}) can't be > msrm_smpl{msrm_smpl}")
-      exit()
+      raise ValueError(f"n_interp ({n_interp}) can't be > msrm_smpl{msrm_smpl}")
 
    # Projection of mla_data around old xovs (w/ partials if needed)
    # Old projection should not be used if one expect the xovers further
@@ -133,15 +134,14 @@ def proj_around_intersection(outdir_in, cmb, old_xovs, gtrack_dirs):
 
       # Save intermediate result
       # WD: col = ['R_A', 'R_B', 'dR'] are 0 -> drop them?
-      mla_proj_df.to_pickle(proj_pkl_path)
-      print("Projected df saved to:", proj_pkl_path)
+      # mla_proj_df.to_pickle(proj_pkl_path)
+      # print("Projected df saved to:", proj_pkl_path)
 
    elif os.path.exists(proj_pkl_path): # or just retrieve them from file
       mla_proj_df = pd.read_pickle(proj_pkl_path)
       print("mla_proj_df loaded from", proj_pkl_path, ". Done!!")
    else:
-      print("No mla_proj_df found at ", proj_pkl_path)
-      exit()
+      raise FileNotFoundError(f"No mla_proj_df found at {proj_pkl_path}")
 
    # Fine search with mla projectec with partials
    if n_interp == msrm_smpl: # also > ?
@@ -289,7 +289,7 @@ def load_mla_df(gtrack_dirs, tracks_in_xovs, columns):
    track = gtrack(XovOpt.to_dict())
    mladata = {}
 
-   # WD: Whole gtrack is not needed.ladata_df could be passed as an
+   # WD: Whole gtrack is not needed. ladata_df could be passed as an
    # argument, provided that necessary columns havent been dumped.
    for track_id in tracks_in_xovs[:]:
       track.load_df_from_id(gtrack_dirs[0], track_id)
@@ -308,14 +308,15 @@ def retrieve_xov(outdir_in, xov_iter, cmb, useful_columns):
    # depending on available input xov, get xovers location from AbMat or from xov_rough
    if xov_iter > 0 or XovOpt.get("import_abmat") != "":  # len(input_xov)==0:
       # read old abmat file
-      if xov_iter > 0:
+      if XovOpt.get("import_abmat") != "": # read a user defined abmat file
+         abmat_file = XovOpt.get("import_abmat")
+      elif xov_iter > 0:
          outdir_old = outdir_in.replace('_' + str(xov_iter) + '/', '_' + str(xov_iter - 1) + '/')
-         abmat = XovOpt.get("outdir") + outdir_old + 'Abmat*.pkl'
-      else: # read a user defined abmat file
-         abmat = XovOpt.get("import_abmat")
+         abmat = XovOpt.get("outdir") + outdir_old + 'Abmat*.json'
+         abmat_file = glob.glob(abmat)[0]
 
       tmp_Amat = Amat(XovOpt.get("vecopts"))
-      tmp = tmp_Amat.load(glob.glob(abmat)[0])
+      tmp = tmp_Amat.load(abmat_file)
       old_xovs = tmp.xov.xovers[useful_columns]
       if XovOpt.get("selected_hemisphere") == 'N':
          old_xovs = old_xovs[old_xovs['LAT']>=0]

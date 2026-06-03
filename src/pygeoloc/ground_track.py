@@ -13,6 +13,7 @@ import pickle
 import re
 import time
 import gc
+import json
 
 import numpy as np
 import pandas as pd
@@ -29,15 +30,37 @@ from tidal_deform import tidepart_h2
 
 
 class gtrack:
+   """Ground-track container for a single orbit segment.
+
+   Attributes:
+      XovOpt: Cloned options object used across geolocation and interpolation.
+      vecopts: Vectorization options passed in via opts["vecopts"] (can be None).
+      ladata_df: Laser altimeter observation dataframe for this track.
+      name: Track/orbit identifier (string).
+      MERv: Mercury barycentric velocity vector, interpolated at epochs.
+      MERx: Mercury barycentric position vector, interpolated at epochs.
+      MGRa: Spacecraft attitude (typically quaternion or Euler array).
+      MGRv: Spacecraft velocity vector, interpolated at epochs.
+      MGRx: Spacecraft position vector, interpolated at epochs.
+      SUNx: Sun position vector, interpolated at epochs.
+      param: Parameter dictionary for estimation or simulation metadata.
+      pertPar: Per-parameter offsets for simulated perturbations.
+      pert_cloop: Imposed perturbations for closed-loop simulation (optional).
+      pert_cloop_0: Baseline perturbations for closed-loop simulation (optional).
+      sol_prev_iter: Cumulative parameter solution from previous iterations.
+      t0_orb: Reference epoch (ET) for this track, used for interpolation.
+      dem: Interpolated DEM object for projection/geolocation (optional).
+      SpObj: SPICE interpolation object for the track time span (optional).
+   """
    interp_obj.interp = interp_obj.interpCby  # Cby  # Spl #
    interp_obj.eval = interp_obj.evalCby  # Cby  # Spl #
 
    def __init__(self, opts):
+      """Initialize a ground-track with options and empty state."""
 
       XovOpt.clone(opts)
       self.XovOpt = XovOpt
       self.vecopts = opts.get("vecopts")
-      self.dr_simit = None
       # Laser Altimeter Data (dataframe) ?
       self.ladata_df = None
       # self.df_input = None
@@ -79,7 +102,8 @@ class gtrack:
 
     # create groundtrack object from data and save to file
     # contain interpolated s/c and planets orbits for covered timespan
-   def setup(self, filnam=""):
+   def setup(self):
+      """Geolocate, project, and finalize a track after loading data."""
 
       if len(self.ladata_df) == 0:
          print("No data for track ", self.name)
@@ -96,6 +120,9 @@ class gtrack:
       self.t0_orb = self.ladata_df.ET_TX.iloc[0]
       # geolocate observations in orbit
       self.geoloc(get_partials=XovOpt.get('partials'))
+      # geoloc outputs are all NaN; skipping projection
+      if self.ladata_df['R'].isna().all():
+         return
       # project observations (polar stereo, choose pole N/S depending on data selection)
       if self.XovOpt.get("selected_hemisphere") == 'S':
          self.project(lat0=-90)
@@ -106,22 +133,15 @@ class gtrack:
       # WD: Numerical errors
       self.ladata_df['dt'] = self.ladata_df.ET_TX - self.t0_orb
 
-   # create groundtrack from data and save to file
    def prepro(self, filnam, read_all=False, t_start=0, t_end=0):
+      """Read data and prepare interpolation for a track time span."""
 
       # read data and fill ladata_df
       self.read_fill(filnam, read_all=read_all, t_start=t_start, t_end=t_end)
 
-      # testInterp(self.ladata_df,self.vecopts)
-      # exit()
-
-      # check spk coverage and select obs in ladata_df
-      # self.check_coverage()
-
       # create interp for track (if data are present)
       if (self.XovOpt.get("SpInterp") > 0 and len(self.ladata_df) > 0):
          if self.SpObj == None and self.XovOpt.get("SpInterp") == 2:
-            # create interp for track
             self.interpolate()
          else:
             try:
@@ -133,29 +153,11 @@ class gtrack:
       elif len(self.ladata_df) == 0:
          print('No data selected for orbit ' + str(self.name))
 
-   def check_coverage(self):
-      cover = spice.utils.support_types.SPICEDOUBLE_CELL(2000)
-      if self.XovOpt.get("local") == 0:
-         spice.spkcov(self.XovOpt.get("auxdir") + 'spk/MSGR_HGM008_INTGCB.bsp', -236, cover)
-      else:
-         spice.spkcov('/home/sberton2/Works/NASA/Mercury_tides/spktst/MSGR_HGM008_INTGCB.bsp', -236, cover)
-
-      twind = [spice.wnfetd(cover, i) for i in range(spice.wncard(cover))]
-      epo_in = np.sort(self.ladata_df.ET_TX.values)
-      self.ladata_df['in_spk'] = np.array([np.sum([t[0] <= val <= t[1] for t in twind]) for val in epo_in]) > 0
-      if self.XovOpt.get("debug"):
-         print(len(self.ladata_df.loc[self.ladata_df['in_spk'] == False]))
-         print("lensel", len(self.ladata_df), len(self.ladata_df.loc[self.ladata_df['in_spk']]))
-      self.ladata_df = self.ladata_df.loc[self.ladata_df['in_spk']]
-
-   # create groundtrack from list of epochs
    def simulate(self, filnam):
+      """Create a ground track from a list of epochs for simulation."""
 
       # read data and fill ladata_df
       self.read_fill(filnam)
-
-      # testInterp(self.ladata_df,self.vecopts)
-      # exit()
 
       # create interp for track (if data are present)
       if (len(self.ladata_df) > 0):
@@ -169,53 +171,62 @@ class gtrack:
          print('No data selected for orbit ' + str(self.name))
 
    def save(self, filnam):
-      # To use after self.ladata_df is saved via save_df
-      # Ladata_df is saved separately
-      self.ladata_df = None
-      pklfile = open(filnam, "wb")
-      pickle.dump(self, pklfile, protocol=-1)
-      pklfile.close()
-
-   def save_df(self, filnam):
+      """Persist track data to parquet and metadata to JSON."""
       # clean up useless columns
       self.ladata_df = self.ladata_df.drop(self.ladata_df.filter(regex='^dR_tid$').columns, axis='columns')
-      self.ladata_df.to_parquet(filnam, engine='pyarrow')
+      self.ladata_df.to_parquet(filnam + ".parquet", engine='pyarrow')
+      self.ladata_df = None
+      metadata = {}
+      for key, value in self.__dict__.items():
+         if key == "ladata_df":
+            continue
+         try:
+            json.dumps(value)
+            metadata[key] = value
+         except TypeError:
+            metadata[key] = repr(value)
+      with open(filnam+".json", "w", encoding="utf-8") as f:
+         json.dump(metadata, f, indent=2, ensure_ascii=False)
 
-   # load groundtrack from file
-   # @profile
    def load(self, filnam):
-      # disabling cyclic garbage collection
-      gc.disable()
-      if os.path.isfile(filnam):
-         pklfile = open(filnam, 'rb')
-         self = pickle.load(pklfile)
-         pklfile.close()
+      """Load a track from a JSON metadata file or legacy pickle."""
+      if filnam.endswith(".json"):
+         with open(filnam, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+         for key, value in metadata.items():
+            setattr(self, key, value)
       else:
-         if self.XovOpt.get("debug"):
-            print("No " + filnam + " found")
-         self = None
-      gc.enable()
+         # disabling cyclic garbage collection
+         gc.disable()
+         if os.path.isfile(filnam):
+            pklfile = open(filnam, 'rb')
+            self = pickle.load(pklfile)
+            pklfile.close()
+         else:
+            self = None
+         gc.enable()
       return self
 
    def load_df_from_id(self, gtrack_dir, track_id):
+      """Load track dataframe by id from a directory of saved tracks."""
       self.ladata_df = None
-      for pattern in ['ladata_', '']:
-         track_fn = 'gtrack_' + pattern + track_id
-         if pattern == 'ladata_':
-            track_fn += '.parquet'
-         else:
-            track_fn += '.pkl'
+      track_fns = ["gtrack_" + track_id + ".parquet",
+                     "gtrack_ladata_" + track_id + ".parquet", 
+                     "gtrack_" + track_id + ".json"]
+      for track_fn in track_fns:
          trackfil = os.path.join(gtrack_dir, track_fn)
          if (os.path.isfile(trackfil)):
-            if pattern == 'ladata_':
+            if track_fn.endswith(".parquet"):
                self.load_df(trackfil)
                break
             else:
                self.ladata_df = self.load(trackfil).ladata_df
+               break
       return self
 
    # load ladata from file
    def load_df(self, filnam):
+      """Load the ladata dataframe from a parquet file."""
       if os.path.isfile(filnam):
          self.ladata_df = pd.read_parquet(filnam, engine='pyarrow')
       else:
@@ -225,6 +236,7 @@ class gtrack:
       return self
 
    def read_fill(self, infil, read_all=False, t_start=0, t_end=0):
+      """Read an MLA-like file, clean it, and populate ladata_df."""
       import datetime as dt
 
       if infil.split(".")[-1] in ["TAB", "tab"]:
@@ -249,11 +261,18 @@ class gtrack:
          else:
             date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=t_start)
             df['orbID'] = date.strftime('%y%m%d%H%M')
-         if len(df['ET_TX'])>0: # same thing?
-            date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=min(df['ET_TX']))
-            df['orbID'] = date.strftime('%y%m%d%H%M')
+            # if len(df['ET_TX'])>0: # same thing?
+            #    date = dt.datetime(2000, 1, 1, 12, 0, 0) + dt.timedelta(seconds=min(df['ET_TX']))
+            #    df['orbID'] = date.strftime('%y%m%d%H%M')
 
-      self.name = df['orbID'].unique().squeeze()
+      unique_orb_ids = df['orbID'].dropna().unique()
+      if len(unique_orb_ids) == 0:
+         self.name = None
+      else:
+         # Ensure a single string even if multiple IDs are present.
+         self.name = str(unique_orb_ids[0])
+         if len(unique_orb_ids) > 1:
+            print(f"*** ground_track.read_fill: multiple orbID values found ({len(unique_orb_ids)}); using {self.name}")
 
       # strip and lower case all column names
       df.columns = df.columns.str.strip()
@@ -283,7 +302,7 @@ class gtrack:
       # only select the required data (column)
       if (self.XovOpt.get("debug")) or read_all:
          df = df.loc[:, ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid', 'geoc_long', 'geoc_lat', 'altitude']]
-         df_['altitude']*=1e3 # store altitude in m
+         df['altitude'] = df['altitude']*1e3 # store altitude in m
       else:
          df = df.loc[:, ['ET_TX', 'TOF', 'chn', 'orbID', 'seqid']]
 
@@ -306,6 +325,7 @@ class gtrack:
       self.ladata_df = df
 
    def interpolate(self):
+      """Build SPICE-based interpolators for the track time span."""
 
       # Read required trajectories from spice and interpolate
       startSpInterp = time.time()
@@ -317,12 +337,11 @@ class gtrack:
       self.MERv = interp_obj('MERv')
       self.SUNx = interp_obj('SUNx')
 
-      tstep = 1
-
       # Define call times for the SPICE
       t_spc = self.ladata_df['ET_TX'].values
       try:
          t_spc = self.ladata_df['ET_TX'].values
+         # tstep = 1
          # t_spc = np.array(
          #     [x for x in np.arange(self.ladata_df['ET_TX'].min(), self.ladata_df['ET_TX'].max(), tstep)])
          # add 1000s to each side of track to avoid boundary effects
@@ -338,11 +357,11 @@ class gtrack:
       print("ground_track: interpolating for " + str(t_spc[-1] - t_spc[0]) + " s")
 
       # trajectory
-      xv_spc, lt = spice.spkezr(self.vecopts['SCNAME'],
-                                t_spc,
-                                self.vecopts['INERTIALFRAME'],
-                                'NONE',
-                                self.vecopts['INERTIALCENTER'])
+      xv_spc, _ = spice.spkezr(self.vecopts['SCNAME'],
+                               t_spc,
+                               self.vecopts['INERTIALFRAME'],
+                               'NONE',
+                               self.vecopts['INERTIALCENTER'])
       xv_spc = np.array(xv_spc)[:, :6]
 
       # attitude
@@ -366,21 +385,21 @@ class gtrack:
       if not self.XovOpt.get("instrument") in ['BELA', 'CALA']:
          self.MGRa.interpCmat(cmat, t_spc)
 
-      xv_pla, lt = spice.spkezr(self.vecopts['PLANETNAME'],
-                                t_spc,
-                                self.vecopts['INERTIALFRAME'],
-                                'NONE',
-                                self.vecopts['INERTIALCENTER'])
+      xv_pla, _ = spice.spkezr(self.vecopts['PLANETNAME'],
+                               t_spc,
+                               self.vecopts['INERTIALFRAME'],
+                               'NONE',
+                               self.vecopts['INERTIALCENTER'])
       xv_pla = np.array(xv_pla)[:, :6]
 
       self.MERx.interp([xv_pla[:, i] for i in range(0, 3)], t_spc)
       self.MERv.interp([xv_pla[:, i] for i in range(3, 6)], t_spc)
 
-      xv_sun, lt = spice.spkezr('SUN',
-                                t_spc,
-                                self.vecopts['INERTIALFRAME'],
-                                'NONE',
-                                self.vecopts['INERTIALCENTER'])
+      xv_sun, _ = spice.spkezr('SUN',
+                               t_spc,
+                               self.vecopts['INERTIALFRAME'],
+                               'NONE',
+                               self.vecopts['INERTIALCENTER'])
       xv_sun = np.array(xv_sun)[:, :6]
 
       self.SUNx.interp([xv_sun[:, i] for i in range(0, 3)], t_spc)
@@ -407,33 +426,38 @@ class gtrack:
 
    # TODO check if False doesn't create issues...
    def geoloc(self, get_partials=False):
+      """Compute geolocation outputs and optional partial derivatives."""
       # Compute geolocalisation and dxyz/dP, where P = (A,C,R,Rl,Pt)
 
       if (self.XovOpt.get("debug")):
          startGeoloc = time.time()
 
-      # Prepare
+      # Prepare parameter dictionary; '' means "no partial".
       param = {'': 1.0}
       if get_partials:
          # don't compute numerical partials for h2, analytical one is computed below
          param.update(self.XovOpt.get("parOrb"))
          param.update(self.XovOpt.get("parGlo"))
 
-
       self.param = param
-      # check if track has to be perturbed (else only apply global pars)
-      if self.name in self.XovOpt.get("pert_tracks") or self.XovOpt.get("pert_tracks") == []:
-         _ = {}
+      # Determine closed-loop perturbations (orbital + global).
+      self.vecopts['ALTIM_BORESIGHT'] = self.boresight
+
+      pert_tracks = self.XovOpt.get("pert_tracks")
+      perturb_this_track = (self.name in pert_tracks or pert_tracks == [])
+      if perturb_this_track:
          # get cloop sim perturbations from prOpt
-         [_.update(v) for k, v in self.XovOpt.get("pert_cloop").items()]
-         self.pert_cloop = _.copy()
+         pert_cloop = {}
+         for _, v in self.XovOpt.get("pert_cloop").items():
+            pert_cloop.update(v)
+         self.pert_cloop = pert_cloop
       else:
          self.pert_cloop = {}
          
-      # randomize and assign pert for closed loop sim IF orbit in pert_tracks
-      if self.name in self.XovOpt.get("pert_tracks") or self.XovOpt.get("pert_tracks") == []:
+      # Randomize and assign per-orbit perturbations (closed-loop sim).
+      if perturb_this_track:
 
-         # if first iter, generate random perturbations array
+         # If first iter, generate random perturbations array.
          if self.pert_cloop_0 is None:
             np.random.seed(int(self.name))
             rand_pert_orb = np.random.randn(len(self.XovOpt.get("pert_cloop_orb")))
@@ -444,27 +468,21 @@ class gtrack:
          # copy to "local" perturbations df
          self.pert_cloop = self.pert_cloop_0.copy()
 
-      # add global parameters (if perturbed)
+      # Add global parameters (if perturbed).
       self.pert_cloop = mergsum(self.pert_cloop.copy(), self.XovOpt.get("pert_cloop")['glo'].copy())
 
-      # read solution from previous iteration and
-      # add to self.pert_cloop (orb and glo)
+      # Read solution from previous iteration and merge into perturbations.
       if self.sol_prev_iter != None:
          self.par_solupd()
 
-      if self.XovOpt.get("debug"):
-         print('check pert_cloop', self.name, self.pertPar)
-         print('check pert_cloop', self.name, self.pert_cloop)
-
-      if hasattr(self, 'SpObj'):
-         SpObj = self.SpObj
-      else:
-         SpObj = {'MGRx': self.MGRx,
-                  'MGRv': self.MGRv,
-                  'MGRa': self.MGRa,
-                  'MERx': self.MERx,
-                  'MERv': self.MERv,
-                  'SUNx': self.SUNx}
+      SpObj = self.SpObj if hasattr(self, 'SpObj') else {
+         'MGRx': self.MGRx,
+         'MGRv': self.MGRv,
+         'MGRa': self.MGRa,
+         'MERx': self.MERx,
+         'MERv': self.MERv,
+         'SUNx': self.SUNx,
+      }
       #########################
       if (self.XovOpt.get("parallel") and self.XovOpt.get("SpInterp") > 0 and 1 == 2):
          # spice is not multi-thread (yet). Could be improved by fitting a polynomial to
@@ -477,8 +495,13 @@ class gtrack:
       else:
          results = [self.get_geoloc_part(i) for i in param.items()]  # seq
 
-      # store ladata_df for update
+      # Store ladata_df for update.
       ladata_df = self.ladata_df.copy()
+      if np.isnan(results[0]).all():
+         # results are all NaN; returning NaN outputs
+         ladata_df['R'] = np.nan
+         self.ladata_df = ladata_df.copy()
+         return
 
       Rbase = self.vecopts['PLANETRADIUS'] * 1.e3
          
@@ -486,18 +509,13 @@ class gtrack:
          ladata_df['X'] = results[0][:, 0]
          ladata_df['Y'] = results[0][:, 1]
          ladata_df['Z'] = results[0][:, 2]
-         # if sim:
-         #   _, _, Rbase = subprocess.check_call([PGM_HOME+'diff_res_format', d+'/resid.asc', d_part+'/resid.asc', dif_dir+'/diff.resid_'+d],
-         #           universal_newlines=True)
-         # else:
          ladata_df['R'] = np.linalg.norm(results[0], axis=1) - Rbase
 
       elif (self.vecopts['OUTPUTTYPE'] == 1):
          ladata_df['LON'] = results[0][:, 0]
          ladata_df['LAT'] = results[0][:, 1]
          ladata_df['R'] = results[0][:, 2] - Rbase
-      if np.isnan(np.sum(ladata_df['LON'])):
-         print("isnan")
+
       if self.XovOpt.get("debug"):
          print(ladata_df)
          print(results[0][0, :], list(param)[0], len(param))
@@ -514,7 +532,7 @@ class gtrack:
                ladata_df['dLAT/' + list(param)[i]] = results[i][:, 1]
                ladata_df['dR/' + list(param)[i]] = results[i][:, 2]
 
-         # Add partials w.r.t. tidal h2
+         # Add partials w.r.t. tidal h2.
          ladata_df['dLON/dh2'] = 0
          ladata_df['dLAT/dh2'] = 0
          ladata_df['dR/dh2']   = 0
@@ -621,50 +639,70 @@ class gtrack:
 
    # @profile
    def get_geoloc_part(self, par):
+      """Compute geolocation for a single parameter perturbation.
+
+      Returns:
+         ndarray: Geolocation output (base or finite-difference partials).
+      """
 
       tmp_df = self.ladata_df.copy()
-      # vecopts = self.vecopts
-      if hasattr(self, 'SpObj'):
-         SpObj = self.SpObj
-      else:
-         SpObj = {'MGRx': self.MGRx,
-                  'MGRv': self.MGRv,
-                  'MGRa': self.MGRa,
-                  'MERx': self.MERx,
-                  'MERv': self.MERv,
-                  'SUNx': self.SUNx}
+      SpObj = self.SpObj if hasattr(self, 'SpObj') else {
+         'MGRx': self.MGRx,
+         'MGRv': self.MGRv,
+         'MGRa': self.MGRa,
+         'MERx': self.MERx,
+         'MERv': self.MERv,
+         'SUNx': self.SUNx,
+      }
 
-      # get dictionary values
-      partialName = list(par)[0]
-      diff_step = list(par)[1]
+      # parameter name and finite-difference step
+      partialName, diff_step = par
 
       if (self.XovOpt.get("debug")):
          print('geoloc: ' + str(par))
          print('self.vecopts[PARTDER]', partialName)
          print(diff_step)
 
-      # Read self.vecopts[partder] and apply perturbation
-      # if needed (for partials AND for closed loop sim)
+      # Apply perturbation (partials and closed-loop sim).
       tmp_pertPar = self.perturb_orbits(partialName, diff_step)
 
-      # Get bouncing point location (XYZ or LATLON depending on self.vecopts)
+      # Compute base geolocation (XYZ or LATLON depending on vecopts).
       self.vecopts['PARTDER'] = partialName
-      geoloc_out, et_bc, dr_tidal, offndr = geolocate(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+      geoloc_out, et_bc, dr_tidal, offndr = geolocate(
+         tmp_df,
+         self.vecopts,
+         tmp_pertPar,
+         SpObj,
+         t0=self.t0_orb,
+      )
       # geoloc_out, et_bc, dr_tidal, offndr = geolocate_DLRv2(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+      if np.isnan(geoloc_out).all():
+         # geoloc_out is all NaN; skipping partials and outputs
+         self.ladata_df = tmp_df
+         return geoloc_out
 
       # Compute partial derivatives if required
       if partialName != '':
          
          tmp_df['ET_BC_' + partialName + '_p'] = et_bc
 
-         # Read self.vecopts[partder] and apply perturbation
-         # if needed (for partials AND for closed loop sim)
+         # Apply negative perturbation for finite difference.
          tmp_pertPar = self.perturb_orbits(partialName, diff_step, -1.)
 
-         geoloc_min, et_bc, dr_tidal, dum = geolocate(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
-         # geoloc_min, et_bc, dr_tidal, dum = geolocate_DLRv2(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+         geoloc_min, et_bc, dr_tidal, _ = geolocate(
+            tmp_df,
+            self.vecopts,
+            tmp_pertPar,
+            SpObj,
+            t0=self.t0_orb,
+         )
+         # geoloc_min, et_bc, dr_tidal, _ = geolocate_DLRv2(tmp_df, self.vecopts, tmp_pertPar, SpObj, t0=self.t0_orb)
+         if np.isnan(geoloc_min).all():
+            # geoloc_min is all NaN; skipping partials
+            self.ladata_df = tmp_df
+            return geoloc_out
          
-         partder = (geoloc_out[:, 0:3] - geoloc_min[:, 0:3])
+         partder = geoloc_out[:, 0:3] - geoloc_min[:, 0:3]
 
          ####################################################################################
          if self.XovOpt.get("debug"):
@@ -749,9 +787,8 @@ class gtrack:
 
       return tmp_pertPar
 
-   # Compute stereographic projection of measurements location
-   # and feed it to ladata_df
    def project(self, lon0=0, lat0=90, inplace=True):
+      """Project geolocated points into stereographic coordinates."""
 
       ladata_df = self.ladata_df.copy()
       param = self.param
@@ -793,10 +830,8 @@ class gtrack:
 
       return ladata_df
 
-   # @profile
-   #################
-   # Correct for perturbations by using partials (if needed) and launch projection
    def launch_stereoproj(self, par_d, lon0=0, lat0=90):
+      """Apply partial corrections and perform stereographic projection."""
 
       ladata_df = self.ladata_df
       vecopts = self.vecopts

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 data_path = "/storage/research/aiub_gravdet/WD_BELA/"
+path = "/home/wdesprat/nobackup/pyxover/plot/"
 
 pyout_folder = f"{data_path}pyXover/out/"
 iter = 0
@@ -34,29 +35,29 @@ if False:
             all_lat=all_lat,
             all_lat_ext=all_lat_ext)
 else:
-   cache = np.load("lat_cache.npz", allow_pickle=True)
+   cache = np.load(path+"lat_cache.npz", allow_pickle=True)
 
    all_lat = cache["all_lat"].item()
    all_lat_ext = cache["all_lat_ext"].item()
 
 nbins=50
 fig = plt.figure()
-datasets = {
-    "MLA/MLA (N)": all_lat[id_[0]],
-    "BELA/BELA (N)": all_lat[id_[1]],
-    # "BELA/BELA (S)": np.abs(all_lat[id_[2]]),
-    "MLA/BELA (N)": all_lat[id_[3]],
-
-    "BELA/BELA ext (N)": np.concatenate([all_lat[id_[1]], all_lat_ext[id_[1]]]),
-    # "BELA/BELA ext (S)": np.abs(np.concatenate([all_lat[id_[2]], all_lat_ext[id_[2]]])),
-    "MLA/BELA ext (N)": np.concatenate([all_lat[id_[3]], all_lat_ext[id_[3]]]),
-}
 # datasets = {
 #     "MLA/MLA (N)": all_lat[id_[0]],
-#     "BELA/BELA (N)": np.concatenate([all_lat[id_[1]], all_lat_ext[id_[1]]]),
-#     "BELA/BELA (S)": np.abs(np.concatenate([all_lat[id_[2]], all_lat_ext[id_[2]]])),
-#     "MLA/BELA (N)": np.concatenate([all_lat[id_[3]], all_lat_ext[id_[3]]]),
+#     "BELA/BELA (N)": all_lat[id_[1]],
+#     # "BELA/BELA (S)": np.abs(all_lat[id_[2]]),
+#     "MLA/BELA (N)": all_lat[id_[3]],
+# 
+#     "BELA/BELA ext (N)": np.concatenate([all_lat[id_[1]], all_lat_ext[id_[1]]]),
+#     # "BELA/BELA ext (S)": np.abs(np.concatenate([all_lat[id_[2]], all_lat_ext[id_[2]]])),
+#     "MLA/BELA ext (N)": np.concatenate([all_lat[id_[3]], all_lat_ext[id_[3]]]),
 # }
+datasets = {
+    "MLA/MLA (N)": all_lat[id_[0]],
+    "BELA/BELA (N)": np.concatenate([all_lat[id_[1]], all_lat_ext[id_[1]]]),
+    "BELA/BELA (S)": np.abs(np.concatenate([all_lat[id_[2]], all_lat_ext[id_[2]]])),
+    "MLA/BELA (N)": np.concatenate([all_lat[id_[3]], all_lat_ext[id_[3]]]),
+}
 
 # datasets = {
 #     "MLA/MLA": all_lat[id_[0]],
@@ -86,6 +87,7 @@ for (label, data), c in zip(datasets.items(), colors):
 
 
 plt.xlabel(r"|$\phi$| [°]")
+plt.xlim([0, 90])
 plt.ylabel("Number of crossovers")
 plt.yscale("log")
 from matplotlib.lines import Line2D
@@ -105,5 +107,5 @@ ax.legend(custom_lines, datasets.keys())
 # plt.legend(handles=handles, labels=labels)
 #plt.legend(handles=handles, labels=labels, handlelength=2, handleheight=0)
 fig_name = "hist_lat"
-plt.savefig(f"{fig_name}.png")
-plt.savefig(f"{fig_name}.pdf")
+plt.savefig(f"{path}{fig_name}.png")
+plt.savefig(f"{path}{fig_name}.pdf")

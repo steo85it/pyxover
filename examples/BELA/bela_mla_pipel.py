@@ -19,10 +19,8 @@ grid = True
 run_pyXover   = False
 run_accuXover = True
 
-camp = "/storage/research/aiub_gravdet/WD_BELA/"
-OrbDir = f"{camp}ORB/"
-log_folder = f"{camp}pyXover/log/"
-
+basedir = "/home/wdesprat/nobackup/pyxover/examples/BELA/data/"
+log_folder = f"{basedir}log/"
 
 # BA0: estid_N1 = 'SA', estid_N2 = 'AA5' (removed)
 # BA1: estid_N1 = 'CA0', estid_N2 = 'AB0'
@@ -88,15 +86,12 @@ estid_S  = 'AF1'
 estid = 'BB7'
 iter = 0
 XovOpt.set("selected_hemisphere",'N')
-max_job = 250
-partition = "epyc2"# epyc2, icpu-aiub
-partition = "icpu-aiub"# epyc2, 
 max_job = 1500
-if partition == "icpu-aiub": # 120GB not possible
-   max_job = 200
+max_parallel = 200   
+max_parallel = 12*10
 
 XovOpt.set("body", 'MERCURY')
-XovOpt.set("basedir", f'{camp}pyXover/')
+XovOpt.set("basedir", basedir)
 XovOpt.set("instrument", 'BELA')
 XovOpt.set("debug", False)
 XovOpt.set("compute_input_xov", True)
@@ -218,17 +213,12 @@ if run_pyXover:
 
    if grid:
       executor = submitit.AutoExecutor(folder=f'{log_folder}{estid}/pyxover')
-      executor.update_parameters(slurm_partition=partition,
-                                 slurm_name="pyxover",
+      executor.update_parameters(slurm_name="pyxover",
                                  slurm_nodes=1,
                                  slurm_mem='10G',
                                  slurm_cpus_per_task=2,
                                  slurm_time=60*5, # minutes
-                                 slurm_array_parallelism=150)
-      if partition == "icpu-aiub":
-         executor.update_parameters(slurm_qos="job_icpu-aiub")
-      else:
-         executor.update_parameters(slurm_array_parallelism=400)
+                                 slurm_array_parallelism=max_parallel)
     
    pyxover_in = []
    for par in range(0,len(misycmb)):
@@ -291,15 +281,12 @@ if run_accuXover:
    # datasets = [f'{estid}_{iter}/',f'{estid_N1}_{iter}/',f'{estid_N2}_{iter}/']
    if grid:
       executor = submitit.AutoExecutor(folder=f'{log_folder}{estid}/accumxov')
-      executor.update_parameters(slurm_partition=partition,#epyc2, icpu-aiub
-                                 slurm_name="accumXov",
+      executor.update_parameters(slurm_name="accumXov",
                                  slurm_cpus_per_task=2,
                                  slurm_nodes=1,
                                  slurm_time=60*12, # minutes
-                                 slurm_mem='500G', # 70G
-                                 slurm_array_parallelism=100)
-      if partition == "icpu-aiub":
-         executor.update_parameters(slurm_qos="job_icpu-aiub")
+                                 slurm_mem='100G', # 70G
+                                 slurm_array_parallelism=max_parallel)
    
       job = executor.submit(AccumXov.main, [datasets, '', iter, XovOpt.to_dict(), AccOpt.to_dict()]) # single job
       job.result()

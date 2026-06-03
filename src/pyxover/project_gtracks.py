@@ -7,7 +7,7 @@ from pyxover.xov_utils import get_ds_attrib
 from xovutil.project_coord import project_stereographic
 
 from config import XovOpt
-from memory_profiler import profile
+# from memory_profiler import profile
 
 # @profile
 def project_mla(mla_proj_df, part_proj_dict, partials):
